@@ -6,6 +6,21 @@ import api    from '../api/axios';
 
 const ROWS_OPT = [8, 16, 32];
 
+const IconEdit = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </svg>
+);
+const IconDelete = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6"/>
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+    <path d="M10 11v6M14 11v6"/>
+    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+  </svg>
+);
+
 // ── Hospital Modal ─────────────────────────────────────────────────────────
 function HospitalModal({ item, doctors, onSave, onClose, saving }) {
   const [form, setForm] = useState({
@@ -162,7 +177,8 @@ function ConfirmDelete({ name, onConfirm, onCancel }) {
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function HospitalsUniversities() {
   const { user: me } = useAuth();
-  const canManage    = ['super_admin', 'professor'].includes(me?.role);
+  const isAdmin   = me?.role === 'admin';
+  const canManage = ['super_admin', 'professor', 'admin'].includes(me?.role);
 
   const [tab,        setTab      ] = useState(0);
   const [hospitals,  setHospitals] = useState([]);
@@ -198,7 +214,7 @@ export default function HospitalsUniversities() {
       .finally(() => setLoading(false));
   }, []);
 
-  const isHospital = tab === 0;
+  const isHospital = isAdmin || tab === 0;
   const data       = isHospital ? hospitals : universities;
   const filtered   = data.filter(item => {
     const q = search.toLowerCase();
@@ -255,10 +271,6 @@ export default function HospitalsUniversities() {
       <main className="admin-main">
 
         <div className="admin-page-header">
-          <div>
-            <div className="admin-page-title">Hospitals &amp; Universities</div>
-            <div className="admin-page-sub">{filtered.length} record{filtered.length !== 1 ? 's' : ''}</div>
-          </div>
           {canManage && (
             <button className="btn-purple" onClick={() => { setEditItem(null); setShowModal(true); }}>
               + {isHospital ? 'Add Hospital' : 'Add University'}
@@ -268,11 +280,13 @@ export default function HospitalsUniversities() {
 
         <div className="admin-card">
 
-          {/* Tabs */}
-          <div className="admin-tabs">
-            <button className={`admin-tab${tab === 0 ? ' active' : ''}`} onClick={() => { setTab(0); setPage(1); }}>Hospitals</button>
-            <button className={`admin-tab${tab === 1 ? ' active' : ''}`} onClick={() => { setTab(1); setPage(1); }}>Universities</button>
-          </div>
+          {/* Tabs — admin only sees Hospitals */}
+          {!isAdmin && (
+            <div className="admin-tabs">
+              <button className={`admin-tab${tab === 0 ? ' active' : ''}`} onClick={() => { setTab(0); setPage(1); }}>Hospitals</button>
+              <button className={`admin-tab${tab === 1 ? ' active' : ''}`} onClick={() => { setTab(1); setPage(1); }}>Universities</button>
+            </div>
+          )}
 
           {/* Toolbar */}
           <div className="admin-toolbar">
@@ -329,8 +343,8 @@ export default function HospitalsUniversities() {
                       {canManage && (
                         <td>
                           <div className="action-btns">
-                            <button className="btn-action edit"   onClick={() => { setEditItem(item); setShowModal(true); }}>✏️</button>
-                            <button className="btn-action delete" onClick={() => setDelItem(item)}>🗑️</button>
+                            <button className="btn-action edit"   onClick={() => { setEditItem(item); setShowModal(true); }}><IconEdit /></button>
+                            <button className="btn-action delete" onClick={() => setDelItem(item)}><IconDelete /></button>
                           </div>
                         </td>
                       )}
@@ -358,8 +372,8 @@ export default function HospitalsUniversities() {
                   {!isHospital && <div className="user-card-sub">{item.contactEmail || '—'}</div>}
                   {canManage && (
                     <div className="user-card-actions">
-                      <button className="btn-action edit"   onClick={() => { setEditItem(item); setShowModal(true); }}>✏️</button>
-                      <button className="btn-action delete" onClick={() => setDelItem(item)}>🗑️</button>
+                      <button className="btn-action edit"   onClick={() => { setEditItem(item); setShowModal(true); }}><IconEdit /></button>
+                      <button className="btn-action delete" onClick={() => setDelItem(item)}><IconDelete /></button>
                     </div>
                   )}
                 </div>

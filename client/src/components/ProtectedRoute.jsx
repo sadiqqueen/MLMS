@@ -4,10 +4,11 @@ import { useAuth } from '../context/AuthContext';
 // Maps each role to where they should land after login
 const ROLE_HOME = {
   super_admin: '/admin/dashboard',
-  admin:       '/admin/dashboard',
+  admin:       '/admin/students',
   professor:   '/admin/dashboard',
   doctor:      '/doctor/students',
-  student:     '/reports'
+  student:     '/reports',
+  director:    '/director/dashboard'
 };
 
 // This component wraps a page and decides if the user is allowed to see it.

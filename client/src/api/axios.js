@@ -1,10 +1,10 @@
 import axios from 'axios';
 
 // We create a custom axios "instance" with a shared base URL.
-// Instead of writing "http://localhost:5000/api/auth/login" every time,
+// Instead of writing "http://https://mlms-production.up.railway.app/api/auth/login" every time,
 // we just write "/api/auth/login" and the baseURL gets prepended automatically.
 const api = axios.create({
-  baseURL: 'http://localhost:5000'
+  baseURL: 'http://https://mlms-production.up.railway.app'
 });
 
 // ── REQUEST INTERCEPTOR ───────────────────────────────────────────────────
@@ -31,9 +31,13 @@ api.interceptors.response.use(
   response => response,   // success — just pass it through unchanged
   error => {
     if (error.response?.status === 401) {
+      const hadSession = !!localStorage.getItem('token');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/';   // force redirect to login
+      // Only redirect if the user had an active session (expired token).
+      // If they're on the login page with no token, 401 means wrong password —
+      // let the catch block in Login.jsx handle it and show the error message.
+      if (hadSession) window.location.href = '/';
     }
     return Promise.reject(error);   // still pass the error to the calling code
   }

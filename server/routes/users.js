@@ -20,7 +20,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
-const STAFF = ['admin', 'super_admin', 'professor'];
+const STAFF = ['admin', 'super_admin', 'professor', 'director'];
 
 // GET /api/users — all users
 router.get('/', auth, allowRoles(...STAFF), async (req, res) => {
@@ -28,6 +28,7 @@ router.get('/', auth, allowRoles(...STAFF), async (req, res) => {
     const users = await User.find()
       .select('-password')
       .populate('hospital', 'name city')
+      .populate('doctor', 'name specialty')
       .sort({ createdAt: -1 });
     res.json(users);
   } catch (err) {
@@ -52,6 +53,8 @@ router.get('/students', auth, allowRoles(...STAFF), async (req, res) => {
   try {
     const students = await User.find({ role: 'student' })
       .select('-password')
+      .populate('hospital', 'name city')
+      .populate('doctor', 'name specialty')
       .sort({ name: 1 });
     res.json(students);
   } catch (err) {

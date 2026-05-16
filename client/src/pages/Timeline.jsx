@@ -35,7 +35,6 @@ export default function Timeline() {
     <>
       <Navbar />
       <main className="main">
-        <div className="page-header"><h1 className="page-title">Rotation Timeline</h1></div>
 
         {/* ANIMATED PROGRESS BAR */}
         <div className="card progress-card">

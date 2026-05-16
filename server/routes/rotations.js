@@ -36,8 +36,8 @@ router.get('/doctor/:doctorId', auth, async (req, res) => {
 router.get('/student/:id', auth, async (req, res) => {
   try {
     const rotations = await Rotation.find({ student: req.params.id })
-      .populate('hospital', 'name address department')
-      .populate('doctor',   'name department initials')
+      .populate('hospital', 'name address department city')
+      .populate('doctor',   'name specialty department initials')
       .sort({ startDate: 1 });   // 1 = ascending (oldest first)
     res.json(rotations);
   } catch (err) {

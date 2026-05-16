@@ -14,6 +14,12 @@ import Distributions         from './pages/Distributions';
 import Students              from './pages/Students';
 import DoctorStudents        from './pages/DoctorStudents';
 import DoctorReports         from './pages/DoctorReports';
+import DoctorEvaluations     from './pages/DoctorEvaluations';
+import AdminDoctors          from './pages/AdminDoctors';
+import DirectorDashboard     from './pages/DirectorDashboard';
+import DirectorDoctors       from './pages/DirectorDoctors';
+import DirectorCertificates  from './pages/DirectorCertificates';
+import Certificates           from './pages/Certificates';
 
 const STAFF = ['admin', 'super_admin', 'professor'];
 
@@ -74,6 +80,17 @@ export default function App() {
             </ProtectedRoute>
           } />
 
+          <Route path="/admin/doctors" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDoctors />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/certificates" element={
+            <ProtectedRoute allowedRoles={['super_admin', 'professor']}>
+              <Certificates />
+            </ProtectedRoute>
+          } />
+
           {/* Doctor pages */}
           <Route path="/doctor/students" element={
             <ProtectedRoute allowedRoles={['doctor']}>
@@ -83,6 +100,28 @@ export default function App() {
           <Route path="/doctor/reports" element={
             <ProtectedRoute allowedRoles={['doctor']}>
               <DoctorReports />
+            </ProtectedRoute>
+          } />
+          <Route path="/doctor/evaluations" element={
+            <ProtectedRoute allowedRoles={['doctor']}>
+              <DoctorEvaluations />
+            </ProtectedRoute>
+          } />
+
+          {/* Director pages */}
+          <Route path="/director/dashboard" element={
+            <ProtectedRoute allowedRoles={['director']}>
+              <DirectorDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/director/doctors" element={
+            <ProtectedRoute allowedRoles={['director']}>
+              <DirectorDoctors />
+            </ProtectedRoute>
+          } />
+          <Route path="/director/certificates" element={
+            <ProtectedRoute allowedRoles={['director']}>
+              <DirectorCertificates />
             </ProtectedRoute>
           } />
 

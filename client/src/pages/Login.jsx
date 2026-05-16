@@ -6,10 +6,11 @@ import api from '../api/axios';
 // Each role has a different home page after login
 const ROLE_HOME = {
   super_admin: '/admin/dashboard',
-  admin:       '/admin/dashboard',
+  admin:       '/admin/students',
   professor:   '/admin/dashboard',
   doctor:      '/doctor/students',
   student:     '/Timeline',
+  director:    '/director/dashboard',
 };
 
 export default function Login() {

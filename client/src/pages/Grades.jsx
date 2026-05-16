@@ -87,7 +87,6 @@ export default function Grades() {
     <>
       <Navbar />
       <main className="main">
-        <div className="page-header"><h1 className="page-title">Grades</h1></div>
 
         <div className="stats">
           <div className="stat-card">

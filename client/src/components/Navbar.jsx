@@ -1,23 +1,31 @@
 import { useState, useEffect, useCallback } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import NotificationPanel from './NotificationPanel';
 import ProfileDropdown from './ProfileDropdown';
 
-const STAFF = ['admin', 'super_admin', 'professor'];
+const STAFF = ['super_admin', 'professor'];
 
 const STAFF_LINKS = [
-  { to: '/admin/dashboard',     label: 'Dashboard'    },
-  { to: '/admin/users',         label: 'Users'        },
-  { to: '/admin/hospitals',     label: 'Hospitals'    },
-  { to: '/admin/distributions', label: 'Distributions'},
-  { to: '/admin/students',      label: 'Students'     },
+  { to: '/admin/dashboard',      label: 'Dashboard'     },
+  { to: '/admin/users',          label: 'Users'         },
+  { to: '/admin/hospitals',      label: 'Hospitals'     },
+  { to: '/admin/distributions',  label: 'Distributions' },
+  { to: '/admin/students',       label: 'Students'      },
+  { to: '/admin/certificates',   label: 'Certificates'  },
+];
+
+const ADMIN_LINKS = [
+  { to: '/admin/students', label: 'Students' },
+  { to: '/admin/doctors',  label: 'Doctors'  },
+  { to: '/admin/hospitals', label: 'Hospitals' },
 ];
 
 const DOCTOR_LINKS = [
-  { to: '/doctor/students', label: 'My Students' },
-  { to: '/doctor/reports',  label: 'Reports'     },
+  { to: '/doctor/students',    label: 'My Students'  },
+  { to: '/doctor/reports',     label: 'Reports'      },
+  { to: '/doctor/evaluations', label: 'Evaluations'  },
 ];
 
 const STUDENT_LINKS = [
@@ -26,8 +34,24 @@ const STUDENT_LINKS = [
   { to: '/timeline', label: 'Timeline'   },
 ];
 
+const DIRECTOR_LINKS = [
+  { to: '/director/dashboard',    label: 'Students'      },
+  { to: '/director/doctors',      label: 'Doctors'       },
+  { to: '/director/certificates', label: 'Certificates'  },
+];
+
+const ROLE_HOME = {
+  super_admin: '/admin/dashboard',
+  admin:       '/admin/students',
+  professor:   '/admin/dashboard',
+  doctor:      '/doctor/students',
+  student:     '/Timeline',
+  director:    '/director/dashboard',
+};
+
 export default function Navbar() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Local state — only the Navbar cares about these, so they live here (not in context)
   const [notifications, setNotifications] = useState([]);
@@ -81,14 +105,20 @@ export default function Navbar() {
     <nav className="topnav">
 
       {/* LOGO */}
-      <div className="nav-logo">
-        <img src="public/logo-light.png" alt="MedLearn LMS" className="nav-logo-img" />
+      <div className="nav-logo" onClick={() => navigate(ROLE_HOME[user?.role] || '/')} style={{ cursor: 'pointer' }}>
+        <img src="/logo.png" alt="MedLearn LMS" className="nav-logo-img" />
       </div>
 
       {/* PAGE LINKS */}
       {/* NavLink is like <a> but it knows if it's the current page and adds "active" class */}
       <div className="nav-links">
-        {(STAFF.includes(user?.role) ? STAFF_LINKS : user?.role === 'doctor' ? DOCTOR_LINKS : STUDENT_LINKS).map(l => (
+        {(
+          user?.role === 'admin'       ? ADMIN_LINKS    :
+          STAFF.includes(user?.role)   ? STAFF_LINKS    :
+          user?.role === 'doctor'      ? DOCTOR_LINKS   :
+          user?.role === 'director'    ? DIRECTOR_LINKS :
+                                        STUDENT_LINKS
+        ).map(l => (
           <NavLink key={l.to} to={l.to} className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>
             {l.label}
           </NavLink>

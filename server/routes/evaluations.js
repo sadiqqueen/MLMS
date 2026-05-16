@@ -4,9 +4,12 @@ const Notification   = require('../models/Notification');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 
-const STAFF  = ['admin', 'super_admin', 'professor'];
-const SENIOR = ['super_admin', 'professor'];  // can edit/delete
+const STAFF       = ['admin', 'super_admin', 'professor'];
+const SENIOR      = ['super_admin', 'professor'];
+const CAN_SUBMIT  = ['admin', 'super_admin', 'professor', 'doctor'];
+const MONTHLY_CAP = 5;
 
+// GET /api/evaluations — all evaluations (staff only)
 router.get('/', auth, allowRoles(...STAFF), async (req, res) => {
   try {
     const evaluations = await Evaluation.find()
@@ -20,8 +23,53 @@ router.get('/', auth, allowRoles(...STAFF), async (req, res) => {
   }
 });
 
-router.post('/', auth, allowRoles(...STAFF), async (req, res) => {
+// GET /api/evaluations/by-doctor/:doctorId — all evals submitted by this doctor
+router.get('/by-doctor/:doctorId', auth, async (req, res) => {
   try {
+    const evaluations = await Evaluation.find({ doctor: req.params.doctorId })
+      .populate('student',  'name email photoUrl initials studentId year')
+      .populate('hospital', 'name')
+      .sort({ date: -1 });
+    res.json(evaluations);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/evaluations/student/:studentId — all evals for one student
+router.get('/student/:studentId', auth, async (req, res) => {
+  try {
+    const evaluations = await Evaluation.find({ student: req.params.studentId })
+      .populate('doctor',   'name initials')
+      .populate('hospital', 'name')
+      .sort({ date: -1 });
+    res.json(evaluations);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/evaluations — create evaluation (doctors + staff)
+router.post('/', auth, allowRoles(...CAN_SUBMIT), async (req, res) => {
+  try {
+    // Enforce 5-per-student-per-month cap
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const doctorId = req.body.doctor || req.user._id;
+    const monthCount = await Evaluation.countDocuments({
+      student: req.body.student,
+      doctor:  doctorId,
+      date:    { $gte: startOfMonth, $lte: endOfMonth },
+    });
+
+    if (monthCount >= MONTHLY_CAP) {
+      return res.status(400).json({
+        message: `Monthly evaluation limit (${MONTHLY_CAP}) reached for this student.`,
+      });
+    }
+
     const evaluation = await Evaluation.create(req.body);
     const populated  = await Evaluation.findById(evaluation._id)
       .populate('student',  'name email photoUrl initials')
@@ -31,7 +79,7 @@ router.post('/', auth, allowRoles(...STAFF), async (req, res) => {
     if (evaluation.student) {
       await Notification.create({
         user:    evaluation.student,
-        message: `You have a new evaluation submitted by ${req.user.name}`
+        message: `You have a new evaluation submitted by ${req.user.name}`,
       });
     }
     res.status(201).json(populated);
@@ -40,7 +88,7 @@ router.post('/', auth, allowRoles(...STAFF), async (req, res) => {
   }
 });
 
-// only super_admin and professor can edit evaluations
+// PUT /api/evaluations/:id — edit (senior staff only)
 router.put('/:id', auth, allowRoles(...SENIOR), async (req, res) => {
   try {
     const evaluation = await Evaluation.findByIdAndUpdate(req.params.id, req.body, { new: true })
@@ -54,6 +102,7 @@ router.put('/:id', auth, allowRoles(...SENIOR), async (req, res) => {
   }
 });
 
+// DELETE /api/evaluations/:id — senior staff only
 router.delete('/:id', auth, allowRoles(...SENIOR), async (req, res) => {
   try {
     const evaluation = await Evaluation.findByIdAndDelete(req.params.id);

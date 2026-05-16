@@ -4,7 +4,22 @@ import Toast  from '../components/Toast';
 import api    from '../api/axios';
 
 const ROWS_OPT = [8, 16, 32];
-const API_BASE = 'http://localhost:5000';
+const API_BASE = 'http://https://mlms-production.up.railway.app';
+
+const IconEdit = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </svg>
+);
+const IconDelete = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6"/>
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+    <path d="M10 11v6M14 11v6"/>
+    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+  </svg>
+);
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -210,10 +225,6 @@ export default function Distributions() {
       <main className="admin-main">
 
         <div className="admin-page-header">
-          <div>
-            <div className="admin-page-title">Distributions</div>
-            <div className="admin-page-sub">{filtered.length} record{filtered.length !== 1 ? 's' : ''}</div>
-          </div>
           <button className="btn-purple" onClick={() => { setEditItem(null); setShowModal(true); }}>+ Add Distribution</button>
         </div>
 
@@ -293,8 +304,8 @@ export default function Distributions() {
                       </td>
                       <td>
                         <div className="action-btns">
-                          <button className="btn-action edit"   onClick={() => { setEditItem(item); setShowModal(true); }}>✏️</button>
-                          <button className="btn-action delete" onClick={() => setDelItem(item)}>🗑️</button>
+                          <button className="btn-action edit"   onClick={() => { setEditItem(item); setShowModal(true); }}><IconEdit /></button>
+                          <button className="btn-action delete" onClick={() => setDelItem(item)}><IconDelete /></button>
                         </div>
                       </td>
                     </tr>
@@ -328,8 +339,8 @@ export default function Distributions() {
                     {fmtDate(item.startDate)} → {fmtDate(item.endDate)}
                   </div>
                   <div className="dist-card-actions">
-                    <button className="btn-action edit"   onClick={() => { setEditItem(item); setShowModal(true); }}>✏️</button>
-                    <button className="btn-action delete" onClick={() => setDelItem(item)}>🗑️</button>
+                    <button className="btn-action edit"   onClick={() => { setEditItem(item); setShowModal(true); }}><IconEdit /></button>
+                    <button className="btn-action delete" onClick={() => setDelItem(item)}><IconDelete /></button>
                   </div>
                 </div>
               ))}

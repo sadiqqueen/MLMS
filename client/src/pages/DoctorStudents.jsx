@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import api from '../api/axios';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = 'http://https://mlms-production.up.railway.app';
 const STATUS_FILTERS = ['all', 'current', 'upcoming', 'completed'];
 
 function fmtDate(d) {
@@ -53,14 +53,6 @@ export default function DoctorStudents() {
       <Navbar />
       <main className="admin-main">
 
-        <div className="admin-page-header">
-          <div>
-            <div className="admin-page-title">My Students</div>
-            <div className="admin-page-sub">
-              {rotations.length} student{rotations.length !== 1 ? 's' : ''} under your supervision
-            </div>
-          </div>
-        </div>
 
         {/* Summary cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 8 }}>

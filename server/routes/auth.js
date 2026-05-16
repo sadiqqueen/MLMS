@@ -2,8 +2,27 @@
 // All routes here will be prefixed with /api/auth (set in server.js)
 const router = require('express').Router();
 const jwt    = require('jsonwebtoken');
+const path   = require('path');
+const multer = require('multer');
 const User   = require('../models/User');
 const auth   = require('../middleware/auth');
+
+const photoStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, path.join(__dirname, '../uploads')),
+  filename:    (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, unique + path.extname(file.originalname));
+  },
+});
+const uploadPhoto = multer({
+  storage: photoStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ok = /jpeg|jpg|png|webp|gif/.test(path.extname(file.originalname).toLowerCase())
+            && /image\//.test(file.mimetype);
+    ok ? cb(null, true) : cb(new Error('Only image files are allowed'));
+  },
+});
 
 // ── POST /api/auth/login ──────────────────────────────────────────────────
 // The browser sends: { email: "...", password: "..." }
@@ -71,8 +90,46 @@ router.post('/login', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
   try {
     // req.user was attached by the auth middleware
-    const user = await User.findById(req.user._id).select('-password');
+    const user = await User.findById(req.user._id)
+      .select('-password')
+      .populate('hospital', 'name city');
     res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// ── PUT /api/auth/upload-photo ───────────────────────────────────────────────
+router.put('/upload-photo', auth, uploadPhoto.single('photo'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded.' });
+    const photoUrl = `/uploads/${req.file.filename}`;
+    await User.findByIdAndUpdate(req.user._id, { photoUrl });
+    res.json({ photoUrl });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// ── PUT /api/auth/change-password ────────────────────────────────────────────
+// Lets any logged-in user change their own password (must supply current one)
+router.put('/change-password', auth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword)
+      return res.status(400).json({ message: 'All fields are required.' });
+    if (newPassword.length < 6)
+      return res.status(400).json({ message: 'New password must be at least 6 characters.' });
+
+    const user = await User.findById(req.user._id);
+    const match = await user.comparePassword(currentPassword);
+    if (!match)
+      return res.status(401).json({ message: 'Current password is incorrect.' });
+
+    const bcrypt = require('bcryptjs');
+    user.password = await bcrypt.hash(newPassword, 12);
+    await user.save();
+    res.json({ message: 'Password updated successfully.' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

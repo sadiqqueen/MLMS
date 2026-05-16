@@ -14,7 +14,7 @@ const app = express();
 
 // CORS = Cross-Origin Resource Sharing.
 // By default, browsers block requests from one origin (localhost:5173)
-// to a different origin (localhost:5000). This tells the server to allow it.
+// to a different origin (https://mlms-production.up.railway.app). This tells the server to allow it.
 app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 
 // Parse incoming JSON request bodies so req.body works
@@ -25,11 +25,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve the uploads folder as static files.
 // If a report has fileUrl = "/uploads/abc123.pdf", the browser can access it
-// directly at http://localhost:5000/uploads/abc123.pdf
+// directly at http://https://mlms-production.up.railway.app/uploads/abc123.pdf
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Serve the landing page (index.html) from the project root.
-// When the user visits http://localhost:5000, Express finds index.html there.
+// When the user visits http://https://mlms-production.up.railway.app, Express finds index.html there.
 app.use(express.static(path.join(__dirname, '..')));
 
 // ── ROUTES ────────────────────────────────────────────────────────────────
@@ -44,7 +44,8 @@ app.use('/api/evaluations',   require('./routes/evaluations'));
 app.use('/api/dashboard',     require('./routes/dashboard'));
 app.use('/api/rotations',     require('./routes/rotations'));
 app.use('/api/reports',       require('./routes/reports'));
-app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/notifications',  require('./routes/notifications'));
+app.use('/api/certificates',   require('./routes/certificates'));
 
 // A simple health-check route — useful to test that the server is up
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));

@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema(
 
     role: {
       type:     String,
-      enum:     ['super_admin', 'admin', 'professor', 'doctor', 'student'],
+      enum:     ['super_admin', 'admin', 'professor', 'doctor', 'student', 'director'],
       required: true
     },
 
@@ -28,7 +28,8 @@ const userSchema = new mongoose.Schema(
     // doctor / professor
     department:    { type: String, default: '' },
     specialty:     { type: String, default: '' },
-    hospital:      { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital' }
+    hospital:      { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital' },
+    doctor:        { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   },
   { timestamps: true }
 );

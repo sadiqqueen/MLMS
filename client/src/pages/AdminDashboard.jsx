@@ -87,13 +87,6 @@ export default function AdminDashboard() {
 
       <main className="admin-main">
 
-        {/* ── PAGE HEADER ── */}
-        <div className="admin-page-header">
-          <div>
-            <div className="admin-page-title">Dashboard</div>
-            <div className="admin-page-sub">Overview of the clinical training system</div>
-          </div>
-        </div>
 
         {/* ── STAT CARDS ── */}
         <div className="stat-cards-grid">

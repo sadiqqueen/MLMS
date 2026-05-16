@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
 import api from '../api/axios';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = 'http://https://mlms-production.up.railway.app';
 
 const ASR_CRITERIA = [
   'History Taking',
@@ -376,16 +376,6 @@ export default function DoctorReports() {
       <Navbar />
       <main className="admin-main">
 
-        <div className="admin-page-header">
-          <div>
-            <div className="admin-page-title">Student Reports</div>
-            <div className="admin-page-sub">
-              {pendingCount > 0
-                ? `${pendingCount} report${pendingCount !== 1 ? 's' : ''} waiting for assessment`
-                : 'All reports have been assessed'}
-            </div>
-          </div>
-        </div>
 
         {/* Summary */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 8 }}>

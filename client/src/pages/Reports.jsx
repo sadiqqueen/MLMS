@@ -110,7 +110,7 @@ function ReportModal({ report, student, onClose }) {
             {report.fileUrl && (
               <div className="assess-info-item">
                 <span className="modal-label">Attached File</span>
-                <a className="modal-link no-print" href={`http://localhost:5000${report.fileUrl}`} target="_blank" rel="noreferrer">
+                <a className="modal-link no-print" href={`http://https://mlms-production.up.railway.app${report.fileUrl}`} target="_blank" rel="noreferrer">
                   View attachment ↗
                 </a>
                 <span className="print-only modal-value">{report.fileUrl}</span>
@@ -344,8 +344,7 @@ export default function Reports() {
       <main className="main">
 
         <div className="page-header">
-          <h1 className="page-title">My Reports</h1>
-          <button className="btn-primary" onClick={() => { setShowForm(v => !v); setFormError(''); }}>
+<button className="btn-primary" onClick={() => { setShowForm(v => !v); setFormError(''); }}>
             {showForm ? 'Cancel' : '+ Submit report'}
           </button>
         </div>

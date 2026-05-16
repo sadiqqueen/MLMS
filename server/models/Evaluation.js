@@ -7,7 +7,9 @@ const evaluationSchema = new mongoose.Schema(
     hospital:  { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital' },
     specialty: { type: String, default: '' },
     date:      { type: Date, default: Date.now },
-    grade:     { type: String, default: '' },
+    evaluationType: { type: String, default: '' },
+    grade:          { type: String, default: '' },
+    notes:          { type: String, default: '' },
     status:    { type: String, enum: ['pending', 'completed'], default: 'pending' }
   },
   { timestamps: true }
