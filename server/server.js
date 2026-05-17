@@ -35,9 +35,6 @@ app.use(express.urlencoded({ extended: true }));
 // directly at http://https://mlms-production.up.railway.app/uploads/abc123.pdf
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Serve the landing page (index.html) from the project root.
-// When the user visits http://https://mlms-production.up.railway.app, Express finds index.html there.
-app.use(express.static(path.join(__dirname, '..')));
 
 // ── ROUTES ────────────────────────────────────────────────────────────────
 // Connect each router to a URL prefix.
