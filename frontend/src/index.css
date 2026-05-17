@@ -80,7 +80,7 @@ a      { text-decoration: none; }
 }
 
 .nav-logo      { display: flex; align-items: center; }
-.nav-logo-img  { height: 55px; width: auto; display: block; }
+.nav-logo-img  { height: 36px; width: auto; display: block; }
 .nav-links { display: inline-flex; align-items: center; gap: 4px; position: absolute; left: 50%; transform: translateX(-50%); }
 
 .nav-link {
