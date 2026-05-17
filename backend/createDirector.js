@@ -16,7 +16,7 @@ async function run() {
   await User.create({
     name:     'Director',
     email:    'director@medlearn.com',
-    password: 'password123',
+    password: '123456',
     role:     'director',
     gender:   '',
     city:     '',
@@ -27,7 +27,7 @@ async function run() {
 
   console.log('Director user created.');
   console.log('  Email:    director@medlearn.com');
-  console.log('  Password: password123');
+  console.log('  Password: 123456');
 
   await mongoose.disconnect();
 }

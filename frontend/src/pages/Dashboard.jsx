@@ -77,7 +77,7 @@ export default function Dashboard() {
         {/* GPA BAR */}
         <div className="gpa-bar">
           <div className="gpa-left">
-            <img src="public/logo.png" alt="MedLearn LMS" className="gpa-logo" />
+            <img src="/logo.png" alt="MedLearn LMS" className="gpa-logo" />
             <div className="gpa-name">{user?.name}</div>
             <div className="gpa-sub">Medical resident · Year {user?.year}</div>
           </div>

@@ -111,7 +111,7 @@ function AssessmentModal({ report, doctor, onClose, onSaved }) {
 
         {/* Print header */}
         <div className="print-header">
-          <div className="print-logo"><img src="public/logo.png" alt="MedLearn LMS" className="print-logo-img" /></div>
+          <div className="print-logo"><img src="/logo.png" alt="MedLearn LMS" className="print-logo-img" /></div>
           <div className="print-subtitle">Official Assessment Record</div>
         </div>
 

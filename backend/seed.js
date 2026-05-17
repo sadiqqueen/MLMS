@@ -80,59 +80,59 @@ async function seed() {
   const [, , , d1, d2, d3, d4, d5, s1, s2] = await User.insertMany([
     {
       name: 'Sadeq Queen', email: 'superadmin@medlearn.com',
-      password: await hash('password123'), role: 'super_admin',
+      password: await hash('123456'), role: 'super_admin',
       initials: 'SQ', gender: 'male', city: 'Baghdad'
     },
     {
       name: 'Ahmed Queen', email: 'admin@medlearn.com',
-      password: await hash('password123'), role: 'admin',
+      password: await hash('123456'), role: 'admin',
       initials: 'AQ', gender: 'male', city: 'Baghdad'
     },
     {
       name: 'Prof. Jawad Al-Sharafi', email: 'professor@medlearn.com',
-      password: await hash('password123'), role: 'professor',
+      password: await hash('123456'), role: 'professor',
       initials: 'JA', department: 'Medicine', gender: 'male', city: 'Baghdad'
     },
     {
       name: 'Dr. Fatima Al-Zahra', email: 'doctor1@medlearn.com',
-      password: await hash('password123'), role: 'doctor',
+      password: await hash('123456'), role: 'doctor',
       initials: 'FA', specialty: 'Surgery',
       gender: 'female', city: 'Baghdad', hospital: h1._id
     },
     {
       name: 'Dr. Omar Khalid', email: 'doctor2@medlearn.com',
-      password: await hash('password123'), role: 'doctor',
+      password: await hash('123456'), role: 'doctor',
       initials: 'OK', specialty: 'Internal Medicine',
       gender: 'male', city: 'Baghdad', hospital: h3._id
     },
     {
       name: 'Dr. Ali Hassan', email: 'doctor3@medlearn.com',
-      password: await hash('password123'), role: 'doctor',
+      password: await hash('123456'), role: 'doctor',
       initials: 'AH', specialty: 'Pediatrics',
       gender: 'male', city: 'Baghdad', hospital: h2._id
     },
     {
       name: 'Dr. Sara Mohammed', email: 'doctor4@medlearn.com',
-      password: await hash('password123'), role: 'doctor',
+      password: await hash('123456'), role: 'doctor',
       initials: 'SM', specialty: 'Cardiology',
       gender: 'female', city: 'Basra', hospital: h2._id
     },
     {
       name: 'Dr. Kareem Abbas', email: 'doctor5@medlearn.com',
-      password: await hash('password123'), role: 'doctor',
+      password: await hash('123456'), role: 'doctor',
       initials: 'KA', specialty: 'Orthopedics',
       gender: 'male', city: 'Baghdad', hospital: h1._id
     },
     {
       name: 'Ahmed Hassan', email: 'student@medlearn.com',
-      password: await hash('password123'), role: 'student',
+      password: await hash('123456'), role: 'student',
       initials: 'AH', year: 2, studentId: 'MED-2024-001',
       enrolledSince: new Date('2024-09-01'),
       gender: 'male', city: 'Baghdad', phone: '+964 770 123 4567'
     },
     {
       name: 'Lina Mustafa', email: 'student2@medlearn.com',
-      password: await hash('password123'), role: 'student',
+      password: await hash('123456'), role: 'student',
       initials: 'LM', year: 3, studentId: 'MED-2024-002',
       enrolledSince: new Date('2023-09-01'),
       gender: 'female', city: 'Basra', phone: '+964 770 987 6543'
@@ -213,7 +213,7 @@ async function seed() {
   ]);
 
   console.log('\n✅ Seed complete!\n');
-  console.log('Login credentials (all passwords: password123):');
+  console.log('Login credentials (all passwords: 123456):');
   console.log('  superadmin@medlearn.com  — Sadeq Queen (Super Admin)');
   console.log('  admin@medlearn.com       — Ahmed Queen (Admin)');
   console.log('  professor@medlearn.com   — Prof. Jawad Al-Sharafi');

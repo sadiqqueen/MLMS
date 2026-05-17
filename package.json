@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "Medical Learning Management System",
   "scripts": {
-    "dev":         "concurrently \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
-    "frontend":    "npm --prefix frontend run dev",
-    "backend":     "npm --prefix backend run dev",
+    "dev": "concurrently \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "frontend": "npm --prefix frontend run dev",
+    "backend": "npm --prefix backend run dev",
     "install:all": "npm install && npm --prefix frontend install && npm --prefix backend install"
   },
   "devDependencies": {

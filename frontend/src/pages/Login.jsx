@@ -53,7 +53,7 @@ export default function Login() {
 
       {/* LEFT PANEL — branding */}
       <div className="login-left">
-        <img src="public/logo.png" alt="MLMS" className="login-logo-img" style={{
+        <img src="/logo.png" alt="MLMS" className="login-logo-img" style={{
           width: "400px",
           height: "auto",
           position: "relative",
