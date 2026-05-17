@@ -16,12 +16,8 @@ const app = express();
 // By default, browsers block requests from one origin (localhost:5173)
 // to a different origin (https://mlms-production.up.railway.app). This tells the server to allow it.
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'https://mlmsksb-24yydioq-sadiqqueens-projects.vercel.app',
-    'https://mlmsksb-git-main-sadiqqueens-projects.vercel.app',
-  ],
-  credentials: true,
+  origin: true,
+  credentials: true
 }));
 
 // Parse incoming JSON request bodies so req.body works
