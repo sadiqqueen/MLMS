@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Rename-Item -Path client -NewName frontend)",
+      "Bash(Rename-Item -Path server -NewName backend)"
+    ]
+  }
+}
