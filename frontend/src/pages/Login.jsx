@@ -65,7 +65,7 @@ export default function Login() {
             style={{
             position: "relative",
             left: "0px",
-            top: "-80px",
+            top: "-40px",
             color: "white"
           }}
           >
