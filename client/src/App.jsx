@@ -30,6 +30,7 @@ export default function App() {
         <Routes>
           {/* Public */}
           <Route path="/" element={<Login />} />
+          <Route path="/login" element={<Login />} />
 
           {/* Student pages */}
           <Route path="/reports" element={
