@@ -43,7 +43,7 @@ a      { text-decoration: none; }
 
 .form-wrap  { width: 100%; max-width: 300px; }
 .form-logo-wrap { margin-bottom: 12px; }
-.form-logo-img  { width: 210px; height: auto; display: block; }
+.form-logo-img  { width: 100px; height: auto; display: block; }
 .form-sub   { font-size: 13px; color: #666; margin-bottom: 1.5rem; }
 
 .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 1rem; }
@@ -80,7 +80,7 @@ a      { text-decoration: none; }
 }
 
 .nav-logo      { display: flex; align-items: center; }
-.nav-logo-img  { height: 20px; width: auto; display: block; }
+.nav-logo-img  { height: 10px; width: auto; display: block; }
 .nav-links { display: inline-flex; align-items: center; gap: 4px; position: absolute; left: 50%; transform: translateX(-50%); }
 
 .nav-link {
