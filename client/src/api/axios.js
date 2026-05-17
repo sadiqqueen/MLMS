@@ -4,7 +4,7 @@ import axios from 'axios';
 // Instead of writing "http://https://mlms-production.up.railway.app/api/auth/login" every time,
 // we just write "/api/auth/login" and the baseURL gets prepended automatically.
 const api = axios.create({
-  baseURL: 'http://https://mlms-production.up.railway.app'
+  baseURL: 'https://mlms-production.up.railway.app'
 });
 
 // ── REQUEST INTERCEPTOR ───────────────────────────────────────────────────
