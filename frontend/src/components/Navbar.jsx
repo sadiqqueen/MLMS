@@ -53,10 +53,10 @@ export default function Navbar() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Local state — only the Navbar cares about these, so they live here (not in context)
   const [notifications, setNotifications] = useState([]);
   const [showNotif,     setShowNotif    ] = useState(false);
   const [showProfile,   setShowProfile  ] = useState(false);
+  const [menuOpen,      setMenuOpen     ] = useState(false);
 
   // Count unread notifications — this drives the red badge number
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -93,13 +93,22 @@ export default function Navbar() {
 
   function toggleNotif() {
     setShowNotif(v => !v);
-    setShowProfile(false);   // close profile if open
+    setShowProfile(false);
+    setMenuOpen(false);
   }
 
   function toggleProfile() {
     setShowProfile(v => !v);
-    setShowNotif(false);     // close notifications if open
+    setShowNotif(false);
+    setMenuOpen(false);
   }
+
+  const links =
+    user?.role === 'admin'     ? ADMIN_LINKS    :
+    STAFF.includes(user?.role) ? STAFF_LINKS    :
+    user?.role === 'doctor'    ? DOCTOR_LINKS   :
+    user?.role === 'director'  ? DIRECTOR_LINKS :
+                                 STUDENT_LINKS;
 
   return (
     <nav className="topnav">
@@ -109,26 +118,23 @@ export default function Navbar() {
         <img src="/logo.png" alt="MedLearn LMS" className="nav-logo-img" />
       </div>
 
-      {/* PAGE LINKS */}
-      {/* NavLink is like <a> but it knows if it's the current page and adds "active" class */}
+      {/* PAGE LINKS — desktop only */}
       <div className="nav-links">
-        {(
-          user?.role === 'admin'       ? ADMIN_LINKS    :
-          STAFF.includes(user?.role)   ? STAFF_LINKS    :
-          user?.role === 'doctor'      ? DOCTOR_LINKS   :
-          user?.role === 'director'    ? DIRECTOR_LINKS :
-                                        STUDENT_LINKS
-        ).map(l => (
+        {links.map(l => (
           <NavLink key={l.to} to={l.to} className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>
             {l.label}
           </NavLink>
         ))}
       </div>
 
+      {/* HAMBURGER — mobile only */}
+      <button className="hamburger-btn" onClick={() => setMenuOpen(v => !v)} aria-label="Toggle menu">
+        &#9776;
+      </button>
+
       {/* BELL + AVATAR */}
       <div className="nav-right">
 
-        {/* BELL BUTTON + PANEL */}
         <div className="bell-wrap">
           <button className="bell-btn" onClick={toggleNotif}>
             <span className="bell">&#128276;</span>
@@ -146,7 +152,6 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* AVATAR BUTTON + DROPDOWN */}
         <div className="avatar-wrap">
           <button className="avatar" onClick={toggleProfile}>
             {user?.initials}
@@ -157,6 +162,23 @@ export default function Navbar() {
         </div>
 
       </div>
+
+      {/* MOBILE DROPDOWN MENU */}
+      {menuOpen && (
+        <div className="mobile-menu">
+          {links.map(l => (
+            <NavLink
+              key={l.to}
+              to={l.to}
+              className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}
+              onClick={() => setMenuOpen(false)}
+            >
+              {l.label}
+            </NavLink>
+          ))}
+        </div>
+      )}
+
     </nav>
   );
 }
