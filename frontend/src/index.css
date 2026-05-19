@@ -81,6 +81,12 @@ a      { text-decoration: none; }
 
 .nav-logo      { display: flex; align-items: center; }
 .nav-logo-img  { height: 35px; width: auto; display: block; }
+@media (max-width: 768px) {
+    .nav-logo-img {
+        height: 22px;
+        width: auto;
+    }
+}
 .nav-links { display: inline-flex; align-items: center; gap: 4px; position: absolute; left: 50%; transform: translateX(-50%); }
 
 .nav-link {
