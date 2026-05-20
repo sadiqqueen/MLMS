@@ -4,7 +4,7 @@ import Toast  from '../components/Toast';
 import api    from '../api/axios';
 
 const ROWS_OPT = [8, 16, 32];
-const API_BASE = 'http://https://mlms-production.up.railway.app';
+const API_BASE = '';
 
 const IconEdit = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

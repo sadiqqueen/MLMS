@@ -89,7 +89,7 @@ export default function DirectorDashboard() {
                 onClick={() => openStudent(student)}
               >
                 {student.photoUrl
-                  ? <img src={`http://https://mlms-production.up.railway.app${student.photoUrl}`} alt={student.name} className="user-card-photo" />
+                  ? <img src={`${student.photoUrl}`} alt={student.name} className="user-card-photo" />
                   : <div className="user-card-initials">
                       {student.initials || student.name.slice(0, 2).toUpperCase()}
                     </div>
@@ -111,7 +111,7 @@ export default function DirectorDashboard() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   {selected.photoUrl
                     ? <img
-                        src={`http://https://mlms-production.up.railway.app${selected.photoUrl}`}
+                        src={`${selected.photoUrl}`}
                         alt={selected.name}
                         style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
                       />

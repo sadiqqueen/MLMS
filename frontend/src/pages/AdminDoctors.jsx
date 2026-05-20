@@ -3,7 +3,7 @@ import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
 import api    from '../api/axios';
 
-const API_BASE = 'http://https://mlms-production.up.railway.app';
+const API_BASE = '';
 function photoSrc(url) { return url ? `${API_BASE}${url}` : null; }
 
 const IconEdit = () => (

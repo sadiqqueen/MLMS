@@ -50,7 +50,7 @@ const ROLE_BADGE = {
   super_admin: 'badge-role badge-super_admin',
 };
 
-const API_BASE = 'http://https://mlms-production.up.railway.app';
+const API_BASE = '';
 function photoSrc(url) { return url ? `${API_BASE}${url}` : null; }
 function fmtDate(d) { return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'; }
 

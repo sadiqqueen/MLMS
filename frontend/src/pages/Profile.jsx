@@ -123,7 +123,7 @@ export default function Profile() {
           <div className="profile-photo-wrap">
             <div className="profile-photo-square">
               {photoUrl
-                ? <img src={`http://https://mlms-production.up.railway.app${photoUrl}`} alt={p?.name} />
+                ? <img src={photoUrl} alt={p?.name} />
                 : <span>{p?.initials}</span>}
             </div>
             <input

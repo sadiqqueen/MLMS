@@ -110,7 +110,7 @@ function ReportModal({ report, student, onClose }) {
             {report.fileUrl && (
               <div className="assess-info-item">
                 <span className="modal-label">Attached File</span>
-                <a className="modal-link no-print" href={`http://https://mlms-production.up.railway.app${report.fileUrl}`} target="_blank" rel="noreferrer">
+                <a className="modal-link no-print" href={report.fileUrl} target="_blank" rel="noreferrer">
                   View attachment ↗
                 </a>
                 <span className="print-only modal-value">{report.fileUrl}</span>

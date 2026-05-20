@@ -87,7 +87,7 @@ export default function DirectorDoctors() {
                 onClick={() => openDoctor(doctor)}
               >
                 {doctor.photoUrl
-                  ? <img src={`http://https://mlms-production.up.railway.app${doctor.photoUrl}`} alt={doctor.name} className="user-card-photo" />
+                  ? <img src={`${doctor.photoUrl}`} alt={doctor.name} className="user-card-photo" />
                   : <div className="user-card-initials">
                       {doctor.initials || doctor.name.slice(0, 2).toUpperCase()}
                     </div>
@@ -109,7 +109,7 @@ export default function DirectorDoctors() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   {selected.photoUrl
                     ? <img
-                        src={`http://https://mlms-production.up.railway.app${selected.photoUrl}`}
+                        src={`${selected.photoUrl}`}
                         alt={selected.name}
                         style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
                       />

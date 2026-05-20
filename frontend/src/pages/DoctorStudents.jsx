@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import api from '../api/axios';
 
-const API_BASE = 'http://https://mlms-production.up.railway.app';
+const API_BASE = '';
 const STATUS_FILTERS = ['all', 'current', 'upcoming', 'completed'];
 
 function fmtDate(d) {
