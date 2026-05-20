@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import Navbar from '../components/Navbar';
+import Sk     from '../components/Skeleton';
 
 function fmt(d) {
   if (!d) return '—';
@@ -25,7 +26,52 @@ export default function Timeline() {
     }).finally(() => setLoading(false));
   }, [user]);
 
-  if (loading) return <><Navbar /><div className="main"><div className="loading">Loading…</div></div></>;
+  if (loading) return (
+    <>
+      <Navbar />
+      <main className="main">
+        <div className="card progress-card">
+          <div className="progress-header">
+            <Sk w={160} h={14} />
+            <Sk w={120} h={14} />
+          </div>
+          <Sk h={8} r={99} style={{ marginTop: 8 }} />
+          <Sk w={70} h={12} style={{ marginTop: 6 }} />
+        </div>
+        <div className="timeline-alt">
+          {[0, 1, 2].map(i => {
+            const isLeft = i % 2 === 0;
+            const card = (
+              <div className="tl-alt-card">
+                <div className="tl-rot-card">
+                  <div className="tl-rot-header" style={{ marginBottom: 8 }}>
+                    <Sk w={160} h={15} />
+                    <Sk w={65} h={20} r={20} />
+                  </div>
+                  <Sk w={130} h={12} style={{ marginBottom: 6 }} />
+                  <Sk w={100} h={11} style={{ marginBottom: 12 }} />
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <Sk w={54} h={22} r={6} />
+                    <Sk w={54} h={22} r={6} />
+                  </div>
+                </div>
+              </div>
+            );
+            return (
+              <div key={i} className="tl-alt-item">
+                {isLeft  ? card : <div className="tl-invisible" />}
+                <div className="tl-alt-spine">
+                  <Sk w={14} h={14} r="50%" />
+                  <div className="tl-spine-line" />
+                </div>
+                {!isLeft ? card : <div className="tl-invisible" />}
+              </div>
+            );
+          })}
+        </div>
+      </main>
+    </>
+  );
 
   const completed = rotations.filter(r => r.status === 'completed').length;
   const total     = rotations.length;

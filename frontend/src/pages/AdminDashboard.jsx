@@ -7,6 +7,7 @@ import {
 import { Doughnut, Bar } from 'react-chartjs-2';
 import Navbar from '../components/Navbar';
 import api    from '../api/axios';
+import Sk     from '../components/Skeleton';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title);
 
@@ -77,7 +78,51 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <><Navbar /><main className="admin-main"><div className="loading">Loading dashboard…</div></main></>
+      <>
+        <Navbar />
+        <main className="admin-main">
+          <div className="stat-cards-grid">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="stat-card">
+                <Sk w={46} h={46} r={10} />
+                <div className="stat-info" style={{ flex: 1 }}>
+                  <Sk w="55%" h={24} style={{ marginBottom: 8 }} />
+                  <Sk w="75%" h={11} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="charts-row">
+            <div className="chart-card">
+              <Sk w="40%" h={16} style={{ marginBottom: 16 }} />
+              <Sk h={200} r={8} />
+            </div>
+            <div className="chart-card">
+              <Sk w="50%" h={16} style={{ marginBottom: 16 }} />
+              <Sk h={200} r={8} />
+            </div>
+          </div>
+          <div className="admin-card">
+            <div className="admin-card-header"><Sk w={180} h={16} /></div>
+            <div className="admin-table-wrap">
+              <table className="recent-table">
+                <tbody>
+                  {[...Array(5)].map((_, i) => (
+                    <tr key={i}>
+                      <td><Sk w={120} h={13} /></td>
+                      <td><Sk w={100} h={13} /></td>
+                      <td><Sk w={110} h={13} /></td>
+                      <td><Sk w={90}  h={13} /></td>
+                      <td><Sk w={80}  h={13} /></td>
+                      <td><Sk w={70}  h={22} r={20} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </main>
+      </>
     );
   }
 

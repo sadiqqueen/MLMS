@@ -1008,7 +1008,8 @@
     /* ══════════════════════════════════════════════════════════════
        RESPONSIVE — MOBILE
     ══════════════════════════════════════════════════════════════ */
-    @media (max-width: 700px) {
+    @media (max-width: 768px) {
+      .top-bar    { display: none; }
       .nav-links  { display: none; }
       .btn-lang   { display: none; }
       .btn-login  { display: none; } /* shown in mobile menu */
@@ -1032,7 +1033,7 @@
       .footer-bar-inner { flex-direction: column; text-align: center; }
     }
 
-    @media (max-width: 420px) {
+    @media (max-width: 480px) {
       .features-grid { grid-template-columns: 1fr; }
     }
 

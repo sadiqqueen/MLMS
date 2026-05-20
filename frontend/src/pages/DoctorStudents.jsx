@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import api from '../api/axios';
+import Sk  from '../components/Skeleton';
 
 const API_BASE = '';
 const STATUS_FILTERS = ['all', 'current', 'upcoming', 'completed'];
@@ -46,7 +47,58 @@ export default function DoctorStudents() {
     completed: rotations.filter(r => r.status === 'completed').length,
   };
 
-  if (loading) return <><Navbar /><main className="admin-main"><div className="loading">Loading…</div></main></>;
+  if (loading) return (
+    <>
+      <Navbar />
+      <main className="admin-main">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 8 }}>
+          {[...Array(3)].map((_, i) => (
+            <div key={i} style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 12, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+              <Sk w={46} h={46} r={10} />
+              <Sk w={130} h={14} />
+            </div>
+          ))}
+        </div>
+        <div className="admin-card">
+          <div className="admin-toolbar">
+            <Sk h={36} r={8} style={{ flex: 1, minWidth: 200 }} />
+          </div>
+          <div style={{ display: 'flex', gap: 6, padding: '0 20px 14px' }}>
+            {[...Array(4)].map((_, i) => <Sk key={i} w={80} h={32} r={20} />)}
+          </div>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  {['#', 'Student', 'Hospital', 'Start', 'End', 'Status', 'Grade'].map(col => (
+                    <th key={col}>{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[...Array(8)].map((_, i) => (
+                  <tr key={i}>
+                    <td><Sk w={20} h={13} /></td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Sk w={36} h={36} r="50%" />
+                        <Sk w={110} h={13} />
+                      </div>
+                    </td>
+                    <td><Sk w={110} h={13} /></td>
+                    <td><Sk w={80}  h={13} /></td>
+                    <td><Sk w={80}  h={13} /></td>
+                    <td><Sk w={70}  h={22} r={20} /></td>
+                    <td><Sk w={50}  h={13} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </>
+  );
 
   return (
     <>

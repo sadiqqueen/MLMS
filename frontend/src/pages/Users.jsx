@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
 import api    from '../api/axios';
 import SPECIALTIES from '../data/specialties';
+import Sk          from '../components/Skeleton';
 
 const IconEdit = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -416,7 +417,48 @@ export default function Users() {
   }
 
   if (loading) return (
-    <><Navbar /><main className="admin-main"><div className="loading">Loading…</div></main></>
+    <>
+      <Navbar />
+      <main className="admin-main">
+        <div className="admin-card">
+          <div className="admin-tabs" style={{ display: 'flex', gap: 4, padding: '14px 20px 0' }}>
+            <Sk w={80} h={14} r={4} />
+            <Sk w={90} h={14} r={4} style={{ marginLeft: 8 }} />
+          </div>
+          <div className="admin-toolbar">
+            <Sk h={36} r={8} style={{ flex: 1, minWidth: 180 }} />
+            <Sk w={72} h={34} r={8} />
+            <Sk w={90} h={34} r={8} />
+          </div>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  {['#', 'Name', 'Email', 'Photo', 'Role', 'Phone', 'Gender', 'City', 'Actions'].map(col => (
+                    <th key={col}>{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[...Array(8)].map((_, i) => (
+                  <tr key={i}>
+                    <td><Sk w={20}  h={13} /></td>
+                    <td><Sk w={130} h={13} /></td>
+                    <td><Sk w={160} h={13} /></td>
+                    <td><Sk w={36}  h={36} r="50%" /></td>
+                    <td><Sk w={70}  h={20} r={20} /></td>
+                    <td><Sk w={90}  h={13} /></td>
+                    <td><Sk w={60}  h={13} /></td>
+                    <td><Sk w={80}  h={13} /></td>
+                    <td><Sk w={88}  h={28} r={7}  /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </>
   );
 
   return (
