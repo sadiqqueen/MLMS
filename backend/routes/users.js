@@ -67,7 +67,8 @@ router.get('/:id', auth, async (req, res) => {
   try {
     const user = await User.findById(req.params.id)
       .select('-password')
-      .populate('hospital', 'name');
+      .populate('hospital', 'name')
+      .populate('doctor', 'name email specialty department');
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
   } catch (err) {

@@ -23,6 +23,24 @@ export default function DoctorStudents() {
   const [loading,   setLoading  ] = useState(true);
   const [filter,    setFilter   ] = useState('all');
   const [search,    setSearch   ] = useState('');
+  const [selected,     setSelected    ] = useState(null);
+  const [detail,       setDetail      ] = useState(null);
+  const [detailLoading,setDetailLoading] = useState(false);
+
+  async function openStudent(rot) {
+    setSelected(rot);
+    setDetail(null);
+    setDetailLoading(true);
+    try {
+      const res = await api.get(`/api/users/${rot.student._id}`);
+      setDetail(res.data);
+    } catch {
+      setDetail(rot.student);
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+  function closeModal() { setSelected(null); setDetail(null); }
 
   useEffect(() => {
     if (!me?._id) return;
@@ -168,7 +186,7 @@ export default function DoctorStudents() {
                   <tr><td colSpan={9} className="admin-empty">No students found</td></tr>
                 )}
                 {filtered.map((rot, i) => (
-                  <tr key={rot._id}>
+                  <tr key={rot._id} style={{ cursor: 'pointer' }} onClick={() => openStudent(rot)}>
                     <td style={{ color: '#aaa' }}>{i + 1}</td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -203,6 +221,66 @@ export default function DoctorStudents() {
             </table>
           </div>
         </div>
+
+        {selected && (
+          <div className="admin-modal-overlay" onClick={closeModal}>
+            <div className="admin-modal admin-modal-lg" onClick={e => e.stopPropagation()}>
+
+              <div className="admin-modal-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  {selected.student?.photoUrl
+                    ? <img src={`${API_BASE}${selected.student.photoUrl}`} alt={selected.student.name}
+                           style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                    : <div className="cell-initials" style={{ width: 56, height: 56, fontSize: 20, flexShrink: 0 }}>
+                        {selected.student?.initials || selected.student?.name?.[0] || '?'}
+                      </div>}
+                  <div>
+                    <div className="admin-modal-title">{selected.student?.name || '—'}</div>
+                    {selected.student?.studentId && (
+                      <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>ID: {selected.student.studentId}</div>
+                    )}
+                  </div>
+                </div>
+                <button className="admin-modal-close" onClick={closeModal}>✕</button>
+              </div>
+
+              <div className="admin-modal-body">
+                {detailLoading || !detail ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    {[...Array(6)].map((_, i) => (
+                      <div key={i}>
+                        <Sk w={80}  h={11} />
+                        <Sk w={160} h={14} style={{ marginTop: 6 }} />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 24px' }}>
+                    {[
+                      ['Full Name',     detail.name],
+                      ['Username',      detail.username || detail.name],
+                      ['Email',         detail.email],
+                      ['Phone',         detail.phone],
+                      ['Hospital',      detail.hospital?.name || selected.hospital?.name],
+                      ['Assigned Doctor', detail.doctor?.name
+                        ? `Dr. ${detail.doctor.name.replace(/^Dr\.?\s*/i, '')}${detail.doctor.specialty ? ' · ' + detail.doctor.specialty : ''}`
+                        : (me?.name ? `Dr. ${me.name.replace(/^Dr\.?\s*/i, '')}` : '—')],
+                    ].map(([label, value]) => (
+                      <div key={label}>
+                        <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>{label}</div>
+                        <div style={{ fontSize: 14, color: '#111', marginTop: 4, fontWeight: 500 }}>{value || '—'}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="admin-modal-footer">
+                <button className="btn-red" onClick={closeModal}>Close</button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </main>
     </>
