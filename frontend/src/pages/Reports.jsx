@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import Navbar from '../components/Navbar';
+import Sk from '../components/Skeleton';
 
 function fmt(dateStr) {
   if (!dateStr) return '—';
@@ -336,7 +337,37 @@ export default function Reports() {
     }
   }
 
-  if (loading) return <><Navbar /><div className="main"><div className="loading">Loading…</div></div></>;
+  if (loading) return (
+    <>
+      <Navbar />
+      <main className="main">
+        <div className="page-header">
+          <Sk w={150} h={38} r={8} />
+        </div>
+        <div className="filter-tabs" style={{ display: 'flex', gap: 6 }}>
+          {[...Array(4)].map((_, i) => <Sk key={i} w={90} h={32} r={20} />)}
+        </div>
+        <div className="card">
+          {[...Array(6)].map((_, i) => (
+            <div className="report-row report-row-lg" key={i}>
+              <div className="report-info">
+                <Sk w={180} h={14} />
+                <div className="report-meta" style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                  <Sk w={60}  h={20} r={20} />
+                  <Sk w={100} h={13} />
+                  <Sk w={120} h={13} />
+                </div>
+              </div>
+              <div className="report-right">
+                <Sk w={60} h={22} r={20} />
+                <Sk w={36} h={36} r="50%" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+    </>
+  );
 
   return (
     <>

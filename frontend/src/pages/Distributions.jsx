@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
 import api    from '../api/axios';
+import Sk     from '../components/Skeleton';
 
 const ROWS_OPT = [8, 16, 32];
 const API_BASE = '';
@@ -216,7 +217,54 @@ export default function Distributions() {
   }
 
   if (loading) return (
-    <><Navbar /><main className="admin-main"><div className="loading">Loading…</div></main></>
+    <>
+      <Navbar />
+      <main className="admin-main">
+        <div className="admin-page-header">
+          <Sk w={170} h={38} r={8} />
+        </div>
+        <div className="admin-card">
+          <div className="admin-toolbar">
+            <Sk h={36} r={8} style={{ flex: 1, minWidth: 200 }} />
+            <Sk w={70}  h={36} r={8} />
+            <Sk w={110} h={36} r={8} />
+          </div>
+          <div className="filter-bar" style={{ display: 'flex', gap: 8, padding: '0 20px 14px' }}>
+            <Sk w={140} h={34} r={8} />
+            <Sk w={170} h={34} r={8} />
+            <Sk w={140} h={34} r={8} />
+          </div>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  {['#', 'Doctor', 'Hospital', 'Specialty', 'Start Date', 'End Date', 'Status', 'Actions'].map(c => <th key={c}>{c}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {[...Array(8)].map((_, i) => (
+                  <tr key={i}>
+                    <td><Sk w={20} h={13} /></td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Sk w={36}  h={36} r="50%" />
+                        <Sk w={130} h={13} />
+                      </div>
+                    </td>
+                    <td><Sk w={120} h={13} /></td>
+                    <td><Sk w={90}  h={20} r={20} /></td>
+                    <td><Sk w={80}  h={13} /></td>
+                    <td><Sk w={80}  h={13} /></td>
+                    <td><Sk w={60}  h={20} r={20} /></td>
+                    <td><div style={{ display: 'flex', gap: 6 }}><Sk w={28} h={28} r={6} /><Sk w={28} h={28} r={6} /></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </>
   );
 
   return (

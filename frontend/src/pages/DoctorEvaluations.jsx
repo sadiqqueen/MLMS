@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import api from '../api/axios';
+import Sk from '../components/Skeleton';
 
 const API_BASE    = '';
 const MONTHLY_CAP = 5;
@@ -133,7 +134,57 @@ export default function DoctorEvaluations() {
 
   const LABEL_STYLE = { display: 'block', fontSize: 12, fontWeight: 600, color: '#666', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' };
 
-  if (loading) return <><Navbar /><main className="admin-main"><div className="loading">Loading…</div></main></>;
+  if (loading) return (
+    <>
+      <Navbar />
+      <main className="admin-main">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 8 }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 12, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+              <Sk w={46} h={46} r={10} />
+              <Sk w={150} h={14} />
+            </div>
+          ))}
+        </div>
+        <div className="admin-card">
+          <div className="admin-toolbar">
+            <Sk h={36} r={8} style={{ flex: 1, minWidth: 200 }} />
+          </div>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  {['#', 'Student', 'Hospital', 'Rotation', 'Progress', 'All Time', ''].map(c => <th key={c}>{c}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {[...Array(8)].map((_, i) => (
+                  <tr key={i}>
+                    <td><Sk w={20}  h={13} /></td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Sk w={32}  h={32} r="50%" />
+                        <Sk w={120} h={13} />
+                      </div>
+                    </td>
+                    <td><Sk w={120} h={13} /></td>
+                    <td><Sk w={70}  h={20} r={20} /></td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 3 }}>
+                        {[...Array(5)].map((_, j) => <Sk key={j} w={13} h={13} r={3} />)}
+                      </div>
+                    </td>
+                    <td><Sk w={30}  h={13} /></td>
+                    <td><Sk w={70}  h={30} r={6} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </>
+  );
 
   return (
     <>

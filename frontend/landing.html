@@ -531,7 +531,7 @@
       position: absolute;
       top: 0; left: 0; right: 0;
       height: 4px;
-      background: #9f5d06;
+      background: #fe9a16;
       transform: scaleX(0);
       transform-origin: left;
       transition: transform 0.3s ease;
@@ -642,9 +642,10 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      white-space: nowrap;
     }
 
-    .vm-card-title span {
+    .vm-card-title > span:first-child {
       width: 32px;
       height: 32px;
       background: rgba(255,255,255,0.15);
@@ -654,6 +655,13 @@
       justify-content: center;
       font-size: 16px;
       flex-shrink: 0;
+    }
+
+    .vm-card-title > span:last-child {
+      font-size: 20px;
+      font-weight: 700;
+      color: white;
+      line-height: 1;
     }
 
     .vm-text {

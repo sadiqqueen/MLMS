@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import api from '../api/axios';
+import Sk from '../components/Skeleton';
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -72,7 +73,16 @@ export default function DirectorDoctors() {
         </div>
 
         {loading ? (
-          <div className="loading">Loading doctors…</div>
+          <div className="admin-card-grid">
+            {[...Array(8)].map((_, i) => (
+              <div className="user-card" key={i} style={{ border: '1px solid #e5e7eb' }}>
+                <Sk w={72} h={72} r="50%" />
+                <Sk w={130} h={14} style={{ marginTop: 10 }} />
+                <Sk w={100} h={12} style={{ marginTop: 6 }} />
+                <Sk w={80}  h={12} style={{ marginTop: 4 }} />
+              </div>
+            ))}
+          </div>
         ) : filtered.length === 0 ? (
           <div style={{ padding: 32, textAlign: 'center', color: '#aaa', fontSize: 14 }}>
             No doctors found
@@ -150,7 +160,16 @@ export default function DirectorDoctors() {
                 {/* Rotations supervised by this doctor */}
                 <div className="modal-section-title" style={{ marginBottom: 10 }}>Supervised Rotations</div>
                 {detailLoading ? (
-                  <div className="loading" style={{ padding: '20px 0' }}>Loading rotations…</div>
+                  <div style={{ padding: '4px 0' }}>
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid #f0f0f0' }}>
+                        <Sk w={140} h={13} />
+                        <Sk w={70}  h={20} r={20} />
+                        <Sk w={100} h={13} />
+                        <Sk w={80}  h={13} />
+                      </div>
+                    ))}
+                  </div>
                 ) : rotations.length === 0 ? (
                   <div style={{ fontSize: 13, color: '#aaa' }}>No rotations assigned</div>
                 ) : (

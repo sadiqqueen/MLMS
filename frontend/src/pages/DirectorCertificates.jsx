@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import api from '../api/axios';
 import SPECIALTIES from '../data/specialties';
+import Sk from '../components/Skeleton';
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -104,7 +105,33 @@ export default function DirectorCertificates() {
         </div>
 
         {loading ? (
-          <div className="loading">Loading…</div>
+          <div className="admin-card">
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    {['#', 'Student', 'Specialty', 'Hospital', 'Issue Date', 'Notes', ''].map(c => <th key={c}>{c}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...Array(8)].map((_, i) => (
+                    <tr key={i}>
+                      <td><Sk w={20}  h={13} /></td>
+                      <td>
+                        <Sk w={130} h={13} />
+                        <Sk w={70}  h={11} style={{ marginTop: 4 }} />
+                      </td>
+                      <td><Sk w={110} h={13} /></td>
+                      <td><Sk w={120} h={13} /></td>
+                      <td><Sk w={80}  h={13} /></td>
+                      <td><Sk w={140} h={13} /></td>
+                      <td><Sk w={20}  h={20} r={4} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         ) : certificates.length === 0 ? (
           <div style={{ padding: 48, textAlign: 'center', color: '#aaa', fontSize: 14 }}>
             No certificates issued yet

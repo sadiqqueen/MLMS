@@ -4,6 +4,7 @@ import { Line } from 'react-chartjs-2';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import Navbar from '../components/Navbar';
+import Sk from '../components/Skeleton';
 
 // You must register Chart.js components before using them
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
@@ -37,7 +38,43 @@ export default function Grades() {
       .finally(() => setLoading(false));
   }, [user]);
 
-  if (loading) return <><Navbar /><div className="main"><div className="loading">Loading…</div></div></>;
+  if (loading) return (
+    <>
+      <Navbar />
+      <main className="main">
+        <div className="stats">
+          {[0, 1, 2].map(i => (
+            <div className="stat-card" key={i}>
+              <Sk w={90} h={12} />
+              <Sk w={120} h={28} style={{ marginTop: 8 }} />
+            </div>
+          ))}
+        </div>
+        <div className="card">
+          <Sk w={180} h={16} style={{ marginBottom: 14 }} />
+          <Sk h={220} r={8} />
+        </div>
+        {[0, 1].map(i => (
+          <div className="card" key={i}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <Sk w={180} h={16} />
+              <Sk w={20} h={14} />
+            </div>
+            {[0, 1, 2].map(j => (
+              <div key={j} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderTop: '1px solid #f0f0f0' }}>
+                <Sk w={140} h={13} />
+                <Sk w={50} h={20} r={20} />
+                <Sk w={80} h={13} />
+                <Sk w={60} h={20} r={20} />
+                <Sk w={30} h={30} r="50%" />
+                <Sk w={80} h={13} />
+              </div>
+            ))}
+          </div>
+        ))}
+      </main>
+    </>
+  );
 
   const graded = reports.filter(r => r.status === 'graded' && r.grade);
 

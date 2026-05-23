@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import Navbar from '../components/Navbar';
+import Sk from '../components/Skeleton';
 
 export default function Profile() {
   const { user } = useAuth();
@@ -31,7 +32,52 @@ export default function Profile() {
       .finally(() => setLoading(false));
   }, [user]);
 
-  if (loading) return <><Navbar /><div className="main"><div className="loading">Loading…</div></div></>;
+  if (loading) return (
+    <>
+      <Navbar />
+      <main className="main">
+        <div className="card profile-header-card">
+          <div className="profile-photo-wrap">
+            <Sk w={140} h={140} r={12} />
+            <Sk w={120} h={32} r={8} style={{ marginTop: 12 }} />
+          </div>
+          <div className="profile-info">
+            <Sk w={220} h={26} style={{ marginBottom: 16 }} />
+            {[0, 1, 2].map(i => (
+              <div className="profile-detail" key={i}>
+                <Sk w={70}  h={12} />
+                <Sk w={180} h={13} style={{ marginTop: 4 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="card profile-body-card">
+          <div className="profile-fields">
+            <Sk w={180} h={16} style={{ marginBottom: 16 }} />
+            <div className="info-grid">
+              {[...Array(7)].map((_, i) => (
+                <div className="info-row" key={i}>
+                  <Sk w={90}  h={12} />
+                  <Sk w={150} h={13} style={{ marginTop: 4 }} />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="profile-divider" />
+          <div className="profile-pw-section">
+            <Sk w={160} h={16} style={{ marginBottom: 16 }} />
+            {[0, 1, 2].map(i => (
+              <div className="pw-field" key={i} style={{ marginBottom: 14 }}>
+                <Sk w={130} h={12} />
+                <Sk h={38} r={8} style={{ marginTop: 6 }} />
+              </div>
+            ))}
+            <Sk h={42} r={8} style={{ marginTop: 6 }} />
+          </div>
+        </div>
+      </main>
+    </>
+  );
 
   const p = profile || user;
 

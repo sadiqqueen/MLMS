@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
 import api    from '../api/axios';
+import Sk     from '../components/Skeleton';
 
 const API_BASE = '';
 function photoSrc(url) { return url ? `${API_BASE}${url}` : null; }
@@ -235,7 +236,45 @@ export default function AdminDoctors() {
     finally  { setDelDoc(null); }
   }
 
-  if (loading) return <><Navbar /><main className="admin-main"><div className="loading">Loading…</div></main></>;
+  if (loading) return (
+    <>
+      <Navbar />
+      <main className="admin-main">
+        <div className="admin-page-header">
+          <Sk w={140} h={38} r={8} />
+        </div>
+        <div className="admin-card">
+          <div className="admin-toolbar">
+            <Sk h={36} r={8} style={{ flex: 1, minWidth: 200 }} />
+          </div>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  {['#', 'Photo', 'Name', 'Email', 'Specialty', 'Hospital', 'City', 'Phone', 'Actions'].map(c => <th key={c}>{c}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {[...Array(8)].map((_, i) => (
+                  <tr key={i}>
+                    <td><Sk w={20}  h={13} /></td>
+                    <td><Sk w={36}  h={36} r="50%" /></td>
+                    <td><Sk w={130} h={13} /></td>
+                    <td><Sk w={160} h={13} /></td>
+                    <td><Sk w={110} h={13} /></td>
+                    <td><Sk w={130} h={13} /></td>
+                    <td><Sk w={80}  h={13} /></td>
+                    <td><Sk w={100} h={13} /></td>
+                    <td><div style={{ display: 'flex', gap: 6 }}><Sk w={28} h={28} r={6} /><Sk w={28} h={28} r={6} /></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </>
+  );
 
   return (
     <>

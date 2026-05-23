@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import Navbar from '../components/Navbar';
+import Sk from '../components/Skeleton';
 
 // Helper: format a date like "Jan 7, 2026"
 function fmt(dateStr) {
@@ -58,7 +59,77 @@ export default function Dashboard() {
 
   }, [user]);  // re-run if user changes
 
-  if (loading) return <><Navbar /><div className="main"><div className="loading">Loading…</div></div></>;
+  if (loading) return (
+    <>
+      <Navbar />
+      <main className="main">
+        <div className="gpa-bar">
+          <div className="gpa-left">
+            <Sk w={64} h={64} r={12} />
+            <Sk w={160} h={18} style={{ marginTop: 10 }} />
+            <Sk w={120} h={12} style={{ marginTop: 6 }} />
+          </div>
+          <div className="gpa-stats">
+            {[0, 1, 2].map(i => (
+              <div className="gpa-item" key={i}>
+                <Sk w={100} h={12} />
+                <Sk w={70}  h={28} style={{ marginTop: 8 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="stats">
+          {[0, 1, 2].map(i => (
+            <div className="stat-card" key={i}>
+              <Sk w={110} h={12} />
+              <Sk w={160} h={18} style={{ marginTop: 8 }} />
+              <Sk w={130} h={12} style={{ marginTop: 8 }} />
+            </div>
+          ))}
+        </div>
+
+        <div className="reports-row">
+          {[0, 1].map(c => (
+            <div className="card" key={c}>
+              <Sk w={180} h={16} style={{ marginBottom: 14 }} />
+              {[0, 1, 2].map(i => (
+                <div className="report-row" key={i}>
+                  <div className="report-info">
+                    <Sk w={150} h={13} />
+                    <Sk w={80}  h={11} style={{ marginTop: 4 }} />
+                  </div>
+                  <div className="report-right">
+                    <Sk w={60}  h={20} r={20} />
+                    <Sk w={30}  h={30} r="50%" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+
+        <div className="card">
+          <Sk w={200} h={16} style={{ marginBottom: 16 }} />
+          <div className="timeline">
+            {[0, 1, 2].map(i => (
+              <div className="tl-item" key={i}>
+                <div className="tl-left">
+                  <Sk w={14} h={14} r="50%" />
+                  {i < 2 && <div className="tl-line" />}
+                </div>
+                <div className="tl-content">
+                  <Sk w={180} h={15} />
+                  <Sk w={140} h={12} style={{ marginTop: 6 }} />
+                  <Sk w={200} h={11} style={{ marginTop: 4 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+    </>
+  );
 
   // Filter reports to only those in the current rotation
   const currentReports = reports.filter(r => rotation && r.rotation?._id === rotation._id);
