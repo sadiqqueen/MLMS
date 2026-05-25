@@ -12,8 +12,8 @@ const reportSchema = new mongoose.Schema(
     date:     { type: Date, required: true },
     fileUrl:  { type: String },                         // path to uploaded PDF/image, e.g. "/uploads/abc123.pdf"
 
-    // Status starts as "pending", becomes "graded" after a doctor grades it
-    status:   { type: String, enum: ['pending', 'graded'], default: 'pending' },
+    // Status lifecycle: pending → approved/rejected (supervisor) → graded (program director)
+    status:   { type: String, enum: ['pending', 'approved', 'rejected', 'graded'], default: 'pending' },
 
     grade:    { type: String, default: null },   // 'Competent' | 'Not-Competent'
 
@@ -27,7 +27,11 @@ const reportSchema = new mongoose.Schema(
     gradedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     gradedAt: { type: Date },
 
-    locked:   { type: Boolean, default: false }
+    locked:   { type: Boolean, default: false },
+
+    // V2: review fields set by supervisor (weekly/monthly) or program director (final)
+    reviewedBy:  { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    reviewNote:  { type: String, default: '' }
   },
   { timestamps: true }
 );

@@ -1,55 +1,100 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 
-// Step 1: Create the "box" that holds the shared data.
-// null is the default — before the Provider sets a value.
 const AuthContext = createContext(null);
 
-// Step 2: The Provider — a component that WRAPS the whole app (in App.jsx).
-// Any component inside the Provider can read from the context.
 export function AuthProvider({ children }) {
+  const [user,    setUser   ] = useState(null);
+  const [token,   setToken  ] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const refreshTimerRef = useRef(null);
 
-  const [user,    setUser   ] = useState(null);   // the logged-in user object
-  const [token,   setToken  ] = useState(null);   // the JWT string
-  const [loading, setLoading] = useState(true);   // true while we check localStorage on startup
-
-  // On app load, check if the user was already logged in from a previous session.
-  // localStorage survives page refresh, so the user doesn't need to log in every time.
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
-    const storedUser  = localStorage.getItem('user');  // stored as a JSON string
+    const storedUser  = localStorage.getItem('user');
 
     if (storedToken && storedUser) {
       setToken(storedToken);
-      setUser(JSON.parse(storedUser));   // parse the JSON string back into an object
+      setUser(JSON.parse(storedUser));
+      setLoading(false);
+      scheduleRefresh(storedToken);
+    } else {
+      fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data?.token && data?.user) {
+            setToken(data.token);
+            setUser(data.user);
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+            scheduleRefresh(data.token);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
     }
 
-    setLoading(false);   // done checking — allow the app to render
-  }, []);  // the empty [] means "run this only once, when the app first loads"
+    return () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    };
+  }, []);
 
-  // Called after a successful login API response
+  function scheduleRefresh(currentToken) {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          credentials: 'include'
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.token) {
+          setToken(data.token);
+          if (data.user) {
+            setUser(data.user);
+            localStorage.setItem('user', JSON.stringify(data.user));
+          }
+          localStorage.setItem('token', data.token);
+          scheduleRefresh(data.token);
+        }
+      } catch {}
+    }, 14 * 60 * 1000);
+  }
+
   const login = (tokenValue, userData) => {
     localStorage.setItem('token', tokenValue);
-    localStorage.setItem('user', JSON.stringify(userData));  // must stringify objects
+    localStorage.setItem('user', JSON.stringify(userData));
     setToken(tokenValue);
     setUser(userData);
+    scheduleRefresh(tokenValue);
   };
 
-  // Called on logout — wipes everything
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    } catch {}
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     setToken(null);
     setUser(null);
+    window.location.href = '/';
+  };
+
+  const updateToken = (newToken, newUser) => {
+    setToken(newToken);
+    localStorage.setItem('token', newToken);
+    if (newUser) {
+      setUser(newUser);
+      localStorage.setItem('user', JSON.stringify(newUser));
+    }
   };
 
   return (
-    // Step 3: Provide the values — any component inside can read these
-    <AuthContext.Provider value={{ user, token, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, loading, updateToken }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-// Step 4: A convenience hook — instead of writing "useContext(AuthContext)"
-// every time, components just write "const { user, logout } = useAuth()"
 export const useAuth = () => useContext(AuthContext);

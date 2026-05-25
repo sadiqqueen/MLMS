@@ -1,40 +1,38 @@
-// dotenv reads the .env file and makes those values available as process.env.SOMETHING
+// backend/server.js
 require('dotenv').config();
 
-const express  = require('express');
-const mongoose = require('mongoose');
-const cors     = require('cors');
-const path     = require('path');
+const express      = require('express');
+const mongoose     = require('mongoose');
+const cors         = require('cors');
+const path         = require('path');
+const helmet       = require('helmet');
+const cookieParser = require('cookie-parser');
+const { globalLimiter } = require('./middleware/rateLimiter');
 
-// Create the Express application
 const app = express();
 
-// ── MIDDLEWARE ────────────────────────────────────────────────────────────
-// These run on EVERY request before it reaches any route.
+// ── SECURITY MIDDLEWARE ───────────────────────────────────────────────────
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
 
-// CORS = Cross-Origin Resource Sharing.
-// By default, browsers block requests from one origin (localhost:5173)
-// to a different origin (https://mlms-production.up.railway.app). This tells the server to allow it.
 app.use(cors({
-  origin: true,
+  origin: process.env.FRONTEND_URL || true,
   credentials: true
 }));
 
-// Parse incoming JSON request bodies so req.body works
+app.use(cookieParser());
 app.use(express.json());
-
-// Parse URL-encoded form data (used by some form submissions)
 app.use(express.urlencoded({ extended: true }));
+app.use(globalLimiter);
 
-// Serve the uploads folder as static files.
-// If a report has fileUrl = "/uploads/abc123.pdf", the browser can access it
-// directly at http://https://mlms-production.up.railway.app/uploads/abc123.pdf
+// Serve uploads as static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// ── HEALTH CHECK ─────────────────────────────────────────────────────────
+app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date() }));
 
-// ── ROUTES ────────────────────────────────────────────────────────────────
-// Connect each router to a URL prefix.
-// Any route inside routes/auth.js will be available at /api/auth/...
+// ── EXISTING ROUTES (unchanged) ───────────────────────────────────────────
 app.use('/api/auth',          require('./routes/auth'));
 app.use('/api/users',         require('./routes/users'));
 app.use('/api/hospitals',     require('./routes/hospitals'));
@@ -44,24 +42,30 @@ app.use('/api/evaluations',   require('./routes/evaluations'));
 app.use('/api/dashboard',     require('./routes/dashboard'));
 app.use('/api/rotations',     require('./routes/rotations'));
 app.use('/api/reports',       require('./routes/reports'));
-app.use('/api/notifications',  require('./routes/notifications'));
-app.use('/api/certificates',   require('./routes/certificates'));
+app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/certificates',  require('./routes/certificates'));
 
-// A simple health-check route — useful to test that the server is up
-app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+// ── NEW V2 ROUTES ─────────────────────────────────────────────────────────
+app.use('/api/specialties',       require('./routes/specialties'));
+app.use('/api/supervisor',        require('./routes/supervisor'));
+app.use('/api/program-director',  require('./routes/programDirector'));
+app.use('/api/secretary',         require('./routes/secretary'));
+app.use('/api/dio',               require('./routes/dio'));
+app.use('/api/president',         require('./routes/president'));
+app.use('/api/trainee',           require('./routes/trainee'));
+app.use('/api/admin',             require('./routes/adminV2'));
+app.use('/api/certificates/verify', require('./routes/certificateVerify'));
 
 // ── START SERVER ──────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
-// First connect to MongoDB, THEN start listening for requests.
-// If the database connection fails, there's no point starting the server.
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log('✅ MongoDB connected');
-    app.listen(PORT, () => console.log(`✅ Server running on http://localhost:${PORT}`));
+    app.listen(PORT, () => console.log(`✅ MTMS V2 Server running on port ${PORT}`));
   })
   .catch(err => {
     console.error('❌ MongoDB connection failed:', err.message);
-    process.exit(1);   // exit the Node process with error code 1
+    process.exit(1);
   });

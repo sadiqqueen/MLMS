@@ -1,16 +1,30 @@
+// backend/models/Evaluation.js
 const mongoose = require('mongoose');
 
 const evaluationSchema = new mongoose.Schema(
   {
-    student:   { type: mongoose.Schema.Types.ObjectId, ref: 'User',     required: true },
-    doctor:    { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    hospital:  { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital' },
-    specialty: { type: String, default: '' },
-    date:      { type: Date, default: Date.now },
+    // Existing fields — keep all
+    student:        { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    doctor:         { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    hospital:       { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital' },
+    specialty:      { type: String, default: '' },
+    date:           { type: Date, default: Date.now },
     evaluationType: { type: String, default: '' },
     grade:          { type: String, default: '' },
     notes:          { type: String, default: '' },
-    status:    { type: String, enum: ['pending', 'completed'], default: 'pending' }
+    status:         { type: String, enum: ['pending', 'completed'], default: 'pending' },
+
+    // V2 aliases (point to same concepts, new names)
+    traineeId:      { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    supervisorId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    distributionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Distribution' },
+
+    // V2 NEW FIELDS
+    scores:          { type: mongoose.Schema.Types.Mixed, default: {} },
+    totalScore:      { type: Number, index: true },
+    comments:        { type: String, default: '' },
+    isFinalized:     { type: Boolean, default: false },
+    sentToTraineeAt: { type: Date, default: null }
   },
   { timestamps: true }
 );

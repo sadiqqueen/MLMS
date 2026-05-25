@@ -54,28 +54,6 @@ async function seed() {
     }
   ]);
 
-  // ── UNIVERSITIES ───────────────────────────────────────────────────────────
-  await University.insertMany([
-    {
-      name:         'University of Baghdad — College of Medicine',
-      city:         'Baghdad',
-      address:      'Al-Bab Al-Muadham, Baghdad',
-      contactEmail: 'medicine@uobaghdad.edu.iq'
-    },
-    {
-      name:         'Al-Mustansiriya University — Faculty of Medicine',
-      city:         'Baghdad',
-      address:      'Palestine Street, Baghdad',
-      contactEmail: 'medicine@uomustansiriyah.edu.iq'
-    },
-    {
-      name:         'University of Basra — College of Medicine',
-      city:         'Basra',
-      address:      'Garmat Ali, Basra',
-      contactEmail: 'medicine@uobasrah.edu.iq'
-    }
-  ]);
-
   // ── USERS ──────────────────────────────────────────────────────────────────
   const [, , , d1, d2, d3, d4, d5, s1, s2] = await User.insertMany([
     {

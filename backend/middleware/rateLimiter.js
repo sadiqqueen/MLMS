@@ -1,0 +1,22 @@
+// backend/middleware/rateLimiter.js
+const rateLimit = require('express-rate-limit');
+
+// Applied only to /api/auth/login — 10 attempts per 15 min per IP
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many login attempts. Please try again in 15 minutes.' }
+});
+
+// Applied globally to all routes — 200 requests per minute per IP
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests. Please slow down.' }
+});
+
+module.exports = { loginLimiter, globalLimiter };
