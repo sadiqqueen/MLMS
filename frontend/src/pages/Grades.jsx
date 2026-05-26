@@ -1,21 +1,23 @@
 import { useState, useEffect } from 'react';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import {
+  Chart as ChartJS, CategoryScale, LinearScale,
+  PointElement, LineElement, Title, Tooltip, Legend
+} from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { useAuth } from '../context/AuthContext';
-import api from '../api/axios';
+import api    from '../api/axios';
 import Navbar from '../components/Navbar';
-import Sk from '../components/Skeleton';
+import Sk     from '../components/Skeleton';
 
-// You must register Chart.js components before using them
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 function fmt(d) {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 }
 
 function gradeToGpa(grade) {
-  const map = { 'A': 4.0, 'A-': 3.7, 'B+': 3.3, 'B': 3.0, 'B-': 2.7, 'C+': 2.3, 'C': 2.0, 'C-': 1.7, 'D': 1.0, 'F': 0 };
+  const map = { 'A':4.0,'A-':3.7,'B+':3.3,'B':3.0,'B-':2.7,'C+':2.3,'C':2.0,'C-':1.7,'D':1.0,'F':0 };
   return map[grade] ?? null;
 }
 
@@ -25,17 +27,33 @@ function calcAvg(reps) {
   return g.reduce((s, r) => s + (gradeToGpa(r.grade) ?? 0), 0) / g.length;
 }
 
+const RATING_LABEL = { na:'N/A', below:'Below Standard', meets:'Meets Standard', above:'Above Standard' };
+const RATING_COLOR = { na:'#b2bec3', below:'#FF4757', meets:'#f39c12', above:'#00B894' };
+
 export default function Grades() {
-  const { user } = useAuth();
-  const [reports,   setReports  ] = useState([]);
-  const [loading,   setLoading  ] = useState(true);
-  const [collapsed, setCollapsed] = useState({});  // tracks which hospital sections are folded
+  const { user }      = useAuth();
+  const [evaluations, setEvaluations] = useState([]);
+  const [finalGrades, setFinalGrades] = useState([]);
+  const [reports,     setReports    ] = useState([]);
+  const [loading,     setLoading    ] = useState(true);
+  const [collapsed,   setCollapsed  ] = useState({});
 
   useEffect(() => {
     if (!user) return;
-    api.get(`/api/reports/student/${user._id}`)
-      .then(res => setReports(res.data))
-      .finally(() => setLoading(false));
+
+    const v2 = api.get('/api/trainee/grades')
+      .then(r => {
+        const data = r.data?.data || {};
+        setEvaluations(data.evaluations || []);
+        setFinalGrades(data.finalReports || []);
+      })
+      .catch(() => {});
+
+    const v1 = api.get(`/api/reports/student/${user._id}`)
+      .then(res => setReports(res.data || []))
+      .catch(() => {});
+
+    Promise.all([v2, v1]).finally(() => setLoading(false));
   }, [user]);
 
   if (loading) return (
@@ -43,42 +61,25 @@ export default function Grades() {
       <Navbar />
       <main className="main">
         <div className="stats">
-          {[0, 1, 2].map(i => (
+          {[0,1,2].map(i => (
             <div className="stat-card" key={i}>
               <Sk w={90} h={12} />
-              <Sk w={120} h={28} style={{ marginTop: 8 }} />
+              <Sk w={120} h={28} style={{ marginTop:8 }} />
             </div>
           ))}
         </div>
         <div className="card">
-          <Sk w={180} h={16} style={{ marginBottom: 14 }} />
+          <Sk w={180} h={16} style={{ marginBottom:14 }} />
           <Sk h={220} r={8} />
         </div>
-        {[0, 1].map(i => (
-          <div className="card" key={i}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <Sk w={180} h={16} />
-              <Sk w={20} h={14} />
-            </div>
-            {[0, 1, 2].map(j => (
-              <div key={j} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderTop: '1px solid #f0f0f0' }}>
-                <Sk w={140} h={13} />
-                <Sk w={50} h={20} r={20} />
-                <Sk w={80} h={13} />
-                <Sk w={60} h={20} r={20} />
-                <Sk w={30} h={30} r="50%" />
-                <Sk w={80} h={13} />
-              </div>
-            ))}
-          </div>
-        ))}
       </main>
     </>
   );
 
-  const graded = reports.filter(r => r.status === 'graded' && r.grade);
+  const graded     = reports.filter(r => r.status === 'graded' && r.grade);
+  const overallAvg = calcAvg(graded);
+  const gpaDisplay = overallAvg !== null ? overallAvg.toFixed(1) : '—';
 
-  // Group reports by hospital name
   const byHospital = {};
   reports.forEach(r => {
     const key = r.hospital?.name ?? 'Unknown';
@@ -86,37 +87,32 @@ export default function Grades() {
     byHospital[key].push(r);
   });
 
-  // Find the hospital with the highest average GPA
   let best = null, bestAvg = -1;
   for (const [name, reps] of Object.entries(byHospital)) {
     const avg = calcAvg(reps);
     if (avg !== null && avg > bestAvg) { bestAvg = avg; best = name; }
   }
 
-  const overallAvg = calcAvg(graded);
-  const gpaDisplay = overallAvg !== null ? overallAvg.toFixed(1) : '—';
-
-  // Build the chart data — graded reports sorted by date
-  const sorted = [...graded].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const sorted = [...graded].sort((a,b) => new Date(a.date) - new Date(b.date));
   const chartData = {
     labels: sorted.map(r => fmt(r.date)),
     datasets: [{
-      label: 'GPA Points',
+      label:'GPA Points',
       data: sorted.map(r => gradeToGpa(r.grade)),
-      borderColor: '#185FA5',
-      backgroundColor: 'rgba(24,95,165,0.08)',
-      tension: 0.35,
-      pointBackgroundColor: '#185FA5',
-      pointRadius: 5,
-      fill: true
+      borderColor:'#185FA5',
+      backgroundColor:'rgba(24,95,165,0.08)',
+      tension:0.35,
+      pointBackgroundColor:'#185FA5',
+      pointRadius:5,
+      fill:true
     }]
   };
   const chartOptions = {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: {
-      y: { min: 0, max: 4.0, ticks: { stepSize: 0.5 }, grid: { color: '#f0f0f0' } },
-      x: { grid: { display: false } }
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ display:false } },
+    scales:{
+      y:{ min:0, max:4.0, ticks:{ stepSize:0.5 }, grid:{ color:'#f0f0f0' } },
+      x:{ grid:{ display:false } }
     }
   };
 
@@ -125,45 +121,159 @@ export default function Grades() {
       <Navbar />
       <main className="main">
 
+        {/* ── STAT CARDS ── */}
         <div className="stats">
           <div className="stat-card">
             <div className="stat-label">Overall GPA</div>
-            <div className="gpa-score" style={{ marginTop: 6 }}>
+            <div className="gpa-score" style={{ marginTop:6 }}>
               <span className="gpa-num">{gpaDisplay}</span>
               <span className="gpa-max">/ 4.0</span>
             </div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Best hospital</div>
-            <div className="stat-value" style={{ marginTop: 6 }}>{best ?? '—'}</div>
+            <div className="stat-label">Evaluations received</div>
+            <div className="gpa-score" style={{ marginTop:6 }}>
+              <span className="gpa-num gpa-num-sm">{evaluations.length}</span>
+              <span className="gpa-max">total</span>
+            </div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Graded reports</div>
-            <div className="gpa-score" style={{ marginTop: 6 }}>
-              <span className="gpa-num gpa-num-sm">{graded.length}</span>
-              <span className="gpa-max">/ {reports.length}</span>
+            <div className="stat-label">Final reports graded</div>
+            <div className="gpa-score" style={{ marginTop:6 }}>
+              <span className="gpa-num gpa-num-sm">{finalGrades.length}</span>
+              <span className="gpa-max">total</span>
             </div>
           </div>
         </div>
 
+        {/* ── SUPERVISOR EVALUATIONS ── */}
+        {evaluations.length > 0 && (
+          <div className="card">
+            <div className="card-title" style={{ marginBottom:14 }}>
+              Supervisor Evaluations
+              <span className="badge badge-blue" style={{ marginLeft:8 }}>{evaluations.length}</span>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {evaluations.map(ev => {
+                const supName = ev.supervisorId?.name || ev.doctor?.name || 'Supervisor';
+                const rating  = ev.grade || '';
+                const rColor  = RATING_COLOR[rating] || '#185FA5';
+                const rLabel  = RATING_LABEL[rating] || rating;
+                return (
+                  <div key={ev._id} style={{
+                    border:'1px solid #E8E9EF', borderRadius:10, padding:'14px 16px',
+                    background: ev.isFinalized ? '#F0FDF4' : '#fff',
+                    borderLeft:`4px solid ${rColor}`
+                  }}>
+                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+                      <div>
+                        <div style={{ fontSize:13, fontWeight:600, color:rColor }}>
+                          {rLabel || 'Evaluation'}
+                        </div>
+                        <div style={{ fontSize:12, color:'#8B8FA8', marginTop:3 }}>
+                          By {supName} · {fmt(ev.sentToTraineeAt || ev.createdAt)}
+                        </div>
+                        {ev.hospital?.name && (
+                          <div style={{ fontSize:12, color:'#8B8FA8' }}>🏥 {ev.hospital.name}</div>
+                        )}
+                      </div>
+                      {ev.totalScore !== undefined && ev.totalScore !== null && (
+                        <div style={{ textAlign:'right' }}>
+                          <div style={{ fontSize:22, fontWeight:700, color:'#1B1464', lineHeight:1 }}>
+                            {Math.round(ev.totalScore * 10) / 10}
+                          </div>
+                          <div style={{ fontSize:11, color:'#8B8FA8' }}>score</div>
+                        </div>
+                      )}
+                    </div>
+                    {(ev.comments || ev.notes) && (
+                      <div style={{ fontSize:13, color:'#4B5563', marginTop:8, padding:'8px 10px', background:'#F5F6FA', borderRadius:7, lineHeight:1.6 }}>
+                        {ev.comments || ev.notes}
+                      </div>
+                    )}
+                    {ev.evaluationType && (
+                      <div style={{ marginTop:8 }}>
+                        <span style={{ fontSize:10, background:'#E6F1FB', color:'#185FA5', borderRadius:4, padding:'1px 7px', fontWeight:700, textTransform:'uppercase' }}>
+                          {ev.evaluationType}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── FINAL REPORT GRADES (from Program Director) ── */}
+        {finalGrades.length > 0 && (
+          <div className="card">
+            <div className="card-title" style={{ marginBottom:14 }}>
+              Final Report Grades
+              <span className="badge" style={{ marginLeft:8, background:'#FEE2E2', color:'#991B1B' }}>Program Director</span>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {finalGrades.map(r => (
+                <div key={r._id} style={{
+                  border:'1px solid #E8E9EF', borderRadius:10, padding:'14px 16px',
+                  background:'#FFF9F0', borderLeft:'4px solid #FF6B35'
+                }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:600, color:'#1B1464' }}>Final Report</div>
+                      <div style={{ fontSize:12, color:'#8B8FA8', marginTop:3 }}>
+                        Graded by {r.gradedBy?.name || 'Program Director'} · {fmt(r.gradedAt)}
+                      </div>
+                      {r.hospital?.name && <div style={{ fontSize:12, color:'#8B8FA8' }}>🏥 {r.hospital.name}</div>}
+                    </div>
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6 }}>
+                      {r.grade && (
+                        <div style={{ width:44, height:44, borderRadius:'50%', background:'#1B1464', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:700 }}>
+                          {r.grade}
+                        </div>
+                      )}
+                      {r.globalRating && (
+                        <span style={{
+                          fontSize:11, fontWeight:600, padding:'2px 9px', borderRadius:20,
+                          background:r.globalRating==='competent' ? '#D1FAE5' : '#FEE2E2',
+                          color:     r.globalRating==='competent' ? '#065F46' : '#991B1B'
+                        }}>
+                          {r.globalRating==='competent' ? 'Competent' : 'Not-Competent'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {r.assessorComments && (
+                    <div style={{ fontSize:13, color:'#4B5563', marginTop:8, padding:'8px 10px', background:'#F5F6FA', borderRadius:7, lineHeight:1.6 }}>
+                      {r.assessorComments}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── GPA CHART ── */}
         {graded.length > 1 && (
           <div className="card">
             <div className="card-title">Grade progress over time</div>
-            <div style={{ height: 220 }}>
+            <div style={{ height:220 }}>
               <Line data={chartData} options={chartOptions} />
             </div>
           </div>
         )}
 
+        {/* ── HOSPITAL REPORT BREAKDOWN ── */}
         {Object.entries(byHospital).map(([name, reps]) => {
-          const avg   = calcAvg(reps);
+          const avg    = calcAvg(reps);
           const isOpen = !collapsed[name];
           return (
             <div className="card" key={name}>
-              <button className="hospital-header" onClick={() => setCollapsed(c => ({ ...c, [name]: !c[name] }))}>
+              <button className="hospital-header" onClick={() => setCollapsed(c => ({ ...c, [name]:!c[name] }))}>
                 <div>
                   <span className="hospital-name">{name}</span>
-                  {avg !== null && <span className="badge badge-blue" style={{ marginLeft: 10 }}>Avg GPA: {avg.toFixed(1)}</span>}
+                  {avg !== null && <span className="badge badge-blue" style={{ marginLeft:10 }}>Avg GPA: {avg.toFixed(1)}</span>}
                 </div>
                 <span className="collapse-icon">{isOpen ? '▲' : '▼'}</span>
               </button>
@@ -178,8 +288,8 @@ export default function Grades() {
                         <td>{r.title}</td>
                         <td><span className="badge badge-blue">{r.type}</span></td>
                         <td>{fmt(r.date)}</td>
-                        <td><span className={r.status === 'graded' ? 'badge badge-green' : 'badge badge-amber'}>{r.status === 'graded' ? 'Graded' : 'Pending'}</span></td>
-                        <td><div className={`grade-circle${r.grade ? '' : ' grade-empty'}`} style={{ margin: '0 auto' }}>{r.grade ?? '—'}</div></td>
+                        <td><span className={r.status==='graded' ? 'badge badge-green' : 'badge badge-amber'}>{r.status==='graded' ? 'Graded' : 'Pending'}</span></td>
+                        <td><div className={`grade-circle${r.grade ? '' : ' grade-empty'}`} style={{ margin:'0 auto' }}>{r.grade ?? '—'}</div></td>
                         <td>{r.gradedBy?.name ?? '—'}</td>
                       </tr>
                     ))}
@@ -189,6 +299,16 @@ export default function Grades() {
             </div>
           );
         })}
+
+        {/* Empty state */}
+        {reports.length === 0 && evaluations.length === 0 && finalGrades.length === 0 && (
+          <div style={{ textAlign:'center', padding:56, color:'#8B8FA8' }}>
+            <div style={{ fontSize:40, marginBottom:12 }}>📊</div>
+            <div style={{ fontSize:16, fontWeight:600, color:'#4B5563', marginBottom:6 }}>No grades yet</div>
+            <div style={{ fontSize:13 }}>Grades will appear here once your supervisor assesses your reports and evaluations.</div>
+          </div>
+        )}
+
       </main>
     </>
   );

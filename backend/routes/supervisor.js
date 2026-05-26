@@ -199,6 +199,10 @@ router.patch('/evaluations/:id/finalize',
                   || evaluation.doctor?.toString()       === req.user._id.toString();
       if (!isMine) return res.status(403).json({ message: 'Access denied' });
 
+      if (evaluation.isFinalized) {
+        return res.status(409).json({ message: 'Evaluation is already finalized and cannot be changed' });
+      }
+
       evaluation.isFinalized     = true;
       evaluation.sentToTraineeAt = new Date();
       evaluation.status          = 'completed';

@@ -101,7 +101,7 @@ router.post('/login', loginLimiter, async (req, res) => {
 });
 
 // ── POST /api/auth/refresh ────────────────────────────────────────────────
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', loginLimiter, async (req, res) => {
   try {
     const refreshToken = req.cookies?.refreshToken;
     if (!refreshToken) return res.status(401).json({ message: 'No refresh token' });
@@ -207,8 +207,7 @@ router.put('/change-password', auth, async (req, res) => {
     const match = await user.comparePassword(currentPassword);
     if (!match) return res.status(401).json({ message: 'Current password is incorrect.' });
 
-    const bcrypt = require('bcryptjs');
-    user.password = await bcrypt.hash(newPassword, 12);
+    user.password = newPassword;
     await user.save();
     res.json({ success: true, message: 'Password updated successfully.' });
   } catch (err) {

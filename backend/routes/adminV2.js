@@ -1,6 +1,10 @@
 // backend/routes/adminV2.js
 // Super admin only — system-wide access to all data
 const router         = require('express').Router();
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const auditLog       = require('../middleware/auditLogger');
@@ -45,7 +49,7 @@ router.get('/users', auth, allowRoles(...ADMIN), async (req, res) => {
     if (role) query.role = role;
     if (hospital) query.$or = [{ hospitalId: hospital }, { hospital }];
     if (search) {
-      const rx = new RegExp(search, 'i');
+      const rx = new RegExp(escapeRegex(search.slice(0, 100)), 'i');
       query.$or = [{ name: rx }, { email: rx }];
     }
 
@@ -323,13 +327,13 @@ router.get('/certificates', auth, allowRoles(...ADMIN), async (req, res) => {
 
 // ── AUDIT LOGS ────────────────────────────────────────────────────────────
 
-// GET /api/admin/audit-logs
-router.get('/audit-logs', auth, allowRoles(...ADMIN), async (req, res) => {
+// GET /api/admin/audit-log  (also aliased as /audit-logs for backwards compat)
+router.get(['/audit-log', '/audit-logs'], auth, allowRoles(...ADMIN), async (req, res) => {
   try {
     const { userId, action, page = 1, limit = 100 } = req.query;
     const query = {};
     if (userId) query.userId = userId;
-    if (action) query.action = new RegExp(action, 'i');
+    if (action) query.action = new RegExp(escapeRegex(action.slice(0, 50)), 'i');
 
     const [logs, total] = await Promise.all([
       AuditLog.find(query)

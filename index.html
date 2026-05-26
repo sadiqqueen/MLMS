@@ -6,7 +6,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="/favicon.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MLMS - Medical Learning Management System</title>
+  <title>MTMS - Medical Training Management System</title>
   <style>
 
     /* ══════════════════════════════════════════════════════════════
@@ -1086,7 +1086,7 @@
       <a href="#home" class="nav-logo">
         <img
           src="logo.png"
-          alt="MLMS"
+          alt="MTMS"
           class="nav-logo-img"
         />
       </a>
@@ -1104,9 +1104,7 @@
       <button class="btn-lang" id="lang-toggle" onclick="toggleLang()">عربي</button>
 
       <div class="nav-right">
-        <a href="http://localhost:5173">
-          <button class="btn-login" data-en="Portal Login" data-ar="دخول البوابة">Portal Login</button>
-        </a>
+        <button class="btn-login" onclick="openLoginModal()" data-en="Portal Login" data-ar="دخول البوابة">Portal Login</button>
         <!-- Hamburger for mobile -->
         <button class="nav-hamburger" onclick="toggleMenu()" aria-label="Menu">
           <span></span><span></span><span></span>
@@ -1121,9 +1119,7 @@
       <a href="#tracks"  onclick="closeMenu()" data-en="Training Tracks"  data-ar="مسارات التدريب">Training Tracks</a>
       <a href="#vision"  onclick="closeMenu()" data-en="About Us"         data-ar="عن المركز">About Us</a>
       <a href="#contact" onclick="closeMenu()" data-en="Contact"          data-ar="تواصل معنا">Contact</a>
-      <a href="http://localhost:5173">
-        <button class="btn-login" data-en="Portal Login" data-ar="دخول البوابة">Portal Login</button>
-      </a>
+      <button class="btn-login" onclick="closeMenu();openLoginModal()" data-en="Portal Login" data-ar="دخول البوابة">Portal Login</button>
     </div>
   </nav>
 
@@ -1135,10 +1131,10 @@
       <div class="hero-label" data-en="Excellence in Clinical Training" data-ar="التميز في التدريب السريري">
         Excellence in Clinical Training
       </div>
-      <h1 data-en="Medical Learning Management System" data-ar="نظام إدارة التعلم الطبي">
-        Medical Learning Management System
+      <h1 data-en="Medical Training Management System" data-ar="نظام إدارة التدريب الطبي">
+        Medical Training Management System
       </h1>
-      <div class="hero-subtitle" data-en="MedLearn LMS" data-ar="">MLMS</div>
+      <div class="hero-subtitle" data-en="MTMS" data-ar="">MTMS</div>
       <p class="hero-desc"
          data-en="The leading national center for high-quality clinical training that produces competent, ethical, and patient-centered health professionals across all stages of medical and health education."
          data-ar="المركز الوطني الرائد للتدريب السريري عالي الجودة الذي يُخرج كوادر صحية كفوءة وأخلاقية ومتمحورة حول المريض في جميع مراحل التعليم الطبي والصحي.">
@@ -1150,11 +1146,9 @@
             Explore Training Tracks
           </button>
         </a>
-        <a href="http://localhost:5173">
-          <button class="btn-hero-outline" data-en="Login to Portal" data-ar="تسجيل الدخول للبوابة">
-            Login to Portal
-          </button>
-        </a>
+        <button class="btn-hero-outline" onclick="openLoginModal()" data-en="Login to Portal" data-ar="تسجيل الدخول للبوابة">
+          Login to Portal
+        </button>
       </div>
     </div>
   </section>
@@ -1222,9 +1216,7 @@
             <li data-en="Graduate competency development"                 data-ar="تطوير كفاءات الخريجين">Graduate competency development</li>
             <li data-en="Knowledge, skills and attitudes training"        data-ar="تدريب المعرفة والمهارات والمواقف">Knowledge, skills and attitudes training</li>
           </ul>
-          <a href="http://localhost:5173">
-            <button class="btn-track" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
-          </a>
+          <button class="btn-track" onclick="openLoginModal()" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
         </div>
 
         <!-- Card 2 -->
@@ -1249,9 +1241,7 @@
             <li data-en="Clear learning outcomes"                         data-ar="مخرجات تعليمية واضحة">Clear learning outcomes</li>
             <li data-en="Structured supervision and assessment"           data-ar="إشراف وتقييم منظم">Structured supervision and assessment</li>
           </ul>
-          <a href="http://localhost:5173">
-            <button class="btn-track" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
-          </a>
+          <button class="btn-track" onclick="openLoginModal()" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
         </div>
 
         <!-- Card 3 -->
@@ -1276,9 +1266,7 @@
             <li data-en="Research involvement"                            data-ar="المشاركة في البحث العلمي">Research involvement</li>
             <li data-en="Leadership and teaching skills"                  data-ar="مهارات القيادة والتدريس">Leadership and teaching skills</li>
           </ul>
-          <a href="http://localhost:5173">
-            <button class="btn-track" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
-          </a>
+          <button class="btn-track" onclick="openLoginModal()" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
         </div>
 
       </div>
@@ -1517,7 +1505,7 @@
       <!-- Brand -->
       <div>
         <div class="footer-brand-logo">
-          <img src="logo.png" alt="MLMS" class="footer-logo-img" />
+          <img src="logo.png" alt="MTMS" class="footer-logo-img" />
         </div>
         <p class="footer-desc"
            data-en="The leading national platform for clinical training management in medical and health education."
@@ -1534,7 +1522,7 @@
           <li><a href="#tracks"  data-en="Training Tracks"  data-ar="مسارات التدريب">Training Tracks</a></li>
           <li><a href="#vision"  data-en="About Us"         data-ar="عن المركز">About Us</a></li>
           <li><a href="#contact" data-en="Contact"          data-ar="تواصل معنا">Contact</a></li>
-          <li><a href="http://localhost:5173" data-en="Portal Login"   data-ar="دخول البوابة">Portal Login</a></li>
+          <li><a href="#" onclick="openLoginModal();return false;" data-en="Portal Login" data-ar="دخول البوابة">Portal Login</a></li>
         </ul>
       </div>
 
@@ -1568,9 +1556,9 @@
 
     <div class="footer-bar">
       <div class="footer-bar-inner">
-        <span data-en="© 2026 MedLearn LMS. All Rights Reserved."
-              data-ar="© 2026 ميدلرن. جميع الحقوق محفوظة.">
-          © 2026 MedLearn LMS. All Rights Reserved.
+        <span data-en="© 2026 MTMS. All Rights Reserved."
+              data-ar="© 2026 MTMS. جميع الحقوق محفوظة.">
+          © 2026 MTMS. All Rights Reserved.
         </span>
         <div class="footer-bar-links">
           <a href="#" data-en="Privacy Policy"    data-ar="سياسة الخصوصية">Privacy Policy</a>
@@ -1579,6 +1567,26 @@
       </div>
     </div>
   </footer>
+
+  <!-- LOGIN MODAL -->
+  <div id="loginModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)closeLoginModal()">
+    <div style="background:#fff;border-radius:16px;padding:32px;width:100%;max-width:400px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+      <button onclick="closeLoginModal()" style="position:absolute;top:14px;right:16px;background:#F5F6FA;border:none;width:30px;height:30px;border-radius:50%;font-size:18px;color:#8B8FA8;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+      <img src="/logo.png" alt="MTMS" style="height:44px;margin-bottom:16px;" />
+      <div style="font-size:20px;font-weight:700;color:#0C447C;margin-bottom:4px;">Portal Login</div>
+      <div style="font-size:13px;color:#8B8FA8;margin-bottom:22px;">Enter your credentials to access your dashboard</div>
+      <label style="display:block;font-size:12px;font-weight:600;color:#4B5563;margin-bottom:5px;">Email address</label>
+      <input id="loginEmail" type="email" placeholder="you@hospital.com" style="width:100%;height:40px;border:1.5px solid #E8E9EF;border-radius:8px;padding:0 12px;font-size:13px;margin-bottom:14px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#0C447C'" onblur="this.style.borderColor='#E8E9EF'" />
+      <label style="display:block;font-size:12px;font-weight:600;color:#4B5563;margin-bottom:5px;">Password</label>
+      <input id="loginPass" type="password" placeholder="••••••••" style="width:100%;height:40px;border:1.5px solid #E8E9EF;border-radius:8px;padding:0 12px;font-size:13px;margin-bottom:14px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#0C447C'" onblur="this.style.borderColor='#E8E9EF'" onkeydown="if(event.key==='Enter')handleLogin()" />
+      <div id="loginError" style="display:none;background:#FEE2E2;color:#DC2626;border-radius:7px;padding:8px 12px;font-size:12px;margin-bottom:14px;"></div>
+      <button id="loginBtn" onclick="handleLogin()" style="width:100%;height:42px;background:#fe9a16;color:#010c37;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+        Sign In
+      </button>
+      <div style="text-align:center;font-size:12px;color:#8B8FA8;margin-top:14px;">Secure access for medical staff only</div>
+      <div style="text-align:center;font-size:11px;color:#8B8FA8;margin-top:6px;">Forgot your password? Contact your administrator.</div>
+    </div>
+  </div>
 
   <!-- ════════════════════════════════════════════════════════════
        JAVASCRIPT
@@ -1648,6 +1656,83 @@
     }, { threshold: 0.12 });
 
     fadeEls.forEach(el => observer.observe(el));
+
+    // ── LOGIN MODAL ──────────────────────────────────────────────────────────
+    const V2_ROLE_HOME = {
+      super_admin:      '/admin/dashboard',
+      secretary:        '/secretary/trainees',
+      dio:              '/dio/dashboard',
+      supervisor:       '/supervisor/trainees',
+      trainee:          '/timeline',
+      president:        '/president/trainees',
+      program_director: '/program-director/trainees',
+      admin:     '/admin/dashboard',
+      professor: '/admin/dashboard',
+      doctor:    '/supervisor/trainees',
+      student:   '/timeline',
+      director:  '/president/trainees',
+    };
+
+    function openLoginModal() {
+      const modal = document.getElementById('loginModal');
+      modal.style.display = 'flex';
+      document.getElementById('loginError').style.display = 'none';
+      document.getElementById('loginEmail').value = '';
+      document.getElementById('loginPass').value = '';
+      setTimeout(() => document.getElementById('loginEmail').focus(), 100);
+    }
+
+    function closeLoginModal() {
+      document.getElementById('loginModal').style.display = 'none';
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLoginModal(); });
+
+    async function handleLogin() {
+      const email    = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPass').value;
+      const errorDiv = document.getElementById('loginError');
+      const btn      = document.getElementById('loginBtn');
+
+      if (!email || !password) {
+        errorDiv.textContent = 'Please enter your email and password.';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Signing in…';
+      errorDiv.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data.token) {
+          errorDiv.textContent = data.message || 'Login failed. Please check your credentials.';
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+
+        const home = V2_ROLE_HOME[data.user.role] || '/timeline';
+        window.location.href = home;
+
+      } catch {
+        errorDiv.textContent = 'Connection error. Please try again.';
+        errorDiv.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Sign In';
+      }
+    }
 
     // ── CONTACT FORM ─────────────────────────────────────────────────────────
     function handleContact(e) {

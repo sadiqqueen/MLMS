@@ -3,14 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 
-// Each role has a different home page after login
 const ROLE_HOME = {
-  super_admin: '/admin/dashboard',
-  admin:       '/admin/students',
-  professor:   '/admin/dashboard',
-  doctor:      '/doctor/students',
-  student:     '/Timeline',
-  director:    '/director/dashboard',
+  // V2 roles
+  super_admin:      '/admin/dashboard',
+  secretary:        '/secretary/trainees',
+  dio:              '/dio/dashboard',
+  supervisor:       '/supervisor/trainees',
+  trainee:          '/timeline',
+  president:        '/president/trainees',
+  program_director: '/program-director/trainees',
+  // V1 legacy roles — kept for any existing accounts
+  admin:     '/admin/dashboard',
+  professor: '/admin/dashboard',
+  doctor:    '/supervisor/trainees',
+  student:   '/timeline',
+  director:  '/president/trainees',
 };
 
 export default function Login() {

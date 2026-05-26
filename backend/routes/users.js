@@ -18,7 +18,15 @@ const storage = multer.diskStorage({
     cb(null, unique + path.extname(file.originalname));
   }
 });
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ok = /jpeg|jpg|png|webp/.test(path.extname(file.originalname).toLowerCase())
+            && /image\//.test(file.mimetype);
+    ok ? cb(null, true) : cb(new Error('Only image files (jpeg, jpg, png, webp) are allowed'));
+  }
+});
 
 const STAFF = ['admin', 'super_admin', 'professor', 'director'];
 

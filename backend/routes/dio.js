@@ -191,18 +191,27 @@ router.patch('/secretaries/:id',
   auditLog('update_secretary', 'User'),
   async (req, res) => {
     try {
+      const secretary = await User.findById(req.params.id);
+      if (!secretary) return res.status(404).json({ message: 'User not found' });
+
+      // Scope: DIO can only modify secretaries within their own hospital
+      const hospitalId = getHospital(req.user);
+      const secHosp = secretary.hospitalId?.toString() || secretary.hospital?.toString();
+      if (hospitalId && secHosp !== hospitalId.toString()) {
+        return res.status(403).json({ message: 'Access denied: secretary belongs to a different hospital' });
+      }
+
       const { specialtyId, isActive } = req.body;
       const update = {};
       if (specialtyId !== undefined) update.specialtyId = specialtyId;
       if (isActive    !== undefined) update.isActive    = isActive;
 
-      const user = await User.findByIdAndUpdate(req.params.id, update, { new: true })
+      const updated = await User.findByIdAndUpdate(req.params.id, update, { new: true })
         .select('-password')
         .populate('hospitalId',  'name')
         .populate('specialtyId', 'name');
 
-      if (!user) return res.status(404).json({ message: 'User not found' });
-      res.json({ success: true, data: user });
+      res.json({ success: true, data: updated });
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
@@ -274,12 +283,20 @@ router.patch('/certificates/:id/revoke',
   auditLog('revoke_certificate', 'Certificate'),
   async (req, res) => {
     try {
-      const cert = await Certificate.findByIdAndUpdate(
-        req.params.id,
-        { revokedAt: new Date() },
-        { new: true }
-      );
+      const cert = await Certificate.findById(req.params.id);
       if (!cert) return res.status(404).json({ message: 'Certificate not found' });
+
+      // DIO can only revoke certificates belonging to their hospital
+      if (req.user.role === 'dio') {
+        const hospitalId = getHospital(req.user);
+        const certHosp = cert.hospital?.toString();
+        if (!hospitalId || certHosp !== hospitalId.toString()) {
+          return res.status(403).json({ message: 'Access denied: certificate belongs to a different hospital' });
+        }
+      }
+
+      cert.revokedAt = new Date();
+      await cert.save();
       res.json({ success: true, data: cert });
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -294,8 +311,19 @@ router.delete('/certificates/:id',
   auditLog('delete_certificate', 'Certificate'),
   async (req, res) => {
     try {
-      const cert = await Certificate.findByIdAndDelete(req.params.id);
+      const cert = await Certificate.findById(req.params.id);
       if (!cert) return res.status(404).json({ message: 'Certificate not found' });
+
+      // DIO can only delete certificates belonging to their hospital
+      if (req.user.role === 'dio') {
+        const hospitalId = getHospital(req.user);
+        const certHosp = cert.hospital?.toString();
+        if (!hospitalId || certHosp !== hospitalId.toString()) {
+          return res.status(403).json({ message: 'Access denied: certificate belongs to a different hospital' });
+        }
+      }
+
+      await cert.deleteOne();
       res.json({ success: true, message: 'Certificate deleted' });
     } catch (err) {
       res.status(500).json({ message: err.message });

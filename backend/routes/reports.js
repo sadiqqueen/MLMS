@@ -102,7 +102,7 @@ router.get('/rotation/:rotationId', auth, async (req, res) => {
 // POST /api/reports — student submits a report (with optional file)
 // Note: "upload.single('file')" is middleware that processes one uploaded file
 //       named "file" from the form data, then puts it on req.file
-router.post('/', auth, allowRoles('student'), upload.single('file'), async (req, res) => {
+router.post('/', auth, allowRoles('student', 'trainee'), upload.single('file'), async (req, res) => {
   try {
     const { title, type, date, rotation, hospital } = req.body;
 
