@@ -11,6 +11,14 @@ const MONTH_LABEL = new Date().toLocaleDateString('en-US', { month: 'long', year
 
 const EVAL_TYPES = ['Mini-CEX', 'DOPS', 'CbD', 'MSF', 'Other'];
 
+const EVAL_PDF_TYPES = [
+  { field: 'evaluationPdf1', label: 'Eval Form 1' },
+  { field: 'evaluationPdf2', label: 'Eval Form 2' },
+  { field: 'evaluationPdf3', label: 'Eval Form 3' },
+  { field: 'evaluationPdf4', label: 'Eval Form 4' },
+  { field: 'evaluationPdf5', label: 'Eval Form 5' },
+];
+
 const RATINGS = [
   { key: 'na',    label: 'N/A',            color: '#b2bec3', bg: '#f0f2f3' },
   { key: 'below', label: 'Below Standard', color: '#FF4757', bg: '#fef0f0' },
@@ -54,8 +62,7 @@ function Avatar({ user, size = 32 }) {
   );
 }
 
-// Evaluation detail/add modal
-function EvalModal({ item, evals, onClose, onSubmitted, onFinalized, isReadOnly }) {
+function EvalModal({ item, evals, specialty, onClose, onSubmitted, onFinalized, isReadOnly }) {
   const { trainee, dist } = item;
   const traineeEvals      = evals.filter(ev => {
     const tid = (ev.traineeId?._id || ev.student?._id || ev.traineeId || ev.student)?.toString();
@@ -63,6 +70,10 @@ function EvalModal({ item, evals, onClose, onSubmitted, onFinalized, isReadOnly 
   });
   const thisMonthCount = traineeEvals.filter(ev => isThisMonth(ev.date || ev.createdAt)).length;
   const atCap          = thisMonthCount >= MONTHLY_CAP;
+
+  const availablePdfs = specialty
+    ? EVAL_PDF_TYPES.filter(t => !!specialty[t.field])
+    : [];
 
   const [form,       setForm      ] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
@@ -158,6 +169,36 @@ function EvalModal({ item, evals, onClose, onSubmitted, onFinalized, isReadOnly 
         </div>
 
         <div style={{ padding:'20px 24px' }}>
+
+          {/* Evaluation template downloads */}
+          {availablePdfs.length > 0 && (
+            <div style={{ marginBottom:20 }}>
+              <div style={{
+                fontSize:12, fontWeight:700, color:'#8B8FA8',
+                textTransform:'uppercase', letterSpacing:'.05em', marginBottom:10
+              }}>
+                Evaluation Templates
+              </div>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                {availablePdfs.map(t => (
+                  <a
+                    key={t.field}
+                    href={specialty[t.field]}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      padding:'6px 12px', borderRadius:7, fontSize:12, fontWeight:600,
+                      background:'#E6F1FB', color:'#185FA5', textDecoration:'none',
+                      display:'flex', alignItems:'center', gap:4,
+                      border:'1px solid #BFDBFE'
+                    }}
+                  >
+                    ↓ {t.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Monthly progress */}
           <div style={{
@@ -276,7 +317,6 @@ function EvalModal({ item, evals, onClose, onSubmitted, onFinalized, isReadOnly 
                 New Evaluation
               </div>
 
-              {/* Type */}
               <div style={{ marginBottom:16 }}>
                 <label style={LABEL_STYLE}>Evaluation Type</label>
                 <select
@@ -294,7 +334,6 @@ function EvalModal({ item, evals, onClose, onSubmitted, onFinalized, isReadOnly 
                 </select>
               </div>
 
-              {/* Rating */}
               <div style={{ marginBottom:16 }}>
                 <label style={LABEL_STYLE}>Rating</label>
                 <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
@@ -319,7 +358,6 @@ function EvalModal({ item, evals, onClose, onSubmitted, onFinalized, isReadOnly 
                 </div>
               </div>
 
-              {/* Notes */}
               <div style={{ marginBottom:16 }}>
                 <label style={LABEL_STYLE}>Notes (optional)</label>
                 <textarea
@@ -402,6 +440,7 @@ export default function SupervisorEvaluations() {
   const { user: me }   = useAuth();
   const [evals,      setEvals     ] = useState([]);
   const [trainees,   setTrainees  ] = useState([]);
+  const [specialty,  setSpecialty ] = useState(null);
   const [loading,    setLoading   ] = useState(true);
   const [search,     setSearch    ] = useState('');
   const [selected,   setSelected  ] = useState(null);
@@ -416,17 +455,26 @@ export default function SupervisorEvaluations() {
   }
 
   useEffect(() => {
+    const mySpecialtyId = me?.specialtyId?._id || me?.specialtyId;
+
     Promise.all([
       api.get('/api/supervisor/evaluations'),
       api.get('/api/supervisor/trainees'),
-    ]).then(([evalRes, traineeRes]) => {
+      mySpecialtyId ? api.get('/api/specialties') : Promise.resolve(null),
+    ]).then(([evalRes, traineeRes, specRes]) => {
       setEvals(evalRes.data?.data || evalRes.data || []);
       setTrainees(traineeRes.data?.data || traineeRes.data || []);
+      if (specRes && mySpecialtyId) {
+        const all = specRes.data?.data || specRes.data || [];
+        const found = all.find(s =>
+          (s._id?.toString() === mySpecialtyId?.toString())
+        );
+        setSpecialty(found || null);
+      }
     }).catch(() => showToast('Failed to load data', 'error'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [me]);
 
-  // Deduplicate trainees from distributions
   const seen = new Set();
   const traineeList = [];
   for (const dist of (Array.isArray(trainees) ? trainees : [])) {
@@ -444,7 +492,6 @@ export default function SupervisorEvaluations() {
       || (trainee.studentId || '').toLowerCase().includes(q);
   });
 
-  // Count evals per trainee
   function evalCountFor(tid) {
     return evals.filter(ev => {
       const eid = (ev.traineeId?._id || ev.student?._id || ev.traineeId || ev.student)?.toString();
@@ -556,10 +603,10 @@ export default function SupervisorEvaluations() {
         {/* Trainee list */}
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           {filtered.map(({ dist, trainee }) => {
-            const tid         = trainee._id?.toString();
-            const count       = evalCountFor(tid);
-            const monthCount  = monthlyCountFor(tid);
-            const atCap       = monthCount >= MONTHLY_CAP;
+            const tid        = trainee._id?.toString();
+            const count      = evalCountFor(tid);
+            const monthCount = monthlyCountFor(tid);
+            const atCap      = monthCount >= MONTHLY_CAP;
 
             return (
               <div
@@ -605,11 +652,11 @@ export default function SupervisorEvaluations() {
           })}
         </div>
 
-        {/* Eval Modal */}
         {selected && (
           <EvalModal
             item={selected}
             evals={evals}
+            specialty={specialty}
             onClose={() => setSelected(null)}
             onSubmitted={handleSubmitted}
             onFinalized={handleFinalized}

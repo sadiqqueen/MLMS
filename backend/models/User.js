@@ -11,13 +11,13 @@ const userSchema = new mongoose.Schema(
     // V2: updated role enum — 7 roles
     role: {
       type: String,
-      enum: ['super_admin', 'secretary', 'dio', 'supervisor', 'trainee', 'president', 'program_director'],
+      enum: ['super_admin', 'secretary', 'dio', 'supervisor', 'trainee', 'president', 'program_director', 'admin', 'doctor', 'student', 'professor', 'director'],
       required: true,
       index: true
     },
 
     // Existing fields — keep all
-    initials:      { type: String },
+    initials:      { type: String, default: '' },
     phone:         { type: String, default: '' },
     gender:        { type: String, enum: ['male', 'female', ''], default: '' },
     city:          { type: String, default: '' },
@@ -25,19 +25,21 @@ const userSchema = new mongoose.Schema(
     locked:        { type: Boolean, default: false },
 
     // trainee-only (was student-only)
-    year:          { type: Number },
-    studentId:     { type: String },
+    year:          { type: Number, default: null },
+    studentId:     { type: String, default: '' },
     enrolledSince: { type: Date },
 
     // supervisor / program_director (was doctor / professor)
     department:    { type: String, default: '' },
     specialty:     { type: String, default: '' },
-    hospital:      { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital' },
+    hospital:      { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital', default: null },
     doctor:        { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    supervisor:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    supervisorId:  { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
     // V2 NEW FIELDS
-    hospitalId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital', index: true },
-    specialtyId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Specialty' },
+    hospitalId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital', default: null, index: true },
+    specialtyId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Specialty', default: null },
     universityId:  { type: mongoose.Schema.Types.ObjectId, ref: 'University' },
     isActive:      { type: Boolean, default: true },
     lastLogin:     { type: Date },
@@ -49,14 +51,17 @@ const userSchema = new mongoose.Schema(
 
 // Hash password on save
 userSchema.pre('save', async function (next) {
+  if (this.name && !this.initials) {
+    this.initials = this.name
+      .trim()
+      .split(/\s+/)
+      .map(w => w[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  }
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 12);
-  if (this.name && !this.initials) {
-    const parts = this.name.trim().split(' ');
-    this.initials = parts.length >= 2
-      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-      : parts[0].slice(0, 2).toUpperCase();
-  }
   next();
 });
 

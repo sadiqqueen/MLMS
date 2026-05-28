@@ -24,9 +24,27 @@ function IssueModal({ trainees, onSave, onClose, saving }) {
     issueDate: new Date().toISOString().slice(0, 10),
     notes:     '',
   });
-  const [errors, setErrors] = useState({});
+  const [errors,          setErrors         ] = useState({});
+  const [traineeSearch,   setTraineeSearch   ] = useState('');
+  const [showDropdown,    setShowDropdown    ] = useState(false);
+  const [selectedTrainee, setSelectedTrainee ] = useState(null);
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: false })); }
+
+  const filteredResults = traineeSearch.trim().length >= 1
+    ? trainees.filter(t =>
+        t.name?.toLowerCase().includes(traineeSearch.toLowerCase()) ||
+        (t.studentId || '').toLowerCase().includes(traineeSearch.toLowerCase())
+      ).slice(0, 8)
+    : [];
+
+  function selectTrainee(t) {
+    setSelectedTrainee(t);
+    setForm(f => ({ ...f, traineeId: t._id }));
+    setTraineeSearch(t.name);
+    setShowDropdown(false);
+    setErrors(e => ({ ...e, traineeId: false }));
+  }
 
   function validate() {
     const e = {};
@@ -48,32 +66,89 @@ function IssueModal({ trainees, onSave, onClose, saving }) {
     return () => document.removeEventListener('keydown', h);
   }, [onClose]);
 
+  const autoHospital   = selectedTrainee?.hospitalId?.name   || selectedTrainee?.hospital?.name   || null;
+  const autoSupervisor = selectedTrainee?.supervisorId?.name  || selectedTrainee?.supervisor?.name  || null;
+  const autoSpecialty  = selectedTrainee?.specialtyId?.name   || selectedTrainee?.specialty?.name   || null;
+
   return (
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,.2)' }}>
+      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 480, boxShadow: '0 20px 60px rgba(0,0,0,.2)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '20px 24px', borderBottom: '1px solid #E8E9EF' }}>
           <div style={{ flex: 1, fontSize: 17, fontWeight: 700, color: '#1B1464' }}>Issue Certificate</div>
           <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', background: '#F5F6FA', border: 'none', fontSize: 18, color: '#8B8FA8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
         </div>
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
+          {/* Trainee name search */}
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 5 }}>Trainee *</label>
-            <select
-              className={errors.traineeId ? 'invalid admin-search' : 'admin-search'}
-              style={{ width: '100%' }}
-              value={form.traineeId}
-              onChange={e => set('traineeId', e.target.value)}
-            >
-              <option value="">— Select trainee —</option>
-              {trainees.map(t => (
-                <option key={t._id} value={t._id}>{t.name}{t.studentId ? ` (${t.studentId})` : ''}</option>
-              ))}
-            </select>
-            {errors.traineeId && <div style={{ fontSize: 11, color: '#DC2626', marginTop: 3 }}>Required</div>}
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 5 }}>
+              Trainee *
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                className={errors.traineeId ? 'invalid admin-search' : 'admin-search'}
+                style={{ width: '100%' }}
+                value={traineeSearch}
+                placeholder="Search by name or student ID…"
+                autoComplete="off"
+                onChange={e => {
+                  setTraineeSearch(e.target.value);
+                  setShowDropdown(true);
+                  if (!e.target.value) { setSelectedTrainee(null); set('traineeId', ''); }
+                }}
+                onFocus={() => setShowDropdown(true)}
+                onBlur={() => setTimeout(() => setShowDropdown(false), 180)}
+              />
+              {showDropdown && filteredResults.length > 0 && (
+                <div style={{
+                  position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+                  background: '#fff', border: '1px solid #E8E9EF', borderRadius: 8,
+                  boxShadow: '0 4px 16px rgba(0,0,0,.12)', marginTop: 2,
+                  maxHeight: 220, overflowY: 'auto'
+                }}>
+                  {filteredResults.map(t => (
+                    <div
+                      key={t._id}
+                      onMouseDown={() => selectTrainee(t)}
+                      style={{
+                        padding: '10px 14px', cursor: 'pointer', fontSize: 13,
+                        borderBottom: '1px solid #F5F6FA',
+                        display: 'flex', alignItems: 'center', gap: 10
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#F5F6FA'}
+                      onMouseLeave={e => e.currentTarget.style.background = ''}
+                    >
+                      <div className="cell-initials" style={{ width: 28, height: 28, fontSize: 11, flexShrink: 0 }}>
+                        {t.name?.[0] || '?'}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#1B1464' }}>{t.name}</div>
+                        {t.studentId && <div style={{ fontSize: 11, color: '#8B8FA8' }}>{t.studentId}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {errors.traineeId && (
+              <div style={{ fontSize: 11, color: '#DC2626', marginTop: 3 }}>Required — select a trainee from the list</div>
+            )}
+
+            {/* Auto-filled trainee details */}
+            {selectedTrainee && (autoHospital || autoSupervisor || autoSpecialty) && (
+              <div style={{
+                marginTop: 8, padding: '8px 12px',
+                background: '#F0FDF4', border: '1px solid #D1FAE5', borderRadius: 7,
+                display: 'flex', flexDirection: 'column', gap: 3
+              }}>
+                {autoHospital   && <div style={{ fontSize: 11, color: '#065F46' }}>🏥 {autoHospital}</div>}
+                {autoSupervisor && <div style={{ fontSize: 11, color: '#065F46' }}>👨‍⚕️ Supervisor: {autoSupervisor}</div>}
+                {autoSpecialty  && <div style={{ fontSize: 11, color: '#065F46' }}>🔬 Specialty: {autoSpecialty}</div>}
+              </div>
+            )}
           </div>
 
           <div>
@@ -225,17 +300,17 @@ function CertModal({ cert, onClose, onRevoke, onDelete, revoking, deleting }) {
 }
 
 export default function DioCertificates() {
-  const [certs,    setCerts   ] = useState([]);
-  const [trainees, setTrainees] = useState([]);
-  const [loading,  setLoading ] = useState(true);
-  const [search,   setSearch  ] = useState('');
-  const [filter,   setFilter  ] = useState('all');
-  const [showIssue,setShowIssue] = useState(false);
-  const [selected, setSelected] = useState(null);
-  const [saving,   setSaving  ] = useState(false);
-  const [revoking, setRevoking] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [toasts,   setToasts  ] = useState([]);
+  const [certs,     setCerts    ] = useState([]);
+  const [trainees,  setTrainees ] = useState([]);
+  const [loading,   setLoading  ] = useState(true);
+  const [search,    setSearch   ] = useState('');
+  const [filter,    setFilter   ] = useState('all');
+  const [showIssue, setShowIssue] = useState(false);
+  const [selected,  setSelected ] = useState(null);
+  const [saving,    setSaving   ] = useState(false);
+  const [revoking,  setRevoking ] = useState(false);
+  const [deleting,  setDeleting ] = useState(false);
+  const [toasts,    setToasts   ] = useState([]);
 
   function showToast(message, type = 'success') {
     const id = Date.now();
@@ -412,7 +487,7 @@ export default function DioCertificates() {
                   </tr>
                 )}
                 {displayed.map((c, i) => {
-                  const trainee  = getTrainee(c);
+                  const trainee   = getTrainee(c);
                   const isRevoked = !!c.revokedAt;
                   return (
                     <tr key={c._id} style={{ cursor: 'pointer', opacity: isRevoked ? 0.65 : 1 }} onClick={() => setSelected(c)}>

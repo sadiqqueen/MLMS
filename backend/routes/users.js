@@ -28,7 +28,7 @@ const upload = multer({
   }
 });
 
-const STAFF = ['admin', 'super_admin', 'professor', 'director'];
+const STAFF = ['admin', 'super_admin', 'professor', 'director', 'secretary', 'dio', 'president'];
 
 // GET /api/users — all users
 router.get('/', auth, allowRoles(...STAFF), async (req, res) => {
@@ -56,17 +56,55 @@ router.get('/doctors', auth, async (req, res) => {
   }
 });
 
-// GET /api/users/students — only students (for dropdowns)
-router.get('/students', auth, allowRoles(...STAFF), async (req, res) => {
+// GET /api/users/supervisors — for dropdowns
+router.get('/supervisors', auth, allowRoles('super_admin', 'secretary', 'dio', 'admin', 'president'), async (req, res) => {
   try {
-    const students = await User.find({ role: 'student' })
-      .select('-password')
-      .populate('hospital', 'name city')
-      .populate('doctor', 'name specialty')
+    const supervisors = await User.find({
+      role: { $in: ['supervisor', 'doctor'] },
+      isActive: { $ne: false }
+    })
+      .select('name email specialty specialtyId hospitalId department initials photoUrl')
+      .populate('specialtyId', 'name')
+      .populate('hospitalId', 'name')
       .sort({ name: 1 });
-    res.json(students);
+    res.json({ success: true, data: supervisors });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/users/program-directors — for dropdowns
+router.get('/program-directors', auth, allowRoles('super_admin', 'secretary', 'dio', 'admin', 'president'), async (req, res) => {
+  try {
+    const pds = await User.find({
+      role: { $in: ['program_director'] },
+      isActive: { $ne: false }
+    })
+      .select('name email specialtyId hospitalId department initials photoUrl')
+      .populate('specialtyId', 'name')
+      .populate('hospitalId', 'name')
+      .sort({ name: 1 });
+    res.json({ success: true, data: pds });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/users/students — kept for backward compat (returns trainees)
+router.get('/students', auth, async (req, res) => {
+  try {
+    const students = await User.find({
+      role: { $in: ['trainee', 'student'] },
+      isActive: { $ne: false }
+    })
+      .select('name email studentId specialty specialtyId hospitalId supervisorId initials photoUrl year')
+      .populate('specialtyId', 'name')
+      .populate('hospitalId', 'name')
+      .populate('supervisorId', 'name')
+      .sort({ name: 1 });
+    res.json({ success: true, data: students });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

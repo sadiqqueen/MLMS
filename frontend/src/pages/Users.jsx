@@ -3,8 +3,47 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
 import api    from '../api/axios';
-import SPECIALTIES from '../data/specialties';
-import Sk          from '../components/Skeleton';
+import Sk     from '../components/Skeleton';
+
+const ROLES = ['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president', 'super_admin'];
+
+const ROLE_BADGE = {
+  trainee:          'badge-role badge-student',
+  supervisor:       'badge-role badge-doctor',
+  program_director: 'badge-role badge-professor',
+  secretary:        'badge-role badge-admin',
+  dio:              'badge-role badge-super_admin',
+  president:        'badge-role badge-super_admin',
+  super_admin:      'badge-role badge-super_admin',
+  // legacy
+  student:  'badge-role badge-student',
+  doctor:   'badge-role badge-doctor',
+  professor:'badge-role badge-professor',
+  admin:    'badge-role badge-admin',
+};
+
+const ROLE_FIELDS = {
+  trainee:          ['studentId', 'year', 'hospitalId', 'supervisorId', 'specialtyId', 'phone', 'gender', 'city'],
+  supervisor:       ['hospitalId', 'specialtyId', 'department', 'phone', 'gender', 'city'],
+  program_director: ['hospitalId', 'specialtyId', 'department', 'phone'],
+  secretary:        ['specialtyId', 'phone'],
+  dio:              ['phone'],
+  president:        ['phone'],
+  super_admin:      [],
+};
+
+function showField(role, field) {
+  return (ROLE_FIELDS[role] || []).includes(field);
+}
+
+function roleLabel(r) {
+  return r.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+const ROWS_OPT = [8, 16, 32];
+const API_BASE = '';
+
+function photoSrc(url) { return url ? `${API_BASE}${url}` : null; }
 
 const IconEdit = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -39,45 +78,30 @@ const IconUnlock = () => (
   </svg>
 );
 
-const ROLES    = ['student', 'doctor', 'professor', 'admin', 'super_admin'];
-const GENDERS  = ['', 'male', 'female'];
-const ROWS_OPT = [8, 16, 32];
-
-const ROLE_BADGE = {
-  student:     'badge-role badge-student',
-  doctor:      'badge-role badge-doctor',
-  professor:   'badge-role badge-professor',
-  admin:       'badge-role badge-admin',
-  super_admin: 'badge-role badge-super_admin',
-};
-
-const API_BASE = '';
-function photoSrc(url) { return url ? `${API_BASE}${url}` : null; }
-function fmtDate(d) { return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'; }
-
-// ── User / Doctor modal ────────────────────────────────────────────────────
-function UserModal({ editUser, hospitals, doctors, isDoctor, onSave, onClose, saving }) {
-  const empty = {
-    name: '', email: '', password: '',
-    role: isDoctor ? 'doctor' : 'student',
+// ── User Modal ─────────────────────────────────────────────────────────────
+function UserModal({ editUser, hospitals, supervisors, specialties, onSave, onClose, saving }) {
+  const [form, setForm] = useState(editUser ? {
+    name:         editUser.name         || '',
+    email:        editUser.email        || '',
+    password:     '',
+    role:         editUser.role         || 'trainee',
+    phone:        editUser.phone        || '',
+    gender:       editUser.gender       || '',
+    city:         editUser.city         || '',
+    studentId:    editUser.studentId    || '',
+    year:         editUser.year         || '',
+    hospitalId:   editUser.hospitalId?._id  || editUser.hospitalId  || editUser.hospital?._id || editUser.hospital || '',
+    supervisorId: editUser.supervisorId?._id || editUser.supervisorId || '',
+    specialtyId:  editUser.specialtyId?._id  || editUser.specialtyId || '',
+    department:   editUser.department   || '',
+  } : {
+    name: '', email: '', password: '', role: 'trainee',
     phone: '', gender: '', city: '',
-    hospital: '', specialty: '', studentId: '', doctor: ''
-  };
-  const [form,     setForm    ] = useState(editUser ? {
-    name:      editUser.name      || '',
-    email:     editUser.email     || '',
-    role:      editUser.role      || (isDoctor ? 'doctor' : 'student'),
-    phone:     editUser.phone     || '',
-    gender:    editUser.gender    || '',
-    city:      editUser.city      || '',
-    hospital:  editUser.hospital?._id || editUser.hospital || '',
-    specialty: editUser.specialty || '',
-    studentId: editUser.studentId || '',
-    doctor:    editUser.doctor?._id   || editUser.doctor   || ''
-  } : empty);
-  const [photo,    setPhoto   ] = useState(null);
-  const [preview,  setPreview ] = useState(editUser?.photoUrl ? photoSrc(editUser.photoUrl) : null);
-  const [errors,   setErrors  ] = useState({});
+    studentId: '', year: '', hospitalId: '', supervisorId: '', specialtyId: '', department: '',
+  });
+  const [photo,   setPhoto  ] = useState(null);
+  const [preview, setPreview] = useState(editUser?.photoUrl ? photoSrc(editUser.photoUrl) : null);
+  const [errors,  setErrors ] = useState({});
   const fileRef = useRef();
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: false })); }
@@ -93,7 +117,6 @@ function UserModal({ editUser, hospitals, doctors, isDoctor, onSave, onClose, sa
     const e = {};
     if (!form.name.trim())  e.name  = true;
     if (!form.email.trim()) e.email = true;
-    if (!isDoctor && !form.role) e.role = true;
     if (!editUser && form.password.length < 6) e.password = true;
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -102,24 +125,29 @@ function UserModal({ editUser, hospitals, doctors, isDoctor, onSave, onClose, sa
   function handleSave() {
     if (!validate()) return;
     const fd = new FormData();
-    Object.entries(form).forEach(([k, v]) => { if (v) fd.append(k, v); });
+    Object.entries(form).forEach(([k, v]) => {
+      if (v !== '' && v !== null && v !== undefined) fd.append(k, v);
+    });
     if (photo) fd.append('photo', photo);
     onSave(fd);
   }
 
-  // Close on Escape
   useEffect(() => {
     const h = e => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', h);
     return () => document.removeEventListener('keydown', h);
   }, [onClose]);
 
-  const showDoctorFields = isDoctor || form.role === 'doctor';
+  const role = form.role;
+
+  const filteredSupervisors = supervisors.filter(s =>
+    !form.specialtyId ||
+    (s.specialtyId?._id || s.specialtyId)?.toString() === form.specialtyId
+  );
 
   return (
     <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="admin-modal admin-modal-lg">
-
+      <div className="admin-modal admin-modal-lg" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="admin-modal-header">
           <div className="admin-modal-title">{editUser ? 'Edit User' : 'Add New User'}</div>
           <button className="admin-modal-close" onClick={onClose}>✕</button>
@@ -143,9 +171,17 @@ function UserModal({ editUser, hospitals, doctors, isDoctor, onSave, onClose, sa
               </div>
             </div>
 
+            {/* Role */}
+            <div className="admin-field full">
+              <label>User Type *</label>
+              <select value={role} onChange={e => set('role', e.target.value)}>
+                {ROLES.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
+              </select>
+            </div>
+
             {/* Name */}
             <div className="admin-field">
-              <label>Name *</label>
+              <label>Full Name *</label>
               <input
                 className={errors.name ? 'invalid' : ''}
                 value={form.name}
@@ -166,7 +202,7 @@ function UserModal({ editUser, hospitals, doctors, isDoctor, onSave, onClose, sa
               />
             </div>
 
-            {/* Password (only when creating a new user) */}
+            {/* Password — only when creating */}
             {!editUser && (
               <div className="admin-field">
                 <label>Password *</label>
@@ -181,70 +217,98 @@ function UserModal({ editUser, hospitals, doctors, isDoctor, onSave, onClose, sa
               </div>
             )}
 
-            {/* Role (only for All Users tab) */}
-            {!isDoctor && (
+            {/* Specialty */}
+            {showField(role, 'specialtyId') && (
               <div className="admin-field">
-                <label>User Type *</label>
-                <select className={errors.role ? 'invalid' : ''} value={form.role} onChange={e => set('role', e.target.value)}>
-                  {ROLES.map(r => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
+                <label>Specialty</label>
+                <select value={form.specialtyId} onChange={e => set('specialtyId', e.target.value)}>
+                  <option value="">— Select specialty —</option>
+                  {specialties.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
                 </select>
               </div>
             )}
 
+            {/* Hospital */}
+            {showField(role, 'hospitalId') && (
+              <div className="admin-field">
+                <label>Hospital</label>
+                <select value={form.hospitalId} onChange={e => set('hospitalId', e.target.value)}>
+                  <option value="">— Select hospital —</option>
+                  {hospitals.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* Supervisor (trainee only) */}
+            {showField(role, 'supervisorId') && (
+              <div className="admin-field">
+                <label>Supervisor</label>
+                <select value={form.supervisorId} onChange={e => set('supervisorId', e.target.value)}>
+                  <option value="">— Select supervisor —</option>
+                  {filteredSupervisors.map(s => (
+                    <option key={s._id} value={s._id}>{s.name}</option>
+                  ))}
+                </select>
+                {form.specialtyId && filteredSupervisors.length === 0 && (
+                  <span style={{ fontSize: 11, color: '#8B8FA8' }}>No supervisors for this specialty</span>
+                )}
+              </div>
+            )}
+
+            {/* Student ID */}
+            {showField(role, 'studentId') && (
+              <div className="admin-field">
+                <label>Student ID</label>
+                <input value={form.studentId} onChange={e => set('studentId', e.target.value)} placeholder="e.g. STD-001" />
+              </div>
+            )}
+
+            {/* Year */}
+            {showField(role, 'year') && (
+              <div className="admin-field">
+                <label>Year</label>
+                <select value={form.year} onChange={e => set('year', e.target.value)}>
+                  <option value="">— Select year —</option>
+                  {[1,2,3,4,5,6].map(y => <option key={y} value={y}>Year {y}</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* Department */}
+            {showField(role, 'department') && (
+              <div className="admin-field">
+                <label>Department</label>
+                <input value={form.department} onChange={e => set('department', e.target.value)} placeholder="Department name" />
+              </div>
+            )}
+
             {/* Phone */}
-            <div className="admin-field">
-              <label>Phone</label>
-              <input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+964 xxx xxx xxxx" />
-            </div>
+            {showField(role, 'phone') && (
+              <div className="admin-field">
+                <label>Phone</label>
+                <input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+964 xxx xxx xxxx" />
+              </div>
+            )}
 
             {/* Gender */}
-            <div className="admin-field">
-              <label>Gender</label>
-              <select value={form.gender} onChange={e => set('gender', e.target.value)}>
-                <option value="">— Select —</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-              </select>
-            </div>
+            {showField(role, 'gender') && (
+              <div className="admin-field">
+                <label>Gender</label>
+                <select value={form.gender} onChange={e => set('gender', e.target.value)}>
+                  <option value="">— Select —</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+              </div>
+            )}
 
             {/* City */}
-            <div className="admin-field">
-              <label>City</label>
-              <input value={form.city} onChange={e => set('city', e.target.value)} placeholder="City" />
-            </div>
-
-            {/* ID Number */}
-            <div className="admin-field">
-              <label>ID Number</label>
-              <input value={form.studentId} onChange={e => set('studentId', e.target.value)} placeholder="e.g. STD-001" />
-            </div>
-
-            {/* Specialty */}
-            <div className="admin-field">
-              <label>Specialty</label>
-              <select value={form.specialty} onChange={e => set('specialty', e.target.value)}>
-                <option value="">— Select specialty —</option>
-                {SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-
-            {/* Hospital */}
-            <div className="admin-field">
-              <label>Hospital</label>
-              <select value={form.hospital} onChange={e => set('hospital', e.target.value)}>
-                <option value="">— Select hospital —</option>
-                {hospitals.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
-              </select>
-            </div>
-
-            {/* Doctor */}
-            <div className="admin-field">
-              <label>Doctor</label>
-              <select value={form.doctor} onChange={e => set('doctor', e.target.value)}>
-                <option value="">— Select doctor —</option>
-                {doctors.map(d => <option key={d._id} value={d._id}>{d.name}{d.specialty ? ` (${d.specialty})` : ''}</option>)}
-              </select>
-            </div>
+            {showField(role, 'city') && (
+              <div className="admin-field">
+                <label>City</label>
+                <input value={form.city} onChange={e => set('city', e.target.value)} placeholder="City" />
+              </div>
+            )}
 
           </div>
         </div>
@@ -255,7 +319,6 @@ function UserModal({ editUser, hospitals, doctors, isDoctor, onSave, onClose, sa
             {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
-
       </div>
     </div>
   );
@@ -263,8 +326,8 @@ function UserModal({ editUser, hospitals, doctors, isDoctor, onSave, onClose, sa
 
 // ── Password Modal ─────────────────────────────────────────────────────────
 function PasswordModal({ userId, onClose, showToast }) {
-  const [pw,      setPw     ] = useState('');
-  const [saving,  setSaving ] = useState(false);
+  const [pw,     setPw    ] = useState('');
+  const [saving, setSaving] = useState(false);
 
   async function handleSave() {
     if (pw.length < 6) return showToast('Password must be at least 6 characters', 'error');
@@ -319,25 +382,23 @@ function ConfirmDelete({ name, onConfirm, onCancel }) {
 export default function Users() {
   const { user: me } = useAuth();
 
-  const [tab,        setTab       ] = useState(0);       // 0=All, 1=Doctors
-  const [users,      setUsers     ] = useState([]);
-  const [hospitals,  setHospitals ] = useState([]);
-  const [doctors,    setDoctors   ] = useState([]);
-  const [loading,    setLoading   ] = useState(true);
-  const [view,       setView      ] = useState('table'); // 'table' | 'card'
-  const [search,     setSearch    ] = useState('');
-  const [page,       setPage      ] = useState(1);
-  const [rows,       setRows      ] = useState(16);
-  const [toasts,     setToasts    ] = useState([]);
-
-  const [showModal,  setShowModal ] = useState(false);
-  const [editUser,   setEditUser  ] = useState(null);
-  const [saving,     setSaving    ] = useState(false);
-
-  const [showPass,   setShowPass  ] = useState(false);
-  const [passUserId, setPassUserId] = useState(null);
-
-  const [deleteUser, setDeleteUser] = useState(null);
+  const [roleFilter,  setRoleFilter ] = useState('all');
+  const [users,       setUsers      ] = useState([]);
+  const [hospitals,   setHospitals  ] = useState([]);
+  const [supervisors, setSupervisors] = useState([]);
+  const [specialties, setSpecialties] = useState([]);
+  const [loading,     setLoading    ] = useState(true);
+  const [view,        setView       ] = useState('table');
+  const [search,      setSearch     ] = useState('');
+  const [page,        setPage       ] = useState(1);
+  const [rows,        setRows       ] = useState(16);
+  const [toasts,      setToasts     ] = useState([]);
+  const [showModal,   setShowModal  ] = useState(false);
+  const [editUser,    setEditUser   ] = useState(null);
+  const [saving,      setSaving     ] = useState(false);
+  const [showPass,    setShowPass   ] = useState(false);
+  const [passUserId,  setPassUserId ] = useState(null);
+  const [deleteUser,  setDeleteUser ] = useState(null);
 
   function showToast(message, type = 'success') {
     const id = Date.now();
@@ -346,15 +407,22 @@ export default function Users() {
   }
 
   useEffect(() => {
-    Promise.all([api.get('/api/users'), api.get('/api/hospitals'), api.get('/api/users/doctors')])
-      .then(([u, h, d]) => { setUsers(u.data); setHospitals(h.data); setDoctors(d.data); })
-      .catch(() => showToast('Failed to load users', 'error'))
+    Promise.all([
+      api.get('/api/users'),
+      api.get('/api/hospitals'),
+      api.get('/api/users/supervisors'),
+      api.get('/api/specialties'),
+    ]).then(([u, h, sv, sp]) => {
+      setUsers(u.data?.data || u.data || []);
+      setHospitals(h.data?.data || h.data || []);
+      setSupervisors(sv.data?.data || sv.data || []);
+      setSpecialties(sp.data?.data || sp.data || []);
+    }).catch(() => showToast('Failed to load users', 'error'))
       .finally(() => setLoading(false));
   }, []);
 
-  const isDoctor  = tab === 1;
   const displayed = users
-    .filter(u => isDoctor ? u.role === 'doctor' : true)
+    .filter(u => roleFilter === 'all' || u.role === roleFilter)
     .filter(u => {
       const q = search.toLowerCase();
       return !q || u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.city?.toLowerCase().includes(q);
@@ -363,24 +431,20 @@ export default function Users() {
   const totalPages   = Math.max(1, Math.ceil(displayed.length / rows));
   const currentItems = displayed.slice((page - 1) * rows, page * rows);
 
-  function openAdd()         { setEditUser(null);  setShowModal(true); }
-  function openEdit(u)       { setEditUser(u);     setShowModal(true); }
-  function openPass(u)       { setPassUserId(u._id); setShowPass(true); }
-  function openDelete(u)     { setDeleteUser(u); }
-
   async function handleSave(fd) {
     setSaving(true);
     try {
       if (editUser) {
         const res = await api.put(`/api/users/${editUser._id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-        setUsers(prev => prev.map(u => u._id === editUser._id ? res.data : u));
+        setUsers(prev => prev.map(u => u._id === editUser._id ? (res.data?.data || res.data) : u));
         showToast('User updated');
       } else {
         const res = await api.post('/api/users', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-        setUsers(prev => [res.data, ...prev]);
+        setUsers(prev => [(res.data?.data || res.data), ...prev]);
         showToast('User created');
       }
       setShowModal(false);
+      setEditUser(null);
     } catch (err) {
       showToast(err.response?.data?.message || 'Save failed', 'error');
     } finally {
@@ -402,7 +466,7 @@ export default function Users() {
       setUsers(prev => prev.filter(u => u._id !== deleteUser._id));
       showToast('User deleted');
     } catch { showToast('Delete failed', 'error'); }
-    finally   { setDeleteUser(null); }
+    finally  { setDeleteUser(null); }
   }
 
   function PhotoCell({ u }) {
@@ -421,10 +485,6 @@ export default function Users() {
       <Navbar />
       <main className="admin-main">
         <div className="admin-card">
-          <div className="admin-tabs" style={{ display: 'flex', gap: 4, padding: '14px 20px 0' }}>
-            <Sk w={80} h={14} r={4} />
-            <Sk w={90} h={14} r={4} style={{ marginLeft: 8 }} />
-          </div>
           <div className="admin-toolbar">
             <Sk h={36} r={8} style={{ flex: 1, minWidth: 180 }} />
             <Sk w={72} h={34} r={8} />
@@ -433,11 +493,7 @@ export default function Users() {
           <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
-                <tr>
-                  {['#', 'Name', 'Email', 'Photo', 'Role', 'Phone', 'Gender', 'City', 'Actions'].map(col => (
-                    <th key={col}>{col}</th>
-                  ))}
-                </tr>
+                <tr>{['#', 'Name', 'Email', 'Photo', 'Role', 'Phone', 'Actions'].map(col => <th key={col}>{col}</th>)}</tr>
               </thead>
               <tbody>
                 {[...Array(8)].map((_, i) => (
@@ -448,8 +504,6 @@ export default function Users() {
                     <td><Sk w={36}  h={36} r="50%" /></td>
                     <td><Sk w={70}  h={20} r={20} /></td>
                     <td><Sk w={90}  h={13} /></td>
-                    <td><Sk w={60}  h={13} /></td>
-                    <td><Sk w={80}  h={13} /></td>
                     <td><Sk w={88}  h={28} r={7}  /></td>
                   </tr>
                 ))}
@@ -467,15 +521,34 @@ export default function Users() {
       <main className="admin-main">
 
         <div className="admin-page-header">
-          <button className="btn-purple" onClick={openAdd}>+ Add New User</button>
+          <button className="btn-purple" onClick={() => { setEditUser(null); setShowModal(true); }}>
+            + Add New User
+          </button>
         </div>
 
         <div className="admin-card">
 
-          {/* Tabs */}
-          <div className="admin-tabs">
-            <button className={`admin-tab${tab === 0 ? ' active' : ''}`} onClick={() => { setTab(0); setPage(1); }}>All Users</button>
-            <button className={`admin-tab${tab === 1 ? ' active' : ''}`} onClick={() => { setTab(1); setPage(1); }}>Doctors Users</button>
+          {/* Role filter tabs */}
+          <div className="admin-tabs" style={{ flexWrap: 'wrap', gap: 4 }}>
+            <button
+              className={`admin-tab${roleFilter === 'all' ? ' active' : ''}`}
+              onClick={() => { setRoleFilter('all'); setPage(1); }}
+            >
+              All ({users.length})
+            </button>
+            {ROLES.map(r => {
+              const count = users.filter(u => u.role === r).length;
+              if (count === 0) return null;
+              return (
+                <button
+                  key={r}
+                  className={`admin-tab${roleFilter === r ? ' active' : ''}`}
+                  onClick={() => { setRoleFilter(r); setPage(1); }}
+                >
+                  {roleLabel(r)} ({count})
+                </button>
+              );
+            })}
           </div>
 
           {/* Toolbar */}
@@ -487,8 +560,8 @@ export default function Users() {
               onChange={e => { setSearch(e.target.value); setPage(1); }}
             />
             <div className="view-toggle">
-              <button className={`view-btn${view === 'table' ? ' active' : ''}`} onClick={() => setView('table')} title="Table view">☰</button>
-              <button className={`view-btn${view === 'card'  ? ' active' : ''}`} onClick={() => setView('card')}  title="Card view">⊞</button>
+              <button className={`view-btn${view === 'table' ? ' active' : ''}`} onClick={() => setView('table')}>☰</button>
+              <button className={`view-btn${view === 'card'  ? ' active' : ''}`} onClick={() => setView('card')}>⊞</button>
             </div>
             <select className="rows-select" value={rows} onChange={e => { setRows(+e.target.value); setPage(1); }}>
               {ROWS_OPT.map(r => <option key={r} value={r}>{r} / page</option>)}
@@ -501,21 +574,13 @@ export default function Users() {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>#</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Photo</th>
-                    {!isDoctor && <th>User Type</th>}
-                    <th>Phone</th>
-                    <th>Gender</th>
-                    <th>City</th>
-                    {isDoctor && <th>Specialty</th>}
-                    <th>Actions</th>
+                    <th>#</th><th>Name</th><th>Email</th><th>Photo</th>
+                    <th>Role</th><th>Phone</th><th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {currentItems.length === 0 && (
-                    <tr><td colSpan={10} className="admin-empty">No users found</td></tr>
+                    <tr><td colSpan={7} className="admin-empty">No users found</td></tr>
                   )}
                   {currentItems.map((u, i) => (
                     <tr key={u._id}>
@@ -523,20 +588,21 @@ export default function Users() {
                       <td><strong>{u.name}</strong></td>
                       <td style={{ color: '#666' }}>{u.email}</td>
                       <td><PhotoCell u={u} /></td>
-                      {!isDoctor && <td><span className={ROLE_BADGE[u.role] || 'badge-role'}>{u.role?.replace('_', ' ')}</span></td>}
+                      <td>
+                        <span className={ROLE_BADGE[u.role] || 'badge-role'}>
+                          {u.role?.replace(/_/g, ' ')}
+                        </span>
+                      </td>
                       <td>{u.phone || '—'}</td>
-                      <td style={{ textTransform: 'capitalize' }}>{u.gender || '—'}</td>
-                      <td>{u.city || '—'}</td>
-                      {isDoctor && <td>{u.specialty || '—'}</td>}
                       <td>
                         <div className="action-btns">
-                          <button className="btn-action edit"     title="Edit"            onClick={() => openEdit(u)}><IconEdit /></button>
-                          <button className="btn-action password" title="Change password" onClick={() => openPass(u)}><IconPassword /></button>
+                          <button className="btn-action edit"     title="Edit"            onClick={() => { setEditUser(u); setShowModal(true); }}><IconEdit /></button>
+                          <button className="btn-action password" title="Change password" onClick={() => { setPassUserId(u._id); setShowPass(true); }}><IconPassword /></button>
                           <button className="btn-action lock"     title={u.locked ? 'Unlock' : 'Lock'} onClick={() => handleLock(u)}>
                             {u.locked ? <IconUnlock /> : <IconLock />}
                           </button>
                           {u._id !== me?._id && (
-                            <button className="btn-action delete" title="Delete" onClick={() => openDelete(u)}><IconDelete /></button>
+                            <button className="btn-action delete" title="Delete" onClick={() => setDeleteUser(u)}><IconDelete /></button>
                           )}
                         </div>
                       </td>
@@ -560,12 +626,12 @@ export default function Users() {
                       : <div className="user-card-initials">{u.initials || u.name?.[0] || '?'}</div>
                     }
                     <div className="user-card-name">{u.name}</div>
-                    <span className={ROLE_BADGE[u.role] || 'badge-role'}>{u.role?.replace('_', ' ')}</span>
-                    <div className="user-card-sub">{u.city || u.specialty || '—'}</div>
+                    <span className={ROLE_BADGE[u.role] || 'badge-role'}>{u.role?.replace(/_/g, ' ')}</span>
+                    <div className="user-card-sub">{u.city || '—'}</div>
                     <div className="user-card-actions">
-                      <button className="btn-action edit"   onClick={() => openEdit(u)}><IconEdit /></button>
+                      <button className="btn-action edit" onClick={() => { setEditUser(u); setShowModal(true); }}><IconEdit /></button>
                       {u._id !== me?._id && (
-                        <button className="btn-action delete" onClick={() => openDelete(u)}><IconDelete /></button>
+                        <button className="btn-action delete" onClick={() => setDeleteUser(u)}><IconDelete /></button>
                       )}
                     </div>
                   </div>
@@ -582,9 +648,7 @@ export default function Users() {
               <button className="pg-btn" disabled={page === 1} onClick={() => setPage(p => p - 1)}>‹</button>
               {Array.from({ length: totalPages }, (_, i) => i + 1)
                 .filter(n => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
-                .map(n => (
-                  <button key={n} className={`pg-btn${n === page ? ' active-pg' : ''}`} onClick={() => setPage(n)}>{n}</button>
-                ))
+                .map(n => <button key={n} className={`pg-btn${n === page ? ' active-pg' : ''}`} onClick={() => setPage(n)}>{n}</button>)
               }
               <button className="pg-btn" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>›</button>
               <button className="pg-btn" disabled={page === totalPages} onClick={() => setPage(totalPages)}>»</button>
@@ -594,15 +658,14 @@ export default function Users() {
         </div>
       </main>
 
-      {/* Modals */}
       {showModal && (
         <UserModal
           editUser={editUser}
           hospitals={hospitals}
-          doctors={doctors}
-          isDoctor={isDoctor}
+          supervisors={supervisors}
+          specialties={specialties}
           onSave={handleSave}
-          onClose={() => setShowModal(false)}
+          onClose={() => { setShowModal(false); setEditUser(null); }}
           saving={saving}
         />
       )}

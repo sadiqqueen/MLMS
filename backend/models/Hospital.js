@@ -14,6 +14,10 @@ const hospitalSchema = new mongoose.Schema(
     governorate:    { type: String, default: '' },
     dioId:          { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     presidentId:    { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    programDirector:{ type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    supervisors:    [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    phone:          { type: String, default: '' },
+    email:          { type: String, default: '' },
     isActive:       { type: Boolean, default: true }
   },
   { timestamps: true }

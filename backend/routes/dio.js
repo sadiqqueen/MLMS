@@ -16,6 +16,10 @@ function getHospital(user) {
   return user.hospitalId || user.hospital || null;
 }
 
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // GET /api/dio/stats
 // Dashboard statistics — scoped to this DIO's hospital
 router.get('/stats', auth, allowRoles(...DIO), async (req, res) => {
@@ -107,18 +111,32 @@ router.get('/stats', auth, allowRoles(...DIO), async (req, res) => {
 });
 
 // GET /api/dio/trainees
-router.get('/trainees', auth, allowRoles(...DIO), async (req, res) => {
+router.get('/trainees', auth, allowRoles(...DIO, 'professor'), async (req, res) => {
   try {
     const hospitalId = getHospital(req.user);
-    const query = { role: 'trainee', isActive: { $ne: false } };
+    const { search } = req.query;
+    const query = { role: { $in: ['trainee', 'student'] }, isActive: { $ne: false } };
     if (hospitalId) query.$or = [{ hospitalId }, { hospital: hospitalId }];
+    if (search) {
+      const rx = new RegExp(escapeRegex(search.slice(0, 100)), 'i');
+      const searchOr = [{ name: rx }, { studentId: rx }];
+      query.$and = [
+        ...(query.$or ? [{ $or: query.$or }] : []),
+        { $or: searchOr }
+      ];
+      delete query.$or;
+    }
 
     const trainees = await User.find(query)
-      .select('-password')
+      .select('name email studentId specialtyId hospitalId supervisorId supervisor initials photoUrl year specialty hospital')
       .populate('hospitalId',  'name city')
       .populate('hospital',    'name city')
       .populate('specialtyId', 'name')
+      .populate('supervisorId', 'name email')
+      .populate('supervisor', 'name email')
       .sort({ name: 1 });
+    if (search) trainees.splice(20);
+    else trainees.splice(200);
 
     res.json({ success: true, data: trainees });
   } catch (err) {
@@ -242,29 +260,50 @@ router.get('/certificates', auth, allowRoles(...DIO), async (req, res) => {
 // DIO issues a certificate for a trainee
 router.post('/certificates',
   auth,
-  allowRoles(...DIO),
+  allowRoles(...DIO, 'professor', 'super_admin'),
   auditLog('issue_certificate', 'Certificate'),
   async (req, res) => {
     try {
       const hospitalId = getHospital(req.user);
-      const payload = {
-        ...req.body,
-        issuedBy:   req.user._id,
-        hospital:   req.body.hospital || hospitalId,
-        verifyCode: uuidv4()
-      };
+      const { student, traineeId, issueDate, notes, type } = req.body;
+      const targetTrainee = student || traineeId;
+      const trainee = await User.findById(targetTrainee)
+        .populate('hospitalId', 'name')
+        .populate('supervisorId', 'name')
+        .populate('specialtyId', 'name');
 
-      const cert = await Certificate.create(payload);
+      if (!trainee) return res.status(404).json({ success: false, message: 'Trainee not found' });
+      const traineeHospital = trainee.hospitalId?._id || trainee.hospital;
+      if (req.user.role === 'dio' && hospitalId && traineeHospital?.toString() !== hospitalId.toString()) {
+        return res.status(403).json({ success: false, message: 'Trainee belongs to a different hospital' });
+      }
+
+      const cert = await Certificate.create({
+        ...req.body,
+        student: trainee._id,
+        traineeId: trainee._id,
+        hospital: traineeHospital || hospitalId,
+        supervisor: trainee.supervisorId?._id || trainee.supervisor,
+        doctor: trainee.supervisorId?._id || trainee.supervisor,
+        specialty: trainee.specialtyId?.name || trainee.specialty || '',
+        issuedBy: req.user._id,
+        issueDate: issueDate || new Date(),
+        notes: notes || '',
+        type: type || 'Completion',
+        verifyCode: uuidv4()
+      });
       const populated = await Certificate.findById(cert._id)
         .populate('student',   'name initials photoUrl studentId year')
         .populate('traineeId', 'name initials photoUrl studentId year')
+        .populate('supervisor', 'name email')
+        .populate('doctor', 'name email')
         .populate('hospital',  'name city')
         .populate('issuedBy',  'name');
 
-      const traineeId = cert.student || cert.traineeId;
-      if (traineeId) {
+      const certificateTraineeId = cert.student || cert.traineeId;
+      if (certificateTraineeId) {
         await Notification.create({
-          user:    traineeId,
+          user:    certificateTraineeId,
           message: 'A certificate has been issued for you by the DIO.'
         });
       }

@@ -12,7 +12,10 @@ function getHospital(user) {
 
 function buildQuery(user, role) {
   const hospitalId = getHospital(user);
-  const q = { role, isActive: { $ne: false } };
+  const q = {
+    role: { $in: Array.isArray(role) ? role : [role], $nin: ['super_admin'] },
+    isActive: { $ne: false }
+  };
   if (hospitalId) q.$or = [{ hospitalId }, { hospital: hospitalId }];
   return q;
 }

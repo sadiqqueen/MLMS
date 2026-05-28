@@ -13,6 +13,11 @@ const specialtySchema = new mongoose.Schema(
     weeklyReportPdf:  { type: String, default: '' },
     monthlyReportPdf: { type: String, default: '' },
     finalReportPdf:   { type: String, default: '' },
+    evaluationPdf1:   { type: String, default: '' },
+    evaluationPdf2:   { type: String, default: '' },
+    evaluationPdf3:   { type: String, default: '' },
+    evaluationPdf4:   { type: String, default: '' },
+    evaluationPdf5:   { type: String, default: '' },
     isActive:         { type: Boolean, default: true }
   },
   { timestamps: true }

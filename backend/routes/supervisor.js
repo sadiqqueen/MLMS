@@ -7,26 +7,57 @@ const Distribution   = require('../models/Distribution');
 const Report         = require('../models/Report');
 const Evaluation     = require('../models/Evaluation');
 const Notification   = require('../models/Notification');
+const User           = require('../models/User');
 
-const SUPERVISOR = ['supervisor'];
+const SUPERVISOR = ['supervisor', 'doctor'];
+
+async function getAssignedTraineeIds(supervisorId) {
+  const directTrainees = await User.find({
+    supervisorId,
+    role: { $in: ['trainee', 'student'] },
+    isActive: { $ne: false }
+  }).select('_id');
+
+  const distributions = await Distribution.find({
+    $or: [
+      { supervisorId },
+      { doctor: supervisorId }
+    ]
+  }).select('traineeId student');
+
+  return [
+    ...directTrainees.map(t => t._id),
+    ...distributions.map(d => d.traineeId).filter(Boolean),
+    ...distributions.map(d => d.student).filter(Boolean)
+  ].map(id => id.toString());
+}
+
+async function isAssignedTrainee(supervisorId, traineeId) {
+  if (!traineeId) return false;
+  const assigned = await getAssignedTraineeIds(supervisorId);
+  return assigned.includes(traineeId.toString());
+}
 
 // GET /api/supervisor/trainees
 // Returns all trainees assigned to this supervisor with their distribution info
 router.get('/trainees', auth, allowRoles(...SUPERVISOR), async (req, res) => {
   try {
-    const distributions = await Distribution.find({
-      $or: [
-        { supervisorId: req.user._id },
-        { doctor:       req.user._id }
-      ]
-    })
-      .populate('traineeId',  'name email initials photoUrl studentId year phone city')
+    const distributions = await Distribution.find({ supervisorId: req.user._id })
+      .populate({
+        path: 'traineeId',
+        match: { supervisorId: req.user._id, isActive: { $ne: false } },
+        select: 'name email studentId specialtyId hospitalId photoUrl initials year phone',
+        populate: [
+          { path: 'specialtyId', select: 'name' },
+          { path: 'hospitalId', select: 'name city' }
+        ]
+      })
+      .populate('supervisorId', 'name email')
       .populate('hospitalId', 'name city')
       .populate('specialtyId','name')
-      .populate('hospital',   'name city')
       .sort({ startDate: -1 });
 
-    res.json({ success: true, data: distributions });
+    res.json({ success: true, data: distributions.filter(d => d.traineeId) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -72,7 +103,7 @@ router.patch('/reports/:id',
   auditLog('review_report', 'Report'),
   async (req, res) => {
     try {
-      const { status, reviewNote } = req.body;
+      const { status, reviewNote, grade, globalRating, assessmentCriteria, assessorComments } = req.body;
       if (!['approved', 'rejected', 'graded'].includes(status)) {
         return res.status(400).json({ message: 'Status must be approved, rejected, or graded' });
       }
@@ -83,9 +114,16 @@ router.patch('/reports/:id',
       if (report.type === 'final') {
         return res.status(403).json({ message: 'Final reports can only be graded by the Program Director' });
       }
+      if (!(await isAssignedTrainee(req.user._id, report.student))) {
+        return res.status(403).json({ message: 'Access denied: report belongs to another supervisor' });
+      }
 
       report.status     = status;
       report.reviewNote = reviewNote || '';
+      if (grade !== undefined) report.grade = grade;
+      if (globalRating !== undefined) report.globalRating = globalRating;
+      if (assessmentCriteria !== undefined) report.assessmentCriteria = assessmentCriteria || {};
+      if (assessorComments !== undefined) report.assessorComments = assessorComments || '';
       report.reviewedBy = req.user._id;
       report.gradedBy   = req.user._id;
       report.gradedAt   = new Date();
@@ -104,6 +142,52 @@ router.patch('/reports/:id',
       res.json({ success: true, data: populated });
     } catch (err) {
       res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+// PATCH /api/supervisor/reports/:id/grade
+// Grade a weekly/monthly report. Final reports are reserved for program directors.
+router.patch('/reports/:id/grade',
+  auth,
+  allowRoles(...SUPERVISOR),
+  auditLog('grade_supervisor_report', 'Report'),
+  async (req, res) => {
+    try {
+      const report = await Report.findById(req.params.id);
+      if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
+      if (report.type === 'final') {
+        return res.status(403).json({ success: false, message: 'Supervisor cannot grade final reports' });
+      }
+      if (!(await isAssignedTrainee(req.user._id, report.student))) {
+        return res.status(403).json({ success: false, message: 'Access denied: report belongs to another supervisor' });
+      }
+
+      const { grade, globalRating, assessmentCriteria, assessorComments, reviewNote } = req.body;
+      report.grade = grade || report.grade;
+      if (globalRating !== undefined) report.globalRating = globalRating;
+      report.assessmentCriteria = assessmentCriteria || report.assessmentCriteria || {};
+      report.assessorComments = assessorComments || reviewNote || report.assessorComments || '';
+      report.reviewNote = reviewNote || assessorComments || report.reviewNote || '';
+      report.status = 'graded';
+      report.reviewedBy = req.user._id;
+      report.gradedBy = req.user._id;
+      report.gradedAt = new Date();
+      await report.save();
+
+      const populated = await Report.findById(report._id)
+        .populate('student', 'name initials photoUrl studentId')
+        .populate('hospital', 'name')
+        .populate('gradedBy', 'name initials');
+
+      await Notification.create({
+        user: report.student,
+        message: `Your ${report.type} report has been graded by your supervisor.`
+      });
+
+      res.json({ success: true, data: populated });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
     }
   }
 );
@@ -141,6 +225,21 @@ router.post('/evaluations',
 
       const targetTrainee = traineeId || req.body.student;
       if (!targetTrainee) return res.status(400).json({ message: 'traineeId is required' });
+      if (!(await isAssignedTrainee(req.user._id, targetTrainee))) {
+        return res.status(403).json({ success: false, message: 'Access denied: trainee is not assigned to this supervisor' });
+      }
+
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      const monthCount = await Evaluation.countDocuments({
+        $or: [{ student: targetTrainee }, { traineeId: targetTrainee }],
+        supervisorId: req.user._id,
+        date: { $gte: startOfMonth, $lte: endOfMonth }
+      });
+      if (monthCount >= 5) {
+        return res.status(400).json({ success: false, message: 'Monthly evaluation limit (5) reached for this trainee.' });
+      }
 
       // Calculate totalScore from scores object
       let totalScore = 0;

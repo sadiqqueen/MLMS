@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
 import api    from '../api/axios';
@@ -41,18 +42,36 @@ function ConfirmDelete({ name, onConfirm, onCancel }) {
   );
 }
 
-function TraineeModal({ editTrainee, onSave, onClose, saving }) {
-  const empty = { name: '', email: '', password: '', phone: '', gender: '', city: '', year: '', studentId: '' };
+function TraineeModal({ editTrainee, hospitals, supervisors, secretarySpecialty, onSave, onClose, saving }) {
+  const specId   = secretarySpecialty?._id || secretarySpecialty || '';
+  const specName = secretarySpecialty?.name || '';
+
+  const empty = {
+    name: '', email: '', password: '', phone: '', gender: '', city: '',
+    year: '', studentId: '', hospitalId: '', supervisorId: '',
+    specialtyId: specId,
+  };
+
   const [form, setForm] = useState(editTrainee ? {
-    name:      editTrainee.name      || '',
-    email:     editTrainee.email     || '',
-    phone:     editTrainee.phone     || '',
-    gender:    editTrainee.gender    || '',
-    city:      editTrainee.city      || '',
-    year:      editTrainee.year      || '',
-    studentId: editTrainee.studentId || '',
+    name:        editTrainee.name        || '',
+    email:       editTrainee.email       || '',
+    phone:       editTrainee.phone       || '',
+    gender:      editTrainee.gender      || '',
+    city:        editTrainee.city        || '',
+    year:        editTrainee.year        || '',
+    studentId:   editTrainee.studentId   || '',
+    hospitalId:  editTrainee.hospitalId?._id   || editTrainee.hospitalId   || '',
+    supervisorId:editTrainee.supervisorId?._id  || editTrainee.supervisorId  || '',
+    specialtyId: editTrainee.specialtyId?._id  || editTrainee.specialtyId  || specId,
   } : empty);
+
   const [errors, setErrors] = useState({});
+
+  const filteredSups = supervisors.filter(s => {
+    if (!specId) return true;
+    const sid = (s.specialtyId?._id || s.specialtyId || '')?.toString();
+    return sid === specId.toString();
+  });
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: false })); }
 
@@ -60,7 +79,7 @@ function TraineeModal({ editTrainee, onSave, onClose, saving }) {
     const e = {};
     if (!form.name.trim())  e.name  = true;
     if (!form.email.trim()) e.email = true;
-    if (!editTrainee && form.password.length < 6) e.password = true;
+    if (!editTrainee && (!form.password || form.password.length < 6)) e.password = true;
     setErrors(e);
     return !Object.keys(e).length;
   }
@@ -101,7 +120,7 @@ function TraineeModal({ editTrainee, onSave, onClose, saving }) {
             {!editTrainee && (
               <div className="admin-field">
                 <label>Password *</label>
-                <input className={errors.password ? 'invalid' : ''} type="password" value={form.password}
+                <input className={errors.password ? 'invalid' : ''} type="password" value={form.password || ''}
                   onChange={e => set('password', e.target.value)} placeholder="Min. 6 characters" />
                 {errors.password && <span style={{ fontSize: 11, color: '#e74c3c' }}>At least 6 characters required</span>}
               </div>
@@ -118,6 +137,46 @@ function TraineeModal({ editTrainee, onSave, onClose, saving }) {
                 <option value="">— Select year —</option>
                 {[1,2,3,4,5,6].map(y => <option key={y} value={y}>Year {y}</option>)}
               </select>
+            </div>
+
+            <div className="admin-field">
+              <label>Specialty</label>
+              {specName ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 6 }}>
+                  <span style={{
+                    fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 20,
+                    background: '#EEEDFE', color: '#1B1464'
+                  }}>{specName}</span>
+                  <span style={{ fontSize: 11, color: '#8B8FA8' }}>(auto-set)</span>
+                </div>
+              ) : (
+                <span style={{ fontSize: 12, color: '#8B8FA8', paddingTop: 6, display: 'block' }}>
+                  No specialty assigned to your account
+                </span>
+              )}
+            </div>
+
+            <div className="admin-field">
+              <label>Hospital</label>
+              <select value={form.hospitalId} onChange={e => set('hospitalId', e.target.value)}>
+                <option value="">— Select hospital —</option>
+                {hospitals.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
+              </select>
+            </div>
+
+            <div className="admin-field">
+              <label>Supervisor</label>
+              <select value={form.supervisorId} onChange={e => set('supervisorId', e.target.value)}>
+                <option value="">— Select supervisor —</option>
+                {filteredSups.map(s => (
+                  <option key={s._id} value={s._id}>{s.name}</option>
+                ))}
+              </select>
+              {specName && filteredSups.length === 0 && (
+                <span style={{ fontSize: 11, color: '#8B8FA8', marginTop: 3, display: 'block' }}>
+                  No supervisors found for {specName}
+                </span>
+              )}
             </div>
 
             <div className="admin-field">
@@ -152,9 +211,10 @@ function TraineeModal({ editTrainee, onSave, onClose, saving }) {
   );
 }
 
-function RotationModal({ trainees, supervisors, onSave, onClose, saving }) {
+function RotationModal({ trainees, supervisors, hospitals, onSave, onClose, saving }) {
   const [form, setForm] = useState({
     traineeId:     '',
+    hospitalId:    '',
     supervisorId:  '',
     startDate:     '',
     endDate:       '',
@@ -162,11 +222,30 @@ function RotationModal({ trainees, supervisors, onSave, onClose, saving }) {
   });
   const [errors, setErrors] = useState({});
 
-  function set(k, v) { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: false })); }
+  const selectedTrainee     = trainees.find(t => t._id === form.traineeId);
+  const traineeSpecialtyId  = selectedTrainee
+    ? (selectedTrainee.specialtyId?._id || selectedTrainee.specialtyId || '')?.toString()
+    : '';
+
+  const filteredSups = supervisors.filter(s => {
+    if (!traineeSpecialtyId) return true;
+    const sid = (s.specialtyId?._id || s.specialtyId || '')?.toString();
+    return sid === traineeSpecialtyId;
+  });
+
+  function set(k, v) {
+    setForm(f => {
+      const next = { ...f, [k]: v };
+      if (k === 'traineeId') next.supervisorId = '';
+      return next;
+    });
+    setErrors(e => ({ ...e, [k]: false }));
+  }
 
   function validate() {
     const e = {};
     if (!form.traineeId)     e.traineeId     = true;
+    if (!form.hospitalId)    e.hospitalId    = true;
     if (!form.supervisorId)  e.supervisorId  = true;
     if (!form.startDate)     e.startDate     = true;
     if (!form.endDate)       e.endDate       = true;
@@ -215,7 +294,25 @@ function RotationModal({ trainees, supervisors, onSave, onClose, saving }) {
 
           <div style={{ marginBottom: 14 }}>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 5 }}>
-              Supervisor *
+              Hospital *
+            </label>
+            <select
+              className={errors.hospitalId ? 'invalid admin-search' : 'admin-search'}
+              style={{ width: '100%' }}
+              value={form.hospitalId}
+              onChange={e => set('hospitalId', e.target.value)}
+            >
+              <option value="">— Select hospital —</option>
+              {hospitals.map(h => (
+                <option key={h._id} value={h._id}>{h.name}</option>
+              ))}
+            </select>
+            {errors.hospitalId && <div style={{ fontSize: 11, color: '#DC2626', marginTop: 3 }}>Required</div>}
+          </div>
+
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 5 }}>
+              Supervisor *{form.traineeId ? ' (filtered by trainee specialty)' : ''}
             </label>
             <select
               className={errors.supervisorId ? 'invalid admin-search' : 'admin-search'}
@@ -224,11 +321,16 @@ function RotationModal({ trainees, supervisors, onSave, onClose, saving }) {
               onChange={e => set('supervisorId', e.target.value)}
             >
               <option value="">— Select supervisor —</option>
-              {supervisors.map(s => (
-                <option key={s._id} value={s._id}>{s.name}{s.specialty ? ` · ${s.specialty}` : ''}</option>
+              {filteredSups.map(s => (
+                <option key={s._id} value={s._id}>{s.name}</option>
               ))}
             </select>
             {errors.supervisorId && <div style={{ fontSize: 11, color: '#DC2626', marginTop: 3 }}>Required</div>}
+            {form.traineeId && filteredSups.length === 0 && (
+              <div style={{ fontSize: 11, color: '#8B8FA8', marginTop: 3 }}>
+                No supervisors match this trainee's specialty
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
@@ -293,8 +395,10 @@ function RotationModal({ trainees, supervisors, onSave, onClose, saving }) {
 }
 
 export default function SecretaryTrainees() {
+  const { user: me }    = useAuth();
   const [trainees,      setTrainees     ] = useState([]);
   const [supervisors,   setSupervisors  ] = useState([]);
+  const [hospitals,     setHospitals    ] = useState([]);
   const [distributions, setDistributions] = useState([]);
   const [loading,       setLoading      ] = useState(true);
   const [search,        setSearch       ] = useState('');
@@ -305,6 +409,8 @@ export default function SecretaryTrainees() {
   const [delTrainee,    setDelTrainee   ] = useState(null);
   const [saving,        setSaving       ] = useState(false);
   const [toasts,        setToasts       ] = useState([]);
+
+  const secretarySpecialty = me?.specialtyId || null;
 
   function showToast(message, type = 'success') {
     const id = Date.now();
@@ -317,10 +423,12 @@ export default function SecretaryTrainees() {
       api.get('/api/secretary/trainees'),
       api.get('/api/secretary/supervisors'),
       api.get('/api/secretary/distributions'),
-    ]).then(([tRes, sRes, dRes]) => {
+      api.get('/api/hospitals'),
+    ]).then(([tRes, sRes, dRes, hRes]) => {
       setTrainees(     tRes.data?.data || tRes.data || []);
       setSupervisors(  sRes.data?.data || sRes.data || []);
       setDistributions(dRes.data?.data || dRes.data || []);
+      setHospitals(    hRes.data?.data || hRes.data || []);
     }).catch(() => showToast('Failed to load data', 'error'))
       .finally(() => setLoading(false));
   }, []);
@@ -528,14 +636,14 @@ export default function SecretaryTrainees() {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>#</th><th>Trainee</th><th>Supervisor</th>
+                    <th>#</th><th>Trainee</th><th>Hospital</th><th>Supervisor</th>
                     <th>Start</th><th>End</th><th>Duration</th><th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredDists.length === 0 && (
                     <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#8B8FA8' }}>
+                      <td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#8B8FA8' }}>
                         <div style={{ fontSize: 32, marginBottom: 8 }}>📅</div>
                         <div style={{ fontSize: 15, fontWeight: 600, color: '#4B5563', marginBottom: 4 }}>
                           {distributions.length === 0 ? 'No rotations assigned yet' : 'No rotations match your search'}
@@ -547,8 +655,9 @@ export default function SecretaryTrainees() {
                     </tr>
                   )}
                   {filteredDists.map((d, i) => {
-                    const trainee    = d.traineeId   || d.student || {};
-                    const supervisor = d.supervisorId || d.doctor  || {};
+                    const trainee    = d.traineeId    || d.student  || {};
+                    const supervisor = d.supervisorId  || d.doctor   || {};
+                    const hospital   = d.hospitalId    || {};
                     const status     = d.status || 'active';
                     const statusColor = status === 'active' ? '#059669' : status === 'completed' ? '#1B1464' : '#D97706';
                     const statusBg    = status === 'active' ? '#D1FAE5' : status === 'completed' ? '#EEEDFE'  : '#FEF3C7';
@@ -564,6 +673,7 @@ export default function SecretaryTrainees() {
                             </div>
                           </div>
                         </td>
+                        <td style={{ fontSize: 13, color: '#4B5563' }}>{hospital.name || '—'}</td>
                         <td style={{ fontSize: 13, color: '#4B5563' }}>{supervisor.name || '—'}</td>
                         <td style={{ fontSize: 13, color: '#4B5563' }}>{fmtDate(d.startDate)}</td>
                         <td style={{ fontSize: 13, color: '#4B5563' }}>{fmtDate(d.endDate)}</td>
@@ -591,6 +701,9 @@ export default function SecretaryTrainees() {
         {showModal && (
           <TraineeModal
             editTrainee={editTrainee}
+            hospitals={hospitals}
+            supervisors={supervisors}
+            secretarySpecialty={secretarySpecialty}
             onSave={handleSaveTrainee}
             onClose={() => { setShowModal(false); setEditTrainee(null); }}
             saving={saving}
@@ -601,6 +714,7 @@ export default function SecretaryTrainees() {
           <RotationModal
             trainees={trainees}
             supervisors={supervisors}
+            hospitals={hospitals}
             onSave={handleSaveRotation}
             onClose={() => setShowRotModal(false)}
             saving={saving}

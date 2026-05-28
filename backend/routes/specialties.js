@@ -1,6 +1,9 @@
 // backend/routes/specialties.js
 // Mounted at /api/specialties in server.js.
 const router         = require('express').Router();
+const fs             = require('fs');
+const multer         = require('multer');
+const path           = require('path');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const auditLog       = require('../middleware/auditLogger');
@@ -9,6 +12,46 @@ const Specialty      = require('../models/Specialty');
 // Any authenticated user may list specialties (needed for dropdowns)
 const READ_ROLES  = ['super_admin', 'secretary', 'dio', 'supervisor', 'trainee', 'president', 'program_director'];
 const WRITE_ROLES = ['super_admin', 'dio'];
+
+const uploadsDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, unique + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ok = path.extname(file.originalname).toLowerCase() === '.pdf'
+            && file.mimetype === 'application/pdf';
+    ok ? cb(null, true) : cb(new Error('Only PDF files are allowed'));
+  }
+});
+
+async function uploadSpecialtyPdf(req, res, field) {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+    const fileUrl = `/uploads/${req.file.filename}`;
+    const specialty = await Specialty.findByIdAndUpdate(
+      req.params.id,
+      { [field]: fileUrl },
+      { new: true, runValidators: true }
+    )
+      .populate('hospitalId', 'name city')
+      .populate('secretaryId', 'name email');
+
+    if (!specialty) return res.status(404).json({ message: 'Specialty not found' });
+    res.json({ success: true, data: specialty });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
 
 // GET /api/specialties
 router.get('/', auth, allowRoles(...READ_ROLES), async (req, res) => {
@@ -81,6 +124,46 @@ router.patch('/:id',
     }
   }
 );
+
+// POST /api/specialties/:id/upload-weekly
+router.post('/:id/upload-weekly', auth, allowRoles(...WRITE_ROLES), upload.single('file'), (req, res) => {
+  uploadSpecialtyPdf(req, res, 'weeklyReportPdf');
+});
+
+// POST /api/specialties/:id/upload-monthly
+router.post('/:id/upload-monthly', auth, allowRoles(...WRITE_ROLES), upload.single('file'), (req, res) => {
+  uploadSpecialtyPdf(req, res, 'monthlyReportPdf');
+});
+
+// POST /api/specialties/:id/upload-final
+router.post('/:id/upload-final', auth, allowRoles(...WRITE_ROLES), upload.single('file'), (req, res) => {
+  uploadSpecialtyPdf(req, res, 'finalReportPdf');
+});
+
+// POST /api/specialties/:id/upload-eval1
+router.post('/:id/upload-eval1', auth, allowRoles(...WRITE_ROLES), upload.single('file'), (req, res) => {
+  uploadSpecialtyPdf(req, res, 'evaluationPdf1');
+});
+
+// POST /api/specialties/:id/upload-eval2
+router.post('/:id/upload-eval2', auth, allowRoles(...WRITE_ROLES), upload.single('file'), (req, res) => {
+  uploadSpecialtyPdf(req, res, 'evaluationPdf2');
+});
+
+// POST /api/specialties/:id/upload-eval3
+router.post('/:id/upload-eval3', auth, allowRoles(...WRITE_ROLES), upload.single('file'), (req, res) => {
+  uploadSpecialtyPdf(req, res, 'evaluationPdf3');
+});
+
+// POST /api/specialties/:id/upload-eval4
+router.post('/:id/upload-eval4', auth, allowRoles(...WRITE_ROLES), upload.single('file'), (req, res) => {
+  uploadSpecialtyPdf(req, res, 'evaluationPdf4');
+});
+
+// POST /api/specialties/:id/upload-eval5
+router.post('/:id/upload-eval5', auth, allowRoles(...WRITE_ROLES), upload.single('file'), (req, res) => {
+  uploadSpecialtyPdf(req, res, 'evaluationPdf5');
+});
 
 // DELETE /api/specialties/:id — soft delete (super_admin only)
 router.delete('/:id',

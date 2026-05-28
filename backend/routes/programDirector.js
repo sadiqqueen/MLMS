@@ -21,7 +21,7 @@ router.get('/trainees', auth, allowRoles(...PD), async (req, res) => {
     const hospitalId = getHospital(req.user);
 
     const trainees = await User.find({
-      role:     'trainee',
+      role:     { $in: ['trainee', 'student'] },
       $or:      [{ hospitalId }, { hospital: hospitalId }],
       isActive: { $ne: false }
     })
@@ -29,6 +29,7 @@ router.get('/trainees', auth, allowRoles(...PD), async (req, res) => {
       .populate('hospitalId',  'name city')
       .populate('hospital',    'name city')
       .populate('specialtyId', 'name')
+      .populate('supervisorId', 'name')
       .sort({ name: 1 });
 
     const traineeIds = trainees.map(t => t._id);
@@ -38,8 +39,9 @@ router.get('/trainees', auth, allowRoles(...PD), async (req, res) => {
         { hospitalId }
       ]
     })
+      .populate('traineeId', 'name email studentId')
       .populate('specialtyId',  'name')
-      .populate('supervisorId', 'name')
+      .populate('supervisorId', 'name email')
       .sort({ startDate: -1 });
 
     res.json({ success: true, data: { trainees, distributions } });
@@ -55,7 +57,7 @@ router.get('/supervisors', auth, allowRoles(...PD), async (req, res) => {
     const hospitalId = getHospital(req.user);
 
     const supervisors = await User.find({
-      role:     'supervisor',
+      role:     { $in: ['supervisor', 'doctor'] },
       $or:      [{ hospitalId }, { hospital: hospitalId }],
       isActive: { $ne: false }
     })
@@ -95,7 +97,7 @@ router.get('/reports', auth, allowRoles(...PD), async (req, res) => {
     const hospitalId = getHospital(req.user);
 
     const trainees = await User.find({
-      role: 'trainee',
+      role: { $in: ['trainee', 'student'] },
       $or:  [{ hospitalId }, { hospital: hospitalId }]
     }).select('_id');
     const traineeIds = trainees.map(t => t._id);
@@ -130,7 +132,14 @@ router.patch('/reports/:id/grade',
       const report = await Report.findById(req.params.id);
       if (!report) return res.status(404).json({ message: 'Report not found' });
       if (report.type !== 'final') {
-        return res.status(400).json({ message: 'Only final reports can be graded by the Program Director' });
+        return res.status(403).json({ success: false, message: 'Program Director can only grade final reports' });
+      }
+      const trainee = await User.findOne({
+        _id: report.student,
+        $or: [{ hospitalId: getHospital(req.user) }, { hospital: getHospital(req.user) }]
+      });
+      if (!trainee) {
+        return res.status(403).json({ success: false, message: 'Report belongs to a trainee outside this hospital' });
       }
 
       report.grade              = grade || (globalRating === 'competent' ? 'Competent' : 'Not-Competent');
