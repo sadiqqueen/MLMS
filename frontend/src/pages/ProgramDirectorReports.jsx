@@ -574,7 +574,7 @@ export default function ProgramDirectorReports() {
                         <div>
                           <strong>{r.student?.name || '—'}</strong>
                           {r.student?.studentId && (
-                            <div style={{ fontSize:11, color:'#8B8FA8' }}>IMA: {r.student.studentId}</div>
+                            <div style={{ fontSize:11, color:'#8B8FA8' }}>ID: {r.student.studentId}</div>
                           )}
                         </div>
                       </div>

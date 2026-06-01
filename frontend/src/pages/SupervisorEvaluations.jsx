@@ -154,7 +154,7 @@ function EvalModal({ item, evals, specialty, onClose, onSubmitted, onFinalized, 
             <div>
               <div style={{ fontSize:16, fontWeight:700, color:'#1B1464' }}>{trainee.name || '—'}</div>
               <div style={{ fontSize:12, color:'#8B8FA8' }}>
-                {trainee.studentId ? `IMA: ${trainee.studentId}` : ''} · Evaluations
+                {trainee.studentId ? `ID: ${trainee.studentId}` : ''} · Evaluations
               </div>
             </div>
           </div>
@@ -624,7 +624,7 @@ export default function SupervisorEvaluations() {
                     {trainee.name || '—'}
                   </div>
                   <div style={{ fontSize:12, color:'#8B8FA8' }}>
-                    {trainee.studentId ? `IMA: ${trainee.studentId} · ` : ''}
+                    {trainee.studentId ? `ID: ${trainee.studentId} · ` : ''}
                     {count} evaluation{count !== 1 ? 's' : ''} total · {monthCount}/{MONTHLY_CAP} this month
                   </div>
                 </div>

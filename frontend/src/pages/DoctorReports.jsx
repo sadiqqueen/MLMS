@@ -499,7 +499,7 @@ export default function DoctorReports() {
                         <div>
                           <strong>{r.student?.name || '—'}</strong>
                           {r.student?.studentId && (
-                            <div style={{ fontSize: 11, color: '#888' }}>IMA: {r.student.studentId}</div>
+                            <div style={{ fontSize: 11, color: '#888' }}>ID: {r.student.studentId}</div>
                           )}
                         </div>
                       </div>

@@ -153,7 +153,7 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px 20px' }}>
               {[
                 ['Name',            report.student?.name || '—'],
-                ['IMA / Student ID',report.student?.studentId || '—'],
+                ['Student ID',       report.student?.studentId || '—'],
                 ['Date Submitted',  fmtDate(report.date)],
                 ['Hospital',        report.hospital?.name || '—'],
                 ['Rotation Period', rotaStr],
@@ -566,7 +566,7 @@ export default function SupervisorReports() {
                         <div>
                           <strong>{r.student?.name || '—'}</strong>
                           {r.student?.studentId && (
-                            <div style={{ fontSize:11, color:'#8B8FA8' }}>IMA: {r.student.studentId}</div>
+                            <div style={{ fontSize:11, color:'#8B8FA8' }}>ID: {r.student.studentId}</div>
                           )}
                         </div>
                       </div>

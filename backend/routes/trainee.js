@@ -19,10 +19,13 @@ router.get('/timeline', auth, allowRoles(...TRAINEE), scopeGuard(), async (req, 
       .populate('hospitalId',   'name city')
       .sort({ startDate: 1 });
 
-    // Also support legacy field
-    const legacy = await Distribution.find({ doctor: req.user._id })
-      .populate('doctor',   'name specialty initials photoUrl')
-      .populate('hospital', 'name city')
+    // Also support legacy field (V1 used 'student' for the trainee reference)
+    const legacy = await Distribution.find({ student: req.user._id })
+      .populate('supervisorId', 'name specialty initials photoUrl')
+      .populate('doctor',       'name specialty initials photoUrl')
+      .populate('specialtyId',  'name')
+      .populate('hospitalId',   'name city')
+      .populate('hospital',     'name city')
       .sort({ startDate: 1 });
 
     const combined = distributions.length ? distributions : legacy;

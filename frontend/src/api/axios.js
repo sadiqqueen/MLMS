@@ -8,12 +8,20 @@ export function setAccessToken(token) {
 
 function toSafeUser(userData) {
   return userData ? {
-    _id:      userData._id,
-    name:     userData.name,
-    email:    userData.email,
-    role:     userData.role,
-    initials: userData.initials,
-    photoUrl: userData.photoUrl,
+    _id:         userData._id,
+    name:        userData.name,
+    email:       userData.email,
+    role:        userData.role,
+    initials:    userData.initials,
+    photoUrl:    userData.photoUrl,
+    hospital:    userData.hospital,
+    hospitalId:  userData.hospitalId,
+    specialtyId: userData.specialtyId,
+    specialty:   userData.specialty,
+    studentId:   userData.studentId,
+    year:        userData.year,
+    department:  userData.department,
+    phone:       userData.phone,
   } : null;
 }
 
@@ -42,7 +50,12 @@ api.interceptors.response.use(
   async error => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Don't intercept auth endpoints — login errors must surface to the UI
+    const isAuthEndpoint = originalRequest.url?.includes('/api/auth/login')
+      || originalRequest.url?.includes('/api/auth/refresh')
+      || originalRequest.url?.includes('/api/auth/logout');
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
       try {
         const res = await axios.post('/api/auth/refresh', {}, { withCredentials: true });
@@ -63,7 +76,7 @@ api.interceptors.response.use(
       }
     }
 
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       const hadSession = !!accessToken || !!localStorage.getItem('user');
       setAccessToken(null);
       localStorage.removeItem('user');
