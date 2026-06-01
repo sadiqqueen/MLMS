@@ -5,9 +5,18 @@ const rateLimit = require('express-rate-limit');
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Too many login attempts. Please try again in 15 minutes.' }
+});
+
+const refreshLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many refresh requests. Please try again shortly.' }
 });
 
 // Applied globally to all routes — 200 requests per minute per IP
@@ -27,4 +36,4 @@ const writeLimiter = rateLimit({
   message: { success: false, message: 'Too many write requests' }
 });
 
-module.exports = { loginLimiter, globalLimiter, writeLimiter };
+module.exports = { loginLimiter, refreshLimiter, globalLimiter, writeLimiter };

@@ -22,11 +22,12 @@ export default function Profile() {
   useEffect(() => {
     if (!user) return;
     const calls = [api.get('/api/auth/me')];
-    if (user.role === 'student') calls.push(api.get(`/api/rotations/current/${user._id}`));
+    if (['student', 'trainee'].includes(user.role)) calls.push(api.get(`/api/rotations/current/${user._id}`));
     Promise.all(calls)
       .then(([meRes, rotRes]) => {
-        setProfile(meRes.data);
-        setPhotoUrl(meRes.data?.photoUrl || null);
+        const me = meRes.data?.data || meRes.data;
+        setProfile(me);
+        setPhotoUrl(me?.photoUrl || null);
         if (rotRes) setCurrentHospital(rotRes.data?.hospital?.name || null);
       })
       .finally(() => setLoading(false));
@@ -82,9 +83,7 @@ export default function Profile() {
   const p = profile || user;
 
   function hospitalName() {
-    if (p?.role === 'doctor')  return p.hospital?.name || '—';
-    if (p?.role === 'student') return currentHospital  || '—';
-    return p?.hospital?.name || '—';
+    return p?.hospitalId?.name || p?.hospital?.name || currentHospital || '—';
   }
 
   function roleLabel(role) {
@@ -93,15 +92,18 @@ export default function Profile() {
   }
 
   function roleExtra() {
-    if (p?.role === 'doctor')    return { label: 'Hospital',   value: hospitalName() };
-    if (p?.role === 'student')   return { label: 'Hospital',   value: hospitalName() };
-    if (p?.role === 'professor') return { label: 'Department', value: p?.department || '—' };
+    if (['doctor', 'supervisor', 'student', 'trainee', 'program_director', 'secretary', 'dio'].includes(p?.role)) {
+      return { label: 'Hospital', value: hospitalName() };
+    }
+    if (['professor', 'president', 'director'].includes(p?.role)) {
+      return { label: 'Department', value: p?.department || '—' };
+    }
     return { label: 'Role', value: roleLabel(p?.role) };
   }
   const extra = roleExtra();
 
-  const showHospital  = ['doctor', 'student'].includes(p?.role);
-  const showSpecialty = ['doctor', 'student'].includes(p?.role);
+  const showHospital  = ['doctor', 'supervisor', 'student', 'trainee', 'program_director', 'secretary', 'dio'].includes(p?.role);
+  const showSpecialty = ['doctor', 'supervisor', 'student', 'trainee', 'program_director', 'secretary'].includes(p?.role);
 
   const infoRows = [
     ['Full name',  p?.name],
@@ -110,7 +112,7 @@ export default function Profile() {
     ['ID number',  p?.studentId],
     ...(showHospital  ? [['Hospital',  hospitalName()]] : []),
     ['City',       p?.city || p?.hospital?.city],
-    ...(showSpecialty ? [['Specialty', p?.specialty]]   : []),
+    ...(showSpecialty ? [['Specialty', p?.specialtyId?.name || p?.specialty]]   : []),
     ['Role',       roleLabel(p?.role)],
   ];
 
@@ -140,8 +142,8 @@ export default function Profile() {
       setPwError('New password and confirm password do not match.');
       return;
     }
-    if (pwForm.next.length < 6) {
-      setPwError('New password must be at least 6 characters.');
+    if (pwForm.next.length < 8) {
+      setPwError('New password must be at least 8 characters.');
       return;
     }
     setPwBusy(true);

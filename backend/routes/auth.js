@@ -5,7 +5,7 @@ const path        = require('path');
 const multer      = require('multer');
 const User        = require('../models/User');
 const auth        = require('../middleware/auth');
-const { loginLimiter } = require('../middleware/rateLimiter');
+const { loginLimiter, refreshLimiter } = require('../middleware/rateLimiter');
 
 const photoStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, path.join(__dirname, '../uploads')),
@@ -102,7 +102,7 @@ router.post('/login', loginLimiter, async (req, res) => {
 });
 
 // ── POST /api/auth/refresh ────────────────────────────────────────────────
-router.post('/refresh', loginLimiter, async (req, res) => {
+router.post('/refresh', refreshLimiter, async (req, res) => {
   try {
     const refreshToken = req.cookies?.refreshToken;
     if (!refreshToken) return res.status(401).json({ message: 'No refresh token' });
