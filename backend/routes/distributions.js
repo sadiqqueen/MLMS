@@ -1,9 +1,10 @@
 const router         = require('express').Router();
+const mongoose       = require('mongoose');
 const Distribution   = require('../models/Distribution');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 
-const STAFF = ['admin', 'super_admin', 'professor'];
+const STAFF = ['admin', 'super_admin', 'professor', 'secretary', 'dio'];
 
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -13,11 +14,30 @@ function escapeRegex(str) {
 router.get('/', auth, allowRoles(...STAFF), async (req, res) => {
   try {
     const query = {};
-    if (req.query.hospital)  query.hospital  = req.query.hospital;
-    if (req.query.specialty) query.specialty  = new RegExp(escapeRegex(req.query.specialty.slice(0, 100)), 'i');
+    const and = [];
+    if (req.query.hospital) {
+      const hospitalMatch = [{ hospital: req.query.hospital }];
+      if (mongoose.Types.ObjectId.isValid(req.query.hospital)) {
+        hospitalMatch.push({ hospitalId: req.query.hospital });
+      }
+      and.push({ $or: hospitalMatch });
+    }
+    if (req.query.specialty) {
+      const safeSpecialty = new RegExp(escapeRegex(req.query.specialty.slice(0, 100)), 'i');
+      const specialtyMatch = [{ specialty: safeSpecialty }];
+      if (mongoose.Types.ObjectId.isValid(req.query.specialty)) {
+        specialtyMatch.push({ specialtyId: req.query.specialty });
+      }
+      and.push({ $or: specialtyMatch });
+    }
     if (req.query.status)    query.status     = req.query.status;
+    if (and.length) query.$and = and;
 
     const distributions = await Distribution.find(query)
+      .populate('traineeId', 'name email studentId photoUrl initials')
+      .populate('supervisorId', 'name specialty photoUrl initials')
+      .populate('specialtyId', 'name')
+      .populate('hospitalId', 'name city')
       .populate('doctor',   'name specialty photoUrl initials')
       .populate('hospital', 'name city')
       .sort({ createdAt: -1 });
@@ -38,6 +58,10 @@ router.post('/', auth, allowRoles(...STAFF), async (req, res) => {
 
     const dist      = await Distribution.create(data);
     const populated = await Distribution.findById(dist._id)
+      .populate('traineeId', 'name email studentId photoUrl initials')
+      .populate('supervisorId', 'name specialty photoUrl initials')
+      .populate('specialtyId', 'name')
+      .populate('hospitalId', 'name city')
       .populate('doctor',   'name specialty photoUrl initials')
       .populate('hospital', 'name city');
     res.status(201).json(populated);
@@ -55,6 +79,10 @@ router.put('/:id', auth, allowRoles(...STAFF), async (req, res) => {
     UPDATE_ALLOWED.forEach(k => { if (req.body[k] !== undefined) updates[k] = req.body[k]; });
 
     const dist = await Distribution.findByIdAndUpdate(req.params.id, updates, { new: true })
+      .populate('traineeId', 'name email studentId photoUrl initials')
+      .populate('supervisorId', 'name specialty photoUrl initials')
+      .populate('specialtyId', 'name')
+      .populate('hospitalId', 'name city')
       .populate('doctor',   'name specialty photoUrl initials')
       .populate('hospital', 'name city');
     if (!dist) return res.status(404).json({ message: 'Distribution not found' });
@@ -66,9 +94,13 @@ router.put('/:id', auth, allowRoles(...STAFF), async (req, res) => {
 
 router.delete('/:id', auth, allowRoles(...STAFF), async (req, res) => {
   try {
-    const dist = await Distribution.findByIdAndDelete(req.params.id);
+    const dist = await Distribution.findByIdAndUpdate(
+      req.params.id,
+      { status: 'cancelled' },
+      { new: true }
+    );
     if (!dist) return res.status(404).json({ message: 'Distribution not found' });
-    res.json({ message: 'Deleted' });
+    res.json({ message: 'Distribution cancelled', data: dist });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

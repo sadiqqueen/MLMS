@@ -42,6 +42,7 @@ const userSchema = new mongoose.Schema(
     specialtyId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Specialty', default: null },
     universityId:  { type: mongoose.Schema.Types.ObjectId, ref: 'University' },
     isActive:      { type: Boolean, default: true },
+    deletedAt:     { type: Date, default: null },
     lastLogin:     { type: Date },
     loginAttempts: { type: Number, default: 0 },
     lockUntil:     { type: Date, default: null }

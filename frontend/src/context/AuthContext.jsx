@@ -16,6 +16,14 @@ export function AuthProvider({ children }) {
     role:     userData.role,
     initials: userData.initials,
     photoUrl: userData.photoUrl,
+    hospital: userData.hospital,
+    hospitalId: userData.hospitalId,
+    specialtyId: userData.specialtyId,
+    specialty: userData.specialty,
+    studentId: userData.studentId,
+    year: userData.year,
+    department: userData.department,
+    phone: userData.phone,
   } : null;
 
   useEffect(() => {

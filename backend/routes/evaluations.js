@@ -4,9 +4,9 @@ const Notification   = require('../models/Notification');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 
-const STAFF       = ['admin', 'super_admin', 'professor'];
-const SENIOR      = ['super_admin', 'professor'];
-const CAN_SUBMIT  = ['admin', 'super_admin', 'professor', 'doctor'];
+const STAFF       = ['admin', 'super_admin', 'professor', 'dio', 'program_director', 'president', 'director'];
+const SENIOR      = ['super_admin', 'admin', 'professor', 'dio', 'program_director', 'director'];
+const CAN_SUBMIT  = ['admin', 'super_admin', 'professor', 'doctor', 'supervisor'];
 const MONTHLY_CAP = 5;
 
 // GET /api/evaluations — all evaluations (staff only)
@@ -67,7 +67,7 @@ router.post('/', auth, allowRoles(...CAN_SUBMIT), async (req, res) => {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    const canAssignDoctor = ['admin', 'super_admin', 'professor'].includes(req.user.role);
+    const canAssignDoctor = ['admin', 'super_admin', 'professor', 'dio'].includes(req.user.role);
     const doctorId = canAssignDoctor && req.body.doctor ? req.body.doctor : req.user._id;
     const monthCount = await Evaluation.countDocuments({
       student: req.body.student,

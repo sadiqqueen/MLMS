@@ -6,15 +6,6 @@ import Sk      from '../components/Skeleton';
 
 const API_BASE = '';
 
-const SPECIALTIES = [
-  'All',
-  'Internal Medicine',
-  'Surgery',
-  'Pediatrics',
-  'Obstetrics & Gynecology',
-  'Emergency Medicine',
-];
-
 function fmtDate(d) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -201,6 +192,7 @@ export default function ProgramDirectorTrainees() {
     const s = getSpecialtyName(t);
     specCounts[s] = (specCounts[s] || 0) + 1;
   });
+  const specialtyOptions = ['All', ...Object.keys(specCounts).filter(Boolean).sort()];
 
   if (loading) return (
     <>
@@ -254,7 +246,7 @@ export default function ProgramDirectorTrainees() {
             </div>
             <div style={{ fontSize:12, color:'#4B5563', fontWeight:500 }}>Total Trainees</div>
           </div>
-          {SPECIALTIES.filter(s => s !== 'All').map(s => (
+          {specialtyOptions.filter(s => s !== 'All').map(s => (
             <div
               key={s}
               style={{
@@ -291,7 +283,7 @@ export default function ProgramDirectorTrainees() {
               onChange={e => setSearch(e.target.value)}
             />
             <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-              {SPECIALTIES.map(s => (
+              {specialtyOptions.map(s => (
                 <button
                   key={s}
                   className={`filter-tab${specFilter === s ? ' active' : ''}`}

@@ -48,6 +48,25 @@ const ROLE_ALLOWED = {
   super_admin:      null
 };
 const STAFF = ['secretary', 'dio', 'program_director', 'president', 'admin', 'super_admin', 'professor', 'director'];
+const PASSWORD_RESET_ROLES = ['admin', 'super_admin'];
+const ROLE_RANK = {
+  trainee: 10,
+  student: 10,
+  supervisor: 30,
+  doctor: 30,
+  secretary: 40,
+  program_director: 50,
+  director: 50,
+  dio: 60,
+  president: 70,
+  professor: 70,
+  admin: 80,
+  super_admin: 100
+};
+
+function hasHigherRole(actorRole, targetRole) {
+  return (ROLE_RANK[actorRole] || 0) > (ROLE_RANK[targetRole] || 0);
+}
 
 // GET /api/users — all users
 router.get('/', auth, allowRoles(...STAFF), async (req, res) => {
@@ -66,8 +85,13 @@ router.get('/', auth, allowRoles(...STAFF), async (req, res) => {
 // GET /api/users/doctors — only doctors (for dropdowns)
 router.get('/doctors', auth, allowRoles(...STAFF), async (req, res) => {
   try {
-    const doctors = await User.find({ role: 'doctor' })
+    const doctors = await User.find({
+      role: { $in: ['supervisor', 'doctor'] },
+      isActive: { $ne: false }
+    })
       .select('-password')
+      .populate('hospitalId', 'name city')
+      .populate('specialtyId', 'name')
       .sort({ name: 1 });
     res.json(doctors);
   } catch (err) {
@@ -180,6 +204,11 @@ router.put('/:id', auth, upload.single('photo'), async (req, res) => {
     const isSelf  = req.user._id.toString() === req.params.id;
     const isAdmin = STAFF.includes(req.user.role);
     if (!isSelf && !isAdmin) return res.status(403).json({ message: 'Access denied' });
+    const target = await User.findById(req.params.id).select('role isActive');
+    if (!target || target.isActive === false) return res.status(404).json({ message: 'User not found' });
+    if (!isSelf && !hasHigherRole(req.user.role, target.role)) {
+      return res.status(403).json({ message: 'Insufficient permission to update this user' });
+    }
 
     const allowedKeys = isAdmin ? ADMIN_EDITABLE : SELF_EDITABLE;
     const fields = {};
@@ -197,11 +226,20 @@ router.put('/:id', auth, upload.single('photo'), async (req, res) => {
 });
 
 // PUT /api/users/:id/password — change password
-router.put('/:id/password', auth, allowRoles(...STAFF), async (req, res) => {
+router.put('/:id/password', auth, allowRoles(...PASSWORD_RESET_ROLES), async (req, res) => {
   try {
     const { newPassword } = req.body;
     if (!newPassword || newPassword.length < 8)
       return res.status(400).json({ message: 'Password must be at least 8 characters' });
+
+    const target = await User.findById(req.params.id);
+    if (!target || target.isActive === false) return res.status(404).json({ message: 'User not found' });
+    if (req.user._id.toString() === req.params.id) {
+      return res.status(403).json({ message: 'Use change-password to update your own password' });
+    }
+    if (!hasHigherRole(req.user.role, target.role)) {
+      return res.status(403).json({ message: 'Insufficient permission to reset this password' });
+    }
 
     const hashed = await bcrypt.hash(newPassword, 12);
     await User.findByIdAndUpdate(req.params.id, { password: hashed });
@@ -216,6 +254,9 @@ router.put('/:id/lock', auth, allowRoles(...STAFF), async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!hasHigherRole(req.user.role, user.role)) {
+      return res.status(403).json({ message: 'Insufficient permission to lock this user' });
+    }
     user.locked = !user.locked;
     await user.save();
     res.json({ locked: user.locked });
@@ -227,13 +268,19 @@ router.put('/:id/lock', auth, allowRoles(...STAFF), async (req, res) => {
 // DELETE /api/users/:id
 router.delete('/:id', auth, allowRoles(...STAFF), async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    if (user.photoUrl) {
-      const filePath = path.join(__dirname, '..', user.photoUrl);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    const target = await User.findById(req.params.id);
+    if (!target || target.isActive === false) return res.status(404).json({ message: 'User not found' });
+    if (!hasHigherRole(req.user.role, target.role)) {
+      return res.status(403).json({ message: 'Insufficient permission to delete this user' });
     }
-    res.json({ message: 'User deleted' });
+
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false, deletedAt: new Date() },
+      { new: true }
+    ).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({ message: 'User deactivated', user });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

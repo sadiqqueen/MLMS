@@ -6,7 +6,7 @@ const specialtySchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
-      enum: ['Internal Medicine', 'Surgery', 'Pediatrics', 'Obstetrics & Gynecology', 'Emergency Medicine']
+      trim: true
     },
     hospitalId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital' },
     secretaryId:      { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

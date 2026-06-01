@@ -23,6 +23,7 @@ const distributionSchema = new mongoose.Schema(
     createdBy:     { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
     // Keep legacy fields for backwards compatibility with existing data
+    student:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     doctor:    { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     hospital:  { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital' },
     specialty: { type: String }

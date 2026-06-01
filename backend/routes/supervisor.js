@@ -42,10 +42,24 @@ async function isAssignedTrainee(supervisorId, traineeId) {
 // Returns all trainees assigned to this supervisor with their distribution info
 router.get('/trainees', auth, allowRoles(...SUPERVISOR), async (req, res) => {
   try {
-    const distributions = await Distribution.find({ supervisorId: req.user._id })
+    const distributions = await Distribution.find({
+      $or: [
+        { supervisorId: req.user._id },
+        { doctor: req.user._id }
+      ]
+    })
       .populate({
         path: 'traineeId',
-        match: { supervisorId: req.user._id, isActive: { $ne: false } },
+        match: { role: { $in: ['trainee', 'student'] }, isActive: { $ne: false } },
+        select: 'name email studentId specialtyId hospitalId photoUrl initials year phone',
+        populate: [
+          { path: 'specialtyId', select: 'name' },
+          { path: 'hospitalId', select: 'name city' }
+        ]
+      })
+      .populate({
+        path: 'student',
+        match: { role: { $in: ['trainee', 'student'] }, isActive: { $ne: false } },
         select: 'name email studentId specialtyId hospitalId photoUrl initials year phone',
         populate: [
           { path: 'specialtyId', select: 'name' },
@@ -57,7 +71,14 @@ router.get('/trainees', auth, allowRoles(...SUPERVISOR), async (req, res) => {
       .populate('specialtyId','name')
       .sort({ startDate: -1 });
 
-    res.json({ success: true, data: distributions.filter(d => d.traineeId) });
+    const data = distributions
+      .map(d => {
+        if (!d.traineeId && d.student) d.traineeId = d.student;
+        return d;
+      })
+      .filter(d => d.traineeId);
+
+    res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

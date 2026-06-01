@@ -33,6 +33,7 @@ router.post('/login', loginLimiter, async (req, res) => {
 
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) return res.status(401).json({ message: 'Invalid email or password' });
+    if (user.isActive === false) return res.status(403).json({ message: 'Account deactivated' });
 
     // Check if account is locked
     if (user.isLocked()) {

@@ -4,14 +4,6 @@ import Toast  from '../components/Toast';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
-const SPECIALTY_NAMES = [
-  'Internal Medicine',
-  'Surgery',
-  'Pediatrics',
-  'Obstetrics & Gynecology',
-  'Emergency Medicine',
-];
-
 const PDF_TYPES = [
   { key: 'weekly',  label: 'Weekly Report',  field: 'weeklyReportPdf',  uploadPath: 'upload-weekly'  },
   { key: 'monthly', label: 'Monthly Report', field: 'monthlyReportPdf', uploadPath: 'upload-monthly' },
@@ -49,14 +41,19 @@ export default function AdminSpecialties() {
   }, []);
 
   async function createSpecialty() {
-    if (!newName) return;
+    const name = newName.trim();
+    if (!name) return;
+    if (specialties.some(s => s.name?.toLowerCase() === name.toLowerCase())) {
+      showToast('Specialty already exists', 'error');
+      return;
+    }
     setCreating(true);
     try {
-      const res = await api.post('/api/specialties', { name: newName });
+      const res = await api.post('/api/specialties', { name });
       const created = res.data?.data || res.data;
       setSpecialties(prev => [...prev, created]);
       setNewName('');
-      showToast(`${newName} specialty created`);
+      showToast(`${name} specialty created`);
     } catch (err) {
       showToast(err.response?.data?.message || 'Failed to create specialty', 'error');
     } finally {
@@ -73,7 +70,7 @@ export default function AdminSpecialties() {
     setUploading(p => ({ ...p, [uploadKey]: true }));
     try {
       const fd = new FormData();
-      fd.append('pdf', file);
+      fd.append('file', file);
       const res = await api.post(`/api/specialties/${specialtyId}/${uploadPath}`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -157,9 +154,6 @@ export default function AdminSpecialties() {
     );
   }
 
-  const existingNames = specialties.map(s => s.name);
-  const remaining     = SPECIALTY_NAMES.filter(n => !existingNames.includes(n));
-
   if (loading) return (
     <>
       <Navbar />
@@ -196,36 +190,33 @@ export default function AdminSpecialties() {
         </div>
 
         {/* Create new specialty */}
-        {remaining.length > 0 && (
-          <div style={{ background: '#fff', border: '1px solid #E8E9EF', borderRadius: 12, padding: 20, marginBottom: 20 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#1B1464', marginBottom: 12 }}>Add Specialty</div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <select
-                className="admin-search"
-                style={{ flex: 1, minWidth: 200 }}
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-              >
-                <option value="">— Select specialty to add —</option>
-                {remaining.map(n => <option key={n} value={n}>{n}</option>)}
-              </select>
-              <button
-                className="btn-purple"
-                onClick={createSpecialty}
-                disabled={!newName || creating}
-                style={{ opacity: !newName || creating ? 0.6 : 1 }}
-              >
-                {creating ? 'Creating…' : '+ Add Specialty'}
-              </button>
-            </div>
+        <div style={{ background: '#fff', border: '1px solid #E8E9EF', borderRadius: 12, padding: 20, marginBottom: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#1B1464', marginBottom: 12 }}>Add Specialty</div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <input
+              className="admin-search"
+              style={{ flex: 1, minWidth: 200 }}
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              placeholder="Enter specialty name"
+              onKeyDown={e => { if (e.key === 'Enter') createSpecialty(); }}
+            />
+            <button
+              className="btn-purple"
+              onClick={createSpecialty}
+              disabled={!newName.trim() || creating}
+              style={{ opacity: !newName.trim() || creating ? 0.6 : 1 }}
+            >
+              {creating ? 'Creating…' : '+ Add Specialty'}
+            </button>
           </div>
-        )}
+        </div>
 
         {specialties.length === 0 && (
           <div style={{ textAlign: 'center', padding: 56, color: '#8B8FA8' }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>🔬</div>
             <div style={{ fontSize: 16, fontWeight: 600, color: '#4B5563', marginBottom: 6 }}>No specialties yet</div>
-            <div style={{ fontSize: 13 }}>Add the 5 specialties above to get started.</div>
+            <div style={{ fontSize: 13 }}>Add a specialty above to get started.</div>
           </div>
         )}
 

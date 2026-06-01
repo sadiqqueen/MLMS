@@ -1,13 +1,22 @@
 // backend/server.js
 require('dotenv').config();
+const crypto = require('crypto');
 
-const REQUIRED_ENV = ['MONGO_URI', 'JWT_SECRET', 'JWT_REFRESH_SECRET'];
+const REQUIRED_ENV = ['MONGO_URI', 'JWT_SECRET'];
 REQUIRED_ENV.forEach(key => {
   if (!process.env[key]) {
     console.error(`FATAL: Missing required environment variable: ${key}`);
     process.exit(1);
   }
 });
+if (!process.env.JWT_REFRESH_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('FATAL: Missing required environment variable: JWT_REFRESH_SECRET');
+    process.exit(1);
+  }
+  process.env.JWT_REFRESH_SECRET = crypto.randomBytes(64).toString('hex');
+  console.warn('WARNING: JWT_REFRESH_SECRET missing; generated temporary development-only secret.');
+}
 
 const express      = require('express');
 const mongoose     = require('mongoose');
@@ -18,6 +27,11 @@ const cookieParser = require('cookie-parser');
 const { globalLimiter, writeLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
+const writeMethodsOnly = (req, res, next) => (
+  ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)
+    ? writeLimiter(req, res, next)
+    : next()
+);
 
 // ── SECURITY MIDDLEWARE ───────────────────────────────────────────────────
 app.use(helmet({
@@ -54,9 +68,9 @@ app.use(globalLimiter);
 // Serve uploads as static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-app.use('/api/evaluations', writeLimiter);
-app.use('/api/reports', writeLimiter);
-app.use('/api/certificates', writeLimiter);
+app.use('/api/evaluations', writeMethodsOnly);
+app.use('/api/reports', writeMethodsOnly);
+app.use('/api/certificates', writeMethodsOnly);
 
 // ── HEALTH CHECK ─────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date() }));
@@ -72,6 +86,7 @@ app.use('/api/dashboard',     require('./routes/dashboard'));
 app.use('/api/rotations',     require('./routes/rotations'));
 app.use('/api/reports',       require('./routes/reports'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/certificates/verify', require('./routes/certificateVerify'));
 app.use('/api/certificates',  require('./routes/certificates'));
 
 // ── NEW V2 ROUTES ─────────────────────────────────────────────────────────
@@ -83,7 +98,19 @@ app.use('/api/dio',               require('./routes/dio'));
 app.use('/api/president',         require('./routes/president'));
 app.use('/api/trainee',           require('./routes/trainee'));
 app.use('/api/admin',             require('./routes/adminV2'));
-app.use('/api/certificates/verify', require('./routes/certificateVerify'));
+
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: 'Route not found' });
+});
+
+app.use((err, req, res, next) => {
+  console.error('[ServerError]', err);
+  if (res.headersSent) return next(err);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal server error'
+  });
+});
 
 // ── START SERVER ──────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;

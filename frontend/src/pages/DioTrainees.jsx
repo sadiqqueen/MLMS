@@ -6,15 +6,6 @@ import Sk     from '../components/Skeleton';
 
 const API_BASE = '';
 
-const SPECIALTIES = [
-  'All',
-  'Internal Medicine',
-  'Surgery',
-  'Pediatrics',
-  'Obstetrics & Gynecology',
-  'Emergency Medicine',
-];
-
 function getSpecialty(t) {
   return t.specialtyId?.name || t.specialty || '—';
 }
@@ -93,6 +84,7 @@ export default function DioTrainees() {
     const s = getSpecialty(t);
     specCounts[s] = (specCounts[s] || 0) + 1;
   });
+  const specialtyOptions = ['All', ...Object.keys(specCounts).filter(Boolean).sort()];
 
   const filtered = trainees.filter(t => {
     const spec = getSpecialty(t);
@@ -138,7 +130,7 @@ export default function DioTrainees() {
       <main className="admin-main">
 
         <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:16 }}>
-          {SPECIALTIES.map(s => (
+          {specialtyOptions.map(s => (
             <button
               key={s}
               className={`filter-tab${specFilter === s ? ' active' : ''}`}

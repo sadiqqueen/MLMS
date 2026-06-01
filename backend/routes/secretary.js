@@ -213,9 +213,17 @@ router.patch('/supervisors/:id',
 // GET /api/secretary/program-directors
 router.get('/program-directors', auth, allowRoles(...SECRETARY), async (req, res) => {
   try {
-    const specialtyId = requireSecretarySpecialty(req, res);
-    if (!specialtyId) return;
-    const query = { role: 'program_director', specialtyId, isActive: { $ne: false } };
+    const specialtyId = getSpecialty(req.user);
+    const hospitalId  = getHospital(req.user);
+    const scope = [];
+    if (specialtyId) scope.push({ specialtyId });
+    if (hospitalId) scope.push({ hospitalId }, { hospital: hospitalId });
+
+    const query = {
+      role: { $in: ['program_director', 'director'] },
+      isActive: { $ne: false }
+    };
+    if (scope.length) query.$or = scope;
 
     const pds = await User.find(query)
       .select('-password')

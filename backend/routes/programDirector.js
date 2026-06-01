@@ -6,9 +6,10 @@ const auditLog       = require('../middleware/auditLogger');
 const User           = require('../models/User');
 const Distribution   = require('../models/Distribution');
 const Report         = require('../models/Report');
+const Evaluation     = require('../models/Evaluation');
 const Notification   = require('../models/Notification');
 
-const PD = ['program_director'];
+const PD = ['program_director', 'director'];
 
 function getHospital(user) {
   return user.hospitalId || user.hospital || null;
@@ -116,6 +117,42 @@ router.get('/reports', auth, allowRoles(...PD), async (req, res) => {
     res.json({ success: true, data: reports });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/program-director/evaluations
+// All evaluations for trainees in this program director's hospital
+router.get('/evaluations', auth, allowRoles(...PD), async (req, res) => {
+  try {
+    const hospitalId = getHospital(req.user);
+    if (!hospitalId) {
+      return res.status(403).json({ success: false, message: 'Program Director has no hospital assigned' });
+    }
+
+    const trainees = await User.find({
+      role: { $in: ['trainee', 'student'] },
+      $or:  [{ hospitalId }, { hospital: hospitalId }],
+      isActive: { $ne: false }
+    }).select('_id');
+    const traineeIds = trainees.map(t => t._id);
+
+    const evaluations = await Evaluation.find({
+      $or: [
+        { traineeId: { $in: traineeIds } },
+        { student:    { $in: traineeIds } },
+        { hospital: hospitalId }
+      ]
+    })
+      .populate('student',      'name email initials photoUrl studentId')
+      .populate('traineeId',    'name email initials photoUrl studentId')
+      .populate('doctor',       'name initials')
+      .populate('supervisorId', 'name initials')
+      .populate('hospital',     'name')
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: evaluations });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

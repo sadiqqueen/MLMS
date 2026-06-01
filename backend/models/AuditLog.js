@@ -16,7 +16,10 @@ const auditLogSchema = new mongoose.Schema(
   }
 );
 
-// Index for fast queries by date range (audit log page sorts by this)
-auditLogSchema.index({ createdAt: -1 });
+const retentionDays = Math.max(1, Number(process.env.AUDIT_LOG_RETENTION_DAYS) || 180);
+
+// Keep audit logs queryable by user/date and automatically expire old entries.
+auditLogSchema.index({ userId: 1, createdAt: -1 });
+auditLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: retentionDays * 24 * 60 * 60 });
 
 module.exports = mongoose.model('AuditLog', auditLogSchema);

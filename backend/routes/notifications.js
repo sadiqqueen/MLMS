@@ -56,4 +56,32 @@ router.put('/read-all/:userId', auth, async (req, res) => {
   }
 });
 
+// DELETE /api/notifications/clear/:userId — delete all notifications for current user
+router.delete('/clear/:userId', auth, async (req, res) => {
+  try {
+    if (req.params.userId !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const result = await Notification.deleteMany({ user: req.params.userId });
+    res.json({ success: true, message: 'Notifications cleared', deletedCount: result.deletedCount || 0 });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// DELETE /api/notifications/:id — delete one notification owned by current user
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const notification = await Notification.findOneAndDelete({
+      _id: req.params.id,
+      user: req.user._id
+    });
+    if (!notification) return res.status(404).json({ message: 'Notification not found' });
+    res.json({ success: true, message: 'Notification deleted' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 module.exports = router;

@@ -13,6 +13,10 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function asArray(v) {
+  return Array.isArray(v?.data) ? v.data : Array.isArray(v) ? v : [];
+}
+
 const EMPTY_FORM = {
   studentSearch: '',
   student:       null,
@@ -34,14 +38,18 @@ export default function DirectorCertificates() {
   const [submitting,   setSubmitting  ] = useState(false);
   const [form,         setForm        ] = useState(EMPTY_FORM);
   const [dropOpen,     setDropOpen    ] = useState(false);
+  const [specialtyOptions, setSpecialtyOptions] = useState(SPECIALTIES);
 
   useEffect(() => {
     Promise.all([
       api.get('/api/users/students'),
       api.get('/api/certificates'),
-    ]).then(([sRes, cRes]) => {
-      setStudents(sRes.data);
-      setCertificates(cRes.data);
+      api.get('/api/specialties').catch(() => ({ data: { data: [] } })),
+    ]).then(([sRes, cRes, spRes]) => {
+      setStudents(asArray(sRes.data));
+      setCertificates(asArray(cRes.data));
+      const names = asArray(spRes.data).map(s => s.name).filter(Boolean);
+      if (names.length) setSpecialtyOptions(names);
     }).catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -51,8 +59,8 @@ export default function DirectorCertificates() {
       ...f,
       studentSearch: student.name,
       student,
-      specialty: student.specialty || '',
-      hospital: student.hospital || null,
+      specialty: student.specialtyId?.name || student.specialty || '',
+      hospital: student.hospitalId || student.hospital || null,
     }));
     setDropOpen(false);
   }
@@ -287,7 +295,7 @@ export default function DirectorCertificates() {
                           onChange={e => setForm(f => ({ ...f, specialty: e.target.value }))}
                         >
                           <option value="">— Select specialty —</option>
-                          {SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
+                          {specialtyOptions.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                       </div>
                     </div>

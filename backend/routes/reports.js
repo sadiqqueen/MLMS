@@ -1,7 +1,10 @@
 const router         = require('express').Router();
+const mongoose       = require('mongoose');
 const multer         = require('multer');
 const path           = require('path');
 const Report         = require('../models/Report');
+const Distribution   = require('../models/Distribution');
+const Rotation       = require('../models/Rotation');
 const Notification   = require('../models/Notification');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
@@ -49,6 +52,7 @@ router.get('/student/:id', auth, async (req, res) => {
     const reports = await Report.find({ student: req.params.id })
       .populate('hospital', 'name')
       .populate('rotation', 'startDate endDate status')
+      .populate('distribution', 'startDate endDate status')
       .populate('gradedBy', 'name initials')
       .sort({ date: -1 });   // -1 = newest first
     res.json(reports);
@@ -58,11 +62,12 @@ router.get('/student/:id', auth, async (req, res) => {
 });
 
 // GET /api/reports/hospital/:hospitalId — all reports from students at a hospital (for doctors)
-router.get('/hospital/:hospitalId', auth, allowRoles('doctor', 'professor', 'admin', 'super_admin'), async (req, res) => {
+router.get('/hospital/:hospitalId', auth, allowRoles('doctor', 'supervisor', 'professor', 'program_director', 'director', 'dio', 'admin', 'super_admin'), async (req, res) => {
   try {
     const reports = await Report.find({ hospital: req.params.hospitalId })
       .populate('student',  'name initials photoUrl')
       .populate('hospital', 'name')
+      .populate('distribution', 'startDate endDate status')
       .populate('gradedBy', 'name initials')
       .sort({ date: -1 });
     res.json(reports);
@@ -72,16 +77,40 @@ router.get('/hospital/:hospitalId', auth, allowRoles('doctor', 'professor', 'adm
 });
 
 // GET /api/reports/doctor/:doctorId — all reports from students assigned to this doctor (via rotations)
-router.get('/doctor/:doctorId', auth, allowRoles('doctor', 'professor', 'admin', 'super_admin'), async (req, res) => {
+router.get('/doctor/:doctorId', auth, allowRoles('doctor', 'supervisor', 'professor', 'program_director', 'director', 'dio', 'admin', 'super_admin'), async (req, res) => {
   try {
-    const Rotation = require('../models/Rotation');
+    const isOwner = req.params.doctorId === req.user._id.toString();
+    const isElevated = ['professor', 'program_director', 'director', 'dio', 'admin', 'super_admin'].includes(req.user.role);
+    if (!isOwner && !isElevated) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
     const rotations = await Rotation.find({ doctor: req.params.doctorId }).select('_id');
-    if (!rotations.length) return res.json([]);
+    const distributions = await Distribution.find({
+      $or: [
+        { supervisorId: req.params.doctorId },
+        { doctor: req.params.doctorId }
+      ]
+    }).select('_id traineeId student');
+
     const rotationIds = rotations.map(r => r._id);
-    const reports = await Report.find({ rotation: { $in: rotationIds } })
+    const distributionIds = distributions.map(d => d._id);
+    const traineeIds = [
+      ...distributions.map(d => d.traineeId).filter(Boolean),
+      ...distributions.map(d => d.student).filter(Boolean)
+    ];
+
+    const reports = await Report.find({
+      $or: [
+        { rotation: { $in: rotationIds } },
+        { distribution: { $in: distributionIds } },
+        { student: { $in: traineeIds } }
+      ]
+    })
       .populate('student',  'name initials photoUrl studentId email phone')
       .populate('hospital', 'name')
       .populate('rotation', 'startDate endDate status')
+      .populate('distribution', 'startDate endDate status')
       .populate('gradedBy', 'name initials')
       .sort({ date: -1 });
     res.json(reports);
@@ -94,7 +123,12 @@ router.get('/doctor/:doctorId', auth, allowRoles('doctor', 'professor', 'admin',
 // GET /api/reports/rotation/:rotationId — reports grouped under one rotation
 router.get('/rotation/:rotationId', auth, allowRoles('doctor', 'professor', 'supervisor', 'program_director', 'admin', 'super_admin', 'dio', 'director'), async (req, res) => {
   try {
-    const reports = await Report.find({ rotation: req.params.rotationId })
+    const reports = await Report.find({
+      $or: [
+        { rotation: req.params.rotationId },
+        { distribution: req.params.rotationId }
+      ]
+    })
       .populate('student', 'name initials studentId')
       .populate('gradedBy', 'name initials')
       .sort({ date: -1 });
@@ -110,14 +144,40 @@ router.get('/rotation/:rotationId', auth, allowRoles('doctor', 'professor', 'sup
 router.post('/', auth, allowRoles('student', 'trainee'), upload.single('file'), async (req, res) => {
   try {
     const { title, type, date, rotation, hospital } = req.body;
+    const assignmentId = req.body.distribution || req.body.distributionId || rotation;
+    let rotationId = null;
+    let distributionId = null;
+    let hospitalId = hospital || null;
+
+    if (assignmentId && mongoose.Types.ObjectId.isValid(assignmentId)) {
+      const distribution = await Distribution.findOne({
+        _id: assignmentId,
+        $or: [
+          { traineeId: req.user._id },
+          { student: req.user._id }
+        ]
+      });
+
+      if (distribution) {
+        distributionId = distribution._id;
+        hospitalId = distribution.hospitalId || distribution.hospital || hospitalId;
+      } else {
+        const legacyRotation = await Rotation.findOne({ _id: assignmentId, student: req.user._id });
+        if (legacyRotation) {
+          rotationId = legacyRotation._id;
+          hospitalId = legacyRotation.hospital || hospitalId;
+        }
+      }
+    }
 
     // If a file was uploaded, req.file will have the file info
     const fileUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
     const report = await Report.create({
       student: req.user._id,
-      rotation,
-      hospital,
+      rotation: rotationId,
+      distribution: distributionId,
+      hospital: hospitalId,
       title,
       type,
       date,
@@ -142,13 +202,13 @@ router.put('/:id/grade', auth, allowRoles('doctor', 'professor', 'supervisor', '
     if (!existing) return res.status(404).json({ success: false, message: 'Report not found' });
 
     if (!['admin', 'super_admin', 'dio'].includes(req.user.role)) {
-      const Distribution = require('../models/Distribution');
-      const Rotation = require('../models/Rotation');
       const dist = await Distribution.findOne({
         $or: [
           { traineeId: existing.student, supervisorId: req.user._id },
           { student:   existing.student, doctor:       req.user._id },
-          { traineeId: existing.student, doctor:       req.user._id }
+          { traineeId: existing.student, doctor:       req.user._id },
+          { _id: existing.distribution, supervisorId: req.user._id },
+          { _id: existing.distribution, doctor: req.user._id }
         ]
       });
       const rotation = !dist && existing.rotation
@@ -173,14 +233,16 @@ router.put('/:id/grade', auth, allowRoles('doctor', 'professor', 'supervisor', '
         gradedAt: new Date()
       },
       { new: true }
-    ).populate('student', 'name initials photoUrl studentId').populate('hospital', 'name').populate('gradedBy', 'name initials');
+    ).populate('student', 'name initials photoUrl studentId').populate('hospital', 'name').populate('distribution', 'startDate endDate status').populate('gradedBy', 'name initials');
 
     if (!report) return res.status(404).json({ message: 'Report not found' });
 
-    await Notification.create({
-      user:    report.student._id,
-      message: `Your ${report.type} report "${report.title}" has been assessed: ${report.grade}`
-    });
+    if (report.student?._id) {
+      await Notification.create({
+        user:    report.student._id,
+        message: `Your ${report.type} report "${report.title}" has been assessed: ${report.grade}`
+      });
+    }
 
     res.json(report);
   } catch (err) {

@@ -4,11 +4,13 @@ const Notification = require('../models/Notification');
 const auth        = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 
-const DIRECTOR = ['director', 'admin', 'super_admin', 'professor'];
+const DIRECTOR = ['director', 'program_director', 'president', 'admin', 'super_admin', 'professor'];
 
 const populate = q => q
   .populate('student',  'name initials photoUrl studentId year')
+  .populate('traineeId', 'name initials photoUrl studentId year')
   .populate('doctor',   'name specialty initials')
+  .populate('supervisor', 'name specialty initials')
   .populate('hospital', 'name city')
   .populate('issuedBy', 'name');
 
@@ -37,10 +39,13 @@ router.post('/', auth, allowRoles(...DIRECTOR), async (req, res) => {
 
     const hospitalName = populated.hospital?.name || 'your hospital';
     const specialty = populated.specialty ? ` in ${populated.specialty}` : '';
-    await Notification.create({
-      user: populated.student._id,
-      message: `A certificate has been issued for you${specialty} at ${hospitalName}.`,
-    });
+    const recipient = populated.student?._id || populated.traineeId?._id || cert.student || cert.traineeId;
+    if (recipient) {
+      await Notification.create({
+        user: recipient,
+        message: `A certificate has been issued for you${specialty} at ${hospitalName}.`,
+      });
+    }
 
     res.status(201).json(populated);
   } catch (err) {

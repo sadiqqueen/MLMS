@@ -7,33 +7,42 @@ const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 
 // GET /api/dashboard/stats
-router.get('/stats', auth, allowRoles('admin', 'super_admin', 'professor'), async (req, res) => {
+router.get('/stats', auth, allowRoles('admin', 'super_admin', 'professor', 'dio'), async (req, res) => {
   try {
     // Basic counts
     const [totalHospitals, totalDoctors, totalDistributions, totalEvaluations, pendingEvaluations] =
       await Promise.all([
         Hospital.countDocuments(),
-        User.countDocuments({ role: 'doctor' }),
+        User.countDocuments({ role: { $in: ['supervisor', 'doctor'] }, isActive: { $ne: false } }),
         Distribution.countDocuments(),
         Evaluation.countDocuments(),
         Evaluation.countDocuments({ status: 'pending' })
       ]);
 
     // Distinct specialties across all distributions
-    const specialtyList   = await Distribution.distinct('specialty');
+    const specialtyList   = await Distribution.distinct('specialtyId');
     const totalSpecialties = specialtyList.length;
 
     // Doctors grouped by specialty (for donut chart)
     const doctorsBySpecialty = await User.aggregate([
-      { $match: { role: 'doctor', specialty: { $exists: true, $ne: '' } } },
-      { $group: { _id: '$specialty', count: { $sum: 1 } } },
-      { $project: { specialty: '$_id', count: 1, _id: 0 } },
+      { $match: { role: { $in: ['supervisor', 'doctor'] }, isActive: { $ne: false } } },
+      { $group: { _id: { $ifNull: ['$specialtyId', '$specialty'] }, count: { $sum: 1 } } },
+      {
+        $lookup: {
+          from:         'specialties',
+          localField:   '_id',
+          foreignField: '_id',
+          as:           'specialtyDoc'
+        }
+      },
+      { $unwind: { path: '$specialtyDoc', preserveNullAndEmptyArrays: true } },
+      { $project: { specialty: { $ifNull: ['$specialtyDoc.name', '$_id'] }, count: 1, _id: 0 } },
       { $sort: { count: -1 } }
     ]);
 
     // Number of distribution slots per hospital (for bar chart)
     const doctorsByHospital = await Distribution.aggregate([
-      { $group: { _id: '$hospital', count: { $sum: 1 } } },
+      { $group: { _id: { $ifNull: ['$hospitalId', '$hospital'] }, count: { $sum: 1 } } },
       {
         $lookup: {
           from:         'hospitals',

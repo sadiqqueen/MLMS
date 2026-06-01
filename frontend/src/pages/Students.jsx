@@ -44,7 +44,7 @@ function fmtDate(d) {
 const STATUS_OPTS = ['upcoming', 'current', 'completed'];
 
 // ── Student Modal (admin add/edit) ─────────────────────────────────────────
-function StudentModal({ editStudent, hospitals, onSave, onClose, saving }) {
+function StudentModal({ editStudent, hospitals, specialties, onSave, onClose, saving }) {
   const empty = { name: '', email: '', password: '', phone: '', gender: '', city: '', year: '', studentId: '', specialty: '', hospital: '' };
   const [form,    setForm   ] = useState(editStudent ? {
     name:      editStudent.name      || '',
@@ -145,7 +145,7 @@ function StudentModal({ editStudent, hospitals, onSave, onClose, saving }) {
               <label>Specialty</label>
               <select value={form.specialty} onChange={e => set('specialty', e.target.value)}>
                 <option value="">— Select specialty —</option>
-                {SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
+                {specialties.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
 
@@ -514,8 +514,8 @@ function ConfirmDelete({ name, onConfirm, onCancel }) {
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function Students() {
   const { user: me } = useAuth();
-  const isAdmin  = me?.role === 'admin';
-  const canEdit  = ['super_admin', 'professor'].includes(me?.role);
+  const isAdmin  = ['admin', 'secretary'].includes(me?.role);
+  const canEdit  = ['admin', 'super_admin', 'professor', 'dio'].includes(me?.role);
 
   const [tab,        setTab      ] = useState(0);
   const [students,   setStudents ] = useState([]);
@@ -523,6 +523,7 @@ export default function Students() {
   const [rotations,  setRotations] = useState([]);
   const [doctors,    setDoctors  ] = useState([]);
   const [hospitals,  setHospitals] = useState([]);
+  const [specialties, setSpecialties] = useState(SPECIALTIES);
   const [loading,    setLoading  ] = useState(true);
   const [view,       setView     ] = useState('table');
   const [search,     setSearch   ] = useState('');
@@ -552,13 +553,18 @@ export default function Students() {
       api.get('/api/evaluations'),
       api.get('/api/rotations'),
       api.get('/api/users/doctors'),
-      api.get('/api/hospitals')
-    ]).then(([u, ev, rot, d, h]) => {
-      setStudents(u.data.filter(x => x.role === 'student'));
+      api.get('/api/hospitals'),
+      api.get('/api/specialties').catch(() => ({ data: { data: [] } }))
+    ]).then(([u, ev, rot, d, h, sp]) => {
+      setStudents(u.data.filter(x => ['student', 'trainee'].includes(x.role)));
       setEvals(ev.data);
       setRotations(rot.data);
       setDoctors(d.data);
       setHospitals(h.data);
+      const names = (Array.isArray(sp.data?.data) ? sp.data.data : Array.isArray(sp.data) ? sp.data : [])
+        .map(s => s.name)
+        .filter(Boolean);
+      if (names.length) setSpecialties(names);
     }).catch(() => showToast('Failed to load', 'error'))
       .finally(() => setLoading(false));
   }, []);
@@ -776,6 +782,7 @@ export default function Students() {
             <StudentModal
               editStudent={editStudent}
               hospitals={hospitals}
+              specialties={specialties}
               onSave={handleSaveStudent}
               onClose={() => setShowStudentModal(false)}
               saving={saving}
