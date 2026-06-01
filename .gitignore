@@ -2,4 +2,6 @@ node_modules/
 .env
 uploads/
 dist/
+!frontend/dist/
+!frontend/dist/**
 .DS_Store
