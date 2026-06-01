@@ -67,7 +67,8 @@ router.post('/', auth, allowRoles(...CAN_SUBMIT), async (req, res) => {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    const doctorId = req.body.doctor || req.user._id;
+    const canAssignDoctor = ['admin', 'super_admin', 'professor'].includes(req.user.role);
+    const doctorId = canAssignDoctor && req.body.doctor ? req.body.doctor : req.user._id;
     const monthCount = await Evaluation.countDocuments({
       student: req.body.student,
       doctor:  doctorId,
@@ -80,7 +81,13 @@ router.post('/', auth, allowRoles(...CAN_SUBMIT), async (req, res) => {
       });
     }
 
-    const evaluation = await Evaluation.create(req.body);
+    const ALLOWED_CREATE = ['student', 'hospital', 'specialty', 'date', 'evaluationType',
+                            'grade', 'notes', 'scores', 'totalScore', 'comments'];
+    const data = {};
+    ALLOWED_CREATE.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
+    data.doctor = doctorId;
+
+    const evaluation = await Evaluation.create(data);
     const populated  = await Evaluation.findById(evaluation._id)
       .populate('student',  'name email photoUrl initials')
       .populate('doctor',   'name initials')

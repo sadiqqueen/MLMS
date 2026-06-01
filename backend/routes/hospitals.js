@@ -5,6 +5,15 @@ const { allowRoles } = require('../middleware/roles');
 
 // super_admin and professor can manage hospitals; admin can only view
 const MANAGERS = ['super_admin', 'professor', 'dio'];
+const HOSPITAL_FIELDS = ['name', 'city', 'address', 'specialties', 'assignedDoctor',
+  'governorate', 'dioId', 'presidentId', 'programDirector', 'supervisors',
+  'phone', 'email', 'isActive'];
+
+function pick(body, allowed) {
+  const data = {};
+  allowed.forEach(k => { if (body[k] !== undefined) data[k] = body[k]; });
+  return data;
+}
 
 const populateHospital = query => query
   .populate('assignedDoctor', 'name specialty initials photoUrl')
@@ -28,7 +37,7 @@ router.get('/', auth, async (req, res) => {
 // POST /api/hospitals
 router.post('/', auth, allowRoles(...MANAGERS), async (req, res) => {
   try {
-    const hospital  = await Hospital.create(req.body);
+    const hospital  = await Hospital.create(pick(req.body, HOSPITAL_FIELDS));
     const populated = await populateHospital(Hospital.findById(hospital._id));
     res.status(201).json(populated);
   } catch (err) {
@@ -39,7 +48,7 @@ router.post('/', auth, allowRoles(...MANAGERS), async (req, res) => {
 // PUT /api/hospitals/:id
 router.put('/:id', auth, allowRoles(...MANAGERS), async (req, res) => {
   try {
-    const hospital = await populateHospital(Hospital.findByIdAndUpdate(req.params.id, req.body, { new: true }));
+    const hospital = await populateHospital(Hospital.findByIdAndUpdate(req.params.id, pick(req.body, HOSPITAL_FIELDS), { new: true }));
     if (!hospital) return res.status(404).json({ message: 'Hospital not found' });
     res.json(hospital);
   } catch (err) {

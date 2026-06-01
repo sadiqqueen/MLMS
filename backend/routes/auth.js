@@ -139,7 +139,11 @@ router.post('/refresh', loginLimiter, async (req, res) => {
 
 // ── POST /api/auth/logout ─────────────────────────────────────────────────
 router.post('/logout', (req, res) => {
-  res.clearCookie('refreshToken', { httpOnly: true, sameSite: 'lax' });
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV !== 'development',
+    sameSite: 'lax'
+  });
   res.json({ message: 'Logged out successfully' });
 });
 

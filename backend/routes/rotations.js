@@ -4,6 +4,7 @@ const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 
 const STAFF = ['admin', 'super_admin', 'professor'];
+const READ_STAFF = ['admin', 'super_admin', 'professor', 'director', 'program_director', 'dio'];
 
 // GET /api/rotations — all rotations (staff)
 router.get('/', auth, allowRoles(...STAFF), async (req, res) => {
@@ -22,6 +23,10 @@ router.get('/', auth, allowRoles(...STAFF), async (req, res) => {
 // GET /api/rotations/doctor/:doctorId — rotations supervised by a specific doctor
 router.get('/doctor/:doctorId', auth, async (req, res) => {
   try {
+    const isOwner = req.params.doctorId === req.user._id.toString();
+    const isStaff = READ_STAFF.includes(req.user.role);
+    if (!isOwner && !isStaff) return res.status(403).json({ success: false, message: 'Access denied' });
+
     const rotations = await Rotation.find({ doctor: req.params.doctorId })
       .populate('student',  'name email initials photoUrl year studentId')
       .populate('hospital', 'name city')
@@ -35,6 +40,10 @@ router.get('/doctor/:doctorId', auth, async (req, res) => {
 // GET /api/rotations/student/:id — all rotations for one student (sorted oldest → newest)
 router.get('/student/:id', auth, async (req, res) => {
   try {
+    const isOwner = req.params.id === req.user._id.toString();
+    const isStaff = READ_STAFF.includes(req.user.role);
+    if (!isOwner && !isStaff) return res.status(403).json({ success: false, message: 'Access denied' });
+
     const rotations = await Rotation.find({ student: req.params.id })
       .populate('hospital', 'name address department city')
       .populate('doctor',   'name specialty department initials')
@@ -48,6 +57,10 @@ router.get('/student/:id', auth, async (req, res) => {
 // GET /api/rotations/current/:studentId — the student's active rotation (status = 'current')
 router.get('/current/:studentId', auth, async (req, res) => {
   try {
+    const isOwner = req.params.studentId === req.user._id.toString();
+    const isStaff = READ_STAFF.includes(req.user.role);
+    if (!isOwner && !isStaff) return res.status(403).json({ success: false, message: 'Access denied' });
+
     const rotation = await Rotation.findOne({ student: req.params.studentId, status: 'current' })
       .populate('hospital', 'name address department')
       .populate('doctor',   'name department initials');
@@ -60,7 +73,12 @@ router.get('/current/:studentId', auth, async (req, res) => {
 // POST /api/rotations — create a new rotation
 router.post('/', auth, allowRoles(...STAFF), async (req, res) => {
   try {
-    const rotation = await Rotation.create(req.body);
+    const ALLOWED_CREATE = ['student', 'hospital', 'doctor', 'startDate', 'endDate',
+                            'status', 'weeklyAvg', 'monthlyAvg', 'finalGrade'];
+    const data = {};
+    ALLOWED_CREATE.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
+
+    const rotation = await Rotation.create(data);
     const populated = await Rotation.findById(rotation._id)
       .populate('student',  'name email initials photoUrl')
       .populate('hospital', 'name city')
@@ -84,7 +102,12 @@ router.delete('/:id', auth, allowRoles(...STAFF), async (req, res) => {
 // PUT /api/rotations/:id — update a rotation (e.g. add final grade)
 router.put('/:id', auth, allowRoles(...STAFF), async (req, res) => {
   try {
-    const rotation = await Rotation.findByIdAndUpdate(req.params.id, req.body, { new: true })
+    const UPDATE_ALLOWED = ['student', 'hospital', 'doctor', 'startDate', 'endDate',
+                            'status', 'weeklyAvg', 'monthlyAvg', 'finalGrade'];
+    const updates = {};
+    UPDATE_ALLOWED.forEach(k => { if (req.body[k] !== undefined) updates[k] = req.body[k]; });
+
+    const rotation = await Rotation.findByIdAndUpdate(req.params.id, updates, { new: true })
       .populate('student',  'name email initials photoUrl')
       .populate('hospital', 'name city')
       .populate('doctor',   'name specialty initials photoUrl');

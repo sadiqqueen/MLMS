@@ -25,7 +25,14 @@ router.get('/', auth, allowRoles(...DIRECTOR), async (req, res) => {
 // POST /api/certificates
 router.post('/', auth, allowRoles(...DIRECTOR), async (req, res) => {
   try {
-    const cert = await Certificate.create({ ...req.body, issuedBy: req.user._id });
+    const ALLOWED_CREATE = ['student', 'traineeId', 'rotation', 'distributionId',
+                            'specialty', 'type', 'doctor', 'supervisor',
+                            'hospital', 'issueDate', 'notes', 'fileUrl'];
+    const data = {};
+    ALLOWED_CREATE.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
+    data.issuedBy = req.user._id;
+
+    const cert = await Certificate.create(data);
     const populated = await populate(Certificate.findById(cert._id));
 
     const hospitalName = populated.hospital?.name || 'your hospital';

@@ -279,7 +279,6 @@ router.post('/certificates',
       }
 
       const cert = await Certificate.create({
-        ...req.body,
         student: trainee._id,
         traineeId: trainee._id,
         hospital: traineeHospital || hospitalId,

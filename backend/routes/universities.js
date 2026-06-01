@@ -4,6 +4,13 @@ const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 
 const MANAGERS = ['super_admin', 'professor'];
+const UNIVERSITY_FIELDS = ['name', 'city', 'address', 'contactEmail'];
+
+function pick(body, allowed) {
+  const data = {};
+  allowed.forEach(k => { if (body[k] !== undefined) data[k] = body[k]; });
+  return data;
+}
 
 router.get('/', auth, async (req, res) => {
   try {
@@ -16,7 +23,7 @@ router.get('/', auth, async (req, res) => {
 
 router.post('/', auth, allowRoles(...MANAGERS), async (req, res) => {
   try {
-    const university = await University.create(req.body);
+    const university = await University.create(pick(req.body, UNIVERSITY_FIELDS));
     res.status(201).json(university);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -25,7 +32,7 @@ router.post('/', auth, allowRoles(...MANAGERS), async (req, res) => {
 
 router.put('/:id', auth, allowRoles(...MANAGERS), async (req, res) => {
   try {
-    const university = await University.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const university = await University.findByIdAndUpdate(req.params.id, pick(req.body, UNIVERSITY_FIELDS), { new: true });
     if (!university) return res.status(404).json({ message: 'University not found' });
     res.json(university);
   } catch (err) {

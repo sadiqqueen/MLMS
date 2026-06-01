@@ -8,6 +8,20 @@ const Hospital       = require('../models/Hospital');
 const Distribution   = require('../models/Distribution');
 
 const SECRETARY = ['secretary', 'admin'];
+const CREATE_USER_FIELDS = ['name', 'email', 'password', 'phone', 'gender', 'city',
+  'department', 'specialty', 'year', 'studentId', 'enrolledSince',
+  'hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'supervisor', 'photoUrl'];
+const UPDATE_USER_FIELDS = ['name', 'phone', 'gender', 'city', 'department',
+  'specialty', 'year', 'studentId', 'enrolledSince', 'hospitalId',
+  'hospital', 'supervisorId', 'supervisor', 'photoUrl', 'isActive'];
+const HOSPITAL_UPDATE_FIELDS = ['name', 'city', 'governorate', 'address', 'phone', 'email'];
+const DISTRIBUTION_UPDATE_FIELDS = ['startDate', 'endDate', 'durationWeeks', 'status', 'supervisorId'];
+
+function pick(body, allowed) {
+  const data = {};
+  allowed.forEach(k => { if (body[k] !== undefined) data[k] = body[k]; });
+  return data;
+}
 
 function getSpecialty(user) {
   return user.specialtyId || null;
@@ -65,7 +79,8 @@ router.post('/trainees',
       const specialtyId = requireSecretarySpecialty(req, res);
       if (!specialtyId) return;
       const hospitalId  = req.body.hospitalId || req.body.hospital || getHospital(req.user);
-      const data = { ...req.body, role: 'trainee' };
+      const data = pick(req.body, CREATE_USER_FIELDS);
+      data.role = 'trainee';
       data.specialtyId = specialtyId;
       data.specialty = req.user.specialty || data.specialty || '';
       if (hospitalId)  { data.hospitalId = hospitalId; data.hospital = hospitalId; }
@@ -96,7 +111,7 @@ router.patch('/trainees/:id',
     try {
       const specialtyId = requireSecretarySpecialty(req, res);
       if (!specialtyId) return;
-      const { password, role, ...fields } = req.body;
+      const fields = pick(req.body, UPDATE_USER_FIELDS);
       const existing = await User.findOne({ _id: req.params.id, specialtyId });
       if (!existing) return res.status(404).json({ success: false, message: 'User not found in secretary specialty' });
       delete fields.specialtyId;
@@ -146,7 +161,8 @@ router.post('/supervisors',
       const specialtyId = requireSecretarySpecialty(req, res);
       if (!specialtyId) return;
       const hospitalId  = req.body.hospitalId || req.body.hospital || getHospital(req.user);
-      const data = { ...req.body, role: 'supervisor' };
+      const data = pick(req.body, CREATE_USER_FIELDS);
+      data.role = 'supervisor';
       data.specialtyId = specialtyId;
       data.specialty = req.user.specialty || data.specialty || '';
       if (hospitalId)  { data.hospitalId = hospitalId; data.hospital = hospitalId; }
@@ -176,7 +192,7 @@ router.patch('/supervisors/:id',
     try {
       const specialtyId = requireSecretarySpecialty(req, res);
       if (!specialtyId) return;
-      const { password, role, ...fields } = req.body;
+      const fields = pick(req.body, UPDATE_USER_FIELDS);
       const existing = await User.findOne({ _id: req.params.id, specialtyId });
       if (!existing) return res.status(404).json({ success: false, message: 'User not found in secretary specialty' });
       delete fields.specialtyId;
@@ -223,7 +239,8 @@ router.post('/program-directors',
       const specialtyId = requireSecretarySpecialty(req, res);
       if (!specialtyId) return;
       const hospitalId = req.body.hospitalId || req.body.hospital || getHospital(req.user);
-      const data = { ...req.body, role: 'program_director' };
+      const data = pick(req.body, CREATE_USER_FIELDS);
+      data.role = 'program_director';
       data.specialtyId = specialtyId;
       data.specialty = req.user.specialty || data.specialty || '';
       if (hospitalId) { data.hospitalId = hospitalId; data.hospital = hospitalId; }
@@ -265,7 +282,13 @@ router.patch('/hospitals/:id',
   auditLog('update_hospital', 'Hospital'),
   async (req, res) => {
     try {
-      const hospital = await Hospital.findByIdAndUpdate(req.params.id, req.body, { new: true });
+      const hospitalId = getHospital(req.user);
+      if (hospitalId && req.params.id !== hospitalId.toString()) {
+        return res.status(403).json({ success: false, message: 'Access denied: hospital belongs to another scope' });
+      }
+
+      const updates = pick(req.body, HOSPITAL_UPDATE_FIELDS);
+      const hospital = await Hospital.findByIdAndUpdate(req.params.id, updates, { new: true });
       if (!hospital) return res.status(404).json({ message: 'Hospital not found' });
       res.json({ success: true, data: hospital });
     } catch (err) {
@@ -370,7 +393,24 @@ router.patch('/distributions/:id',
   auditLog('update_distribution', 'Distribution'),
   async (req, res) => {
     try {
-      const dist = await Distribution.findByIdAndUpdate(req.params.id, req.body, { new: true })
+      const specialtyId = getSpecialty(req.user);
+      const existing = await Distribution.findOne({ _id: req.params.id, specialtyId });
+      if (!existing) return res.status(404).json({ success: false, message: 'Distribution not found in secretary specialty' });
+
+      const updates = pick(req.body, DISTRIBUTION_UPDATE_FIELDS);
+      if (updates.supervisorId) {
+        const supervisor = await User.findOne({
+          _id: updates.supervisorId,
+          role: { $in: ['supervisor', 'doctor'] },
+          ...getSecretaryQuery(req),
+          isActive: { $ne: false }
+        });
+        if (!supervisor) {
+          return res.status(403).json({ success: false, message: 'Supervisor is not in secretary specialty' });
+        }
+      }
+
+      const dist = await Distribution.findByIdAndUpdate(req.params.id, updates, { new: true })
         .populate('traineeId',   'name email initials photoUrl')
         .populate('supervisorId','name specialty initials')
         .populate('specialtyId', 'name')

@@ -12,6 +12,15 @@ const Specialty      = require('../models/Specialty');
 // Any authenticated user may list specialties (needed for dropdowns)
 const READ_ROLES  = ['super_admin', 'secretary', 'dio', 'supervisor', 'trainee', 'president', 'program_director'];
 const WRITE_ROLES = ['super_admin', 'dio'];
+const SPECIALTY_FIELDS = ['name', 'hospitalId', 'secretaryId', 'weeklyReportPdf',
+  'monthlyReportPdf', 'finalReportPdf', 'evaluationPdf1', 'evaluationPdf2',
+  'evaluationPdf3', 'evaluationPdf4', 'evaluationPdf5', 'isActive'];
+
+function pick(body, allowed) {
+  const data = {};
+  allowed.forEach(k => { if (body[k] !== undefined) data[k] = body[k]; });
+  return data;
+}
 
 const uploadsDir = path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
@@ -93,7 +102,7 @@ router.post('/',
   auditLog('create_specialty', 'Specialty'),
   async (req, res) => {
     try {
-      const specialty = await Specialty.create(req.body);
+      const specialty = await Specialty.create(pick(req.body, SPECIALTY_FIELDS));
       res.status(201).json({ success: true, data: specialty });
     } catch (err) {
       if (err.name === 'ValidationError') {
@@ -111,7 +120,7 @@ router.patch('/:id',
   auditLog('update_specialty', 'Specialty'),
   async (req, res) => {
     try {
-      const specialty = await Specialty.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
+      const specialty = await Specialty.findByIdAndUpdate(req.params.id, pick(req.body, SPECIALTY_FIELDS), { new: true, runValidators: true })
         .populate('hospitalId',  'name city')
         .populate('secretaryId', 'name email');
       if (!specialty) return res.status(404).json({ message: 'Specialty not found' });

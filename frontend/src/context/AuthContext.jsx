@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { setAccessToken } from '../api/axios';
 
 const AuthContext = createContext(null);
 
@@ -24,6 +25,7 @@ export function AuthProvider({ children }) {
         if (data?.token && data?.user) {
           const safeUser = toSafeUser(data.user);
           setToken(data.token);
+          setAccessToken(data.token);
           setUser(safeUser);
           localStorage.setItem('user', JSON.stringify(safeUser));
           scheduleRefresh(data.token);
@@ -51,6 +53,7 @@ export function AuthProvider({ children }) {
         const data = await res.json();
         if (data?.token) {
           setToken(data.token);
+          setAccessToken(data.token);
           if (data.user) {
             const safeUser = toSafeUser(data.user);
             setUser(safeUser);
@@ -65,6 +68,7 @@ export function AuthProvider({ children }) {
   const login = (tokenValue, userData) => {
     const safeUser = toSafeUser(userData);
     setToken(tokenValue);
+    setAccessToken(tokenValue);
     setUser(safeUser);
     localStorage.setItem('user', JSON.stringify(safeUser));
     scheduleRefresh(tokenValue);
@@ -77,12 +81,14 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('user');
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     setToken(null);
+    setAccessToken(null);
     setUser(null);
     window.location.href = '/';
   };
 
   const updateToken = (newToken, newUser) => {
     setToken(newToken);
+    setAccessToken(newToken);
     if (newUser) {
       const safeUser = toSafeUser(newUser);
       setUser(safeUser);

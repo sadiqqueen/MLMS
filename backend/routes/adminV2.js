@@ -16,6 +16,26 @@ const AuditLog       = require('../models/AuditLog');
 const Specialty      = require('../models/Specialty');
 
 const ADMIN = ['super_admin'];
+const USER_CREATE_FIELDS = ['name', 'email', 'password', 'role', 'phone', 'gender',
+  'city', 'department', 'specialty', 'year', 'studentId', 'enrolledSince',
+  'hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'supervisor',
+  'isActive', 'locked', 'lockUntil'];
+const USER_UPDATE_FIELDS = ['name', 'email', 'role', 'phone', 'gender',
+  'city', 'department', 'specialty', 'year', 'studentId', 'enrolledSince',
+  'hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'supervisor',
+  'isActive', 'locked', 'lockUntil', 'loginAttempts'];
+const HOSPITAL_FIELDS = ['name', 'city', 'address', 'specialties', 'assignedDoctor',
+  'governorate', 'dioId', 'presidentId', 'programDirector', 'supervisors',
+  'phone', 'email', 'isActive'];
+const SPECIALTY_FIELDS = ['name', 'hospitalId', 'secretaryId', 'weeklyReportPdf',
+  'monthlyReportPdf', 'finalReportPdf', 'evaluationPdf1', 'evaluationPdf2',
+  'evaluationPdf3', 'evaluationPdf4', 'evaluationPdf5', 'isActive'];
+
+function pick(body, allowed) {
+  const data = {};
+  allowed.forEach(k => { if (body[k] !== undefined) data[k] = body[k]; });
+  return data;
+}
 
 // ── STATS ─────────────────────────────────────────────────────────────────
 
@@ -80,7 +100,7 @@ router.post('/users',
   auditLog('create_user', 'User'),
   async (req, res) => {
     try {
-      const user = new User(req.body);
+      const user = new User(pick(req.body, USER_CREATE_FIELDS));
       await user.save();
       const saved = await User.findById(user._id)
         .select('-password')
@@ -101,7 +121,7 @@ router.patch('/users/:id',
   auditLog('update_user', 'User'),
   async (req, res) => {
     try {
-      const { password, ...fields } = req.body;
+      const fields = pick(req.body, USER_UPDATE_FIELDS);
       const user = await User.findByIdAndUpdate(req.params.id, fields, { new: true })
         .select('-password')
         .populate('hospitalId',  'name city')
@@ -176,7 +196,7 @@ router.post('/hospitals',
   auditLog('create_hospital', 'Hospital'),
   async (req, res) => {
     try {
-      const hospital = await Hospital.create(req.body);
+      const hospital = await Hospital.create(pick(req.body, HOSPITAL_FIELDS));
       res.status(201).json({ success: true, data: hospital });
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -191,7 +211,7 @@ router.patch('/hospitals/:id',
   auditLog('update_hospital', 'Hospital'),
   async (req, res) => {
     try {
-      const hospital = await Hospital.findByIdAndUpdate(req.params.id, req.body, { new: true })
+      const hospital = await Hospital.findByIdAndUpdate(req.params.id, pick(req.body, HOSPITAL_FIELDS), { new: true })
         .populate('dioId',       'name email')
         .populate('presidentId', 'name email');
       if (!hospital) return res.status(404).json({ message: 'Hospital not found' });
@@ -244,7 +264,7 @@ router.post('/specialties',
   auditLog('create_specialty', 'Specialty'),
   async (req, res) => {
     try {
-      const specialty = await Specialty.create(req.body);
+      const specialty = await Specialty.create(pick(req.body, SPECIALTY_FIELDS));
       res.status(201).json({ success: true, data: specialty });
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -259,7 +279,7 @@ router.patch('/specialties/:id',
   auditLog('update_specialty', 'Specialty'),
   async (req, res) => {
     try {
-      const specialty = await Specialty.findByIdAndUpdate(req.params.id, req.body, { new: true })
+      const specialty = await Specialty.findByIdAndUpdate(req.params.id, pick(req.body, SPECIALTY_FIELDS), { new: true })
         .populate('hospitalId',  'name city')
         .populate('secretaryId', 'name email');
       if (!specialty) return res.status(404).json({ message: 'Specialty not found' });

@@ -1,5 +1,22 @@
 import axios from 'axios';
 
+let accessToken = null;
+
+export function setAccessToken(token) {
+  accessToken = token || null;
+}
+
+function toSafeUser(userData) {
+  return userData ? {
+    _id:      userData._id,
+    name:     userData.name,
+    email:    userData.email,
+    role:     userData.role,
+    initials: userData.initials,
+    photoUrl: userData.photoUrl,
+  } : null;
+}
+
 const api = axios.create({
   baseURL: '',
   withCredentials: true
@@ -7,9 +24,8 @@ const api = axios.create({
 
 // ── REQUEST INTERCEPTOR ───────────────────────────────────────────────────
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
   }
   return config;
 });
@@ -19,7 +35,7 @@ api.interceptors.response.use(
   response => {
     const newToken = response.headers['x-new-access-token'];
     if (newToken) {
-      localStorage.setItem('token', newToken);
+      setAccessToken(newToken);
     }
     return response;
   },
@@ -32,15 +48,15 @@ api.interceptors.response.use(
         const res = await axios.post('/api/auth/refresh', {}, { withCredentials: true });
         if (res.data?.token) {
           const newToken = res.data.token;
-          localStorage.setItem('token', newToken);
+          setAccessToken(newToken);
           if (res.data.user) {
-            localStorage.setItem('user', JSON.stringify(res.data.user));
+            localStorage.setItem('user', JSON.stringify(toSafeUser(res.data.user)));
           }
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
           return api(originalRequest);
         }
       } catch {
-        localStorage.removeItem('token');
+        setAccessToken(null);
         localStorage.removeItem('user');
         window.location.href = '/';
         return Promise.reject(error);
@@ -48,8 +64,8 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 401) {
-      const hadSession = !!localStorage.getItem('token');
-      localStorage.removeItem('token');
+      const hadSession = !!accessToken || !!localStorage.getItem('user');
+      setAccessToken(null);
       localStorage.removeItem('user');
       if (hadSession) window.location.href = '/';
     }
