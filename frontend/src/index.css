@@ -80,7 +80,7 @@ a      { text-decoration: none; }
 }
 
 .nav-logo      { display: flex; align-items: center; }
-.nav-logo-img  { height: 35px; width: auto; display: block; }
+.nav-logo-img  { height: 44px; width: auto; display: block; }
 .nav-links { display: inline-flex; align-items: center; gap: 4px; position: absolute; left: 50%; transform: translateX(-50%); }
 
 .nav-link {
@@ -171,7 +171,7 @@ a      { text-decoration: none; }
 
 /* ── NAV RESPONSIVE — must come AFTER all base nav rules so the cascade works */
 @media (max-width: 768px) {
-  .nav-logo-img  { height: 22px; width: auto; }
+  .nav-logo-img  { height: 28px; width: auto; }
   .nav-links     { display: none; }
   .hamburger-btn { display: flex; align-items: center; justify-content: center; }
 }
@@ -285,7 +285,7 @@ a      { text-decoration: none; }
 
 /* ── GPA BAR ────────────────────────────────────────────────────────────── */
 .gpa-bar   { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; }
-.gpa-logo  { width: 130px; height: auto; display: block; margin-bottom: 6px; }
+.gpa-logo  { width: 150px; height: auto; display: block; margin-bottom: 6px; }
 .gpa-name  { font-size: 15px; font-weight: 500; color: #111; }
 .gpa-sub   { font-size: 12px; color: #666; margin-top: 2px; }
 .gpa-stats { display: flex; align-items: center; gap: 2rem; }
@@ -556,7 +556,7 @@ a      { text-decoration: none; }
     margin-bottom: 14px;
   }
   .print-logo     { font-size: 20px; font-weight: 700; color: #0C447C !important; }
-  .print-logo-img { height: 48px; width: auto; display: block; }
+  .print-logo-img { height: 56px; width: auto; display: block; }
   .print-subtitle { font-size: 12px; color: #666; margin-top: 2px; }
   .print-only     { display: inline !important; visibility: visible !important; }
 
