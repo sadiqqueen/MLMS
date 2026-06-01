@@ -4,6 +4,128 @@ import Toast  from '../components/Toast';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
+function safeArr(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function unwrapList(res) {
+  const data = res?.data?.data || res?.data || [];
+  return safeArr(data);
+}
+
+function idOf(value) {
+  if (!value) return '';
+  return (value._id || value).toString();
+}
+
+function hospitalIdOf(person) {
+  return idOf(person?.hospitalId || person?.hospital);
+}
+
+function specialtyName(person) {
+  return person?.specialtyId?.name || person?.specialty || 'No specialty';
+}
+
+function initialsFor(person) {
+  return person?.initials || person?.name?.slice(0, 2)?.toUpperCase() || '?';
+}
+
+function PersonList({ title, icon, people, emptyText, meta }) {
+  return (
+    <div style={{
+      border: '1px solid #E8E9EF',
+      borderRadius: 12,
+      background: '#fff',
+      overflow: 'hidden',
+      minWidth: 0
+    }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        padding: '12px 14px',
+        background: '#F8F9FA',
+        borderBottom: '1px solid #E8E9EF'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          <span style={{ fontSize: 17 }}>{icon}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#1B1464' }}>{title}</span>
+        </div>
+        <span style={{
+          fontSize: 11,
+          fontWeight: 700,
+          color: '#3C3489',
+          background: '#EEEDFE',
+          borderRadius: 20,
+          padding: '2px 8px',
+          flexShrink: 0
+        }}>
+          {people.length}
+        </span>
+      </div>
+
+      {people.length === 0 ? (
+        <div style={{ padding: '18px 14px', fontSize: 13, color: '#8B8FA8', textAlign: 'center' }}>
+          {emptyText}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {people.map(person => (
+            <div
+              key={person._id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '11px 14px',
+                borderTop: '1px solid #F0F2F5'
+              }}
+            >
+              <div style={{
+                width: 34,
+                height: 34,
+                borderRadius: '50%',
+                background: '#E6F1FB',
+                color: '#185FA5',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 12,
+                fontWeight: 700,
+                flexShrink: 0
+              }}>
+                {initialsFor(person)}
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: '#1B1464',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {person.name || 'Unnamed'}
+                </div>
+                <div style={{
+                  fontSize: 11,
+                  color: '#8B8FA8',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {meta(person)}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HospitalModal({ hospital, onSave, onClose, saving }) {
   const [form, setForm] = useState({
     name:        hospital.name        || '',
@@ -72,7 +194,7 @@ function HospitalModal({ hospital, onSave, onClose, saving }) {
         </div>
         <div className="admin-modal-footer">
           <button className="btn-red" onClick={onClose}>Cancel</button>
-          <button className="btn-purple" onClick={handleSave} disabled={saving}>
+          <button className="btn-purple" style={{ marginLeft: 0 }} onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
@@ -83,6 +205,9 @@ function HospitalModal({ hospital, onSave, onClose, saving }) {
 
 export default function SecretaryHospitals() {
   const [hospitals,    setHospitals   ] = useState([]);
+  const [supervisors,  setSupervisors ] = useState([]);
+  const [trainees,     setTrainees    ] = useState([]);
+  const [directors,    setDirectors   ] = useState([]);
   const [loading,      setLoading     ] = useState(true);
   const [editHospital, setEditHospital] = useState(null);
   const [saving,       setSaving      ] = useState(false);
@@ -95,12 +220,22 @@ export default function SecretaryHospitals() {
   }
 
   useEffect(() => {
-    api.get('/api/secretary/hospitals')
-      .then(r => {
-        const data = r.data?.data || r.data || [];
-        setHospitals(Array.isArray(data) ? data : [data]);
+    Promise.allSettled([
+      api.get('/api/secretary/hospitals'),
+      api.get('/api/secretary/supervisors'),
+      api.get('/api/secretary/trainees'),
+      api.get('/api/secretary/program-directors'),
+    ])
+      .then(([hospitalRes, supervisorRes, traineeRes, directorRes]) => {
+        if (hospitalRes.status === 'fulfilled') {
+          setHospitals(unwrapList(hospitalRes.value));
+        } else {
+          showToast('Failed to load hospital info', 'error');
+        }
+        if (supervisorRes.status === 'fulfilled') setSupervisors(unwrapList(supervisorRes.value));
+        if (traineeRes.status === 'fulfilled') setTrainees(unwrapList(traineeRes.value));
+        if (directorRes.status === 'fulfilled') setDirectors(unwrapList(directorRes.value));
       })
-      .catch(() => showToast('Failed to load hospital info', 'error'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -133,6 +268,9 @@ export default function SecretaryHospitals() {
               </div>
             ))}
           </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginTop: 28 }}>
+            {[0, 1, 2].map(i => <Sk key={i} h={150} r={12} />)}
+          </div>
         </div>
       </main>
     </>
@@ -158,7 +296,7 @@ export default function SecretaryHospitals() {
 
         {hospitals.map(h => (
           <div key={h._id} className="admin-card" style={{ marginBottom: 20, padding: '28px 32px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 18, marginBottom: 28, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                 <div style={{
                   width: 56, height: 56, borderRadius: 14, background: '#1B1464',
@@ -175,7 +313,7 @@ export default function SecretaryHospitals() {
                   )}
                 </div>
               </div>
-              <button className="btn-purple" onClick={() => setEditHospital(h)}>
+              <button className="btn-purple" style={{ marginLeft: 0 }} onClick={() => setEditHospital(h)}>
                 Edit Info
               </button>
             </div>
@@ -195,6 +333,46 @@ export default function SecretaryHospitals() {
                   <div style={{ fontSize: 14, color: '#1B1464', fontWeight: 500 }}>{value}</div>
                 </div>
               ))}
+            </div>
+
+            <div style={{ marginTop: 28 }}>
+              <div style={{
+                fontSize: 12,
+                color: '#8B8FA8',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '.05em',
+                marginBottom: 12
+              }}>
+                People assigned to this hospital
+              </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                gap: 14
+              }}>
+                <PersonList
+                  title="Supervisors"
+                  icon="S"
+                  people={supervisors.filter(s => hospitalIdOf(s) === idOf(h))}
+                  emptyText="No supervisors assigned to this hospital."
+                  meta={s => [specialtyName(s), s.email || s.phone].filter(Boolean).join(' · ')}
+                />
+                <PersonList
+                  title="Trainees"
+                  icon="T"
+                  people={trainees.filter(t => hospitalIdOf(t) === idOf(h))}
+                  emptyText="No trainees assigned to this hospital."
+                  meta={t => [t.studentId ? `ID: ${t.studentId}` : '', specialtyName(t), t.email].filter(Boolean).join(' · ')}
+                />
+                <PersonList
+                  title="Program Directors"
+                  icon="PD"
+                  people={directors.filter(pd => hospitalIdOf(pd) === idOf(h))}
+                  emptyText="No program director assigned to this hospital."
+                  meta={pd => [specialtyName(pd), pd.email || pd.phone].filter(Boolean).join(' · ')}
+                />
+              </div>
             </div>
           </div>
         ))}
