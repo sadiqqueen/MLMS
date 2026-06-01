@@ -34,13 +34,30 @@ const LABEL_STYLE = {
 };
 
 function isThisMonth(dateStr) {
+  if (!dateStr) return false;
   const d = new Date(dateStr), now = new Date();
+  if (Number.isNaN(d.getTime())) return false;
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
 }
 
 function fmtDate(d) {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function safeArr(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function safeText(value) {
+  if (value === null || value === undefined) return '';
+  return typeof value === 'string' ? value : String(value);
+}
+
+function evalTraineeId(ev) {
+  return (ev?.traineeId?._id || ev?.student?._id || ev?.traineeId || ev?.student)?.toString();
 }
 
 function Avatar({ user, size = 32 }) {
@@ -63,15 +80,14 @@ function Avatar({ user, size = 32 }) {
 }
 
 function EvalModal({ item, evals, specialty, onClose, onSubmitted, onFinalized, isReadOnly }) {
-  const { trainee, dist } = item;
-  const traineeEvals      = evals.filter(ev => {
-    const tid = (ev.traineeId?._id || ev.student?._id || ev.traineeId || ev.student)?.toString();
-    return tid === trainee._id?.toString();
+  const { trainee = {}, dist = {} } = item || {};
+  const traineeEvals = safeArr(evals).filter(ev => {
+    return evalTraineeId(ev) === trainee?._id?.toString();
   });
-  const thisMonthCount = traineeEvals.filter(ev => isThisMonth(ev.date || ev.createdAt)).length;
+  const thisMonthCount = traineeEvals.filter(ev => isThisMonth(ev?.date || ev?.createdAt)).length;
   const atCap          = thisMonthCount >= MONTHLY_CAP;
 
-  const availablePdfs = specialty
+  const availablePdfs = specialty && typeof specialty === 'object'
     ? EVAL_PDF_TYPES.filter(t => !!specialty[t.field])
     : [];
 
@@ -106,7 +122,7 @@ function EvalModal({ item, evals, specialty, onClose, onSubmitted, onFinalized, 
         date:           new Date().toISOString(),
       });
       const newEval = res.data?.data || res.data;
-      onSubmitted(newEval);
+      if (newEval && typeof newEval === 'object') onSubmitted(newEval);
       setForm(EMPTY_FORM);
       setError('');
     } catch (err) {
@@ -117,10 +133,12 @@ function EvalModal({ item, evals, specialty, onClose, onSubmitted, onFinalized, 
   }
 
   async function handleFinalize(evalId) {
+    if (!evalId) return;
     setFinalizing(evalId);
     try {
-      await api.patch(`/api/supervisor/evaluations/${evalId}/finalize`);
-      onFinalized(evalId);
+      const res = await api.patch(`/api/supervisor/evaluations/${evalId}/finalize`);
+      const finalized = res.data?.data || res.data || {};
+      onFinalized(evalId, finalized);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to finalize evaluation.');
     } finally {
@@ -235,15 +253,17 @@ function EvalModal({ item, evals, specialty, onClose, onSubmitted, onFinalized, 
               </div>
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                 {traineeEvals.map(ev => {
-                  const ratingKey = ev.scores?.overall || '';
+                  const ratingKey = ev?.scores?.overall || ev?.grade || '';
                   const ratingObj = RATINGS.find(r => r.key === ratingKey);
+                  const noteText = safeText(ev?.notes || ev?.comments);
+                  const label = safeText(ev?.evaluationType || ev?.type || ev?.evalType || 'Evaluation');
                   return (
                     <div
-                      key={ev._id}
+                      key={ev?._id || `${evalTraineeId(ev) || 'eval'}-${ev?.createdAt || ev?.date || 'row'}`}
                       style={{
                         border:'1px solid #E8E9EF', borderRadius:10, padding:'12px 14px',
                         display:'flex', alignItems:'center', gap:12,
-                        background: ev.isFinalized ? '#F0FDF4' : '#fff'
+                        background: ev?.isFinalized ? '#F0FDF4' : '#fff'
                       }}
                     >
                       <div style={{ flex:1, minWidth:0 }}>
@@ -252,7 +272,7 @@ function EvalModal({ item, evals, specialty, onClose, onSubmitted, onFinalized, 
                             fontSize:12, fontWeight:600, padding:'2px 8px', borderRadius:20,
                             background:'#DBEAFE', color:'#1E40AF'
                           }}>
-                            {ev.type || ev.evalType || 'Evaluation'}
+                            {label || 'Evaluation'}
                           </span>
                           {ratingObj && (
                             <span style={{
@@ -262,7 +282,7 @@ function EvalModal({ item, evals, specialty, onClose, onSubmitted, onFinalized, 
                               {ratingObj.label}
                             </span>
                           )}
-                          {ev.isFinalized && (
+                          {ev?.isFinalized && (
                             <span style={{
                               fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20,
                               background:'#D1FAE5', color:'#065F46'
@@ -270,23 +290,23 @@ function EvalModal({ item, evals, specialty, onClose, onSubmitted, onFinalized, 
                           )}
                         </div>
                         <div style={{ fontSize:12, color:'#8B8FA8' }}>
-                          {fmtDate(ev.date || ev.createdAt)}
-                          {ev.notes ? ` · ${ev.notes.slice(0, 60)}${ev.notes.length > 60 ? '…' : ''}` : ''}
+                          {fmtDate(ev?.date || ev?.createdAt)}
+                          {noteText ? ` · ${noteText.slice(0, 60)}${noteText.length > 60 ? '…' : ''}` : ''}
                         </div>
                       </div>
-                      {!isReadOnly && !ev.isFinalized && (
+                      {!isReadOnly && !ev?.isFinalized && (
                         <button
-                          onClick={() => handleFinalize(ev._id)}
-                          disabled={finalizing === ev._id}
+                          onClick={() => handleFinalize(ev?._id)}
+                          disabled={finalizing === ev?._id || !ev?._id}
                           style={{
                             padding:'6px 14px', borderRadius:8,
                             background:'#1B1464', color:'#fff',
                             border:'none', fontSize:12, fontWeight:600,
                             cursor:'pointer', flexShrink:0,
-                            opacity: finalizing === ev._id ? 0.7 : 1
+                            opacity: finalizing === ev?._id ? 0.7 : 1
                           }}
                         >
-                          {finalizing === ev._id ? 'Sending…' : 'Finalize'}
+                          {finalizing === ev?._id ? 'Sending…' : 'Finalize'}
                         </button>
                       )}
                     </div>
@@ -462,10 +482,10 @@ export default function SupervisorEvaluations() {
       api.get('/api/supervisor/trainees'),
       mySpecialtyId ? api.get('/api/specialties') : Promise.resolve(null),
     ]).then(([evalRes, traineeRes, specRes]) => {
-      setEvals(evalRes.data?.data || evalRes.data || []);
-      setTrainees(traineeRes.data?.data || traineeRes.data || []);
+      setEvals(safeArr(evalRes.data?.data || evalRes.data));
+      setTrainees(safeArr(traineeRes.data?.data || traineeRes.data));
       if (specRes && mySpecialtyId) {
-        const all = specRes.data?.data || specRes.data || [];
+        const all = safeArr(specRes.data?.data || specRes.data);
         const found = all.find(s =>
           (s._id?.toString() === mySpecialtyId?.toString())
         );
@@ -477,7 +497,7 @@ export default function SupervisorEvaluations() {
 
   const seen = new Set();
   const traineeList = [];
-  for (const dist of (Array.isArray(trainees) ? trainees : [])) {
+  for (const dist of safeArr(trainees)) {
     const t   = dist.traineeId || dist.student || {};
     const tid = t._id?.toString();
     if (!tid || seen.has(tid)) continue;
@@ -493,32 +513,39 @@ export default function SupervisorEvaluations() {
   });
 
   function evalCountFor(tid) {
-    return evals.filter(ev => {
-      const eid = (ev.traineeId?._id || ev.student?._id || ev.traineeId || ev.student)?.toString();
-      return eid === tid;
-    }).length;
+    return safeArr(evals).filter(ev => evalTraineeId(ev) === tid).length;
   }
 
   function monthlyCountFor(tid) {
-    return evals.filter(ev => {
-      const eid = (ev.traineeId?._id || ev.student?._id || ev.traineeId || ev.student)?.toString();
-      return eid === tid && isThisMonth(ev.date || ev.createdAt);
-    }).length;
+    return safeArr(evals).filter(ev => evalTraineeId(ev) === tid && isThisMonth(ev?.date || ev?.createdAt)).length;
   }
 
   function handleSubmitted(newEval) {
-    setEvals(prev => [newEval, ...prev]);
+    if (!newEval || typeof newEval !== 'object') return;
+    setEvals(prev => [newEval, ...safeArr(prev)]);
     showToast('Evaluation submitted successfully');
   }
 
-  function handleFinalized(evalId) {
-    setEvals(prev => prev.map(ev => ev._id === evalId ? { ...ev, isFinalized: true } : ev));
+  function handleFinalized(evalId, finalized = {}) {
+    setEvals(prev => safeArr(prev).map(ev => (
+      ev?._id === evalId
+        ? {
+            ...ev,
+            ...finalized,
+            _id: ev._id,
+            isFinalized: true,
+            sentToTraineeAt: finalized.sentToTraineeAt || ev.sentToTraineeAt || new Date().toISOString(),
+            status: finalized.status || ev.status || 'completed',
+          }
+        : ev
+    )));
     showToast("Evaluation sent to trainee's grades page");
   }
 
-  const totalEvals     = evals.length;
-  const finalizedCount = evals.filter(ev => ev.isFinalized).length;
-  const thisMonthTotal = evals.filter(ev => isThisMonth(ev.date || ev.createdAt)).length;
+  const evalList       = safeArr(evals);
+  const totalEvals     = evalList.length;
+  const finalizedCount = evalList.filter(ev => ev?.isFinalized).length;
+  const thisMonthTotal = evalList.filter(ev => isThisMonth(ev?.date || ev?.createdAt)).length;
 
   if (loading) return (
     <>

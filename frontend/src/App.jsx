@@ -3,7 +3,6 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // ── EXISTING PAGES (kept from V1 — still work) ────────────────────────────
-import Login                 from './pages/Login';
 import Dashboard             from './pages/Dashboard';
 import Reports               from './pages/Reports';
 import Grades                from './pages/Grades';
@@ -87,7 +86,8 @@ function RootRedirect() {
   };
 
   if (user) return <Navigate to={ROLE_HOME[user.role] || '/timeline'} replace />;
-  return <Login />;
+  window.location.replace('/');
+  return null;
 }
 
 // ── APP ────────────────────────────────────────────────────────────────────
