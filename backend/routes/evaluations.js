@@ -26,6 +26,11 @@ router.get('/', auth, allowRoles(...STAFF), async (req, res) => {
 // GET /api/evaluations/by-doctor/:doctorId — all evals submitted by this doctor
 router.get('/by-doctor/:doctorId', auth, async (req, res) => {
   try {
+    const isOwner = req.params.doctorId === req.user._id.toString();
+    const isStaff = ['admin', 'super_admin', 'professor', 'director', 'dio',
+                     'program_director', 'president'].includes(req.user.role);
+    if (!isOwner && !isStaff) return res.status(403).json({ success: false, message: 'Access denied' });
+
     const evaluations = await Evaluation.find({ doctor: req.params.doctorId })
       .populate('student',  'name email photoUrl initials studentId year')
       .populate('hospital', 'name')
@@ -39,6 +44,11 @@ router.get('/by-doctor/:doctorId', auth, async (req, res) => {
 // GET /api/evaluations/student/:studentId — all evals for one student
 router.get('/student/:studentId', auth, async (req, res) => {
   try {
+    const isOwner = req.params.studentId === req.user._id.toString();
+    const isStaff = ['admin', 'super_admin', 'professor', 'director', 'doctor',
+                     'supervisor', 'program_director', 'dio'].includes(req.user.role);
+    if (!isOwner && !isStaff) return res.status(403).json({ success: false, message: 'Access denied' });
+
     const evaluations = await Evaluation.find({ student: req.params.studentId })
       .populate('doctor',   'name initials')
       .populate('hospital', 'name')
@@ -91,7 +101,12 @@ router.post('/', auth, allowRoles(...CAN_SUBMIT), async (req, res) => {
 // PUT /api/evaluations/:id — edit (senior staff only)
 router.put('/:id', auth, allowRoles(...SENIOR), async (req, res) => {
   try {
-    const evaluation = await Evaluation.findByIdAndUpdate(req.params.id, req.body, { new: true })
+    const ALLOWED = ['scores', 'totalScore', 'grade', 'notes', 'comments',
+                     'assessorComments', 'isFinalized', 'status', 'specialty'];
+    const updates = {};
+    ALLOWED.forEach(k => { if (req.body[k] !== undefined) updates[k] = req.body[k]; });
+
+    const evaluation = await Evaluation.findByIdAndUpdate(req.params.id, updates, { new: true })
       .populate('student',  'name email photoUrl initials')
       .populate('doctor',   'name initials')
       .populate('hospital', 'name');

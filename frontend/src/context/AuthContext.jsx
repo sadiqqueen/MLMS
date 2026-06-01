@@ -8,30 +8,31 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const refreshTimerRef = useRef(null);
 
-  useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser  = localStorage.getItem('user');
+  const toSafeUser = (userData) => userData ? {
+    _id:      userData._id,
+    name:     userData.name,
+    email:    userData.email,
+    role:     userData.role,
+    initials: userData.initials,
+    photoUrl: userData.photoUrl,
+  } : null;
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-      setLoading(false);
-      scheduleRefresh(storedToken);
-    } else {
-      fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-          if (data?.token && data?.user) {
-            setToken(data.token);
-            setUser(data.user);
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('user', JSON.stringify(data.user));
-            scheduleRefresh(data.token);
-          }
-        })
-        .catch(() => {})
-        .finally(() => setLoading(false));
-    }
+  useEffect(() => {
+    fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.token && data?.user) {
+          const safeUser = toSafeUser(data.user);
+          setToken(data.token);
+          setUser(safeUser);
+          localStorage.setItem('user', JSON.stringify(safeUser));
+          scheduleRefresh(data.token);
+        } else {
+          localStorage.removeItem('user');
+        }
+      })
+      .catch(() => localStorage.removeItem('user'))
+      .finally(() => setLoading(false));
 
     return () => {
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
@@ -51,10 +52,10 @@ export function AuthProvider({ children }) {
         if (data?.token) {
           setToken(data.token);
           if (data.user) {
-            setUser(data.user);
-            localStorage.setItem('user', JSON.stringify(data.user));
+            const safeUser = toSafeUser(data.user);
+            setUser(safeUser);
+            localStorage.setItem('user', JSON.stringify(safeUser));
           }
-          localStorage.setItem('token', data.token);
           scheduleRefresh(data.token);
         }
       } catch {}
@@ -62,10 +63,10 @@ export function AuthProvider({ children }) {
   }
 
   const login = (tokenValue, userData) => {
-    localStorage.setItem('token', tokenValue);
-    localStorage.setItem('user', JSON.stringify(userData));
+    const safeUser = toSafeUser(userData);
     setToken(tokenValue);
-    setUser(userData);
+    setUser(safeUser);
+    localStorage.setItem('user', JSON.stringify(safeUser));
     scheduleRefresh(tokenValue);
   };
 
@@ -73,7 +74,6 @@ export function AuthProvider({ children }) {
     try {
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
     } catch {}
-    localStorage.removeItem('token');
     localStorage.removeItem('user');
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     setToken(null);
@@ -83,10 +83,10 @@ export function AuthProvider({ children }) {
 
   const updateToken = (newToken, newUser) => {
     setToken(newToken);
-    localStorage.setItem('token', newToken);
     if (newUser) {
-      setUser(newUser);
-      localStorage.setItem('user', JSON.stringify(newUser));
+      const safeUser = toSafeUser(newUser);
+      setUser(safeUser);
+      localStorage.setItem('user', JSON.stringify(safeUser));
     }
   };
 

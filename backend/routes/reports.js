@@ -41,6 +41,11 @@ const upload = multer({
 // GET /api/reports/student/:id — all reports for a student
 router.get('/student/:id', auth, async (req, res) => {
   try {
+    const isOwner = req.params.id === req.user._id.toString();
+    const isStaff = ['doctor', 'professor', 'supervisor', 'program_director',
+                     'admin', 'super_admin', 'dio', 'director'].includes(req.user.role);
+    if (!isOwner && !isStaff) return res.status(403).json({ success: false, message: 'Access denied' });
+
     const reports = await Report.find({ student: req.params.id })
       .populate('hospital', 'name')
       .populate('rotation', 'startDate endDate status')
@@ -87,7 +92,7 @@ router.get('/doctor/:doctorId', auth, allowRoles('doctor', 'professor', 'admin',
 });
 
 // GET /api/reports/rotation/:rotationId — reports grouped under one rotation
-router.get('/rotation/:rotationId', auth, async (req, res) => {
+router.get('/rotation/:rotationId', auth, allowRoles('doctor', 'professor', 'supervisor', 'program_director', 'admin', 'super_admin', 'dio', 'director'), async (req, res) => {
   try {
     const reports = await Report.find({ rotation: req.params.rotationId })
       .populate('student', 'name initials studentId')
@@ -128,10 +133,31 @@ router.post('/', auth, allowRoles('student', 'trainee'), upload.single('file'), 
 });
 
 // PUT /api/reports/:id/grade — doctor submits assessment form
-router.put('/:id/grade', auth, allowRoles('doctor', 'professor'), async (req, res) => {
+router.put('/:id/grade', auth, allowRoles('doctor', 'professor', 'supervisor', 'program_director', 'admin', 'super_admin', 'director'), async (req, res) => {
   try {
     const { grade: letterGrade, globalRating, assessmentCriteria, assessorComments, assessorSignature, traineeSignature } = req.body;
     if (!globalRating) return res.status(400).json({ message: 'Global rating is required' });
+
+    const existing = await Report.findById(req.params.id);
+    if (!existing) return res.status(404).json({ success: false, message: 'Report not found' });
+
+    if (!['admin', 'super_admin', 'dio'].includes(req.user.role)) {
+      const Distribution = require('../models/Distribution');
+      const Rotation = require('../models/Rotation');
+      const dist = await Distribution.findOne({
+        $or: [
+          { traineeId: existing.student, supervisorId: req.user._id },
+          { student:   existing.student, doctor:       req.user._id },
+          { traineeId: existing.student, doctor:       req.user._id }
+        ]
+      });
+      const rotation = !dist && existing.rotation
+        ? await Rotation.findOne({ _id: existing.rotation, doctor: req.user._id })
+        : null;
+      if (!dist && !rotation) {
+        return res.status(403).json({ success: false, message: 'You are not assigned to this trainee' });
+      }
+    }
 
     const report = await Report.findByIdAndUpdate(
       req.params.id,

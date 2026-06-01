@@ -23,7 +23,7 @@ module.exports = function auditLog(action, targetModel) {
           targetId,
           targetModel,
           ip:          req.ip || req.headers['x-forwarded-for'] || 'unknown'
-        }).catch(() => {}); // silently ignore audit log failures
+        }).catch((err) => console.error('[AuditLog] Failed to write:', err.message));
       }
       return originalJson(body);
     };

@@ -230,15 +230,17 @@ router.post('/evaluations',
       }
 
       const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
       const monthCount = await Evaluation.countDocuments({
-        $or: [{ student: targetTrainee }, { traineeId: targetTrainee }],
-        supervisorId: req.user._id,
-        date: { $gte: startOfMonth, $lte: endOfMonth }
+        $and: [
+          { $or: [{ traineeId: targetTrainee }, { student: targetTrainee }] },
+          { $or: [{ supervisorId: req.user._id }, { doctor: req.user._id }] },
+          { createdAt: { $gte: monthStart, $lt: monthEnd } }
+        ]
       });
       if (monthCount >= 5) {
-        return res.status(400).json({ success: false, message: 'Monthly evaluation limit (5) reached for this trainee.' });
+        return res.status(400).json({ success: false, message: 'Monthly evaluation limit (5) reached for this trainee' });
       }
 
       // Calculate totalScore from scores object

@@ -13,10 +13,18 @@ const loginLimiter = rateLimit({
 // Applied globally to all routes — 200 requests per minute per IP
 const globalLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 200,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: 'Too many requests. Please slow down.' }
+  message: { success: false, message: 'Too many requests, please slow down' }
 });
 
-module.exports = { loginLimiter, globalLimiter };
+const writeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many write requests' }
+});
+
+module.exports = { loginLimiter, globalLimiter, writeLimiter };

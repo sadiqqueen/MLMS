@@ -28,7 +28,26 @@ const upload = multer({
   }
 });
 
-const STAFF = ['admin', 'super_admin', 'professor', 'director', 'secretary', 'dio', 'president'];
+const SELF_EDITABLE = ['name', 'phone', 'city', 'gender', 'photoUrl'];
+const ADMIN_EDITABLE = ['name', 'phone', 'city', 'gender', 'photoUrl',
+                        'isActive', 'department', 'specialty', 'year',
+                        'studentId', 'hospitalId', 'specialtyId', 'supervisorId',
+                        'hospital', 'supervisor'];
+const ALLOWED_CREATE_FIELDS = ['name', 'email', 'password', 'role', 'phone',
+  'gender', 'city', 'department', 'specialty', 'year', 'studentId',
+  'enrolledSince', 'hospitalId', 'specialtyId', 'supervisorId',
+  'hospital', 'supervisor'];
+const ROLE_ALLOWED = {
+  secretary:        ['trainee', 'student'],
+  dio:              ['trainee', 'student', 'supervisor', 'doctor', 'program_director', 'secretary'],
+  program_director: [],
+  president:        [],
+  professor:        [],
+  director:         [],
+  admin:            ['trainee', 'student', 'supervisor', 'doctor', 'program_director', 'secretary', 'dio'],
+  super_admin:      null
+};
+const STAFF = ['secretary', 'dio', 'program_director', 'president', 'admin', 'super_admin', 'professor', 'director'];
 
 // GET /api/users — all users
 router.get('/', auth, allowRoles(...STAFF), async (req, res) => {
@@ -45,7 +64,7 @@ router.get('/', auth, allowRoles(...STAFF), async (req, res) => {
 });
 
 // GET /api/users/doctors — only doctors (for dropdowns)
-router.get('/doctors', auth, async (req, res) => {
+router.get('/doctors', auth, allowRoles(...STAFF), async (req, res) => {
   try {
     const doctors = await User.find({ role: 'doctor' })
       .select('-password')
@@ -91,7 +110,7 @@ router.get('/program-directors', auth, allowRoles('super_admin', 'secretary', 'd
 });
 
 // GET /api/users/students — kept for backward compat (returns trainees)
-router.get('/students', auth, async (req, res) => {
+router.get('/students', auth, allowRoles('supervisor', 'doctor', 'program_director', 'secretary', 'dio', 'admin', 'super_admin', 'president', 'professor', 'director'), async (req, res) => {
   try {
     const students = await User.find({
       role: { $in: ['trainee', 'student'] },
@@ -111,6 +130,10 @@ router.get('/students', auth, async (req, res) => {
 // GET /api/users/:id
 router.get('/:id', auth, async (req, res) => {
   try {
+    const isSelf  = req.params.id === req.user._id.toString();
+    const isStaff = STAFF.includes(req.user.role);
+    if (!isSelf && !isStaff) return res.status(403).json({ success: false, message: 'Access denied' });
+
     const user = await User.findById(req.params.id)
       .select('-password')
       .populate('hospital', 'name')
@@ -125,8 +148,18 @@ router.get('/:id', auth, async (req, res) => {
 // POST /api/users — create user with optional photo
 router.post('/', auth, allowRoles(...STAFF), upload.single('photo'), async (req, res) => {
   try {
-    const data = { ...req.body };
+    const data = {};
+    ALLOWED_CREATE_FIELDS.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
     if (req.file) data.photoUrl = `/uploads/photos/${req.file.filename}`;
+
+    const callerRole = req.user.role;
+    if (!Object.prototype.hasOwnProperty.call(ROLE_ALLOWED, callerRole)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    const permitted = ROLE_ALLOWED[callerRole];
+    if (permitted && !permitted.includes(data.role)) {
+      return res.status(403).json({ success: false, message: `Your role cannot create a user with role: ${data.role}` });
+    }
 
     const user = new User(data);
     await user.save();
@@ -148,7 +181,9 @@ router.put('/:id', auth, upload.single('photo'), async (req, res) => {
     const isAdmin = STAFF.includes(req.user.role);
     if (!isSelf && !isAdmin) return res.status(403).json({ message: 'Access denied' });
 
-    const { password, ...fields } = req.body;
+    const allowedKeys = isAdmin ? ADMIN_EDITABLE : SELF_EDITABLE;
+    const fields = {};
+    allowedKeys.forEach(k => { if (req.body[k] !== undefined) fields[k] = req.body[k]; });
     if (req.file) fields.photoUrl = `/uploads/photos/${req.file.filename}`;
 
     const user = await User.findByIdAndUpdate(req.params.id, fields, { new: true })
@@ -165,8 +200,8 @@ router.put('/:id', auth, upload.single('photo'), async (req, res) => {
 router.put('/:id/password', auth, allowRoles(...STAFF), async (req, res) => {
   try {
     const { newPassword } = req.body;
-    if (!newPassword || newPassword.length < 6)
-      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    if (!newPassword || newPassword.length < 8)
+      return res.status(400).json({ message: 'Password must be at least 8 characters' });
 
     const hashed = await bcrypt.hash(newPassword, 12);
     await User.findByIdAndUpdate(req.params.id, { password: hashed });

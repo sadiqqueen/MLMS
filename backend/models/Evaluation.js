@@ -29,4 +29,9 @@ const evaluationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+evaluationSchema.index(
+  { traineeId: 1, supervisorId: 1, monthYear: 1 },
+  { unique: false }
+);
+
 module.exports = mongoose.model('Evaluation', evaluationSchema);

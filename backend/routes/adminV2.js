@@ -45,6 +45,8 @@ router.get('/stats', auth, allowRoles(...ADMIN), async (req, res) => {
 router.get('/users', auth, allowRoles(...ADMIN), async (req, res) => {
   try {
     const { role, hospital, search, page = 1, limit = 50 } = req.query;
+    const pageNumber = Math.max(1, Number(page) || 1);
+    const limitNumber = Math.min(Math.max(1, Number(limit) || 50), 500);
     const query = {};
     if (role) query.role = role;
     if (hospital) query.$or = [{ hospitalId: hospital }, { hospital }];
@@ -60,8 +62,8 @@ router.get('/users', auth, allowRoles(...ADMIN), async (req, res) => {
         .populate('hospital',    'name city')
         .populate('specialtyId', 'name')
         .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(Number(limit)),
+        .skip((pageNumber - 1) * limitNumber)
+        .limit(limitNumber),
       User.countDocuments(query)
     ]);
 
@@ -274,6 +276,8 @@ router.patch('/specialties/:id',
 router.get('/distributions', auth, allowRoles(...ADMIN), async (req, res) => {
   try {
     const { hospital, specialty, status, page = 1, limit = 50 } = req.query;
+    const pageNumber = Math.max(1, Number(page) || 1);
+    const limitNumber = Math.min(Math.max(1, Number(limit) || 50), 500);
     const query = {};
     if (status)    query.status     = status;
     if (hospital)  query.$or        = [{ hospitalId: hospital }, { hospital }];
@@ -286,8 +290,8 @@ router.get('/distributions', auth, allowRoles(...ADMIN), async (req, res) => {
         .populate('specialtyId', 'name')
         .populate('hospitalId',  'name city')
         .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(Number(limit)),
+        .skip((pageNumber - 1) * limitNumber)
+        .limit(limitNumber),
       Distribution.countDocuments(query)
     ]);
 
@@ -303,6 +307,8 @@ router.get('/distributions', auth, allowRoles(...ADMIN), async (req, res) => {
 router.get('/certificates', auth, allowRoles(...ADMIN), async (req, res) => {
   try {
     const { revoked, page = 1, limit = 50 } = req.query;
+    const pageNumber = Math.max(1, Number(page) || 1);
+    const limitNumber = Math.min(Math.max(1, Number(limit) || 50), 500);
     const query = {};
     if (revoked === 'true')  query.revokedAt = { $ne: null };
     if (revoked === 'false') query.revokedAt = null;
@@ -314,8 +320,8 @@ router.get('/certificates', auth, allowRoles(...ADMIN), async (req, res) => {
         .populate('hospital',  'name city')
         .populate('issuedBy',  'name')
         .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(Number(limit)),
+        .skip((pageNumber - 1) * limitNumber)
+        .limit(limitNumber),
       Certificate.countDocuments(query)
     ]);
 
@@ -331,6 +337,8 @@ router.get('/certificates', auth, allowRoles(...ADMIN), async (req, res) => {
 router.get(['/audit-log', '/audit-logs'], auth, allowRoles(...ADMIN), async (req, res) => {
   try {
     const { userId, action, page = 1, limit = 100 } = req.query;
+    const pageNumber = Math.max(1, Number(page) || 1);
+    const limitNumber = Math.min(Math.max(1, Number(limit) || 100), 500);
     const query = {};
     if (userId) query.userId = userId;
     if (action) query.action = new RegExp(escapeRegex(action.slice(0, 50)), 'i');
@@ -339,8 +347,8 @@ router.get(['/audit-log', '/audit-logs'], auth, allowRoles(...ADMIN), async (req
       AuditLog.find(query)
         .populate('userId', 'name email role')
         .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(Number(limit)),
+        .skip((pageNumber - 1) * limitNumber)
+        .limit(limitNumber),
       AuditLog.countDocuments(query)
     ]);
 

@@ -7,7 +7,7 @@ const Distribution = require('../models/Distribution');
 const Report       = require('../models/Report');
 const Evaluation   = require('../models/Evaluation');
 
-const TRAINEE = ['trainee'];
+const TRAINEE = ['trainee', 'student'];
 
 // GET /api/trainee/timeline
 // Returns all distributions (rotations) for this trainee
@@ -34,7 +34,7 @@ router.get('/timeline', auth, allowRoles(...TRAINEE), scopeGuard(), async (req, 
 
 // GET /api/trainee/reports
 // Returns active distribution info (with specialty PDF links) + all submitted reports
-router.get('/reports', auth, allowRoles(...TRAINEE), async (req, res) => {
+router.get('/reports', auth, allowRoles(...TRAINEE), scopeGuard(), async (req, res) => {
   try {
     // Find active distribution
     const distribution = await Distribution.findOne({
@@ -60,7 +60,7 @@ router.get('/reports', auth, allowRoles(...TRAINEE), async (req, res) => {
 
 // GET /api/trainee/grades
 // Returns finalized evaluations from supervisor + final report grades from program director
-router.get('/grades', auth, allowRoles(...TRAINEE), async (req, res) => {
+router.get('/grades', auth, allowRoles(...TRAINEE), scopeGuard(), async (req, res) => {
   try {
     // Evaluations that have been finalized and sent to trainee
     const evaluations = await Evaluation.find({

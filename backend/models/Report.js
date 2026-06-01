@@ -3,17 +3,17 @@ const mongoose = require('mongoose');
 // A Report is one document submitted by a student during a rotation.
 const reportSchema = new mongoose.Schema(
   {
-    student:  { type: mongoose.Schema.Types.ObjectId, ref: 'User',     required: true },
+    student:  { type: mongoose.Schema.Types.ObjectId, ref: 'User',     required: true, index: true },
     rotation: { type: mongoose.Schema.Types.ObjectId, ref: 'Rotation' },
     hospital: { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital' },
 
     title:    { type: String, required: true },         // e.g. "Week 3 Report"
-    type:     { type: String, enum: ['weekly', 'monthly', 'final'], required: true },
+    type:     { type: String, enum: ['weekly', 'monthly', 'final'], required: true, index: true },
     date:     { type: Date, required: true },
     fileUrl:  { type: String },                         // path to uploaded PDF/image, e.g. "/uploads/abc123.pdf"
 
     // Status lifecycle: pending → approved/rejected (supervisor) → graded (program director)
-    status:   { type: String, enum: ['pending', 'approved', 'rejected', 'graded'], default: 'pending' },
+    status:   { type: String, enum: ['pending', 'approved', 'rejected', 'graded'], default: 'pending', index: true },
 
     grade:    { type: String, default: null },   // 'Competent' | 'Not-Competent'
 
