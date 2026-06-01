@@ -8,12 +8,20 @@ const API_BASE = '';
 
 function fmt(d) {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 }
 
 function fmtShort(dateStr) {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+
+function safeArr(value) {
+  return Array.isArray(value) ? value : [];
 }
 
 const FILTERS = ['All', 'Weekly', 'Monthly', 'Final', 'Graded', 'Pending'];
@@ -288,15 +296,15 @@ export default function Reports() {
         const data = r.data?.data || r.data;
         if (data?.distribution || data?.reports) {
           setDistribution(data.distribution || null);
-          setReports(data.reports || []);
+          setReports(safeArr(data.reports));
         } else {
           return api.get(`/api/reports/student/${user._id}`)
-            .then(r2 => setReports(r2.data || []));
+            .then(r2 => setReports(safeArr(r2.data?.data || r2.data)));
         }
       })
       .catch(() =>
         api.get(`/api/reports/student/${user._id}`)
-          .then(r => setReports(r.data || []))
+          .then(r => setReports(safeArr(r.data?.data || r.data)))
           .catch(console.error)
       )
       .finally(() => setLoading(false));
@@ -327,7 +335,7 @@ export default function Reports() {
 
       const res = await api.post('/api/reports', fd, { headers:{ 'Content-Type':'multipart/form-data' } });
       const newReport = res.data?.data || res.data;
-      setReports(prev => [newReport, ...prev]);
+      if (newReport && typeof newReport === 'object') setReports(prev => [newReport, ...safeArr(prev)]);
       setUploadMsg(`${type.charAt(0).toUpperCase() + type.slice(1)} report submitted successfully!`);
       fileRef.current.value = '';
     } catch (err) {
@@ -355,7 +363,8 @@ export default function Reports() {
       fd.append('date',  form.date);
       if (form.file) fd.append('file', form.file);
       const res = await api.post('/api/reports', fd, { headers:{ 'Content-Type':'multipart/form-data' } });
-      setReports(prev => [res.data?.data || res.data, ...prev]);
+      const newReport = res.data?.data || res.data;
+      if (newReport && typeof newReport === 'object') setReports(prev => [newReport, ...safeArr(prev)]);
       setForm({ title:'', type:'weekly', date:'', file:null });
       setShowForm(false);
     } catch (err) {
@@ -365,7 +374,8 @@ export default function Reports() {
     }
   }
 
-  const filtered = reports.filter(r => {
+  const reportList = safeArr(reports);
+  const filtered = reportList.filter(r => {
     if (filter === 'All')     return true;
     if (filter === 'Weekly')  return r.type === 'weekly';
     if (filter === 'Monthly') return r.type === 'monthly';
@@ -375,9 +385,9 @@ export default function Reports() {
     return true;
   });
 
-  const weekly  = reports.filter(r => r.type === 'weekly');
-  const monthly = reports.filter(r => r.type === 'monthly');
-  const final   = reports.filter(r => r.type === 'final');
+  const weekly  = reportList.filter(r => r.type === 'weekly');
+  const monthly = reportList.filter(r => r.type === 'monthly');
+  const final   = reportList.filter(r => r.type === 'final');
 
   if (loading) return (
     <>
@@ -587,7 +597,7 @@ export default function Reports() {
           <div className="card">
             {filtered.length === 0 && (
               <div className="empty-row">
-                {reports.length === 0 ? 'No reports yet. Submit your first report above.' : 'No reports match this filter.'}
+                {reportList.length === 0 ? 'No reports yet. Submit your first report above.' : 'No reports match this filter.'}
               </div>
             )}
             {filtered.map(r => (

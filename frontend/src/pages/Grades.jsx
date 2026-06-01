@@ -13,7 +13,13 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 
 function fmt(d) {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+
+function safeArr(value) {
+  return Array.isArray(value) ? value : [];
 }
 
 function gradeToGpa(grade) {
@@ -44,13 +50,13 @@ export default function Grades() {
     const v2 = api.get('/api/trainee/grades')
       .then(r => {
         const data = r.data?.data || {};
-        setEvaluations(data.evaluations || []);
-        setFinalGrades(data.finalReports || []);
+        setEvaluations(safeArr(data.evaluations));
+        setFinalGrades(safeArr(data.finalReports));
       })
       .catch(() => {});
 
     const v1 = api.get(`/api/reports/student/${user._id}`)
-      .then(res => setReports(res.data || []))
+      .then(res => setReports(safeArr(res.data?.data || res.data)))
       .catch(() => {});
 
     Promise.all([v2, v1]).finally(() => setLoading(false));
@@ -76,12 +82,15 @@ export default function Grades() {
     </>
   );
 
-  const graded     = reports.filter(r => r.status === 'graded' && r.grade);
+  const reportList = safeArr(reports);
+  const evalList   = safeArr(evaluations);
+  const finalList  = safeArr(finalGrades);
+  const graded     = reportList.filter(r => r.status === 'graded' && r.grade);
   const overallAvg = calcAvg(graded);
   const gpaDisplay = overallAvg !== null ? overallAvg.toFixed(1) : '—';
 
   const byHospital = {};
-  reports.forEach(r => {
+  reportList.forEach(r => {
     const key = r.hospital?.name ?? 'Unknown';
     if (!byHospital[key]) byHospital[key] = [];
     byHospital[key].push(r);
@@ -133,30 +142,30 @@ export default function Grades() {
           <div className="stat-card">
             <div className="stat-label">Evaluations received</div>
             <div className="gpa-score" style={{ marginTop:6 }}>
-              <span className="gpa-num gpa-num-sm">{evaluations.length}</span>
+              <span className="gpa-num gpa-num-sm">{evalList.length}</span>
               <span className="gpa-max">total</span>
             </div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Final reports graded</div>
             <div className="gpa-score" style={{ marginTop:6 }}>
-              <span className="gpa-num gpa-num-sm">{finalGrades.length}</span>
+              <span className="gpa-num gpa-num-sm">{finalList.length}</span>
               <span className="gpa-max">total</span>
             </div>
           </div>
         </div>
 
         {/* ── SUPERVISOR EVALUATIONS ── */}
-        {evaluations.length > 0 && (
+        {evalList.length > 0 && (
           <div className="card">
             <div className="card-title" style={{ marginBottom:14 }}>
               Supervisor Evaluations
-              <span className="badge badge-blue" style={{ marginLeft:8 }}>{evaluations.length}</span>
+              <span className="badge badge-blue" style={{ marginLeft:8 }}>{evalList.length}</span>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              {evaluations.map(ev => {
+              {evalList.map(ev => {
                 const supName = ev.supervisorId?.name || ev.doctor?.name || 'Supervisor';
-                const rating  = ev.grade || '';
+                const rating  = ev.grade || ev.scores?.overall || '';
                 const rColor  = RATING_COLOR[rating] || '#185FA5';
                 const rLabel  = RATING_LABEL[rating] || rating;
                 return (
@@ -206,14 +215,14 @@ export default function Grades() {
         )}
 
         {/* ── FINAL REPORT GRADES (from Program Director) ── */}
-        {finalGrades.length > 0 && (
+        {finalList.length > 0 && (
           <div className="card">
             <div className="card-title" style={{ marginBottom:14 }}>
               Final Report Grades
               <span className="badge" style={{ marginLeft:8, background:'#FEE2E2', color:'#991B1B' }}>Program Director</span>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              {finalGrades.map(r => (
+              {finalList.map(r => (
                 <div key={r._id} style={{
                   border:'1px solid #E8E9EF', borderRadius:10, padding:'14px 16px',
                   background:'#FFF9F0', borderLeft:'4px solid #FF6B35'
@@ -301,7 +310,7 @@ export default function Grades() {
         })}
 
         {/* Empty state */}
-        {reports.length === 0 && evaluations.length === 0 && finalGrades.length === 0 && (
+        {reportList.length === 0 && evalList.length === 0 && finalList.length === 0 && (
           <div style={{ textAlign:'center', padding:56, color:'#8B8FA8' }}>
             <div style={{ fontSize:40, marginBottom:12 }}>📊</div>
             <div style={{ fontSize:16, fontWeight:600, color:'#4B5563', marginBottom:6 }}>No grades yet</div>

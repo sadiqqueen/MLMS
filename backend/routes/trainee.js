@@ -9,18 +9,26 @@ const Evaluation   = require('../models/Evaluation');
 
 const TRAINEE = ['trainee', 'student'];
 
+function uniqueById(items) {
+  const seen = new Set();
+  return items.filter(item => {
+    const id = item?._id?.toString();
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
 // GET /api/trainee/timeline
 // Returns all distributions (rotations) for this trainee
 router.get('/timeline', auth, allowRoles(...TRAINEE), scopeGuard(), async (req, res) => {
   try {
-    const distributions = await Distribution.find({ traineeId: req.user._id })
-      .populate('supervisorId', 'name specialty initials photoUrl')
-      .populate('specialtyId',  'name')
-      .populate('hospitalId',   'name city')
-      .sort({ startDate: 1 });
-
-    // Also support legacy field (V1 used 'student' for the trainee reference)
-    const legacy = await Distribution.find({ student: req.user._id })
+    const distributions = await Distribution.find({
+      $or: [
+        { traineeId: req.user._id },
+        { student: req.user._id }
+      ]
+    })
       .populate('supervisorId', 'name specialty initials photoUrl')
       .populate('doctor',       'name specialty initials photoUrl')
       .populate('specialtyId',  'name')
@@ -28,8 +36,7 @@ router.get('/timeline', auth, allowRoles(...TRAINEE), scopeGuard(), async (req, 
       .populate('hospital',     'name city')
       .sort({ startDate: 1 });
 
-    const combined = distributions.length ? distributions : legacy;
-    res.json({ success: true, data: combined });
+    res.json({ success: true, data: uniqueById(distributions) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -39,19 +46,25 @@ router.get('/timeline', auth, allowRoles(...TRAINEE), scopeGuard(), async (req, 
 // Returns active distribution info (with specialty PDF links) + all submitted reports
 router.get('/reports', auth, allowRoles(...TRAINEE), scopeGuard(), async (req, res) => {
   try {
-    // Find active distribution
+    // Find active distribution, supporting both V2 traineeId and legacy student fields.
     const distribution = await Distribution.findOne({
-      traineeId: req.user._id,
+      $or: [
+        { traineeId: req.user._id },
+        { student: req.user._id }
+      ],
       status: 'active'
     })
       .populate('specialtyId', 'name weeklyReportPdf monthlyReportPdf finalReportPdf')
       .populate('hospitalId',  'name')
-      .populate('supervisorId','name');
+      .populate('hospital',    'name')
+      .populate('supervisorId','name')
+      .populate('doctor',      'name');
 
     // Get all reports for this trainee
     const reports = await Report.find({ student: req.user._id })
       .populate('hospital', 'name')
       .populate('rotation', 'startDate endDate status')
+      .populate('distribution', 'startDate endDate status')
       .populate('gradedBy', 'name initials')
       .sort({ date: -1 });
 

@@ -6,11 +6,17 @@ import Sk     from '../components/Skeleton';
 
 function fmt(d) {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+
+function safeArr(value) {
+  return Array.isArray(value) ? value : [];
 }
 
 // Normalize distribution (V2) or rotation (V1) to common shape
-function normalize(item) {
+function normalize(item = {}) {
   // V2 distribution
   if (item.traineeId || item.supervisorId || item.specialtyId) {
     return {
@@ -92,18 +98,18 @@ export default function Timeline() {
     // Try V2 endpoint first
     api.get('/api/trainee/timeline')
       .then(r => {
-        const list = r.data?.data || r.data || [];
-        if (Array.isArray(list) && list.length > 0) {
+        const list = safeArr(r.data?.data || r.data);
+        if (list.length > 0) {
           setItems(list.map(normalize));
           return;
         }
         // Fall back to V1
         return api.get(`/api/rotations/student/${user._id}`)
-          .then(r2 => setItems((r2.data || []).map(normalize)));
+          .then(r2 => setItems(safeArr(r2.data?.data || r2.data).map(normalize)));
       })
       .catch(() =>
         api.get(`/api/rotations/student/${user._id}`)
-          .then(r => setItems((r.data || []).map(normalize)))
+          .then(r => setItems(safeArr(r.data?.data || r.data).map(normalize)))
           .catch(console.error)
       )
       .finally(() => setLoading(false));
