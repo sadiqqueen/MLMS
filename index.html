@@ -4,9 +4,8 @@
   <link rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="/favicon.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MTMS - Medical Training Management System</title>
+  <title>MLMS - Medical Learning Management System</title>
   <style>
 
     /* ══════════════════════════════════════════════════════════════
@@ -136,7 +135,7 @@
       width: 100%;
     }
     
-    .nav-logo-img { height: 55px; width: auto; display: block; }
+    .nav-logo-img { height: 30px; width: auto; display: block; }
 
     /* Nav links */
     .nav-links {
@@ -532,7 +531,7 @@
       position: absolute;
       top: 0; left: 0; right: 0;
       height: 4px;
-      background: #9f5d06;
+      background: #fe9a16;
       transform: scaleX(0);
       transform-origin: left;
       transition: transform 0.3s ease;
@@ -643,9 +642,10 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      white-space: nowrap;
     }
 
-    .vm-card-title span {
+    .vm-card-title > span:first-child {
       width: 32px;
       height: 32px;
       background: rgba(255,255,255,0.15);
@@ -655,6 +655,13 @@
       justify-content: center;
       font-size: 16px;
       flex-shrink: 0;
+    }
+
+    .vm-card-title > span:last-child {
+      font-size: 20px;
+      font-weight: 700;
+      color: white;
+      line-height: 1;
     }
 
     .vm-text {
@@ -1009,7 +1016,8 @@
     /* ══════════════════════════════════════════════════════════════
        RESPONSIVE — MOBILE
     ══════════════════════════════════════════════════════════════ */
-    @media (max-width: 700px) {
+    @media (max-width: 768px) {
+      .top-bar    { display: none; }
       .nav-links  { display: none; }
       .btn-lang   { display: none; }
       .btn-login  { display: none; } /* shown in mobile menu */
@@ -1033,7 +1041,7 @@
       .footer-bar-inner { flex-direction: column; text-align: center; }
     }
 
-    @media (max-width: 420px) {
+    @media (max-width: 480px) {
       .features-grid { grid-template-columns: 1fr; }
     }
 
@@ -1085,8 +1093,8 @@
       <!-- Logo -->
       <a href="#home" class="nav-logo">
         <img
-          src="logo.png"
-          alt="MTMS"
+          src="/logo.png"
+          alt="MLMS"
           class="nav-logo-img"
         />
       </a>
@@ -1104,7 +1112,9 @@
       <button class="btn-lang" id="lang-toggle" onclick="toggleLang()">عربي</button>
 
       <div class="nav-right">
-        <button class="btn-login" onclick="openLoginModal()" data-en="Portal Login" data-ar="دخول البوابة">Portal Login</button>
+        <a href="#" onclick="event.preventDefault();openLoginPanel()">
+          <button class="btn-login" data-en="Portal Login" data-ar="دخول البوابة">Portal Login</button>
+        </a>
         <!-- Hamburger for mobile -->
         <button class="nav-hamburger" onclick="toggleMenu()" aria-label="Menu">
           <span></span><span></span><span></span>
@@ -1119,7 +1129,9 @@
       <a href="#tracks"  onclick="closeMenu()" data-en="Training Tracks"  data-ar="مسارات التدريب">Training Tracks</a>
       <a href="#vision"  onclick="closeMenu()" data-en="About Us"         data-ar="عن المركز">About Us</a>
       <a href="#contact" onclick="closeMenu()" data-en="Contact"          data-ar="تواصل معنا">Contact</a>
-      <button class="btn-login" onclick="closeMenu();openLoginModal()" data-en="Portal Login" data-ar="دخول البوابة">Portal Login</button>
+      <a href="#" onclick="event.preventDefault();closeMenu();openLoginPanel()">
+        <button class="btn-login" data-en="Portal Login" data-ar="دخول البوابة">Portal Login</button>
+      </a>
     </div>
   </nav>
 
@@ -1131,10 +1143,10 @@
       <div class="hero-label" data-en="Excellence in Clinical Training" data-ar="التميز في التدريب السريري">
         Excellence in Clinical Training
       </div>
-      <h1 data-en="Medical Training Management System" data-ar="نظام إدارة التدريب الطبي">
-        Medical Training Management System
+      <h1 data-en="Medical Learning Management System" data-ar="نظام إدارة التعلم الطبي">
+        Medical Learning Management System
       </h1>
-      <div class="hero-subtitle" data-en="MTMS" data-ar="">MTMS</div>
+      <div class="hero-subtitle" data-en="MedLearn LMS" data-ar="">MLMS</div>
       <p class="hero-desc"
          data-en="The leading national center for high-quality clinical training that produces competent, ethical, and patient-centered health professionals across all stages of medical and health education."
          data-ar="المركز الوطني الرائد للتدريب السريري عالي الجودة الذي يُخرج كوادر صحية كفوءة وأخلاقية ومتمحورة حول المريض في جميع مراحل التعليم الطبي والصحي.">
@@ -1146,9 +1158,11 @@
             Explore Training Tracks
           </button>
         </a>
-        <button class="btn-hero-outline" onclick="openLoginModal()" data-en="Login to Portal" data-ar="تسجيل الدخول للبوابة">
-          Login to Portal
-        </button>
+        <a href="#" onclick="event.preventDefault();openLoginPanel()">
+          <button class="btn-hero-outline" data-en="Login to Portal" data-ar="تسجيل الدخول للبوابة">
+            Login to Portal
+          </button>
+        </a>
       </div>
     </div>
   </section>
@@ -1216,7 +1230,9 @@
             <li data-en="Graduate competency development"                 data-ar="تطوير كفاءات الخريجين">Graduate competency development</li>
             <li data-en="Knowledge, skills and attitudes training"        data-ar="تدريب المعرفة والمهارات والمواقف">Knowledge, skills and attitudes training</li>
           </ul>
-          <button class="btn-track" onclick="openLoginModal()" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
+          <a href="#" onclick="event.preventDefault();openLoginPanel()">
+            <button class="btn-track" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
+          </a>
         </div>
 
         <!-- Card 2 -->
@@ -1241,7 +1257,9 @@
             <li data-en="Clear learning outcomes"                         data-ar="مخرجات تعليمية واضحة">Clear learning outcomes</li>
             <li data-en="Structured supervision and assessment"           data-ar="إشراف وتقييم منظم">Structured supervision and assessment</li>
           </ul>
-          <button class="btn-track" onclick="openLoginModal()" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
+          <a href="#" onclick="event.preventDefault();openLoginPanel()">
+            <button class="btn-track" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
+          </a>
         </div>
 
         <!-- Card 3 -->
@@ -1266,7 +1284,9 @@
             <li data-en="Research involvement"                            data-ar="المشاركة في البحث العلمي">Research involvement</li>
             <li data-en="Leadership and teaching skills"                  data-ar="مهارات القيادة والتدريس">Leadership and teaching skills</li>
           </ul>
-          <button class="btn-track" onclick="openLoginModal()" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
+          <a href="#" onclick="event.preventDefault();openLoginPanel()">
+            <button class="btn-track" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
+          </a>
         </div>
 
       </div>
@@ -1505,7 +1525,7 @@
       <!-- Brand -->
       <div>
         <div class="footer-brand-logo">
-          <img src="logo.png" alt="MTMS" class="footer-logo-img" />
+          <img src="/logo.png" alt="MLMS" class="footer-logo-img" />
         </div>
         <p class="footer-desc"
            data-en="The leading national platform for clinical training management in medical and health education."
@@ -1522,7 +1542,7 @@
           <li><a href="#tracks"  data-en="Training Tracks"  data-ar="مسارات التدريب">Training Tracks</a></li>
           <li><a href="#vision"  data-en="About Us"         data-ar="عن المركز">About Us</a></li>
           <li><a href="#contact" data-en="Contact"          data-ar="تواصل معنا">Contact</a></li>
-          <li><a href="#" onclick="openLoginModal();return false;" data-en="Portal Login" data-ar="دخول البوابة">Portal Login</a></li>
+          <li><a href="#" onclick="event.preventDefault();openLoginPanel()" data-en="Portal Login"   data-ar="دخول البوابة">Portal Login</a></li>
         </ul>
       </div>
 
@@ -1556,9 +1576,9 @@
 
     <div class="footer-bar">
       <div class="footer-bar-inner">
-        <span data-en="© 2026 MTMS. All Rights Reserved."
-              data-ar="© 2026 MTMS. جميع الحقوق محفوظة.">
-          © 2026 MTMS. All Rights Reserved.
+        <span data-en="© 2026 MedLearn LMS. All Rights Reserved."
+              data-ar="© 2026 ميدلرن. جميع الحقوق محفوظة.">
+          © 2026 MedLearn LMS. All Rights Reserved.
         </span>
         <div class="footer-bar-links">
           <a href="#" data-en="Privacy Policy"    data-ar="سياسة الخصوصية">Privacy Policy</a>
@@ -1568,25 +1588,395 @@
     </div>
   </footer>
 
-  <!-- LOGIN MODAL -->
-  <div id="loginModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)closeLoginModal()">
-    <div style="background:#fff;border-radius:16px;padding:32px;width:100%;max-width:400px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.25);">
-      <button onclick="closeLoginModal()" style="position:absolute;top:14px;right:16px;background:#F5F6FA;border:none;width:30px;height:30px;border-radius:50%;font-size:18px;color:#8B8FA8;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
-      <img src="/logo.png" alt="MTMS" style="height:44px;margin-bottom:16px;" />
-      <div style="font-size:20px;font-weight:700;color:#0C447C;margin-bottom:4px;">Portal Login</div>
-      <div style="font-size:13px;color:#8B8FA8;margin-bottom:22px;">Enter your credentials to access your dashboard</div>
-      <label style="display:block;font-size:12px;font-weight:600;color:#4B5563;margin-bottom:5px;">Email address</label>
-      <input id="loginEmail" type="email" placeholder="you@hospital.com" style="width:100%;height:40px;border:1.5px solid #E8E9EF;border-radius:8px;padding:0 12px;font-size:13px;margin-bottom:14px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#0C447C'" onblur="this.style.borderColor='#E8E9EF'" />
-      <label style="display:block;font-size:12px;font-weight:600;color:#4B5563;margin-bottom:5px;">Password</label>
-      <input id="loginPass" type="password" placeholder="••••••••" style="width:100%;height:40px;border:1.5px solid #E8E9EF;border-radius:8px;padding:0 12px;font-size:13px;margin-bottom:14px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#0C447C'" onblur="this.style.borderColor='#E8E9EF'" onkeydown="if(event.key==='Enter')handleLogin()" />
-      <div id="loginError" style="display:none;background:#FEE2E2;color:#DC2626;border-radius:7px;padding:8px 12px;font-size:12px;margin-bottom:14px;"></div>
-      <button id="loginBtn" onclick="handleLogin()" style="width:100%;height:42px;background:#fe9a16;color:#010c37;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
-        Sign In
-      </button>
-      <div style="text-align:center;font-size:12px;color:#8B8FA8;margin-top:14px;">Secure access for medical staff only</div>
-      <div style="text-align:center;font-size:11px;color:#8B8FA8;margin-top:6px;">Forgot your password? Contact your administrator.</div>
+  <!-- ── LOGIN PANEL OVERLAY ── -->
+  <div id="loginOverlay" onclick="if(event.target===this)closeLoginPanel()" style="
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.55);
+    z-index:9999;
+    backdrop-filter:blur(4px);
+    -webkit-backdrop-filter:blur(4px);
+    opacity:0;
+    transition:opacity 0.3s ease;
+  ">
+    <div id="loginPanel" style="
+      position:fixed;
+      top:0;
+      right:0;
+      height:100vh;
+      width:100%;
+      max-width:420px;
+      background:#fff;
+      box-shadow:-8px 0 40px rgba(0,0,0,0.2);
+      display:flex;
+      flex-direction:column;
+      transform:translateX(100%);
+      transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);
+      overflow-y:auto;
+    ">
+      <div style="
+        background:#1B1464;
+        padding:28px 32px 24px;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        flex-shrink:0;
+      ">
+        <div>
+          <img src="/logo.png" alt="MTMS" style="height:36px;margin-bottom:8px;display:block;" onerror="this.style.display='none'">
+          <div style="color:#fff;font-size:20px;font-weight:700;font-family:Inter,Arial,sans-serif;">Portal Login</div>
+          <div style="color:rgba(255,255,255,0.65);font-size:13px;margin-top:2px;font-family:Inter,Arial,sans-serif;">Medical Training Management System</div>
+        </div>
+        <button onclick="closeLoginPanel()" aria-label="Close login panel" style="
+          width:36px;height:36px;
+          border-radius:50%;
+          background:rgba(255,255,255,0.15);
+          border:none;
+          color:#fff;
+          font-size:20px;
+          cursor:pointer;
+          display:flex;align-items:center;justify-content:center;
+          flex-shrink:0;
+          transition:background 0.15s;
+        " onmouseover="this.style.background='rgba(255,255,255,0.25)'"
+           onmouseout="this.style.background='rgba(255,255,255,0.15)'">×</button>
+      </div>
+
+      <div style="padding:32px;flex:1;display:flex;flex-direction:column;gap:20px;">
+        <div id="loginError" style="
+          display:none;
+          background:#FEE2E2;
+          border:1px solid #FCA5A5;
+          border-radius:10px;
+          padding:12px 16px;
+          font-size:13px;
+          color:#DC2626;
+          font-family:Inter,Arial,sans-serif;
+          line-height:1.5;
+        "></div>
+
+        <div id="loginAttemptsWarn" style="
+          display:none;
+          background:#FEF3C7;
+          border:1px solid #FCD34D;
+          border-radius:10px;
+          padding:12px 16px;
+          font-size:13px;
+          color:#92400E;
+          font-family:Inter,Arial,sans-serif;
+        "></div>
+
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:12px;font-weight:600;color:#4B5563;text-transform:uppercase;letter-spacing:0.05em;font-family:Inter,Arial,sans-serif;">
+            Email Address
+          </label>
+          <input
+            id="loginEmail"
+            type="email"
+            placeholder="your@email.com"
+            autocomplete="email"
+            onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()"
+            style="
+              height:46px;
+              border:1.5px solid #E8E9EF;
+              border-radius:10px;
+              padding:0 14px;
+              font-size:14px;
+              color:#1B1464;
+              outline:none;
+              font-family:Inter,Arial,sans-serif;
+              transition:border-color 0.15s;
+              width:100%;
+              box-sizing:border-box;
+            "
+            onfocus="this.style.borderColor='#1B1464'"
+            onblur="this.style.borderColor='#E8E9EF'"
+          />
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:12px;font-weight:600;color:#4B5563;text-transform:uppercase;letter-spacing:0.05em;font-family:Inter,Arial,sans-serif;">
+            Password
+          </label>
+          <div style="position:relative;">
+            <input
+              id="loginPass"
+              type="password"
+              placeholder="••••••••"
+              autocomplete="current-password"
+              onkeydown="if(event.key==='Enter')handleLogin()"
+              style="
+                height:46px;
+                border:1.5px solid #E8E9EF;
+                border-radius:10px;
+                padding:0 46px 0 14px;
+                font-size:14px;
+                color:#1B1464;
+                outline:none;
+                font-family:Inter,Arial,sans-serif;
+                transition:border-color 0.15s;
+                width:100%;
+                box-sizing:border-box;
+              "
+              onfocus="this.style.borderColor='#1B1464'"
+              onblur="this.style.borderColor='#E8E9EF'"
+            />
+            <button onclick="togglePassword()" style="
+              position:absolute;right:12px;top:50%;transform:translateY(-50%);
+              background:none;border:none;cursor:pointer;color:#8B8FA8;font-size:13px;
+              font-family:Inter,Arial,sans-serif;
+            " id="togglePassBtn">Show</button>
+          </div>
+        </div>
+
+        <button id="loginBtn" onclick="handleLogin()" style="
+          height:48px;
+          background:#FF6B35;
+          color:#fff;
+          border:none;
+          border-radius:10px;
+          font-size:15px;
+          font-weight:700;
+          cursor:pointer;
+          font-family:Inter,Arial,sans-serif;
+          box-shadow:0 4px 14px rgba(255,107,53,0.35);
+          transition:all 0.15s;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          gap:8px;
+          margin-top:4px;
+        "
+        onmouseover="this.style.background='#E85A26';this.style.transform='translateY(-1px)'"
+        onmouseout="this.style.background='#FF6B35';this.style.transform='translateY(0)'">
+          Sign In →
+        </button>
+
+        <div style="text-align:center;font-size:12px;color:#8B8FA8;font-family:Inter,Arial,sans-serif;">
+          Forgot your password? Contact your system administrator.
+        </div>
+      </div>
+
+      <div style="
+        padding:20px 32px;
+        border-top:1px solid #E8E9EF;
+        background:#F8F9FA;
+        flex-shrink:0;
+      ">
+        <div style="font-size:11px;color:#8B8FA8;text-align:center;font-family:Inter,Arial,sans-serif;line-height:1.6;">
+          Secure access for authorized medical staff only<br>
+          MTMS V2 — Medical Training Management System
+        </div>
+      </div>
     </div>
   </div>
+
+  <script>
+    const ROLE_HOME = {
+      super_admin:      '/admin/dashboard',
+      secretary:        '/secretary/trainees',
+      dio:              '/dio/dashboard',
+      supervisor:       '/supervisor/trainees',
+      trainee:          '/timeline',
+      president:        '/president/trainees',
+      program_director: '/program-director/trainees',
+      admin:            '/admin/dashboard',
+      professor:        '/admin/dashboard',
+      doctor:           '/supervisor/trainees',
+      student:          '/timeline',
+      director:         '/president/trainees',
+    };
+
+    function safeUser(userData) {
+      return userData ? {
+        _id:         userData._id,
+        name:        userData.name,
+        email:       userData.email,
+        role:        userData.role,
+        initials:    userData.initials,
+        photoUrl:    userData.photoUrl,
+        hospital:    userData.hospital,
+        hospitalId:  userData.hospitalId,
+        specialtyId: userData.specialtyId,
+        specialty:   userData.specialty,
+        studentId:   userData.studentId,
+        year:        userData.year,
+        department:  userData.department,
+        phone:       userData.phone,
+      } : null;
+    }
+
+    function isMobileLoginPanel() {
+      return window.innerWidth <= 640;
+    }
+
+    function adjustPanelForMobile() {
+      const panel = document.getElementById('loginPanel');
+      const overlay = document.getElementById('loginOverlay');
+      if (!panel) return;
+      const isOpen = overlay && overlay.style.display !== 'none';
+
+      if (isMobileLoginPanel()) {
+        panel.style.top = 'auto';
+        panel.style.bottom = '0';
+        panel.style.right = '0';
+        panel.style.left = '0';
+        panel.style.width = '100%';
+        panel.style.maxWidth = '100%';
+        panel.style.height = 'auto';
+        panel.style.maxHeight = '90vh';
+        panel.style.borderRadius = '16px 16px 0 0';
+        panel.style.transform = isOpen ? 'translateY(0)' : 'translateY(100%)';
+      } else {
+        panel.style.top = '0';
+        panel.style.bottom = '';
+        panel.style.right = '0';
+        panel.style.left = '';
+        panel.style.width = '100%';
+        panel.style.maxWidth = '420px';
+        panel.style.height = '100vh';
+        panel.style.maxHeight = '';
+        panel.style.borderRadius = '0';
+        panel.style.transform = isOpen ? 'translateX(0)' : 'translateX(100%)';
+      }
+    }
+
+    function openLoginPanel() {
+      const overlay = document.getElementById('loginOverlay');
+      const error = document.getElementById('loginError');
+      const warn = document.getElementById('loginAttemptsWarn');
+      const btn = document.getElementById('loginBtn');
+
+      document.getElementById('loginEmail').value = '';
+      document.getElementById('loginPass').value = '';
+      if (error) error.style.display = 'none';
+      if (warn) warn.style.display = 'none';
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Sign In →';
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+        btn.style.background = '#FF6B35';
+      }
+
+      overlay.style.display = 'block';
+      overlay.style.opacity = '0';
+      adjustPanelForMobile();
+
+      requestAnimationFrame(() => {
+        overlay.style.opacity = '1';
+        document.getElementById('loginPanel').style.transform = isMobileLoginPanel()
+          ? 'translateY(0)'
+          : 'translateX(0)';
+      });
+
+      setTimeout(() => document.getElementById('loginEmail').focus(), 350);
+    }
+
+    function closeLoginPanel() {
+      const overlay = document.getElementById('loginOverlay');
+      const panel = document.getElementById('loginPanel');
+      if (!overlay || overlay.style.display === 'none') return;
+
+      overlay.style.opacity = '0';
+      panel.style.transform = isMobileLoginPanel() ? 'translateY(100%)' : 'translateX(100%)';
+
+      setTimeout(() => {
+        overlay.style.display = 'none';
+      }, 350);
+    }
+
+    function togglePassword() {
+      const input = document.getElementById('loginPass');
+      const btn = document.getElementById('togglePassBtn');
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = 'Hide';
+      } else {
+        input.type = 'password';
+        btn.textContent = 'Show';
+      }
+    }
+
+    function getAttemptsRemaining(data) {
+      if (data && data.attemptsRemaining !== undefined) return Number(data.attemptsRemaining);
+      const match = String(data?.message || '').match(/(\d+)\s+attempt/i);
+      return match ? Number(match[1]) : null;
+    }
+
+    async function handleLogin() {
+      const email = (document.getElementById('loginEmail').value || '').trim();
+      const password = document.getElementById('loginPass').value || '';
+      const errorDiv = document.getElementById('loginError');
+      const warnDiv = document.getElementById('loginAttemptsWarn');
+      const btn = document.getElementById('loginBtn');
+
+      errorDiv.style.display = 'none';
+      warnDiv.style.display = 'none';
+
+      if (!email || !password) {
+        errorDiv.textContent = 'Please enter your email and password.';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Signing in…';
+      btn.style.opacity = '0.7';
+      btn.style.cursor = 'default';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.token) {
+          const remaining = getAttemptsRemaining(data);
+          errorDiv.textContent = data.message || 'Login failed. Please check your credentials.';
+          errorDiv.style.display = 'block';
+
+          if (remaining !== null && remaining <= 5) {
+            warnDiv.textContent = `Warning: ${remaining} login attempt${remaining !== 1 ? 's' : ''} remaining before account lockout.`;
+            warnDiv.style.display = 'block';
+          }
+
+          btn.disabled = false;
+          btn.textContent = 'Sign In →';
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+          return;
+        }
+
+        localStorage.setItem('user', JSON.stringify(safeUser(data.user)));
+
+        btn.textContent = 'Success! Redirecting…';
+        btn.style.background = '#059669';
+
+        const home = ROLE_HOME[data.user.role] || '/timeline';
+        setTimeout(() => { window.location.href = home; }, 600);
+      } catch (err) {
+        errorDiv.textContent = 'Connection error. Please check your internet and try again.';
+        errorDiv.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Sign In →';
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+      }
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeLoginPanel();
+    });
+
+    window.addEventListener('resize', adjustPanelForMobile);
+    adjustPanelForMobile();
+  </script>
 
   <!-- ════════════════════════════════════════════════════════════
        JAVASCRIPT
@@ -1656,83 +2046,6 @@
     }, { threshold: 0.12 });
 
     fadeEls.forEach(el => observer.observe(el));
-
-    // ── LOGIN MODAL ──────────────────────────────────────────────────────────
-    const V2_ROLE_HOME = {
-      super_admin:      '/admin/dashboard',
-      secretary:        '/secretary/trainees',
-      dio:              '/dio/dashboard',
-      supervisor:       '/supervisor/trainees',
-      trainee:          '/timeline',
-      president:        '/president/trainees',
-      program_director: '/program-director/trainees',
-      admin:     '/admin/dashboard',
-      professor: '/admin/dashboard',
-      doctor:    '/supervisor/trainees',
-      student:   '/timeline',
-      director:  '/president/trainees',
-    };
-
-    function openLoginModal() {
-      const modal = document.getElementById('loginModal');
-      modal.style.display = 'flex';
-      document.getElementById('loginError').style.display = 'none';
-      document.getElementById('loginEmail').value = '';
-      document.getElementById('loginPass').value = '';
-      setTimeout(() => document.getElementById('loginEmail').focus(), 100);
-    }
-
-    function closeLoginModal() {
-      document.getElementById('loginModal').style.display = 'none';
-    }
-
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLoginModal(); });
-
-    async function handleLogin() {
-      const email    = document.getElementById('loginEmail').value.trim();
-      const password = document.getElementById('loginPass').value;
-      const errorDiv = document.getElementById('loginError');
-      const btn      = document.getElementById('loginBtn');
-
-      if (!email || !password) {
-        errorDiv.textContent = 'Please enter your email and password.';
-        errorDiv.style.display = 'block';
-        return;
-      }
-
-      btn.disabled = true;
-      btn.innerHTML = '⏳ Signing in…';
-      errorDiv.style.display = 'none';
-
-      try {
-        const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ email, password })
-        });
-        const data = await res.json();
-
-        if (!res.ok || !data.token) {
-          errorDiv.textContent = data.message || 'Login failed. Please check your credentials.';
-          errorDiv.style.display = 'block';
-          return;
-        }
-
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-
-        const home = V2_ROLE_HOME[data.user.role] || '/timeline';
-        window.location.href = home;
-
-      } catch {
-        errorDiv.textContent = 'Connection error. Please try again.';
-        errorDiv.style.display = 'block';
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'Sign In';
-      }
-    }
 
     // ── CONTACT FORM ─────────────────────────────────────────────────────────
     function handleContact(e) {
