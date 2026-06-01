@@ -116,6 +116,7 @@ function EvalModal({ item, evals, specialty, onClose, onSubmitted, onFinalized, 
         student:        trainee._id,
         distributionId: dist._id,
         rotation:       dist._id,
+        evaluationType: form.evalType,
         type:           form.evalType,
         scores:         { overall: form.rating },
         notes:          form.notes,
@@ -691,7 +692,7 @@ export default function SupervisorEvaluations() {
           />
         )}
 
-        {toasts.map(t => <Toast key={t.id} message={t.message} type={t.type} />)}
+        <Toast toasts={toasts} />
 
         <style>{`
           @keyframes modalIn {

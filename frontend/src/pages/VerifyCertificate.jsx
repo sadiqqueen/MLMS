@@ -38,7 +38,7 @@ export default function VerifyCertificate() {
       justifyContent:'center', padding:24,
       fontFamily:'Inter,-apple-system,BlinkMacSystemFont,sans-serif'
     }}>
-      <img src="/logo.png" alt="MTMS" style={{ height:52, marginBottom:24 }} />
+      <img src="/logo.png" alt="MTMS" style={{ height:72, marginBottom:24 }} />
 
       <div style={{
         background:'#fff', borderRadius:16, border:'1px solid #E8E9EF',

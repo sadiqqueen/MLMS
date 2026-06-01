@@ -25,11 +25,11 @@ async function getAssignedTraineeIds(supervisorId) {
     ]
   }).select('traineeId student');
 
-  return [
+  return [...new Set([
     ...directTrainees.map(t => t._id),
     ...distributions.map(d => d.traineeId).filter(Boolean),
     ...distributions.map(d => d.student).filter(Boolean)
-  ].map(id => id.toString());
+  ].map(id => id.toString()))];
 }
 
 async function isAssignedTrainee(supervisorId, traineeId) {
@@ -42,7 +42,16 @@ async function isAssignedTrainee(supervisorId, traineeId) {
 // Returns all trainees assigned to this supervisor with their distribution info
 router.get('/trainees', auth, allowRoles(...SUPERVISOR), async (req, res) => {
   try {
-    const distributions = await Distribution.find({
+    const directTrainees = await User.find({
+      supervisorId: req.user._id,
+      role: { $in: ['trainee', 'student'] },
+      isActive: { $ne: false }
+    })
+      .select('name email studentId specialtyId hospitalId photoUrl initials year phone')
+      .populate('specialtyId', 'name')
+      .populate('hospitalId', 'name city');
+
+    const distributionDocs = await Distribution.find({
       $or: [
         { supervisorId: req.user._id },
         { doctor: req.user._id }
@@ -71,12 +80,34 @@ router.get('/trainees', auth, allowRoles(...SUPERVISOR), async (req, res) => {
       .populate('specialtyId','name')
       .sort({ startDate: -1 });
 
-    const data = distributions
-      .map(d => {
-        if (!d.traineeId && d.student) d.traineeId = d.student;
-        return d;
-      })
-      .filter(d => d.traineeId);
+    const seen = new Set();
+    const data = [];
+
+    for (const doc of distributionDocs) {
+      const d = doc.toObject();
+      const trainee = d.traineeId || d.student;
+      const traineeId = trainee?._id?.toString?.() || trainee?.toString?.();
+      if (!trainee || !traineeId) continue;
+      d.traineeId = trainee;
+      d.student = trainee;
+      seen.add(traineeId);
+      data.push(d);
+    }
+
+    for (const doc of directTrainees) {
+      const trainee = doc.toObject();
+      const traineeId = trainee?._id?.toString?.();
+      if (!traineeId || seen.has(traineeId)) continue;
+      data.push({
+        _id: `direct-${traineeId}`,
+        traineeId: trainee,
+        student: trainee,
+        supervisorId: req.user._id,
+        hospitalId: trainee.hospitalId || null,
+        specialtyId: trainee.specialtyId || null,
+        status: 'active'
+      });
+    }
 
     res.json({ success: true, data });
   } catch (err) {
@@ -88,17 +119,7 @@ router.get('/trainees', auth, allowRoles(...SUPERVISOR), async (req, res) => {
 // Returns weekly and monthly reports for supervisor's assigned trainees (NOT final)
 router.get('/reports', auth, allowRoles(...SUPERVISOR), async (req, res) => {
   try {
-    const distributions = await Distribution.find({
-      $or: [
-        { supervisorId: req.user._id },
-        { doctor:       req.user._id }
-      ]
-    }).select('traineeId student');
-
-    const traineeIds = [
-      ...distributions.map(d => d.traineeId).filter(Boolean),
-      ...distributions.map(d => d.student).filter(Boolean)
-    ];
+    const traineeIds = await getAssignedTraineeIds(req.user._id);
 
     const reports = await Report.find({
       student: { $in: traineeIds },
@@ -107,6 +128,7 @@ router.get('/reports', auth, allowRoles(...SUPERVISOR), async (req, res) => {
       .populate('student',  'name initials photoUrl studentId')
       .populate('hospital', 'name')
       .populate('rotation', 'startDate endDate status')
+      .populate('distribution', 'startDate endDate status')
       .populate('gradedBy', 'name initials')
       .sort({ date: -1 });
 
@@ -242,7 +264,8 @@ router.post('/evaluations',
   auditLog('create_evaluation', 'Evaluation'),
   async (req, res) => {
     try {
-      const { traineeId, distributionId, scores, comments, grade, specialty, hospitalId, evaluationType, notes } = req.body;
+      const { traineeId, distributionId, scores, comments, grade, specialty, hospitalId, notes } = req.body;
+      const evaluationType = req.body.evaluationType || req.body.type || '';
 
       const targetTrainee = traineeId || req.body.student;
       if (!targetTrainee) return res.status(400).json({ message: 'traineeId is required' });
@@ -265,10 +288,10 @@ router.post('/evaluations',
       }
 
       // Calculate totalScore from scores object
-      let totalScore = 0;
+      let totalScore = null;
       if (scores && typeof scores === 'object') {
         const values = Object.values(scores).map(Number).filter(n => !isNaN(n));
-        totalScore = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+        totalScore = values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
       }
 
       const evaluation = await Evaluation.create({

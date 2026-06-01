@@ -98,7 +98,7 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
     }
   }
 
-  const rota    = report.rotation;
+  const rota    = report.distribution || report.rotation;
   const rotaStr = rota ? `${fmtDate(rota.startDate)} – ${fmtDate(rota.endDate)}` : '—';
 
   return (
@@ -418,6 +418,10 @@ export default function SupervisorReports() {
   }, []);
 
   function handleAssessmentSaved(updated) {
+    if (!updated?._id) {
+      showToast('Assessment saved, but the response was incomplete. Please refresh to verify.', 'error');
+      return;
+    }
     setReports(prev => prev.map(r => r._id === updated._id ? updated : r));
     showToast('Assessment submitted successfully');
   }

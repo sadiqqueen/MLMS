@@ -176,7 +176,7 @@ export default function DioSupervisors() {
         </div>
 
         {selected && <SupervisorModal supervisor={selected} onClose={() => setSelected(null)} />}
-        {toasts.map(t => <Toast key={t.id} message={t.message} type={t.type} />)}
+        <Toast toasts={toasts} />
       </main>
     </>
   );

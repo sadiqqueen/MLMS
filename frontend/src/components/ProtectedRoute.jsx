@@ -6,9 +6,14 @@ const ROLE_HOME = {
   secretary:        '/secretary/trainees',
   dio:              '/dio/dashboard',
   supervisor:       '/supervisor/trainees',
+  doctor:           '/supervisor/trainees',
   trainee:          '/timeline',
+  student:          '/timeline',
   president:        '/president/trainees',
   program_director: '/program-director/trainees',
+  director:         '/president/trainees',
+  admin:            '/admin/dashboard',
+  professor:        '/admin/dashboard',
 };
 
 export default function ProtectedRoute({ children, allowedRoles }) {

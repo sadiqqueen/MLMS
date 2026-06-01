@@ -649,7 +649,7 @@ export default function ProgramDirectorReports() {
           />
         )}
 
-        {toasts.map(t => <Toast key={t.id} message={t.message} type={t.type} />)}
+        <Toast toasts={toasts} />
       </main>
     </>
   );

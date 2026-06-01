@@ -162,7 +162,7 @@ export default function PresidentTrainees() {
             onClose={() => setSelected(null)}
           />
         )}
-        {toasts.map(t => <Toast key={t.id} message={t.message} type={t.type} />)}
+        <Toast toasts={toasts} />
       </main>
     </>
   );
