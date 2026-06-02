@@ -5,6 +5,10 @@ const User = require('../models/User');
 module.exports = async (req, res, next) => {
   const header = req.headers.authorization;
 
+  // Track the user ID claimed by the access token (even if expired)
+  // so we can validate it matches the refresh cookie's user later.
+  let claimedUserId = null;
+
   // Try access token from Authorization header first
   if (header && header.startsWith('Bearer ')) {
     const token = header.split(' ')[1];
@@ -21,7 +25,11 @@ module.exports = async (req, res, next) => {
       req.user = user;
       return next();
     } catch (err) {
-      // Access token invalid/expired — try refresh token below
+      // Access token invalid/expired — decode without verification to get claimed user id
+      try {
+        const unverified = jwt.decode(token);
+        if (unverified?.id) claimedUserId = unverified.id.toString();
+      } catch { /* ignore malformed token */ }
     }
   }
 
@@ -33,6 +41,14 @@ module.exports = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+
+    // Security: if an (expired) access token was presented, its user id must match
+    // the refresh token's user id. Prevents silent identity switch when a stale
+    // refresh cookie from a different session is present in the browser.
+    if (claimedUserId && decoded.id.toString() !== claimedUserId) {
+      return res.status(401).json({ message: 'Session mismatch — please log in again' });
+    }
+
     const user = await User.findById(decoded.id).select('-password');
     if (!user) return res.status(401).json({ message: 'User not found' });
     if (user.isActive === false) return res.status(403).json({ message: 'Account deactivated' });

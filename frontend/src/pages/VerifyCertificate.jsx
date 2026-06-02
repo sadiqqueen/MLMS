@@ -20,8 +20,9 @@ export default function VerifyCertificate() {
     try {
       const res = await api.get(`/api/certificates/verify/${verifyCode.trim()}`);
       setResult(res.data?.data || res.data);
-    } catch {
-      setResult({ valid:false, message:'Verification failed. Please try again.' });
+    } catch (err) {
+      const errData = err?.response?.data;
+      setResult({ valid: false, message: errData?.message || 'Verification failed. Please try again.', revokedAt: errData?.revokedAt });
     } finally {
       setLoading(false);
     }
@@ -104,11 +105,11 @@ export default function VerifyCertificate() {
 
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px 20px' }}>
               {[
-                ['Trainee Name', result.trainee   || '—'],
+                ['Trainee Name', result.holder    || result.trainee   || '—'],
                 ['Student ID',   result.studentId || '—'],
                 ['Specialty',    result.specialty || '—'],
                 ['Hospital',     result.hospital  || '—'],
-                ['Issue Date',   fmt(result.issuedAt)],
+                ['Issue Date',   fmt(result.issueDate || result.issuedAt)],
                 ['Issued By',    result.issuedBy  || '—'],
               ].map(([label, value]) => (
                 <div key={label}>

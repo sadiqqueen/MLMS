@@ -11,8 +11,8 @@ const Certificate = require('../models/Certificate');
 router.get('/:code', async (req, res) => {
   try {
     const cert = await Certificate.findOne({ verifyCode: req.params.code })
-      .populate('student',   'name initials')
-      .populate('traineeId', 'name initials')
+      .populate('student',   'name initials studentId')
+      .populate('traineeId', 'name initials studentId')
       .populate('hospital',  'name city')
       .populate('issuedBy',  'name');
 
@@ -34,14 +34,15 @@ router.get('/:code', async (req, res) => {
     // Return only the public-safe fields — never return internal IDs or sensitive data
     const holder = cert.student || cert.traineeId;
     res.json({
-      valid:     true,
+      valid:      true,
       verifyCode: cert.verifyCode,
-      holder:    holder?.name    || 'Unknown',
-      hospital:  cert.hospital?.name || cert.hospital || '',
-      specialty: cert.specialty  || '',
-      issueDate: cert.issueDate,
-      issuedBy:  cert.issuedBy?.name || '',
-      notes:     cert.notes      || ''
+      holder:     holder?.name      || 'Unknown',
+      studentId:  holder?.studentId || '',
+      hospital:   cert.hospital?.name || cert.hospital || '',
+      specialty:  cert.specialty    || '',
+      issueDate:  cert.issueDate,
+      issuedBy:   cert.issuedBy?.name || '',
+      notes:      cert.notes        || ''
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
