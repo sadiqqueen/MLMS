@@ -39,6 +39,12 @@ function groupReports(reports) {
   };
 }
 
+function averageScore(scores) {
+  if (!scores || typeof scores !== 'object') return null;
+  const values = Object.values(scores).map(Number).filter(n => Number.isFinite(n));
+  return values.length ? values.reduce((sum, n) => sum + n, 0) / values.length : null;
+}
+
 // GET /api/dio/stats
 // Dashboard statistics — scoped to this DIO's hospital
 router.get('/stats', auth, allowRoles(...DIO), async (req, res) => {
@@ -156,6 +162,116 @@ router.get('/trainees', auth, allowRoles(...DIO, 'super_admin'), async (req, res
   }
 });
 
+// POST /api/dio/trainees/:id/evaluations
+// DIO creates an operational/academic evaluation for any trainee.
+router.post('/trainees/:id/evaluations',
+  auth,
+  allowRoles(...DIO, 'super_admin'),
+  async (req, res) => {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({ success: false, message: 'Invalid trainee id' });
+      }
+
+      const trainee = await User.findOne({
+        _id: req.params.id,
+        role: 'trainee',
+        isActive: { $ne: false }
+      })
+        .populate('hospitalId', 'name')
+        .populate('specialtyId', 'name');
+
+      if (!trainee) {
+        return res.status(404).json({ success: false, message: 'Trainee not found' });
+      }
+
+      const evaluationType = req.body.evaluationType || req.body.type || '';
+      const scores = req.body.scores && typeof req.body.scores === 'object' ? req.body.scores : {};
+      const totalScore = req.body.totalScore !== undefined && req.body.totalScore !== null && req.body.totalScore !== ''
+        ? Number(req.body.totalScore)
+        : averageScore(scores);
+      if (totalScore !== null && !Number.isFinite(totalScore)) {
+        return res.status(400).json({ success: false, message: 'totalScore must be a number' });
+      }
+
+      const finalized = req.body.isFinalized !== undefined ? !!req.body.isFinalized : true;
+      const status = req.body.status && ['pending', 'completed'].includes(req.body.status)
+        ? req.body.status
+        : finalized ? 'completed' : 'pending';
+      const evaluatorRole = req.user.role === 'super_admin' ? 'super_admin' : 'dio';
+      const hospital = req.body.hospitalId || trainee.hospitalId?._id || trainee.hospital || null;
+      const specialty = req.body.specialty || trainee.specialtyId?.name || trainee.specialty || '';
+      const distributionId = req.body.distributionId || null;
+      const rotationId = req.body.rotationId || req.body.rotation || null;
+      if (distributionId && !mongoose.Types.ObjectId.isValid(distributionId)) {
+        return res.status(400).json({ success: false, message: 'Invalid distribution id' });
+      }
+      if (rotationId && !mongoose.Types.ObjectId.isValid(rotationId)) {
+        return res.status(400).json({ success: false, message: 'Invalid rotation id' });
+      }
+      if (hospital && !mongoose.Types.ObjectId.isValid(hospital)) {
+        return res.status(400).json({ success: false, message: 'Invalid hospital id' });
+      }
+
+      const evaluation = await Evaluation.create({
+        student:        trainee._id,
+        traineeId:      trainee._id,
+        doctor:         req.user._id,
+        evaluatorId:    req.user._id,
+        evaluatorRole,
+        createdBy:      req.user._id,
+        createdByRole:  evaluatorRole,
+        distributionId,
+        rotationId,
+        hospital,
+        specialty,
+        date:           req.body.date || new Date(),
+        evaluationType,
+        grade:          req.body.grade || '',
+        notes:          req.body.notes || req.body.comments || '',
+        comments:       req.body.comments || req.body.notes || '',
+        scores,
+        totalScore,
+        isFinalized:    finalized,
+        status,
+        sentToTraineeAt: finalized || status === 'completed' ? new Date() : null
+      });
+
+      await AuditLog.create({
+        userId: req.user._id,
+        action: 'dio_create_evaluation',
+        targetId: evaluation._id,
+        targetModel: 'Evaluation',
+        metadata: {
+          traineeId: trainee._id,
+          evaluatorRole,
+          evaluationType,
+          status
+        },
+        ip: req.ip || req.headers['x-forwarded-for'] || 'unknown'
+      }).catch(err => console.error('[AuditLog] Failed to write DIO evaluation:', err.message));
+
+      if (trainee._id) {
+        await Notification.create({
+          user: trainee._id,
+          message: `You have a new evaluation submitted by ${req.user.name}`
+        }).catch(err => console.error('[Notification] Failed to write DIO evaluation notice:', err.message));
+      }
+
+      const populated = await Evaluation.findById(evaluation._id)
+        .populate('student', 'name email initials photoUrl studentId')
+        .populate('traineeId', 'name email initials photoUrl studentId')
+        .populate('doctor', 'name role initials')
+        .populate('evaluatorId', 'name role initials')
+        .populate('hospital', 'name');
+
+      res.status(201).json({ success: true, data: populated });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+);
+
 // GET /api/dio/trainees/:id/details
 // Full DIO trainee profile with reports and grading summary.
 router.get('/trainees/:id/details', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
@@ -210,6 +326,8 @@ router.get('/trainees/:id/details', auth, allowRoles(...DIO, 'super_admin'), asy
       })
         .populate('doctor', 'name role')
         .populate('supervisorId', 'name role')
+        .populate('evaluatorId', 'name role')
+        .populate('createdBy', 'name role')
         .sort({ createdAt: -1 }),
       Certificate.find({
         $or: [{ student: trainee._id }, { traineeId: trainee._id }]

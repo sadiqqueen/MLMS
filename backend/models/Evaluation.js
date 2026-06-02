@@ -18,6 +18,11 @@ const evaluationSchema = new mongoose.Schema(
     traineeId:      { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     supervisorId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     distributionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Distribution' },
+    rotationId:     { type: mongoose.Schema.Types.ObjectId, ref: 'Rotation' },
+    evaluatorId:    { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    evaluatorRole:  { type: String, default: '' },
+    createdBy:      { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    createdByRole:  { type: String, default: '' },
 
     // V2 NEW FIELDS
     scores:          { type: mongoose.Schema.Types.Mixed, default: {} },

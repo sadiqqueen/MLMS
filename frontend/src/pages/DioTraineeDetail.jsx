@@ -8,6 +8,13 @@ import Sk from '../components/Skeleton';
 const API_BASE = '';
 const REPORT_TYPES = ['weekly', 'monthly', 'final'];
 const GRADE_OPTIONS = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F', 'Competent', 'Not-Competent'];
+const EVAL_TYPES = ['Monthly', 'Rotation', 'Remediation', 'Professionalism', 'Other'];
+const RATING_OPTIONS = [
+  ['na', 'N/A'],
+  ['below', 'Below Standard'],
+  ['meets', 'Meets Standard'],
+  ['above', 'Above Standard'],
+];
 
 function safeArr(value) {
   return Array.isArray(value) ? value : [];
@@ -26,6 +33,18 @@ function isGraded(report) {
 
 function nameOf(value) {
   return value?.name || '-';
+}
+
+function roleLabel(role) {
+  const labels = {
+    dio: 'DIO',
+    super_admin: 'Super Admin',
+    supervisor: 'Supervisor',
+    program_director: 'Program Director',
+    president: 'President',
+    trainee: 'Trainee',
+  };
+  return labels[role] || role || '-';
 }
 
 function StatCard({ label, value, tone = 'blue' }) {
@@ -59,6 +78,137 @@ function InfoCard({ title, rows }) {
         ))}
       </div>
     </section>
+  );
+}
+
+function EvaluationModal({ trainee, currentRotation, hospital, specialty, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    evaluationType: 'Monthly',
+    overall: 'meets',
+    knowledge: '',
+    clinicalSkills: '',
+    professionalism: '',
+    comments: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const h = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', h);
+    return () => document.removeEventListener('keydown', h);
+  }, [onClose]);
+
+  function setField(key, value) {
+    setForm(f => ({ ...f, [key]: value }));
+  }
+
+  function numericOrBlank(value) {
+    if (value === '' || value === null || value === undefined) return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  async function save() {
+    setError('');
+    const numericScores = {
+      knowledge: numericOrBlank(form.knowledge),
+      clinicalSkills: numericOrBlank(form.clinicalSkills),
+      professionalism: numericOrBlank(form.professionalism),
+    };
+    if (Object.values(numericScores).some(Number.isNaN)) {
+      setError('Numeric criteria must be valid numbers.');
+      return;
+    }
+    if (Object.values(numericScores).some(v => v !== null && (v < 0 || v > 100))) {
+      setError('Numeric criteria must be between 0 and 100.');
+      return;
+    }
+
+    const scoreValues = Object.values(numericScores).filter(v => v !== null);
+    const scores = { overall: form.overall };
+    Object.entries(numericScores).forEach(([key, value]) => {
+      if (value !== null) scores[key] = value;
+    });
+
+    setSaving(true);
+    try {
+      await api.post(`/api/dio/trainees/${trainee._id}/evaluations`, {
+        traineeId: trainee._id,
+        student: trainee._id,
+        distributionId: currentRotation?._id || null,
+        hospitalId: hospital?._id || currentRotation?.hospitalId?._id || currentRotation?.hospitalId || null,
+        specialty: specialty?.name || trainee.specialty || '',
+        evaluationType: form.evaluationType,
+        type: form.evaluationType,
+        scores,
+        totalScore: scoreValues.length ? scoreValues.reduce((sum, n) => sum + n, 0) / scoreValues.length : undefined,
+        comments: form.comments,
+        notes: form.comments,
+        isFinalized: true,
+        status: 'completed',
+      });
+      await onSaved();
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to create evaluation.');
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:2500, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:560, boxShadow:'0 20px 60px rgba(0,0,0,.2)', overflow:'hidden' }}>
+        <div style={{ padding:'18px 22px', borderBottom:'1px solid #E8E9EF', display:'flex', justifyContent:'space-between', gap:12 }}>
+          <div>
+            <div style={{ fontSize:16, fontWeight:800, color:'#1B1464' }}>Add Evaluation</div>
+            <div style={{ fontSize:12, color:'#8B8FA8', marginTop:3 }}>{trainee?.name || 'Trainee'}</div>
+          </div>
+          <button onClick={onClose} style={{ width:30, height:30, borderRadius:'50%', border:'none', background:'#F5F6FA', color:'#8B8FA8', cursor:'pointer', fontSize:18 }}>x</button>
+        </div>
+
+        <div style={{ padding:22, display:'flex', flexDirection:'column', gap:16 }}>
+          <div>
+            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#4B5563', marginBottom:7 }}>Evaluation Type</label>
+            <select className="admin-search" style={{ width:'100%', boxSizing:'border-box', height:42 }} value={form.evaluationType} onChange={e => setField('evaluationType', e.target.value)}>
+              {EVAL_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#4B5563', marginBottom:7 }}>Overall Rating</label>
+            <select className="admin-search" style={{ width:'100%', boxSizing:'border-box', height:42 }} value={form.overall} onChange={e => setField('overall', e.target.value)}>
+              {RATING_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </div>
+
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:12 }}>
+            {[
+              ['knowledge', 'Knowledge'],
+              ['clinicalSkills', 'Clinical Skills'],
+              ['professionalism', 'Professionalism'],
+            ].map(([key, label]) => (
+              <div key={key}>
+                <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#4B5563', marginBottom:7 }}>{label} (0-100)</label>
+                <input className="admin-search" style={{ width:'100%', boxSizing:'border-box', height:42 }} type="number" min="0" max="100" value={form[key]} onChange={e => setField(key, e.target.value)} />
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#4B5563', marginBottom:7 }}>Comments / Feedback</label>
+            <textarea className="admin-search" style={{ width:'100%', minHeight:100, boxSizing:'border-box', padding:'10px 12px', resize:'vertical', fontFamily:'inherit' }} value={form.comments} onChange={e => setField('comments', e.target.value)} />
+          </div>
+
+          {error && <div style={{ background:'#FEE2E2', color:'#DC2626', borderRadius:8, padding:'10px 12px', fontSize:13 }}>{error}</div>}
+
+          <div style={{ display:'flex', justifyContent:'flex-end', gap:10 }}>
+            <button className="btn-outline" onClick={onClose}>Cancel</button>
+            <button className="btn-purple" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'Save Evaluation'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -207,30 +357,33 @@ function ReportsTable({ title, reports, onGrade }) {
   );
 }
 
-function EvaluationsTable({ evaluations }) {
+function EvaluationsTable({ evaluations, onAdd }) {
   const rows = safeArr(evaluations);
   return (
     <section className="admin-card">
-      <div className="admin-card-header">
+      <div className="admin-card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12 }}>
         <div className="admin-card-title">Evaluations</div>
+        <button className="btn-purple" onClick={onAdd}>+ Add Evaluation</button>
       </div>
       <div className="admin-table-wrap">
         <table className="admin-table">
           <thead>
             <tr>
-              <th>Date</th><th>Evaluator</th><th>Type</th><th>Status</th><th>Score</th><th>Grade</th><th>Comments</th>
+              <th>Date</th><th>Evaluator</th><th>Role</th><th>Type</th><th>Status</th><th>Score</th><th>Grade</th><th>Comments</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={7} className="admin-empty">No evaluations found</td></tr>
+              <tr><td colSpan={8} className="admin-empty">No evaluations found</td></tr>
             ) : rows.map((evaluation, index) => {
-              const evaluator = evaluation?.supervisorId || evaluation?.doctor || {};
+              const evaluator = evaluation?.evaluatorId || evaluation?.createdBy || evaluation?.supervisorId || evaluation?.doctor || {};
+              const evaluatorRole = evaluation?.evaluatorRole || evaluation?.createdByRole || evaluator?.role || (evaluation?.supervisorId ? 'supervisor' : '');
               const finalized = evaluation?.isFinalized || evaluation?.status === 'completed';
               return (
                 <tr key={evaluation?._id || index}>
                   <td>{fmtDate(evaluation?.sentToTraineeAt || evaluation?.createdAt)}</td>
                   <td>{evaluator?.name || '-'}</td>
+                  <td>{roleLabel(evaluatorRole)}</td>
                   <td>{evaluation?.evaluationType || evaluation?.type || '-'}</td>
                   <td>
                     <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:finalized ? '#D1FAE5' : '#FEF3C7', color:finalized ? '#065F46' : '#92400E' }}>
@@ -298,6 +451,7 @@ export default function DioTraineeDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [gradeModal, setGradeModal] = useState(null);
+  const [evaluationModal, setEvaluationModal] = useState(false);
   const [toasts, setToasts] = useState([]);
 
   function showToast(message, type = 'success') {
@@ -306,13 +460,16 @@ export default function DioTraineeDetail() {
     setTimeout(() => setToasts(p => p.filter(t => t.id !== toastId)), 3500);
   }
 
-  function load() {
-    setLoading(true);
+  function load(options = {}) {
+    const showPageLoading = options.showPageLoading !== false;
+    if (showPageLoading) setLoading(true);
     setError('');
-    api.get(`/api/dio/trainees/${id}/details`)
+    return api.get(`/api/dio/trainees/${id}/details`)
       .then(r => setData(r.data?.data || r.data))
       .catch(err => setError(err.response?.data?.message || 'Failed to load trainee details'))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (showPageLoading) setLoading(false);
+      });
   }
 
   useEffect(() => {
@@ -336,6 +493,11 @@ export default function DioTraineeDetail() {
       };
     });
     showToast('Report grade saved');
+  }
+
+  async function handleEvaluationSaved() {
+    await load({ showPageLoading: false });
+    showToast('Evaluation added successfully');
   }
 
   if (loading) return (
@@ -436,7 +598,7 @@ export default function DioTraineeDetail() {
           )}
         </section>
 
-        <EvaluationsTable evaluations={evaluations} />
+        <EvaluationsTable evaluations={evaluations} onAdd={() => setEvaluationModal(true)} />
         <CertificatesTable certificates={certificates} />
 
         {REPORT_TYPES.map(type => (
@@ -453,6 +615,16 @@ export default function DioTraineeDetail() {
             report={gradeModal}
             onClose={() => setGradeModal(null)}
             onSaved={handleSaved}
+          />
+        )}
+        {evaluationModal && (
+          <EvaluationModal
+            trainee={trainee}
+            currentRotation={currentRotation}
+            hospital={data?.hospital}
+            specialty={data?.specialty}
+            onClose={() => setEvaluationModal(false)}
+            onSaved={handleEvaluationSaved}
           />
         )}
         <Toast toasts={toasts} />
