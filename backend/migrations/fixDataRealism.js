@@ -167,7 +167,6 @@ async function fixDummyTrainees() {
   log('\n━━━ FIX-3: Soft-deactivate dummy / test trainee accounts ━━━');
 
   // Fetch all active trainees then filter by pattern in JS
-  // (MongoDB $regex can't combine multiple patterns in a single $or on the same field cleanly)
   const allActiveTrainees = await User.find({ role: 'trainee', isActive: true })
     .select('_id name email studentId')
     .lean();

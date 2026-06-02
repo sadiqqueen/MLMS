@@ -5,7 +5,7 @@
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MLMS - Medical Learning Management System</title>
+  <title>MTMS - Medical Training Management System</title>
   <style>
 
     /* ══════════════════════════════════════════════════════════════
@@ -49,49 +49,60 @@
     ══════════════════════════════════════════════════════════════ */
     /* ─── TOP BAR ─── */
     .top-bar {
-    background: #07294b;        /* dark blue background */
-    color: rgba(255,255,255,0.85);
-    font-size: 13px;
-    padding: 8px 0;
-    position:relative;
-    } 
-
-    .top-bar span {
-    color: rgba(255,255,255,0.85);
-    position: relative;
-    top: 13px;
-    left: 60px;
+      background: #07294b;
+      color: rgba(255,255,255,0.85);
+      font-size: 13px;
+      padding: 6px 0;
     }
 
-    .top-bar i.fa-clock {
-    color: #C9973A; 
-    position: relative;
-    left: -5px;
-    top: 0px;            /* gold clock icon */
+    .top-bar-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
     }
 
-/* ─── SOCIAL LINKS ─── */
+    .top-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255,255,255,0.85);
+    }
+
+    .top-bar-left i { color: #C9973A; font-size: 12px; }
+
+    .top-bar-right {
+      display: flex;
+      align-items: center;
+    }
+
+    /* ─── SOCIAL LINKS ─── */
+    .social-links {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     .social-links a {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;         /* makes circles */
-    background: rgba(255,255,255,0.15);
-    color: white;
-    text-decoration: none;
-    font-size: 12px;
-    margin-left: 8px;
-    transition: background 0.15s, transform 0.15s;
-    position: relative;
-    left: 1300px;
-    top:-12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      color: white;
+      text-decoration: none;
+      font-size: 11px;
+      transition: background 0.15s, transform 0.15s;
     }
 
     .social-links a:hover {
-    background: #C9973A;        /* gold on hover */
-    transform: scale(1.1);
+      background: #C9973A;
+      transform: scale(1.1);
     }
 
 
@@ -103,8 +114,8 @@
       position: sticky;
       top: 0;
       z-index: 999;
-      background: var(--white);
-      border-bottom: 1px solid var(--border);
+      background: #07294b;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
       box-shadow: 0 2px 12px rgba(12,68,124,0.07);
     }
     
@@ -146,7 +157,7 @@
 
     .nav-links a {
       background: transparent;
-      color: var(--muted);
+      color: rgba(255,255,255,0.86);
       border: none;
       border-radius: 8px;
       padding: 7px 14px;
@@ -156,8 +167,8 @@
       transition: background 0.15s, color 0.15s;
     }
     .nav-links a:hover {
-      background: #f0f6ff;
-      color: #0C447C;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
 
       border: none;
       border-bottom: 2px solid #fe9a16;
@@ -206,7 +217,7 @@
     
     .btn-lang {
       background: transparent;
-      color: var(--muted);
+      color: rgba(255,255,255,0.86);
       border: none;
       border-radius: 8px;
       padding: 7px 14px;
@@ -216,8 +227,8 @@
       transition: background 0.15s, color 0.15s;
     }
     .btn-lang:hover {
-      background: #f0f6ff;
-      color: #0C447C;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
 
       border: none;
       border-bottom: 2px solid #fe9a16;
@@ -279,7 +290,7 @@
       display: block;
       width: 22px;
       height: 2px;
-      background: var(--blue);
+      background: #fff;
       border-radius: 2px;
       transition: all 0.2s;
     }
@@ -290,19 +301,19 @@
       flex-direction: column;
       gap: 4px;
       padding: 12px 1.5rem 16px;
-      border-top: 1px solid var(--border);
-      background: white;
+      border-top: 1px solid rgba(255,255,255,0.12);
+      background: #07294b;
     }
     .nav-mobile.open { display: flex; }
     .nav-mobile a {
       font-size: 14px;
       font-weight: 500;
-      color: var(--muted);
+      color: rgba(255,255,255,0.86);
       padding: 9px 12px;
       border-radius: 8px;
       transition: background 0.15s, color 0.15s;
     }
-    .nav-mobile a:hover { background: var(--blue-pale); color: var(--blue); }
+    .nav-mobile a:hover { background: rgba(255,255,255,0.12); color: #fff; }
     .nav-mobile .btn-login { width: 100%; text-align: center; margin-top: 6px; height: 42px; }
 
     /* ══════════════════════════════════════════════════════════════
@@ -509,7 +520,8 @@
 
     .tracks-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: minmax(0, 520px);
+      justify-content: center;
       gap: 24px;
     }
 
@@ -629,7 +641,7 @@
 
     .vm-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
       gap: 48px;
       align-items: start;
     }
@@ -987,6 +999,8 @@
     /* ══════════════════════════════════════════════════════════════
        RTL (ARABIC) OVERRIDES
     ══════════════════════════════════════════════════════════════ */
+    html[dir="rtl"] .top-bar-inner    { flex-direction: row-reverse; }
+    html[dir="rtl"] .top-bar-left     { flex-direction: row-reverse; }
     html[dir="rtl"] .nav-inner        { flex-direction: row-reverse; }
     html[dir="rtl"] .nav-links        { flex-direction: row-reverse; }
     html[dir="rtl"] .nav-right        { flex-direction: row-reverse; }
@@ -1008,7 +1022,6 @@
        RESPONSIVE — TABLET
     ══════════════════════════════════════════════════════════════ */
     @media (max-width: 1024px) {
-      .tracks-grid   { grid-template-columns: 1fr 1fr; }
       .features-grid { grid-template-columns: 1fr 1fr; }
       .footer-main   { grid-template-columns: 1fr 1fr; }
     }
@@ -1032,7 +1045,7 @@
 
       section { padding: 56px 1.25rem; }
 
-      .tracks-grid   { grid-template-columns: 1fr; }
+      .tracks-grid   { grid-template-columns: 1fr; max-width: 100%; }
       .features-grid { grid-template-columns: 1fr 1fr; }
       .vm-grid       { grid-template-columns: 1fr; gap: 32px; }
       .vm-divider    { display: none; }
@@ -1065,23 +1078,22 @@
   <!-- ════════════════════════════════════════════════════════════
        WORKING HOURS TOPBAR
   ════════════════════════════════════════════════════════════ -->
-  <div class="top-bar d-none d-lg-block">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <span><i class="fas fa-clock me-2"></i>Sun - Thu: 8:00 AM - 4:00 PM</span>
-                </div>
-                <div class="col-md-6 text-end">
-                    <div class="social-links d-inline-block me-3">
-                        <a href="#"><i class="fab fa-facebook-f"></i></a>
-                        <a href="#"><i class="fab fa-twitter"></i></a>
-                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
-                        <a href="#"><i class="fab fa-youtube"></i></a>
-                    </div>
-                </div>
-            </div>
+  <div class="top-bar">
+    <div class="top-bar-inner">
+      <div class="top-bar-left">
+        <i class="fas fa-clock"></i>
+        <span data-en="Sun – Thu: 8:00 AM – 4:00 PM" data-ar="الأحد – الخميس: 8:00 صباحاً – 4:00 مساءً">Sun – Thu: 8:00 AM – 4:00 PM</span>
+      </div>
+      <div class="top-bar-right">
+        <div class="social-links">
+          <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+          <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+          <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+          <a href="#" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
         </div>
+      </div>
     </div>
+  </div>
 
   <!-- ════════════════════════════════════════════════════════════
        NAVIGATION
@@ -1094,17 +1106,17 @@
       <a href="#home" class="nav-logo">
         <img
           src="/logo.png"
-          alt="MLMS"
+          alt="MTMS"
           class="nav-logo-img"
         />
       </a>
 
       <!-- Center links -->
       <div class="nav-links">
-        <a href="#home"     class="active" data-en="Home"             data-ar="الرئيسية">Home</a>
-        <a href="#tracks"   data-en="Training Tracks" data-ar="مسارات التدريب">Training Tracks</a>
-        <a href="#vision"   data-en="About Us"        data-ar="عن المركز">About Us</a>
-        <a href="#contact"  data-en="Contact"         data-ar="تواصل معنا">Contact</a>
+        <a href="#home"     class="active" data-en="Home"            data-ar="الرئيسية">Home</a>
+        <a href="#tracks"   data-en="Training Track"  data-ar="مسار التدريب">Training Track</a>
+        <a href="#vision"   data-en="About Us"         data-ar="عن المركز">About Us</a>
+        <a href="#contact"  data-en="Contact"          data-ar="تواصل معنا">Contact</a>
       </div>
 
       <!-- Right: lang toggle + login -->
@@ -1125,10 +1137,10 @@
 
     <!-- Mobile menu (hidden by default) -->
     <div class="nav-mobile" id="mobile-menu">
-      <a href="#home"    onclick="closeMenu()" data-en="Home"             data-ar="الرئيسية">Home</a>
-      <a href="#tracks"  onclick="closeMenu()" data-en="Training Tracks"  data-ar="مسارات التدريب">Training Tracks</a>
-      <a href="#vision"  onclick="closeMenu()" data-en="About Us"         data-ar="عن المركز">About Us</a>
-      <a href="#contact" onclick="closeMenu()" data-en="Contact"          data-ar="تواصل معنا">Contact</a>
+      <a href="#home"    onclick="closeMenu()" data-en="Home"           data-ar="الرئيسية">Home</a>
+      <a href="#tracks"  onclick="closeMenu()" data-en="Training Track"  data-ar="مسار التدريب">Training Track</a>
+      <a href="#vision"  onclick="closeMenu()" data-en="About Us"        data-ar="عن المركز">About Us</a>
+      <a href="#contact" onclick="closeMenu()" data-en="Contact"         data-ar="تواصل معنا">Contact</a>
       <a href="#" onclick="event.preventDefault();closeMenu();openLoginPanel()">
         <button class="btn-login" data-en="Portal Login" data-ar="دخول البوابة">Portal Login</button>
       </a>
@@ -1140,13 +1152,13 @@
   ════════════════════════════════════════════════════════════ -->
   <section id="home" class="hero">
     <div class="hero-inner">
-      <div class="hero-label" data-en="Excellence in Clinical Training" data-ar="التميز في التدريب السريري">
-        Excellence in Clinical Training
+      <div class="hero-label" data-en="Excellence in Medical Training" data-ar="التميز في التدريب الطبي">
+        Excellence in Medical Training
       </div>
-      <h1 data-en="Medical Learning Management System" data-ar="نظام إدارة التعلم الطبي">
-        Medical Learning Management System
+      <h1 data-en="Medical Training Management System" data-ar="نظام إدارة التدريب الطبي">
+        Medical Training Management System
       </h1>
-      <div class="hero-subtitle" data-en="MedLearn LMS" data-ar="">MLMS</div>
+      <div class="hero-subtitle" data-en="MTMS" data-ar="MTMS">MTMS</div>
       <p class="hero-desc"
          data-en="The leading national center for high-quality clinical training that produces competent, ethical, and patient-centered health professionals across all stages of medical and health education."
          data-ar="المركز الوطني الرائد للتدريب السريري عالي الجودة الذي يُخرج كوادر صحية كفوءة وأخلاقية ومتمحورة حول المريض في جميع مراحل التعليم الطبي والصحي.">
@@ -1154,8 +1166,8 @@
       </p>
       <div class="hero-btns">
         <a href="#tracks">
-          <button class="btn-hero-primary" data-en="Explore Training Tracks" data-ar="استكشف مسارات التدريب">
-            Explore Training Tracks
+          <button class="btn-hero-primary" data-en="Explore Training Track" data-ar="استكشف مسار التدريب">
+            Explore Training Track
           </button>
         </a>
         <a href="#" onclick="event.preventDefault();openLoginPanel()">
@@ -1197,92 +1209,38 @@
   <section id="tracks">
     <div class="section-inner">
       <div class="section-header-center fade-up">
-        <div class="section-tag" data-en="Programs" data-ar="البرامج">Programs</div>
-        <h2 class="section-title" data-en="Training Tracks" data-ar="مسارات التدريب">Training Tracks</h2>
+        <div class="section-tag" data-en="Advanced Training" data-ar="التدريب المتقدم">Advanced Training</div>
+        <h2 class="section-title" data-en="Training Track" data-ar="مسار التدريب">Training Track</h2>
         <p class="section-sub"
-           data-en="Three comprehensive tracks designed for every stage of medical and health education"
-           data-ar="ثلاثة مسارات شاملة مصممة لكل مرحلة من مراحل التعليم الطبي والصحي">
-          Three comprehensive tracks designed for every stage of medical and health education
+           data-en="A focused track for residency and advanced clinical training through supervised hospital rotations, reports, evaluations, and certification."
+           data-ar="مسار متخصص للإقامة والتدريب السريري المتقدم من خلال الدورات المستشفياتية الخاضعة للإشراف والتقارير والتقييمات والشهادات.">
+          A focused track for residency and advanced clinical training through supervised hospital rotations, reports, evaluations, and certification.
         </p>
       </div>
 
       <div class="tracks-grid">
 
-        <!-- Card 1 -->
+        <!-- Specialty Track — single centered card -->
         <div class="track-card fade-up">
-          <div class="track-icon">🎓</div>
-          <div class="track-tag" data-en="Undergraduate Clinical Training" data-ar="التدريب السريري لمرحلة البكالوريوس">
-            Undergraduate Clinical Training
-          </div>
-          <div>
-            <div class="track-title" data-en="Basic Health & Medical Education" data-ar="التعليم الصحي والطبي الأساسي">
-              Basic Health & Medical Education
-            </div>
-            <p class="track-desc"
-               data-en="Foundational clinical exposure for undergraduate students in medicine and health sciences"
-               data-ar="التعرض السريري الأساسي لطلاب البكالوريوس في الطب والعلوم الصحية">
-              Foundational clinical exposure for undergraduate students in medicine and health sciences
-            </p>
-          </div>
-          <ul class="track-bullets">
-            <li data-en="Early and progressive clinical exposure"         data-ar="التعرض السريري المبكر والتدريجي">Early and progressive clinical exposure</li>
-            <li data-en="Aligned with national curricula"                 data-ar="متوافق مع المناهج الوطنية">Aligned with national curricula</li>
-            <li data-en="Graduate competency development"                 data-ar="تطوير كفاءات الخريجين">Graduate competency development</li>
-            <li data-en="Knowledge, skills and attitudes training"        data-ar="تدريب المعرفة والمهارات والمواقف">Knowledge, skills and attitudes training</li>
-          </ul>
-          <a href="#" onclick="event.preventDefault();openLoginPanel()">
-            <button class="btn-track" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
-          </a>
-        </div>
-
-        <!-- Card 2 -->
-        <div class="track-card fade-up" style="transition-delay:0.1s">
-          <div class="track-icon">🏥</div>
-          <div class="track-tag" data-en="Practical Clinical Experience" data-ar="الخبرة السريرية العملية">
-            Practical Clinical Experience
-          </div>
-          <div>
-            <div class="track-title" data-en="Internship Training" data-ar="التدريب الداخلي">
-              Internship Training
-            </div>
-            <p class="track-desc"
-               data-en="Comprehensive hands-on experience in hospitals and primary care before independent practice"
-               data-ar="تجربة عملية شاملة في المستشفيات والرعاية الأولية قبل الممارسة المستقلة">
-              Comprehensive hands-on experience in hospitals and primary care before independent practice
-            </p>
-          </div>
-          <ul class="track-bullets">
-            <li data-en="Accredited internship sites"                     data-ar="مواقع تدريب داخلي معتمدة">Accredited internship sites</li>
-            <li data-en="Hospital and primary care rotations"             data-ar="دورات المستشفيات والرعاية الأولية">Hospital and primary care rotations</li>
-            <li data-en="Clear learning outcomes"                         data-ar="مخرجات تعليمية واضحة">Clear learning outcomes</li>
-            <li data-en="Structured supervision and assessment"           data-ar="إشراف وتقييم منظم">Structured supervision and assessment</li>
-          </ul>
-          <a href="#" onclick="event.preventDefault();openLoginPanel()">
-            <button class="btn-track" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
-          </a>
-        </div>
-
-        <!-- Card 3 -->
-        <div class="track-card fade-up" style="transition-delay:0.2s">
           <div class="track-icon">⭐</div>
-          <div class="track-tag" data-en="Residency and Advanced Training" data-ar="الإقامة والتدريب المتقدم">
-            Residency and Advanced Training
+          <div class="track-tag" data-en="Specialty Education" data-ar="التعليم التخصصي">
+            Specialty Education
           </div>
           <div>
-            <div class="track-title" data-en="Specialty Education" data-ar="التعليم التخصصي">
-              Specialty Education
+            <div class="track-title" data-en="Residency and Advanced Training / Specialty Education" data-ar="الإقامة والتدريب المتقدم / التعليم التخصصي">
+              Residency and Advanced Training / Specialty Education
             </div>
             <p class="track-desc"
-               data-en="Structured residency and fellowship programs in coordination with specialty boards"
-               data-ar="برامج إقامة وزمالة منظمة بالتنسيق مع المجالس التخصصية">
-              Structured residency and fellowship programs in coordination with specialty boards
+               data-en="Structured residency and advanced clinical training programs with supervised rotations, trainee reports, evaluations, final report grading, and certification."
+               data-ar="برامج تدريب سريري متقدم وإقامة منظمة مع دورات خاضعة للإشراف وتقارير المتدربين والتقييمات وتقييم التقارير النهائية والشهادات.">
+              Structured residency and advanced clinical training programs with supervised rotations, trainee reports, evaluations, final report grading, and certification.
             </p>
           </div>
           <ul class="track-bullets">
-            <li data-en="Specialty board coordination"                    data-ar="التنسيق مع المجالس التخصصية">Specialty board coordination</li>
-            <li data-en="Teaching hospital programs"                      data-ar="برامج المستشفيات التعليمية">Teaching hospital programs</li>
-            <li data-en="Research involvement"                            data-ar="المشاركة في البحث العلمي">Research involvement</li>
-            <li data-en="Leadership and teaching skills"                  data-ar="مهارات القيادة والتدريس">Leadership and teaching skills</li>
+            <li data-en="Specialty program coordination"                      data-ar="تنسيق البرامج التخصصية">Specialty program coordination</li>
+            <li data-en="Teaching hospital rotations"                         data-ar="دورات المستشفيات التعليمية">Teaching hospital rotations</li>
+            <li data-en="Trainee reports and evaluations"                     data-ar="تقارير المتدربين والتقييمات">Trainee reports and evaluations</li>
+            <li data-en="Final report grading and certification workflow"     data-ar="تقييم التقارير النهائية وسير عمل الشهادات">Final report grading and certification workflow</li>
           </ul>
           <a href="#" onclick="event.preventDefault();openLoginPanel()">
             <button class="btn-track" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
@@ -1525,12 +1483,12 @@
       <!-- Brand -->
       <div>
         <div class="footer-brand-logo">
-          <img src="/logo.png" alt="MLMS" class="footer-logo-img" />
+          <img src="/logo.png" alt="MTMS" class="footer-logo-img" />
         </div>
         <p class="footer-desc"
-           data-en="The leading national platform for clinical training management in medical and health education."
-           data-ar="المنصة الوطنية الرائدة لإدارة التدريب السريري في التعليم الطبي والصحي.">
-          The leading national platform for clinical training management in medical and health education.
+           data-en="The leading platform for clinical training management in medical and health education."
+           data-ar="المنصة الرائدة لإدارة التدريب السريري في التعليم الطبي والصحي.">
+          The leading platform for clinical training management in medical and health education.
         </p>
       </div>
 
@@ -1539,7 +1497,7 @@
         <div class="footer-col-title" data-en="Quick Links" data-ar="روابط سريعة">Quick Links</div>
         <ul class="footer-links">
           <li><a href="#home"    data-en="Home"             data-ar="الرئيسية">Home</a></li>
-          <li><a href="#tracks"  data-en="Training Tracks"  data-ar="مسارات التدريب">Training Tracks</a></li>
+          <li><a href="#tracks"  data-en="Training Track"   data-ar="مسار التدريب">Training Track</a></li>
           <li><a href="#vision"  data-en="About Us"         data-ar="عن المركز">About Us</a></li>
           <li><a href="#contact" data-en="Contact"          data-ar="تواصل معنا">Contact</a></li>
           <li><a href="#" onclick="event.preventDefault();openLoginPanel()" data-en="Portal Login"   data-ar="دخول البوابة">Portal Login</a></li>
@@ -1576,9 +1534,9 @@
 
     <div class="footer-bar">
       <div class="footer-bar-inner">
-        <span data-en="© 2026 MedLearn LMS. All Rights Reserved."
-              data-ar="© 2026 ميدلرن. جميع الحقوق محفوظة.">
-          © 2026 MedLearn LMS. All Rights Reserved.
+        <span data-en="© 2026 MTMS. All Rights Reserved."
+              data-ar="© 2026 MTMS. جميع الحقوق محفوظة.">
+          © 2026 MTMS. All Rights Reserved.
         </span>
         <div class="footer-bar-links">
           <a href="#" data-en="Privacy Policy"    data-ar="سياسة الخصوصية">Privacy Policy</a>
@@ -2014,7 +1972,7 @@
     const sections   = document.querySelectorAll('section[id], div.stats-bar');
     const navLinks   = document.querySelectorAll('.nav-links a');
 
-    const sectionIds = ['home', 'tracks', 'vision', 'features', 'contact'];
+    const sectionIds = ['home', 'tracks', 'features', 'vision', 'contact'];
 
     window.addEventListener('scroll', () => {
       let current = '';
