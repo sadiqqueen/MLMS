@@ -19,7 +19,7 @@ const distributionSchema = new mongoose.Schema(
       }
     },
     durationWeeks: { type: Number },
-    status:        { type: String, enum: ['active', 'completed', 'cancelled'], default: 'active', index: true },
+    status:        { type: String, enum: ['upcoming', 'active', 'completed', 'cancelled'], default: 'active', index: true },
     createdBy:     { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
     // Keep legacy fields for backwards compatibility with existing data
