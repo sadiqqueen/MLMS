@@ -1,0 +1,373 @@
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import Navbar from '../components/Navbar';
+import Toast from '../components/Toast';
+import api from '../api/axios';
+import Sk from '../components/Skeleton';
+
+const API_BASE = '';
+const REPORT_TYPES = ['weekly', 'monthly', 'final'];
+const GRADE_OPTIONS = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F', 'Competent', 'Not-Competent'];
+
+function safeArr(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function fmtDate(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function isGraded(report) {
+  return report?.status === 'graded' || !!report?.grade || report?.score !== null && report?.score !== undefined || !!report?.gradedBy;
+}
+
+function nameOf(value) {
+  return value?.name || '-';
+}
+
+function StatCard({ label, value, tone = 'blue' }) {
+  const colors = {
+    blue: ['#DBEAFE', '#1E40AF'],
+    amber: ['#FEF3C7', '#92400E'],
+    green: ['#D1FAE5', '#065F46'],
+    red: ['#FEE2E2', '#991B1B'],
+  }[tone] || ['#EEF2FF', '#3730A3'];
+
+  return (
+    <div style={{ background:'#fff', border:'1px solid #E8E9EF', borderRadius:12, padding:'16px 18px', display:'flex', alignItems:'center', gap:12 }}>
+      <div style={{ width:44, height:44, borderRadius:10, background:colors[0], color:colors[1], display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:18 }}>
+        {value}
+      </div>
+      <div style={{ fontSize:13, color:'#4B5563', fontWeight:600 }}>{label}</div>
+    </div>
+  );
+}
+
+function InfoCard({ title, rows }) {
+  return (
+    <section style={{ background:'#fff', border:'1px solid #E8E9EF', borderRadius:12, padding:18 }}>
+      <div style={{ fontSize:14, fontWeight:800, color:'#1B1464', marginBottom:12 }}>{title}</div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:'12px 18px' }}>
+        {rows.map(([label, value]) => (
+          <div key={label}>
+            <div style={{ fontSize:11, color:'#8B8FA8', fontWeight:700, textTransform:'uppercase', letterSpacing:'.04em', marginBottom:3 }}>{label}</div>
+            <div style={{ fontSize:13, color:'#1B1464', fontWeight:600 }}>{value || '-'}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function GradeModal({ report, onClose, onSaved }) {
+  const overriding = isGraded(report);
+  const [grade, setGrade] = useState(report?.grade || '');
+  const [score, setScore] = useState(report?.score ?? '');
+  const [feedback, setFeedback] = useState(report?.assessorComments || report?.reviewNote || '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const h = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', h);
+    return () => document.removeEventListener('keydown', h);
+  }, [onClose]);
+
+  async function save() {
+    setError('');
+    const numericScore = score === '' ? null : Number(score);
+    if (!grade && numericScore === null) {
+      setError('Please provide a grade or score.');
+      return;
+    }
+    if (numericScore !== null && (!Number.isFinite(numericScore) || numericScore < 0 || numericScore > 100)) {
+      setError('Score must be between 0 and 100.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await api.patch(`/api/dio/reports/${report._id}/grade`, {
+        grade,
+        score: numericScore,
+        feedback,
+        status: 'graded',
+      });
+      onSaved(res.data?.data || res.data);
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to save grade.');
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:2500, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:520, boxShadow:'0 20px 60px rgba(0,0,0,.2)', overflow:'hidden' }}>
+        <div style={{ padding:'18px 22px', borderBottom:'1px solid #E8E9EF', display:'flex', justifyContent:'space-between', gap:12 }}>
+          <div>
+            <div style={{ fontSize:16, fontWeight:800, color:'#1B1464' }}>{overriding ? 'Override Grade' : 'Grade Report'}</div>
+            <div style={{ fontSize:12, color:'#8B8FA8', marginTop:3 }}>{report?.title || 'Report'} - {report?.type}</div>
+          </div>
+          <button onClick={onClose} style={{ width:30, height:30, borderRadius:'50%', border:'none', background:'#F5F6FA', color:'#8B8FA8', cursor:'pointer', fontSize:18 }}>x</button>
+        </div>
+
+        <div style={{ padding:22, display:'flex', flexDirection:'column', gap:16 }}>
+          {overriding && (
+            <div style={{ background:'#FEF3C7', border:'1px solid #FCD34D', color:'#92400E', borderRadius:10, padding:'11px 13px', fontSize:13, lineHeight:1.5 }}>
+              You are overriding an existing grade. Previous grade: <strong>{report.grade || '-'}</strong>{report.score !== null && report.score !== undefined ? `, score ${report.score}` : ''}.
+            </div>
+          )}
+
+          <div>
+            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#4B5563', marginBottom:7 }}>Grade</label>
+            <select className="admin-search" style={{ width:'100%', boxSizing:'border-box', height:42 }} value={grade} onChange={e => setGrade(e.target.value)}>
+              <option value="">Select grade...</option>
+              {GRADE_OPTIONS.map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#4B5563', marginBottom:7 }}>Score (0-100)</label>
+            <input className="admin-search" style={{ width:'100%', boxSizing:'border-box', height:42 }} type="number" min="0" max="100" value={score} onChange={e => setScore(e.target.value)} />
+          </div>
+
+          <div>
+            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#4B5563', marginBottom:7 }}>Feedback / Comment</label>
+            <textarea className="admin-search" style={{ width:'100%', minHeight:90, boxSizing:'border-box', padding:'10px 12px', resize:'vertical', fontFamily:'inherit' }} value={feedback} onChange={e => setFeedback(e.target.value)} />
+          </div>
+
+          {error && <div style={{ background:'#FEE2E2', color:'#DC2626', borderRadius:8, padding:'10px 12px', fontSize:13 }}>{error}</div>}
+
+          <div style={{ display:'flex', justifyContent:'flex-end', gap:10 }}>
+            <button className="btn-outline" onClick={onClose}>Cancel</button>
+            <button className="btn-purple" onClick={save} disabled={saving}>{saving ? 'Saving...' : overriding ? 'Override Grade' : 'Save Grade'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReportRow({ report, onGrade }) {
+  const graded = isGraded(report);
+  return (
+    <tr>
+      <td>
+        <div style={{ fontWeight:700, color:'#1B1464' }}>{report.title || '-'}</div>
+        <div style={{ fontSize:11, color:'#8B8FA8' }}>{report.type} report</div>
+      </td>
+      <td>{fmtDate(report.date || report.createdAt)}</td>
+      <td>{nameOf(report.hospital)}</td>
+      <td>
+        <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:graded ? '#D1FAE5' : '#FEF3C7', color:graded ? '#065F46' : '#92400E' }}>
+          {graded ? 'Graded' : 'Ungraded'}
+        </span>
+      </td>
+      <td>{report.grade || '-'}</td>
+      <td>{report.score ?? '-'}</td>
+      <td>{report.gradedBy?.name || '-'}</td>
+      <td>{report.gradedByRole || report.gradedBy?.role || '-'}</td>
+      <td>
+        {report.fileUrl ? <a href={`${API_BASE}${report.fileUrl}`} target="_blank" rel="noreferrer" style={{ color:'#185FA5', fontWeight:700, fontSize:12 }}>Open</a> : <span style={{ color:'#B8BBC8' }}>-</span>}
+      </td>
+      <td>
+        <button className={graded ? 'btn-action edit' : 'btn-purple'} style={{ fontSize:12, padding:graded ? undefined : '6px 12px' }} onClick={() => onGrade(report)}>
+          {graded ? 'Override' : 'Grade'}
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+function ReportsTable({ title, reports, onGrade }) {
+  return (
+    <section className="admin-card">
+      <div className="admin-card-header">
+        <div className="admin-card-title">{title}</div>
+      </div>
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Report</th><th>Submitted</th><th>Hospital</th><th>Status</th><th>Grade</th><th>Score</th><th>Graded By</th><th>Role</th><th>File</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {reports.length === 0 ? (
+              <tr><td colSpan={10} className="admin-empty">No reports in this section</td></tr>
+            ) : reports.map(r => <ReportRow key={r._id} report={r} onGrade={onGrade} />)}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+export default function DioTraineeDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [gradeModal, setGradeModal] = useState(null);
+  const [toasts, setToasts] = useState([]);
+
+  function showToast(message, type = 'success') {
+    const toastId = Date.now();
+    setToasts(p => [...p, { id: toastId, message, type }]);
+    setTimeout(() => setToasts(p => p.filter(t => t.id !== toastId)), 3500);
+  }
+
+  function load() {
+    setLoading(true);
+    setError('');
+    api.get(`/api/dio/trainees/${id}/details`)
+      .then(r => setData(r.data?.data || r.data))
+      .catch(err => setError(err.response?.data?.message || 'Failed to load trainee details'))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    load();
+  }, [id]);
+
+  function handleSaved(updated) {
+    setData(prev => {
+      const reports = safeArr(prev?.reports).map(r => r._id === updated._id ? updated : r);
+      const ungradedReports = reports.filter(r => !isGraded(r));
+      return {
+        ...prev,
+        reports,
+        reportsByType: {
+          weekly: reports.filter(r => r.type === 'weekly'),
+          monthly: reports.filter(r => r.type === 'monthly'),
+          final: reports.filter(r => r.type === 'final'),
+        },
+        ungradedReports,
+        pendingUngradedCount: ungradedReports.length,
+      };
+    });
+    showToast('Report grade saved');
+  }
+
+  if (loading) return (
+    <>
+      <Navbar />
+      <main className="admin-main">
+        <Sk h={44} r={10} style={{ marginBottom:18 }} />
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:12 }}>
+          {[0, 1, 2].map(i => <Sk key={i} h={90} r={12} />)}
+        </div>
+      </main>
+    </>
+  );
+
+  if (error) return (
+    <>
+      <Navbar />
+      <main className="admin-main">
+        <button className="btn-outline" onClick={() => navigate('/dio/trainees')} style={{ marginBottom:16 }}>Back</button>
+        <div style={{ background:'#FEE2E2', color:'#DC2626', borderRadius:12, padding:18 }}>{error}</div>
+      </main>
+    </>
+  );
+
+  const trainee = data?.trainee || {};
+  const reports = safeArr(data?.reports);
+  const byType = data?.reportsByType || {};
+  const ungraded = safeArr(data?.ungradedReports);
+  const currentRotation = data?.currentRotation;
+
+  return (
+    <>
+      <Navbar />
+      <main className="admin-main">
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, flexWrap:'wrap', marginBottom:18 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <button className="btn-outline" onClick={() => navigate('/dio/trainees')}>Back</button>
+            <div>
+              <div style={{ fontSize:22, fontWeight:900, color:'#1B1464' }}>{trainee.name || 'Trainee'}</div>
+              <div style={{ fontSize:13, color:'#8B8FA8' }}>{trainee.studentId || '-'} - {trainee.email || '-'}</div>
+            </div>
+          </div>
+          <span style={{ background:ungraded.length ? '#FEE2E2' : '#D1FAE5', color:ungraded.length ? '#991B1B' : '#065F46', borderRadius:20, padding:'6px 12px', fontSize:12, fontWeight:800 }}>
+            {ungraded.length} ungraded report{ungraded.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(210px, 1fr))', gap:12, marginBottom:16 }}>
+          <StatCard label="All Reports" value={reports.length} />
+          <StatCard label="Ungraded Reports" value={ungraded.length} tone={ungraded.length ? 'red' : 'green'} />
+          <StatCard label="Evaluations" value={data?.evaluationsSummary?.total || 0} tone="amber" />
+          <StatCard label="Valid Certificates" value={data?.certificatesSummary?.valid || 0} tone="green" />
+        </div>
+
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:14, marginBottom:16 }}>
+          <InfoCard title="Basic Information" rows={[
+            ['Name', trainee.name],
+            ['Student ID', trainee.studentId],
+            ['Email', trainee.email],
+            ['Phone', trainee.phone],
+            ['Year', trainee.year ? `Year ${trainee.year}` : '-'],
+            ['City', trainee.city],
+          ]} />
+          <InfoCard title="Training Assignment" rows={[
+            ['Hospital', nameOf(data?.hospital)],
+            ['Specialty', data?.specialty?.name || trainee.specialty],
+            ['Current Rotation', currentRotation ? `${fmtDate(currentRotation.startDate)} - ${fmtDate(currentRotation.endDate)}` : '-'],
+            ['Supervisor', nameOf(data?.supervisor)],
+            ['Program Director', nameOf(data?.programDirector)],
+            ['Rotation Status', currentRotation?.status || '-'],
+          ]} />
+        </div>
+
+        <section style={{ background:'#fff', border:'1px solid #E8E9EF', borderRadius:12, padding:18, marginBottom:16 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, marginBottom:12 }}>
+            <div>
+              <div style={{ fontSize:16, fontWeight:900, color:'#1B1464' }}>Ungraded Reports</div>
+              <div style={{ fontSize:12, color:'#8B8FA8' }}>DIO can grade weekly, monthly, and final reports from here.</div>
+            </div>
+            <span style={{ fontSize:12, fontWeight:800, background:'#FEF3C7', color:'#92400E', padding:'4px 10px', borderRadius:20 }}>{ungraded.length} pending</span>
+          </div>
+          {ungraded.length === 0 ? (
+            <div className="admin-empty">No ungraded reports. Everything is caught up.</div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {ungraded.map(report => (
+                <div key={report._id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, border:'1px solid #F3F4F6', borderRadius:10, padding:'10px 12px', flexWrap:'wrap' }}>
+                  <div>
+                    <div style={{ fontWeight:800, color:'#1B1464' }}>{report.title}</div>
+                    <div style={{ fontSize:12, color:'#8B8FA8' }}>{report.type} - submitted {fmtDate(report.date || report.createdAt)}</div>
+                  </div>
+                  <button className="btn-purple" onClick={() => setGradeModal(report)}>Grade</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {REPORT_TYPES.map(type => (
+          <ReportsTable
+            key={type}
+            title={`${type.charAt(0).toUpperCase()}${type.slice(1)} Reports`}
+            reports={safeArr(byType[type])}
+            onGrade={setGradeModal}
+          />
+        ))}
+
+        {gradeModal && (
+          <GradeModal
+            report={gradeModal}
+            onClose={() => setGradeModal(null)}
+            onSaved={handleSaved}
+          />
+        )}
+        <Toast toasts={toasts} />
+      </main>
+    </>
+  );
+}

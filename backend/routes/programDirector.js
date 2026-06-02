@@ -186,6 +186,7 @@ router.patch('/reports/:id/grade',
       report.reviewNote         = reviewNote         || assessorComments || '';
       report.reviewedBy         = req.user._id;
       report.gradedBy           = req.user._id;
+      report.gradedByRole       = req.user.role;
       report.gradedAt           = new Date();
       report.status             = 'graded';
       await report.save();

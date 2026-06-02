@@ -28,6 +28,7 @@ import SecretaryHospitals from './pages/SecretaryHospitals';
 
 import DioDashboard from './pages/DioDashboard';
 import DioTrainees from './pages/DioTrainees';
+import DioTraineeDetail from './pages/DioTraineeDetail';
 import DioSupervisors from './pages/DioSupervisors';
 import DioProgramDirectors from './pages/DioProgramDirectors';
 import DioSecretaries from './pages/DioSecretaries';
@@ -145,8 +146,13 @@ export default function App() {
             </ProtectedRoute>
           } />
           <Route path="/dio/trainees" element={
-            <ProtectedRoute allowedRoles={['dio']}>
+            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
               <DioTrainees />
+            </ProtectedRoute>
+          } />
+          <Route path="/dio/trainees/:id" element={
+            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
+              <DioTraineeDetail />
             </ProtectedRoute>
           } />
           <Route path="/dio/supervisors" element={

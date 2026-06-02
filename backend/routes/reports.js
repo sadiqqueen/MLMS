@@ -229,6 +229,7 @@ router.put('/:id/grade', auth, allowRoles('supervisor', 'program_director', 'sup
         traineeSignature:   traineeSignature   || '',
         status:   'graded',
         gradedBy: req.user._id,
+        gradedByRole: req.user.role,
         gradedAt: new Date()
       },
       { new: true }

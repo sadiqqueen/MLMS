@@ -1,5 +1,6 @@
 // backend/routes/dio.js
 const router         = require('express').Router();
+const mongoose       = require('mongoose');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const auditLog       = require('../middleware/auditLogger');
@@ -7,8 +8,11 @@ const { v4: uuidv4 } = require('uuid');
 const User           = require('../models/User');
 const Hospital       = require('../models/Hospital');
 const Distribution   = require('../models/Distribution');
+const Report         = require('../models/Report');
+const Evaluation     = require('../models/Evaluation');
 const Certificate    = require('../models/Certificate');
 const Notification   = require('../models/Notification');
+const AuditLog       = require('../models/AuditLog');
 
 const DIO = ['dio'];
 
@@ -18,6 +22,21 @@ function getHospital(user) {
 
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function isReportGraded(report) {
+  return report?.status === 'graded'
+      || !!report?.grade
+      || report?.score !== null && report?.score !== undefined
+      || !!report?.gradedBy;
+}
+
+function groupReports(reports) {
+  return {
+    weekly: reports.filter(r => r.type === 'weekly'),
+    monthly: reports.filter(r => r.type === 'monthly'),
+    final: reports.filter(r => r.type === 'final'),
+  };
 }
 
 // GET /api/dio/stats
@@ -111,20 +130,13 @@ router.get('/stats', auth, allowRoles(...DIO), async (req, res) => {
 });
 
 // GET /api/dio/trainees
-router.get('/trainees', auth, allowRoles(...DIO), async (req, res) => {
+router.get('/trainees', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
   try {
-    const hospitalId = getHospital(req.user);
     const { search } = req.query;
     const query = { role: 'trainee', isActive: { $ne: false } };
-    if (hospitalId) query.$or = [{ hospitalId }, { hospital: hospitalId }];
     if (search) {
       const rx = new RegExp(escapeRegex(search.slice(0, 100)), 'i');
-      const searchOr = [{ name: rx }, { studentId: rx }];
-      query.$and = [
-        ...(query.$or ? [{ $or: query.$or }] : []),
-        { $or: searchOr }
-      ];
-      delete query.$or;
+      query.$or = [{ name: rx }, { studentId: rx }];
     }
 
     const trainees = await User.find(query)
@@ -143,6 +155,214 @@ router.get('/trainees', auth, allowRoles(...DIO), async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+// GET /api/dio/trainees/:id/details
+// Full DIO trainee profile with reports and grading summary.
+router.get('/trainees/:id/details', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid trainee id' });
+    }
+
+    const trainee = await User.findOne({
+      _id: req.params.id,
+      role: 'trainee',
+      isActive: { $ne: false }
+    })
+      .select('-password')
+      .populate('hospitalId', 'name city governorate')
+      .populate('hospital', 'name city governorate')
+      .populate('specialtyId', 'name')
+      .populate('supervisorId', 'name email phone specialty')
+      .populate('supervisor', 'name email phone specialty');
+
+    if (!trainee) {
+      return res.status(404).json({ success: false, message: 'Trainee not found' });
+    }
+
+    const hospitalId = trainee.hospitalId?._id || trainee.hospital?._id || trainee.hospitalId || trainee.hospital;
+    const [currentRotation, programDirector, reports, evaluations, certificates] = await Promise.all([
+      Distribution.findOne({
+        $or: [{ traineeId: trainee._id }, { student: trainee._id }],
+        status: 'active'
+      })
+        .sort({ startDate: -1 })
+        .populate('hospitalId', 'name city governorate')
+        .populate('hospital', 'name city governorate')
+        .populate('specialtyId', 'name')
+        .populate('supervisorId', 'name email phone specialty')
+        .populate('doctor', 'name email phone specialty'),
+      hospitalId
+        ? User.findOne({
+            role: 'program_director',
+            isActive: { $ne: false },
+            $or: [{ hospitalId }, { hospital: hospitalId }]
+          }).select('name email phone hospitalId hospital')
+        : null,
+      Report.find({ student: trainee._id })
+        .populate('hospital', 'name city')
+        .populate('rotation', 'startDate endDate status')
+        .populate('distribution', 'startDate endDate status hospitalId specialtyId')
+        .populate('gradedBy', 'name email role initials')
+        .sort({ date: -1, createdAt: -1 }),
+      Evaluation.find({
+        $or: [{ student: trainee._id }, { traineeId: trainee._id }]
+      })
+        .populate('doctor', 'name role')
+        .populate('supervisorId', 'name role')
+        .sort({ createdAt: -1 }),
+      Certificate.find({
+        $or: [{ student: trainee._id }, { traineeId: trainee._id }]
+      })
+        .populate('hospital', 'name city')
+        .populate('issuedBy', 'name role')
+        .sort({ issueDate: -1, createdAt: -1 })
+    ]);
+
+    const plainReports = reports.map(r => r.toObject());
+    const ungradedReports = plainReports.filter(r => !isReportGraded(r));
+    const groupedReports = groupReports(plainReports);
+    const finalizedEvaluations = evaluations.filter(e => e.isFinalized || e.status === 'completed');
+    const validCertificates = certificates.filter(c => !c.revokedAt);
+
+    res.json({
+      success: true,
+      data: {
+        trainee,
+        hospital: trainee.hospitalId || trainee.hospital || null,
+        specialty: trainee.specialtyId || (trainee.specialty ? { name: trainee.specialty } : null),
+        currentRotation,
+        supervisor: trainee.supervisorId || trainee.supervisor || currentRotation?.supervisorId || currentRotation?.doctor || null,
+        programDirector,
+        reports: plainReports,
+        reportsByType: groupedReports,
+        ungradedReports,
+        pendingUngradedCount: ungradedReports.length,
+        evaluationsSummary: {
+          total: evaluations.length,
+          finalized: finalizedEvaluations.length,
+          pending: Math.max(0, evaluations.length - finalizedEvaluations.length),
+          latest: evaluations[0] || null
+        },
+        certificatesSummary: {
+          total: certificates.length,
+          valid: validCertificates.length,
+          revoked: certificates.length - validCertificates.length,
+          latest: certificates[0] || null
+        }
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// PATCH /api/dio/reports/:id/grade
+// DIO escalation grading and override endpoint for weekly, monthly, and final reports.
+router.patch('/reports/:id/grade',
+  auth,
+  allowRoles(...DIO, 'super_admin'),
+  async (req, res) => {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({ success: false, message: 'Invalid report id' });
+      }
+
+      const report = await Report.findById(req.params.id);
+      if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
+
+      const { grade, score, feedback, comment, status, globalRating, assessmentCriteria } = req.body;
+      const normalizedScore = score === undefined || score === null || score === '' ? null : Number(score);
+      if (normalizedScore !== null && (!Number.isFinite(normalizedScore) || normalizedScore < 0 || normalizedScore > 100)) {
+        return res.status(400).json({ success: false, message: 'Score must be a number between 0 and 100' });
+      }
+
+      const allowedStatuses = ['pending', 'approved', 'rejected', 'graded'];
+      const nextStatus = status || 'graded';
+      if (!allowedStatuses.includes(nextStatus)) {
+        return res.status(400).json({ success: false, message: 'Invalid report status' });
+      }
+
+      const nextFeedback = feedback ?? comment ?? req.body.assessorComments ?? req.body.reviewNote ?? '';
+      if (!grade && normalizedScore === null && !globalRating) {
+        return res.status(400).json({ success: false, message: 'Provide grade, score, or global rating' });
+      }
+
+      const wasGraded = isReportGraded(report);
+      const previousGrade = {
+        grade: report.grade,
+        score: report.score,
+        status: report.status,
+        globalRating: report.globalRating || '',
+        assessorComments: report.assessorComments || '',
+        reviewNote: report.reviewNote || '',
+        gradedBy: report.gradedBy || null,
+        gradedByRole: report.gradedByRole || '',
+        gradedAt: report.gradedAt || null,
+        changedBy: req.user._id,
+        changedByRole: req.user.role,
+        changedAt: new Date(),
+        action: wasGraded ? 'override' : 'grade'
+      };
+
+      if (wasGraded) report.gradeHistory.push(previousGrade);
+      report.grade = grade || (globalRating === 'competent' ? 'Competent' : globalRating === 'not-competent' ? 'Not-Competent' : report.grade);
+      if (normalizedScore !== null) report.score = normalizedScore;
+      if (globalRating) report.globalRating = globalRating;
+      if (assessmentCriteria && typeof assessmentCriteria === 'object') report.assessmentCriteria = assessmentCriteria;
+      report.assessorComments = nextFeedback;
+      report.reviewNote = nextFeedback;
+      report.status = nextStatus === 'pending' ? 'graded' : nextStatus;
+      report.gradedBy = req.user._id;
+      report.gradedByRole = req.user.role;
+      report.gradedAt = new Date();
+      await report.save();
+
+      await AuditLog.create({
+        userId: req.user._id,
+        action: wasGraded ? 'dio_override_report_grade' : 'dio_grade_report',
+        targetId: report._id,
+        targetModel: 'Report',
+        metadata: {
+          reportId: report._id,
+          traineeId: report.student,
+          previous: wasGraded ? previousGrade : null,
+          next: {
+            grade: report.grade,
+            score: report.score,
+            status: report.status,
+            globalRating: report.globalRating,
+            assessorComments: report.assessorComments,
+            gradedBy: report.gradedBy,
+            gradedByRole: report.gradedByRole,
+            gradedAt: report.gradedAt
+          }
+        },
+        ip: req.ip || req.headers['x-forwarded-for'] || 'unknown'
+      }).catch(err => console.error('[AuditLog] Failed to write DIO report grade:', err.message));
+
+      if (report.student) {
+        await Notification.create({
+          user: report.student,
+          message: wasGraded
+            ? `Your ${report.type} report "${report.title}" grade was updated by the DIO.`
+            : `Your ${report.type} report "${report.title}" has been graded by the DIO.`
+        });
+      }
+
+      const populated = await Report.findById(report._id)
+        .populate('student', 'name email initials photoUrl studentId')
+        .populate('hospital', 'name city')
+        .populate('rotation', 'startDate endDate status')
+        .populate('distribution', 'startDate endDate status')
+        .populate('gradedBy', 'name email role initials');
+
+      res.json({ success: true, data: populated, override: wasGraded });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+);
 
 // GET /api/dio/supervisors
 router.get('/supervisors', auth, allowRoles(...DIO), async (req, res) => {

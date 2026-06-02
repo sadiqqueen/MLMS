@@ -16,7 +16,8 @@ const reportSchema = new mongoose.Schema(
     // Status lifecycle: pending → approved/rejected (supervisor) → graded (program director)
     status:   { type: String, enum: ['pending', 'approved', 'rejected', 'graded'], default: 'pending', index: true },
 
-    grade:    { type: String, default: null },   // 'Competent' | 'Not-Competent'
+    grade:    { type: String, default: null },   // e.g. 'Competent', 'Not-Competent', A, B+
+    score:    { type: Number, min: 0, max: 100, default: null },
 
     // Assessment form data
     globalRating:       { type: String, enum: ['competent', 'not-competent'] },
@@ -25,8 +26,24 @@ const reportSchema = new mongoose.Schema(
     assessorSignature:  { type: String,  default: '' },
     traineeSignature:   { type: String,  default: '' },
 
-    gradedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    gradedAt: { type: Date },
+    gradedBy:     { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    gradedByRole: { type: String, default: '' },
+    gradedAt:     { type: Date },
+    gradeHistory: [{
+      grade:             { type: String, default: null },
+      score:             { type: Number, default: null },
+      status:            { type: String, default: '' },
+      globalRating:      { type: String, default: '' },
+      assessorComments:  { type: String, default: '' },
+      reviewNote:        { type: String, default: '' },
+      gradedBy:          { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      gradedByRole:      { type: String, default: '' },
+      gradedAt:          { type: Date },
+      changedBy:         { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      changedByRole:     { type: String, default: '' },
+      changedAt:         { type: Date, default: Date.now },
+      action:            { type: String, enum: ['grade', 'override'], default: 'grade' }
+    }],
 
     locked:   { type: Boolean, default: false },
 

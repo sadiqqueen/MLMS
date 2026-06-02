@@ -7,6 +7,7 @@ const auditLogSchema = new mongoose.Schema(
     action:      { type: String, required: true },
     targetId:    { type: mongoose.Schema.Types.ObjectId },
     targetModel: { type: String },
+    metadata:    { type: mongoose.Schema.Types.Mixed, default: {} },
     ip:          { type: String }
   },
   {

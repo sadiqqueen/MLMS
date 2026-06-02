@@ -90,11 +90,17 @@ router.get('/grades', auth, allowRoles(...TRAINEE), scopeGuard(), async (req, re
       .populate('hospital',     'name')
       .sort({ sentToTraineeAt: -1 });
 
-    // Final reports that have been graded by program director
+    // Final reports that have been graded by program director, DIO, or super admin.
+    // Score-only grades must still show on the trainee grades page.
     const finalReports = await Report.find({
       student: req.user._id,
       type:    'final',
-      grade:   { $exists: true, $ne: null }
+      $or: [
+        { grade: { $exists: true, $nin: [null, ''] } },
+        { score: { $exists: true, $ne: null } },
+        { globalRating: { $exists: true, $nin: [null, ''] } },
+        { status: 'graded' }
+      ]
     })
       .populate('gradedBy', 'name initials')
       .populate('hospital', 'name')

@@ -20,7 +20,7 @@ const ROLE_BADGE = {
 const ROLE_FIELDS = {
   trainee:          ['studentId', 'year', 'hospitalId', 'supervisorId', 'specialtyId', 'phone', 'gender', 'city'],
   supervisor:       ['hospitalId', 'specialtyId', 'department', 'phone', 'gender', 'city'],
-  program_director: ['hospitalId', 'specialtyId', 'department', 'phone'],
+  program_director: ['hospitalId', 'department', 'phone'],
   secretary:        ['specialtyId', 'phone'],
   dio:              ['phone'],
   president:        ['phone'],

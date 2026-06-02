@@ -213,17 +213,13 @@ router.patch('/supervisors/:id',
 // GET /api/secretary/program-directors
 router.get('/program-directors', auth, allowRoles(...SECRETARY), async (req, res) => {
   try {
-    const specialtyId = getSpecialty(req.user);
     const hospitalId  = getHospital(req.user);
-    const scope = [];
-    if (specialtyId) scope.push({ specialtyId });
-    if (hospitalId) scope.push({ hospitalId }, { hospital: hospitalId });
 
     const query = {
       role: 'program_director',
       isActive: { $ne: false }
     };
-    if (scope.length) query.$or = scope;
+    if (hospitalId) query.$or = [{ hospitalId }, { hospital: hospitalId }];
 
     const pds = await User.find(query)
       .select('-password')
@@ -244,13 +240,14 @@ router.post('/program-directors',
   auditLog('create_program_director', 'User'),
   async (req, res) => {
     try {
-      const specialtyId = requireSecretarySpecialty(req, res);
-      if (!specialtyId) return;
       const hospitalId = req.body.hospitalId || req.body.hospital || getHospital(req.user);
+      if (!hospitalId) {
+        return res.status(400).json({ success: false, message: 'hospitalId is required for Program Director' });
+      }
       const data = pick(req.body, CREATE_USER_FIELDS);
       data.role = 'program_director';
-      data.specialtyId = specialtyId;
-      data.specialty = req.user.specialty || data.specialty || '';
+      delete data.specialtyId;
+      delete data.specialty;
       if (hospitalId) { data.hospitalId = hospitalId; data.hospital = hospitalId; }
 
       const user = new User(data);

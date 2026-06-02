@@ -169,6 +169,7 @@ router.patch('/reports/:id',
       if (assessorComments !== undefined) report.assessorComments = assessorComments || '';
       report.reviewedBy = req.user._id;
       report.gradedBy   = req.user._id;
+      report.gradedByRole = req.user.role;
       report.gradedAt   = new Date();
       await report.save();
 
@@ -215,6 +216,7 @@ router.patch('/reports/:id/grade',
       report.status = 'graded';
       report.reviewedBy = req.user._id;
       report.gradedBy = req.user._id;
+      report.gradedByRole = req.user.role;
       report.gradedAt = new Date();
       await report.save();
 

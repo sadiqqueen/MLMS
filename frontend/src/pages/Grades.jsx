@@ -33,6 +33,18 @@ function calcAvg(reps) {
   return g.reduce((s, r) => s + (gradeToGpa(r.grade) ?? 0), 0) / g.length;
 }
 
+function hasScore(report) {
+  return report?.score !== undefined && report?.score !== null;
+}
+
+function gradeLabel(report) {
+  const parts = [];
+  if (report?.grade) parts.push(report.grade);
+  if (hasScore(report)) parts.push(`${report.score}/100`);
+  if (!parts.length && report?.globalRating) parts.push(report.globalRating);
+  return parts.join(' / ') || '-';
+}
+
 const RATING_LABEL = { na:'N/A', below:'Below Standard', meets:'Meets Standard', above:'Above Standard' };
 const RATING_COLOR = { na:'#b2bec3', below:'#FF4757', meets:'#f39c12', above:'#00B894' };
 
@@ -241,6 +253,16 @@ export default function Grades() {
                           {r.grade}
                         </div>
                       )}
+                      {hasScore(r) && (
+                        <span style={{ fontSize:12, fontWeight:700, padding:'4px 10px', borderRadius:20, background:'#E6F1FB', color:'#185FA5' }}>
+                          {r.score}/100
+                        </span>
+                      )}
+                      {!r.grade && !hasScore(r) && (
+                        <span style={{ fontSize:12, fontWeight:700, padding:'4px 10px', borderRadius:20, background:'#F5F6FA', color:'#8B8FA8' }}>
+                          {gradeLabel(r)}
+                        </span>
+                      )}
                       {r.globalRating && (
                         <span style={{
                           fontSize:11, fontWeight:600, padding:'2px 9px', borderRadius:20,
@@ -298,7 +320,7 @@ export default function Grades() {
                         <td><span className="badge badge-blue">{r.type}</span></td>
                         <td>{fmt(r.date)}</td>
                         <td><span className={r.status==='graded' ? 'badge badge-green' : 'badge badge-amber'}>{r.status==='graded' ? 'Graded' : 'Pending'}</span></td>
-                        <td><div className={`grade-circle${r.grade ? '' : ' grade-empty'}`} style={{ margin:'0 auto' }}>{r.grade ?? '—'}</div></td>
+                        <td><div className={`grade-circle${r.grade ? '' : ' grade-empty'}`} style={{ margin:'0 auto' }}>{gradeLabel(r)}</div></td>
                         <td>{r.gradedBy?.name ?? '—'}</td>
                       </tr>
                     ))}
