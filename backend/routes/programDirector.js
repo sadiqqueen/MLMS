@@ -9,7 +9,7 @@ const Report         = require('../models/Report');
 const Evaluation     = require('../models/Evaluation');
 const Notification   = require('../models/Notification');
 
-const PD = ['program_director', 'director'];
+const PD = ['program_director'];
 
 function getHospital(user) {
   return user.hospitalId || user.hospital || null;
@@ -22,7 +22,7 @@ router.get('/trainees', auth, allowRoles(...PD), async (req, res) => {
     const hospitalId = getHospital(req.user);
 
     const trainees = await User.find({
-      role:     { $in: ['trainee', 'student'] },
+      role:     'trainee',
       $or:      [{ hospitalId }, { hospital: hospitalId }],
       isActive: { $ne: false }
     })
@@ -58,7 +58,7 @@ router.get('/supervisors', auth, allowRoles(...PD), async (req, res) => {
     const hospitalId = getHospital(req.user);
 
     const supervisors = await User.find({
-      role:     { $in: ['supervisor', 'doctor'] },
+      role:     'supervisor',
       $or:      [{ hospitalId }, { hospital: hospitalId }],
       isActive: { $ne: false }
     })
@@ -98,7 +98,7 @@ router.get('/reports', auth, allowRoles(...PD), async (req, res) => {
     const hospitalId = getHospital(req.user);
 
     const trainees = await User.find({
-      role: { $in: ['trainee', 'student'] },
+      role: 'trainee',
       $or:  [{ hospitalId }, { hospital: hospitalId }]
     }).select('_id');
     const traineeIds = trainees.map(t => t._id);
@@ -130,7 +130,7 @@ router.get('/evaluations', auth, allowRoles(...PD), async (req, res) => {
     }
 
     const trainees = await User.find({
-      role: { $in: ['trainee', 'student'] },
+      role: 'trainee',
       $or:  [{ hospitalId }, { hospital: hospitalId }],
       isActive: { $ne: false }
     }).select('_id');

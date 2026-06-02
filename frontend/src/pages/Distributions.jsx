@@ -102,7 +102,8 @@ function DistModal({ item, doctors, hospitals, onSave, onClose, saving }) {
               <label>Status</label>
               <select value={form.status} onChange={e => set('status', e.target.value)}>
                 <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
               </select>
             </div>
 
@@ -162,7 +163,7 @@ export default function Distributions() {
   useEffect(() => {
     Promise.all([
       api.get('/api/distributions'),
-      api.get('/api/users/doctors'),
+      api.get('/api/users/supervisors'),
       api.get('/api/hospitals')
     ]).then(([d, doc, h]) => {
       setItems(d.data);
@@ -305,7 +306,8 @@ export default function Distributions() {
             <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1); }}>
               <option value="">All Statuses</option>
               <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
             </select>
           </div>
 

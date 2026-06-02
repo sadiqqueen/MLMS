@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema(
     // V2: updated role enum — 7 roles
     role: {
       type: String,
-      enum: ['super_admin', 'secretary', 'dio', 'supervisor', 'trainee', 'president', 'program_director', 'admin', 'doctor', 'student', 'professor', 'director'],
+      enum: ['super_admin', 'secretary', 'dio', 'supervisor', 'trainee', 'president', 'program_director'],
       required: true,
       index: true
     },

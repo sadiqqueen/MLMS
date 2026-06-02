@@ -9,12 +9,12 @@ const Evaluation     = require('../models/Evaluation');
 const Notification   = require('../models/Notification');
 const User           = require('../models/User');
 
-const SUPERVISOR = ['supervisor', 'doctor'];
+const SUPERVISOR = ['supervisor'];
 
 async function getAssignedTraineeIds(supervisorId) {
   const directTrainees = await User.find({
     supervisorId,
-    role: { $in: ['trainee', 'student'] },
+    role: 'trainee',
     isActive: { $ne: false }
   }).select('_id');
 
@@ -44,7 +44,7 @@ router.get('/trainees', auth, allowRoles(...SUPERVISOR), async (req, res) => {
   try {
     const directTrainees = await User.find({
       supervisorId: req.user._id,
-      role: { $in: ['trainee', 'student'] },
+      role: 'trainee',
       isActive: { $ne: false }
     })
       .select('name email studentId specialtyId hospitalId photoUrl initials year phone')
@@ -59,7 +59,7 @@ router.get('/trainees', auth, allowRoles(...SUPERVISOR), async (req, res) => {
     })
       .populate({
         path: 'traineeId',
-        match: { role: { $in: ['trainee', 'student'] }, isActive: { $ne: false } },
+        match: { role: 'trainee', isActive: { $ne: false } },
         select: 'name email studentId specialtyId hospitalId photoUrl initials year phone',
         populate: [
           { path: 'specialtyId', select: 'name' },
@@ -68,7 +68,7 @@ router.get('/trainees', auth, allowRoles(...SUPERVISOR), async (req, res) => {
       })
       .populate({
         path: 'student',
-        match: { role: { $in: ['trainee', 'student'] }, isActive: { $ne: false } },
+        match: { role: 'trainee', isActive: { $ne: false } },
         select: 'name email studentId specialtyId hospitalId photoUrl initials year phone',
         populate: [
           { path: 'specialtyId', select: 'name' },

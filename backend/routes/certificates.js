@@ -4,7 +4,7 @@ const Notification = require('../models/Notification');
 const auth        = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 
-const DIRECTOR = ['director', 'program_director', 'president', 'admin', 'super_admin', 'professor'];
+const DIRECTOR = ['program_director', 'president', 'super_admin'];
 
 const populate = q => q
   .populate('student',  'name initials photoUrl studentId year')

@@ -38,29 +38,21 @@ const ALLOWED_CREATE_FIELDS = ['name', 'email', 'password', 'role', 'phone',
   'enrolledSince', 'hospitalId', 'specialtyId', 'supervisorId',
   'hospital', 'supervisor'];
 const ROLE_ALLOWED = {
-  secretary:        ['trainee', 'student'],
-  dio:              ['trainee', 'student', 'supervisor', 'doctor', 'program_director', 'secretary'],
+  secretary:        ['trainee'],
+  dio:              ['trainee', 'supervisor', 'program_director', 'secretary'],
   program_director: [],
   president:        [],
-  professor:        [],
-  director:         [],
-  admin:            ['trainee', 'student', 'supervisor', 'doctor', 'program_director', 'secretary', 'dio'],
   super_admin:      null
 };
-const STAFF = ['secretary', 'dio', 'program_director', 'president', 'admin', 'super_admin', 'professor', 'director'];
-const PASSWORD_RESET_ROLES = ['admin', 'super_admin'];
+const STAFF = ['secretary', 'dio', 'program_director', 'president', 'super_admin'];
+const PASSWORD_RESET_ROLES = ['super_admin'];
 const ROLE_RANK = {
   trainee: 10,
-  student: 10,
   supervisor: 30,
-  doctor: 30,
   secretary: 40,
   program_director: 50,
-  director: 50,
   dio: 60,
   president: 70,
-  professor: 70,
-  admin: 80,
   super_admin: 100
 };
 
@@ -83,27 +75,11 @@ router.get('/', auth, allowRoles(...STAFF), async (req, res) => {
 });
 
 // GET /api/users/doctors — only doctors (for dropdowns)
-router.get('/doctors', auth, allowRoles(...STAFF), async (req, res) => {
-  try {
-    const doctors = await User.find({
-      role: { $in: ['supervisor', 'doctor'] },
-      isActive: { $ne: false }
-    })
-      .select('-password')
-      .populate('hospitalId', 'name city')
-      .populate('specialtyId', 'name')
-      .sort({ name: 1 });
-    res.json(doctors);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
 // GET /api/users/supervisors — for dropdowns
-router.get('/supervisors', auth, allowRoles('super_admin', 'secretary', 'dio', 'admin', 'president'), async (req, res) => {
+router.get('/supervisors', auth, allowRoles('super_admin', 'secretary', 'dio', 'president'), async (req, res) => {
   try {
     const supervisors = await User.find({
-      role: { $in: ['supervisor', 'doctor'] },
+      role: 'supervisor',
       isActive: { $ne: false }
     })
       .select('name email specialty specialtyId hospitalId department initials photoUrl')
@@ -117,10 +93,10 @@ router.get('/supervisors', auth, allowRoles('super_admin', 'secretary', 'dio', '
 });
 
 // GET /api/users/program-directors — for dropdowns
-router.get('/program-directors', auth, allowRoles('super_admin', 'secretary', 'dio', 'admin', 'president'), async (req, res) => {
+router.get('/program-directors', auth, allowRoles('super_admin', 'secretary', 'dio', 'president'), async (req, res) => {
   try {
     const pds = await User.find({
-      role: { $in: ['program_director'] },
+      role: 'program_director',
       isActive: { $ne: false }
     })
       .select('name email specialtyId hospitalId department initials photoUrl')
@@ -134,10 +110,10 @@ router.get('/program-directors', auth, allowRoles('super_admin', 'secretary', 'd
 });
 
 // GET /api/users/students — kept for backward compat (returns trainees)
-router.get('/students', auth, allowRoles('supervisor', 'doctor', 'program_director', 'secretary', 'dio', 'admin', 'super_admin', 'president', 'professor', 'director'), async (req, res) => {
+router.get('/students', auth, allowRoles('supervisor', 'program_director', 'secretary', 'dio', 'super_admin', 'president'), async (req, res) => {
   try {
     const students = await User.find({
-      role: { $in: ['trainee', 'student'] },
+      role: 'trainee',
       isActive: { $ne: false }
     })
       .select('name email studentId specialty specialtyId hospitalId supervisorId initials photoUrl year')

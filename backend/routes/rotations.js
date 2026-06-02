@@ -3,8 +3,8 @@ const Rotation       = require('../models/Rotation');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 
-const STAFF = ['admin', 'super_admin', 'professor'];
-const READ_STAFF = ['admin', 'super_admin', 'professor', 'director', 'program_director', 'dio'];
+const STAFF = ['super_admin'];
+const READ_STAFF = ['super_admin', 'program_director', 'dio'];
 
 // GET /api/rotations — all rotations (staff)
 router.get('/', auth, allowRoles(...STAFF), async (req, res) => {

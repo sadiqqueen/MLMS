@@ -3,8 +3,8 @@
 // and it gives you back a middleware that enforces that rule.
 //
 // Usage example:
-//   router.post('/', auth, allowRoles('admin', 'super_admin'), createHospital)
-//   This means: "to POST here, you must be logged in AND be an admin or super_admin"
+//   router.post('/', auth, allowRoles('dio', 'super_admin'), createHospital)
+//   This means: "to POST here, you must be logged in AND have one of those roles"
 
 const allowRoles = (...roles) => (req, res, next) => {
   //                 ↑ rest parameter — collects all arguments into an array

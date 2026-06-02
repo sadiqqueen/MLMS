@@ -7,13 +7,13 @@ const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 
 // GET /api/dashboard/stats
-router.get('/stats', auth, allowRoles('admin', 'super_admin', 'professor', 'dio'), async (req, res) => {
+router.get('/stats', auth, allowRoles('super_admin', 'dio'), async (req, res) => {
   try {
     // Basic counts
     const [totalHospitals, totalDoctors, totalDistributions, totalEvaluations, pendingEvaluations] =
       await Promise.all([
         Hospital.countDocuments(),
-        User.countDocuments({ role: { $in: ['supervisor', 'doctor'] }, isActive: { $ne: false } }),
+        User.countDocuments({ role: 'supervisor', isActive: { $ne: false } }),
         Distribution.countDocuments(),
         Evaluation.countDocuments(),
         Evaluation.countDocuments({ status: 'pending' })
@@ -25,7 +25,7 @@ router.get('/stats', auth, allowRoles('admin', 'super_admin', 'professor', 'dio'
 
     // Doctors grouped by specialty (for donut chart)
     const doctorsBySpecialty = await User.aggregate([
-      { $match: { role: { $in: ['supervisor', 'doctor'] }, isActive: { $ne: false } } },
+      { $match: { role: 'supervisor', isActive: { $ne: false } } },
       { $group: { _id: { $ifNull: ['$specialtyId', '$specialty'] }, count: { $sum: 1 } } },
       {
         $lookup: {

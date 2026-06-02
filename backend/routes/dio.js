@@ -37,9 +37,9 @@ router.get('/stats', auth, allowRoles(...DIO), async (req, res) => {
       activeRotations,
       certificates
     ] = await Promise.all([
-      User.countDocuments({ role: { $in: ['trainee', 'student'] }, ...hospitalQuery, isActive: { $ne: false } }),
-      User.countDocuments({ role: { $in: ['supervisor', 'doctor'] }, ...hospitalQuery, isActive: { $ne: false } }),
-      User.countDocuments({ role: { $in: ['program_director', 'director'] }, ...hospitalQuery, isActive: { $ne: false } }),
+      User.countDocuments({ role: 'trainee', ...hospitalQuery, isActive: { $ne: false } }),
+      User.countDocuments({ role: 'supervisor', ...hospitalQuery, isActive: { $ne: false } }),
+      User.countDocuments({ role: 'program_director', ...hospitalQuery, isActive: { $ne: false } }),
       User.countDocuments({ role: 'secretary',        ...hospitalQuery, isActive: { $ne: false } }),
       Distribution.countDocuments({
         ...(hospitalId ? { $or: [{ hospitalId }, { hospital: hospitalId }] } : {}),
@@ -52,7 +52,7 @@ router.get('/stats', auth, allowRoles(...DIO), async (req, res) => {
 
     // Chart: trainees by specialty
     const traineesBySpecialty = await User.aggregate([
-      { $match: { role: { $in: ['trainee', 'student'] }, ...(hospitalId ? { $or: [{ hospitalId }, { hospital: hospitalId }] } : {}) } },
+      { $match: { role: 'trainee', ...(hospitalId ? { $or: [{ hospitalId }, { hospital: hospitalId }] } : {}) } },
       { $lookup: { from: 'specialties', localField: 'specialtyId', foreignField: '_id', as: 'spec' } },
       { $unwind: { path: '$spec', preserveNullAndEmptyArrays: true } },
       { $group: { _id: { $ifNull: ['$spec.name', '$specialty', 'Unknown'] }, count: { $sum: 1 } } },
@@ -72,7 +72,7 @@ router.get('/stats', auth, allowRoles(...DIO), async (req, res) => {
 
     // Chart: supervisors by specialty
     const supervisorsBySpecialty = await User.aggregate([
-      { $match: { role: { $in: ['supervisor', 'doctor'] }, ...(hospitalId ? { $or: [{ hospitalId }, { hospital: hospitalId }] } : {}) } },
+      { $match: { role: 'supervisor', ...(hospitalId ? { $or: [{ hospitalId }, { hospital: hospitalId }] } : {}) } },
       { $lookup: { from: 'specialties', localField: 'specialtyId', foreignField: '_id', as: 'spec' } },
       { $unwind: { path: '$spec', preserveNullAndEmptyArrays: true } },
       { $group: { _id: { $ifNull: ['$spec.name', '$specialty', 'Unknown'] }, count: { $sum: 1 } } },
@@ -111,11 +111,11 @@ router.get('/stats', auth, allowRoles(...DIO), async (req, res) => {
 });
 
 // GET /api/dio/trainees
-router.get('/trainees', auth, allowRoles(...DIO, 'professor'), async (req, res) => {
+router.get('/trainees', auth, allowRoles(...DIO), async (req, res) => {
   try {
     const hospitalId = getHospital(req.user);
     const { search } = req.query;
-    const query = { role: { $in: ['trainee', 'student'] }, isActive: { $ne: false } };
+    const query = { role: 'trainee', isActive: { $ne: false } };
     if (hospitalId) query.$or = [{ hospitalId }, { hospital: hospitalId }];
     if (search) {
       const rx = new RegExp(escapeRegex(search.slice(0, 100)), 'i');
@@ -148,7 +148,7 @@ router.get('/trainees', auth, allowRoles(...DIO, 'professor'), async (req, res) 
 router.get('/supervisors', auth, allowRoles(...DIO), async (req, res) => {
   try {
     const hospitalId = getHospital(req.user);
-    const query = { role: { $in: ['supervisor', 'doctor'] }, isActive: { $ne: false } };
+    const query = { role: 'supervisor', isActive: { $ne: false } };
     if (hospitalId) query.$or = [{ hospitalId }, { hospital: hospitalId }];
 
     const supervisors = await User.find(query)
@@ -167,7 +167,7 @@ router.get('/supervisors', auth, allowRoles(...DIO), async (req, res) => {
 router.get('/program-directors', auth, allowRoles(...DIO), async (req, res) => {
   try {
     const hospitalId = getHospital(req.user);
-    const query = { role: { $in: ['program_director', 'director'] }, isActive: { $ne: false } };
+    const query = { role: 'program_director', isActive: { $ne: false } };
     if (hospitalId) query.$or = [{ hospitalId }, { hospital: hospitalId }];
 
     const pds = await User.find(query)
@@ -260,7 +260,7 @@ router.get('/certificates', auth, allowRoles(...DIO), async (req, res) => {
 // DIO issues a certificate for a trainee
 router.post('/certificates',
   auth,
-  allowRoles(...DIO, 'professor', 'super_admin'),
+  allowRoles(...DIO, 'super_admin'),
   auditLog('issue_certificate', 'Certificate'),
   async (req, res) => {
     try {

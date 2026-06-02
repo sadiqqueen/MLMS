@@ -7,7 +7,7 @@ const Distribution = require('../models/Distribution');
 const Report       = require('../models/Report');
 const Evaluation   = require('../models/Evaluation');
 
-const TRAINEE = ['trainee', 'student'];
+const TRAINEE = ['trainee'];
 
 function uniqueById(items) {
   const seen = new Set();

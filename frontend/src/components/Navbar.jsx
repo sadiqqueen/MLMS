@@ -33,11 +33,6 @@ const ROLE_LINKS = {
     { to: '/supervisor/reports',     label: 'Reports'     },
     { to: '/supervisor/evaluations', label: 'Evaluations' },
   ],
-  doctor: [
-    { to: '/supervisor/trainees',    label: 'My Trainees' },
-    { to: '/supervisor/reports',     label: 'Reports'     },
-    { to: '/supervisor/evaluations', label: 'Evaluations' },
-  ],
   trainee: [
     { to: '/timeline', label: 'Timeline' },
     { to: '/reports',  label: 'Reports'  },
@@ -61,7 +56,6 @@ const ROLE_HOME = {
   secretary:        '/secretary/trainees',
   dio:              '/dio/dashboard',
   supervisor:       '/supervisor/trainees',
-  doctor:           '/supervisor/trainees',
   trainee:          '/timeline',
   president:        '/president/trainees',
   program_director: '/program-director/trainees',

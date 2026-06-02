@@ -4,9 +4,9 @@ const Notification   = require('../models/Notification');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 
-const STAFF       = ['admin', 'super_admin', 'professor', 'dio', 'program_director', 'president', 'director'];
-const SENIOR      = ['super_admin', 'admin', 'professor', 'dio', 'program_director', 'director'];
-const CAN_SUBMIT  = ['admin', 'super_admin', 'professor', 'doctor', 'supervisor'];
+const STAFF       = ['super_admin', 'dio', 'program_director', 'president'];
+const SENIOR      = ['super_admin', 'dio', 'program_director'];
+const CAN_SUBMIT  = ['super_admin', 'dio', 'supervisor'];
 const MONTHLY_CAP = 5;
 
 // GET /api/evaluations — all evaluations (staff only)
@@ -27,7 +27,7 @@ router.get('/', auth, allowRoles(...STAFF), async (req, res) => {
 router.get('/by-doctor/:doctorId', auth, async (req, res) => {
   try {
     const isOwner = req.params.doctorId === req.user._id.toString();
-    const isStaff = ['admin', 'super_admin', 'professor', 'director', 'dio',
+    const isStaff = ['super_admin', 'dio',
                      'program_director', 'president'].includes(req.user.role);
     if (!isOwner && !isStaff) return res.status(403).json({ success: false, message: 'Access denied' });
 
@@ -45,8 +45,7 @@ router.get('/by-doctor/:doctorId', auth, async (req, res) => {
 router.get('/student/:studentId', auth, async (req, res) => {
   try {
     const isOwner = req.params.studentId === req.user._id.toString();
-    const isStaff = ['admin', 'super_admin', 'professor', 'director', 'doctor',
-                     'supervisor', 'program_director', 'dio'].includes(req.user.role);
+    const isStaff = ['super_admin', 'supervisor', 'program_director', 'dio'].includes(req.user.role);
     if (!isOwner && !isStaff) return res.status(403).json({ success: false, message: 'Access denied' });
 
     const evaluations = await Evaluation.find({ student: req.params.studentId })
@@ -67,7 +66,7 @@ router.post('/', auth, allowRoles(...CAN_SUBMIT), async (req, res) => {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    const canAssignDoctor = ['admin', 'super_admin', 'professor', 'dio'].includes(req.user.role);
+    const canAssignDoctor = ['super_admin', 'dio'].includes(req.user.role);
     const doctorId = canAssignDoctor && req.body.doctor ? req.body.doctor : req.user._id;
     const monthCount = await Evaluation.countDocuments({
       student: req.body.student,

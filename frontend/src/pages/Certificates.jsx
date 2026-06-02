@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import api from '../api/axios';
-import SPECIALTIES from '../data/specialties';
 import Sk from '../components/Skeleton';
 
 function fmtDate(d) {
@@ -47,7 +46,7 @@ export default function Certificates() {
   const [submitting,   setSubmitting  ] = useState(false);
   const [form,         setForm        ] = useState(EMPTY_FORM);
   const [dropOpen,     setDropOpen    ] = useState(false);
-  const [specialtyOptions, setSpecialtyOptions] = useState(SPECIALTIES);
+  const [specialtyOptions, setSpecialtyOptions] = useState([]);
 
   useEffect(() => {
     Promise.all([
@@ -127,7 +126,7 @@ export default function Certificates() {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    {['#', 'Student', 'Specialty', 'Hospital', 'Issue Date', 'Notes', ''].map(c => <th key={c}>{c}</th>)}
+                    {['#', 'Trainee', 'Specialty', 'Hospital', 'Issue Date', 'Notes', ''].map(c => <th key={c}>{c}</th>)}
                   </tr>
                 </thead>
                 <tbody>
@@ -159,7 +158,7 @@ export default function Certificates() {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>#</th><th>Student</th><th>Specialty</th>
+                    <th>#</th><th>Trainee</th><th>Specialty</th>
                     <th>Hospital</th><th>Issue Date</th><th>Notes</th><th></th>
                   </tr>
                 </thead>
@@ -201,7 +200,7 @@ export default function Certificates() {
 
                 {/* ── Student search ── */}
                 <div style={{ marginBottom: 16 }}>
-                  <label style={lbl}>Student *</label>
+                  <label style={lbl}>Trainee *</label>
                   <div style={{ position: 'relative' }}>
                     <input
                       className="admin-search"
@@ -257,7 +256,7 @@ export default function Certificates() {
                     borderRadius: 10, padding: '12px 16px', marginBottom: 16,
                   }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#8b83d0', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-                      Selected Student
+                      Selected Trainee
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '8px 16px', fontSize: 13 }}>
                       <div>

@@ -45,8 +45,7 @@ const upload = multer({
 router.get('/student/:id', auth, async (req, res) => {
   try {
     const isOwner = req.params.id === req.user._id.toString();
-    const isStaff = ['doctor', 'professor', 'supervisor', 'program_director',
-                     'admin', 'super_admin', 'dio', 'director'].includes(req.user.role);
+    const isStaff = ['supervisor', 'program_director', 'super_admin', 'dio'].includes(req.user.role);
     if (!isOwner && !isStaff) return res.status(403).json({ success: false, message: 'Access denied' });
 
     const reports = await Report.find({ student: req.params.id })
@@ -62,7 +61,7 @@ router.get('/student/:id', auth, async (req, res) => {
 });
 
 // GET /api/reports/hospital/:hospitalId — all reports from students at a hospital (for doctors)
-router.get('/hospital/:hospitalId', auth, allowRoles('doctor', 'supervisor', 'professor', 'program_director', 'director', 'dio', 'admin', 'super_admin'), async (req, res) => {
+router.get('/hospital/:hospitalId', auth, allowRoles('supervisor', 'program_director', 'dio', 'super_admin'), async (req, res) => {
   try {
     const reports = await Report.find({ hospital: req.params.hospitalId })
       .populate('student',  'name initials photoUrl')
@@ -77,10 +76,10 @@ router.get('/hospital/:hospitalId', auth, allowRoles('doctor', 'supervisor', 'pr
 });
 
 // GET /api/reports/doctor/:doctorId — all reports from students assigned to this doctor (via rotations)
-router.get('/doctor/:doctorId', auth, allowRoles('doctor', 'supervisor', 'professor', 'program_director', 'director', 'dio', 'admin', 'super_admin'), async (req, res) => {
+router.get('/doctor/:doctorId', auth, allowRoles('supervisor', 'program_director', 'dio', 'super_admin'), async (req, res) => {
   try {
     const isOwner = req.params.doctorId === req.user._id.toString();
-    const isElevated = ['professor', 'program_director', 'director', 'dio', 'admin', 'super_admin'].includes(req.user.role);
+    const isElevated = ['program_director', 'dio', 'super_admin'].includes(req.user.role);
     if (!isOwner && !isElevated) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
@@ -121,7 +120,7 @@ router.get('/doctor/:doctorId', auth, allowRoles('doctor', 'supervisor', 'profes
 });
 
 // GET /api/reports/rotation/:rotationId — reports grouped under one rotation
-router.get('/rotation/:rotationId', auth, allowRoles('doctor', 'professor', 'supervisor', 'program_director', 'admin', 'super_admin', 'dio', 'director'), async (req, res) => {
+router.get('/rotation/:rotationId', auth, allowRoles('supervisor', 'program_director', 'super_admin', 'dio'), async (req, res) => {
   try {
     const reports = await Report.find({
       $or: [
@@ -141,7 +140,7 @@ router.get('/rotation/:rotationId', auth, allowRoles('doctor', 'professor', 'sup
 // POST /api/reports — student submits a report (with optional file)
 // Note: "upload.single('file')" is middleware that processes one uploaded file
 //       named "file" from the form data, then puts it on req.file
-router.post('/', auth, allowRoles('student', 'trainee'), upload.single('file'), async (req, res) => {
+router.post('/', auth, allowRoles('trainee'), upload.single('file'), async (req, res) => {
   try {
     const { title, type, date, rotation, hospital } = req.body;
     const assignmentId = req.body.distribution || req.body.distributionId || rotation;
@@ -193,7 +192,7 @@ router.post('/', auth, allowRoles('student', 'trainee'), upload.single('file'), 
 });
 
 // PUT /api/reports/:id/grade — doctor submits assessment form
-router.put('/:id/grade', auth, allowRoles('doctor', 'professor', 'supervisor', 'program_director', 'admin', 'super_admin', 'director'), async (req, res) => {
+router.put('/:id/grade', auth, allowRoles('supervisor', 'program_director', 'super_admin'), async (req, res) => {
   try {
     const { grade: letterGrade, globalRating, assessmentCriteria, assessorComments, assessorSignature, traineeSignature } = req.body;
     if (!globalRating) return res.status(400).json({ message: 'Global rating is required' });
@@ -201,7 +200,7 @@ router.put('/:id/grade', auth, allowRoles('doctor', 'professor', 'supervisor', '
     const existing = await Report.findById(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: 'Report not found' });
 
-    if (!['admin', 'super_admin', 'dio'].includes(req.user.role)) {
+    if (!['super_admin', 'dio'].includes(req.user.role)) {
       const dist = await Distribution.findOne({
         $or: [
           { traineeId: existing.student, supervisorId: req.user._id },

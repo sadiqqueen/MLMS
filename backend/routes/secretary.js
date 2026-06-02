@@ -7,7 +7,7 @@ const User           = require('../models/User');
 const Hospital       = require('../models/Hospital');
 const Distribution   = require('../models/Distribution');
 
-const SECRETARY = ['secretary', 'admin'];
+const SECRETARY = ['secretary'];
 const CREATE_USER_FIELDS = ['name', 'email', 'password', 'phone', 'gender', 'city',
   'department', 'specialty', 'year', 'studentId', 'enrolledSince',
   'hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'supervisor', 'photoUrl'];
@@ -52,7 +52,7 @@ router.get('/trainees', auth, allowRoles(...SECRETARY), async (req, res) => {
     if (!specialtyId) return;
 
     const trainees = await User.find({
-      role: { $in: ['trainee', 'student'] },
+      role: 'trainee',
       specialtyId,
       isActive: { $ne: false }
     })
@@ -136,7 +136,7 @@ router.get('/supervisors', auth, allowRoles(...SECRETARY), async (req, res) => {
     if (!specialtyId) return;
 
     const supervisors = await User.find({
-      role: { $in: ['supervisor', 'doctor'] },
+      role: 'supervisor',
       specialtyId,
       isActive: { $ne: false }
     })
@@ -220,7 +220,7 @@ router.get('/program-directors', auth, allowRoles(...SECRETARY), async (req, res
     if (hospitalId) scope.push({ hospitalId }, { hospital: hospitalId });
 
     const query = {
-      role: { $in: ['program_director', 'director'] },
+      role: 'program_director',
       isActive: { $ne: false }
     };
     if (scope.length) query.$or = scope;
@@ -329,7 +329,7 @@ router.post('/distributions',
 
       const trainee = await User.findOne({
         _id: traineeId,
-        role: { $in: ['trainee', 'student'] },
+        role: 'trainee',
         ...getSecretaryQuery(req),
         isActive: { $ne: false }
       });
@@ -339,7 +339,7 @@ router.post('/distributions',
 
       const supervisor = await User.findOne({
         _id: supervisorId,
-        role: { $in: ['supervisor', 'doctor'] },
+        role: 'supervisor',
         ...getSecretaryQuery(req),
         isActive: { $ne: false }
       });
@@ -409,7 +409,7 @@ router.patch('/distributions/:id',
       if (updates.supervisorId) {
         const supervisor = await User.findOne({
           _id: updates.supervisorId,
-          role: { $in: ['supervisor', 'doctor'] },
+          role: 'supervisor',
           ...getSecretaryQuery(req),
           isActive: { $ne: false }
         });

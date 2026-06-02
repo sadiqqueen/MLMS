@@ -373,8 +373,8 @@ async function seed() {
   // ── 10. FINAL SUMMARY ─────────────────────────────────────────────────────────
   const counts = {
     hospitals:     await Hospital.countDocuments(),
-    trainees:      await User.countDocuments({ role: { $in: ['trainee', 'student'] } }),
-    supervisors:   await User.countDocuments({ role: { $in: ['supervisor', 'doctor'] } }),
+    trainees:      await User.countDocuments({ role: 'trainee' }),
+    supervisors:   await User.countDocuments({ role: 'supervisor' }),
     programDirs:   await User.countDocuments({ role: 'program_director' }),
     distributions: await Distribution.countDocuments(),
     reports:       await Report.countDocuments(),

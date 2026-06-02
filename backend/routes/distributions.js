@@ -4,7 +4,7 @@ const Distribution   = require('../models/Distribution');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 
-const STAFF = ['admin', 'super_admin', 'professor', 'secretary', 'dio'];
+const STAFF = ['super_admin', 'secretary', 'dio'];
 
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

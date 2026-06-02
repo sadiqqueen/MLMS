@@ -3,8 +3,7 @@ const Hospital       = require('../models/Hospital');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 
-// super_admin and professor can manage hospitals; admin can only view
-const MANAGERS = ['super_admin', 'professor', 'dio'];
+const MANAGERS = ['super_admin', 'dio'];
 const HOSPITAL_FIELDS = ['name', 'city', 'address', 'specialties', 'assignedDoctor',
   'governorate', 'dioId', 'presidentId', 'programDirector', 'supervisors',
   'phone', 'email', 'isActive'];

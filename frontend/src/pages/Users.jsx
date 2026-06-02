@@ -15,11 +15,6 @@ const ROLE_BADGE = {
   dio:              'badge-role badge-super_admin',
   president:        'badge-role badge-super_admin',
   super_admin:      'badge-role badge-super_admin',
-  // legacy
-  student:  'badge-role badge-student',
-  doctor:   'badge-role badge-doctor',
-  professor:'badge-role badge-professor',
-  admin:    'badge-role badge-admin',
 };
 
 const ROLE_FIELDS = {
