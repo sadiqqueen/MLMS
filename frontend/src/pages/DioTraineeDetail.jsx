@@ -207,6 +207,90 @@ function ReportsTable({ title, reports, onGrade }) {
   );
 }
 
+function EvaluationsTable({ evaluations }) {
+  const rows = safeArr(evaluations);
+  return (
+    <section className="admin-card">
+      <div className="admin-card-header">
+        <div className="admin-card-title">Evaluations</div>
+      </div>
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Date</th><th>Evaluator</th><th>Type</th><th>Status</th><th>Score</th><th>Grade</th><th>Comments</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr><td colSpan={7} className="admin-empty">No evaluations found</td></tr>
+            ) : rows.map((evaluation, index) => {
+              const evaluator = evaluation?.supervisorId || evaluation?.doctor || {};
+              const finalized = evaluation?.isFinalized || evaluation?.status === 'completed';
+              return (
+                <tr key={evaluation?._id || index}>
+                  <td>{fmtDate(evaluation?.sentToTraineeAt || evaluation?.createdAt)}</td>
+                  <td>{evaluator?.name || '-'}</td>
+                  <td>{evaluation?.evaluationType || evaluation?.type || '-'}</td>
+                  <td>
+                    <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:finalized ? '#D1FAE5' : '#FEF3C7', color:finalized ? '#065F46' : '#92400E' }}>
+                      {finalized ? 'Finalized' : 'Pending'}
+                    </span>
+                  </td>
+                  <td>{evaluation?.totalScore ?? '-'}</td>
+                  <td>{evaluation?.grade || evaluation?.scores?.overall || '-'}</td>
+                  <td style={{ maxWidth:260 }}>{evaluation?.comments || evaluation?.notes || '-'}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function CertificatesTable({ certificates }) {
+  const rows = safeArr(certificates);
+  return (
+    <section className="admin-card">
+      <div className="admin-card-header">
+        <div className="admin-card-title">Certificates</div>
+      </div>
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Type</th><th>Issue Date</th><th>Hospital</th><th>Status</th><th>Issued By</th><th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr><td colSpan={6} className="admin-empty">No certificates found</td></tr>
+            ) : rows.map((certificate, index) => {
+              const revoked = !!certificate?.revokedAt;
+              return (
+                <tr key={certificate?._id || index} style={{ opacity: revoked ? 0.65 : 1 }}>
+                  <td>{certificate?.type || 'Completion'}</td>
+                  <td>{fmtDate(certificate?.issueDate || certificate?.issuedAt || certificate?.createdAt)}</td>
+                  <td>{certificate?.hospital?.name || '-'}</td>
+                  <td>
+                    <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:revoked ? '#FEE2E2' : '#D1FAE5', color:revoked ? '#991B1B' : '#065F46' }}>
+                      {revoked ? `Revoked ${fmtDate(certificate.revokedAt)}` : 'Valid'}
+                    </span>
+                  </td>
+                  <td>{certificate?.issuedBy?.name || '-'}</td>
+                  <td style={{ maxWidth:260 }}>{certificate?.notes || '-'}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export default function DioTraineeDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -280,6 +364,8 @@ export default function DioTraineeDetail() {
   const reports = safeArr(data?.reports);
   const byType = data?.reportsByType || {};
   const ungraded = safeArr(data?.ungradedReports);
+  const evaluations = safeArr(data?.evaluations);
+  const certificates = safeArr(data?.certificates);
   const currentRotation = data?.currentRotation;
 
   return (
@@ -349,6 +435,9 @@ export default function DioTraineeDetail() {
             </div>
           )}
         </section>
+
+        <EvaluationsTable evaluations={evaluations} />
+        <CertificatesTable certificates={certificates} />
 
         {REPORT_TYPES.map(type => (
           <ReportsTable

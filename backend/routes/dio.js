@@ -220,10 +220,12 @@ router.get('/trainees/:id/details', auth, allowRoles(...DIO, 'super_admin'), asy
     ]);
 
     const plainReports = reports.map(r => r.toObject());
+    const plainEvaluations = evaluations.map(e => e.toObject());
+    const plainCertificates = certificates.map(c => c.toObject());
     const ungradedReports = plainReports.filter(r => !isReportGraded(r));
     const groupedReports = groupReports(plainReports);
-    const finalizedEvaluations = evaluations.filter(e => e.isFinalized || e.status === 'completed');
-    const validCertificates = certificates.filter(c => !c.revokedAt);
+    const finalizedEvaluations = plainEvaluations.filter(e => e.isFinalized || e.status === 'completed');
+    const validCertificates = plainCertificates.filter(c => !c.revokedAt);
 
     res.json({
       success: true,
@@ -238,17 +240,19 @@ router.get('/trainees/:id/details', auth, allowRoles(...DIO, 'super_admin'), asy
         reportsByType: groupedReports,
         ungradedReports,
         pendingUngradedCount: ungradedReports.length,
+        evaluations: plainEvaluations,
+        certificates: plainCertificates,
         evaluationsSummary: {
-          total: evaluations.length,
+          total: plainEvaluations.length,
           finalized: finalizedEvaluations.length,
-          pending: Math.max(0, evaluations.length - finalizedEvaluations.length),
-          latest: evaluations[0] || null
+          pending: Math.max(0, plainEvaluations.length - finalizedEvaluations.length),
+          latest: plainEvaluations[0] || null
         },
         certificatesSummary: {
-          total: certificates.length,
+          total: plainCertificates.length,
           valid: validCertificates.length,
-          revoked: certificates.length - validCertificates.length,
-          latest: certificates[0] || null
+          revoked: plainCertificates.length - validCertificates.length,
+          latest: plainCertificates[0] || null
         }
       }
     });
