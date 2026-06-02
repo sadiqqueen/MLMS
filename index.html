@@ -114,9 +114,9 @@
       position: sticky;
       top: 0;
       z-index: 999;
-      background: var(--white);
-      border-bottom: 1px solid var(--border);
-      box-shadow: 0 2px 12px rgba(12,68,124,0.07);
+      background: #07294b;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 2px 12px rgba(7,41,75,0.18);
     }
     
     
@@ -157,7 +157,7 @@
 
     .nav-links a {
       background: transparent;
-      color: var(--muted);
+      color: rgba(255,255,255,0.86);
       border: none;
       border-radius: 8px;
       padding: 7px 14px;
@@ -167,8 +167,8 @@
       transition: background 0.15s, color 0.15s;
     }
     .nav-links a:hover {
-      background: #f0f6ff;
-      color: #0C447C;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
 
       border: none;
       border-bottom: 2px solid #fe9a16;
@@ -217,7 +217,7 @@
     
     .btn-lang {
       background: transparent;
-      color: var(--muted);
+      color: rgba(255,255,255,0.86);
       border: none;
       border-radius: 8px;
       padding: 7px 14px;
@@ -227,8 +227,8 @@
       transition: background 0.15s, color 0.15s;
     }
     .btn-lang:hover {
-      background: #f0f6ff;
-      color: #0C447C;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
 
       border: none;
       border-bottom: 2px solid #fe9a16;
@@ -290,7 +290,7 @@
       display: block;
       width: 22px;
       height: 2px;
-      background: var(--blue);
+      background: #fff;
       border-radius: 2px;
       transition: all 0.2s;
     }
@@ -301,19 +301,19 @@
       flex-direction: column;
       gap: 4px;
       padding: 12px 1.5rem 16px;
-      border-top: 1px solid var(--border);
-      background: white;
+      border-top: 1px solid rgba(255,255,255,0.12);
+      background: #07294b;
     }
     .nav-mobile.open { display: flex; }
     .nav-mobile a {
       font-size: 14px;
       font-weight: 500;
-      color: var(--muted);
+      color: rgba(255,255,255,0.86);
       padding: 9px 12px;
       border-radius: 8px;
       transition: background 0.15s, color 0.15s;
     }
-    .nav-mobile a:hover { background: var(--blue-pale); color: var(--blue); }
+    .nav-mobile a:hover { background: rgba(255,255,255,0.12); color: #fff; }
     .nav-mobile .btn-login { width: 100%; text-align: center; margin-top: 6px; height: 42px; }
 
     /* ══════════════════════════════════════════════════════════════
@@ -1213,7 +1213,7 @@
         <h2 class="section-title" data-en="Training Track" data-ar="مسار التدريب">Training Track</h2>
         <p class="section-sub"
            data-en="A focused track for residency and advanced clinical training through supervised hospital rotations, reports, evaluations, and certification."
-           data-ar="مسار متخصص للإقامة والتدريب السريري المتقدم من خلال الدورات المستشفياتية الخاضعة للإشراف والتقارير والتقييمات والشهادات.">
+           data-ar="مسار مخصص للإقامة والتدريب السريري المتقدم من خلال دورات المستشفيات الخاضعة للإشراف والتقارير والتقييمات والشهادات.">
           A focused track for residency and advanced clinical training through supervised hospital rotations, reports, evaluations, and certification.
         </p>
       </div>
@@ -1227,20 +1227,20 @@
             Advanced Clinical Training
           </div>
           <div>
-            <div class="track-title" data-en="Residency and Advanced Training" data-ar="الإقامة والتدريب المتقدم">
-              Residency and Advanced Training
+            <div class="track-title" data-en="Residency and Advanced Training / Specialty Education" data-ar="الإقامة والتدريب المتقدم / التعليم التخصصي">
+              Residency and Advanced Training / Specialty Education
             </div>
             <p class="track-desc"
                data-en="Structured residency and advanced clinical training programs with supervised rotations, trainee reports, evaluations, final report grading, and certification."
-               data-ar="برامج تدريب سريري متقدم وإقامة منظمة مع دورات خاضعة للإشراف وتقارير المتدربين والتقييمات وتقييم التقارير النهائية والشهادات.">
+               data-ar="برامج إقامة وتدريب سريري متقدم منظمة تشمل دورات خاضعة للإشراف وتقارير المتدربين والتقييمات وتقييم التقرير النهائي وإصدار الشهادات.">
               Structured residency and advanced clinical training programs with supervised rotations, trainee reports, evaluations, final report grading, and certification.
             </p>
           </div>
           <ul class="track-bullets">
-            <li data-en="Specialty program coordination"                      data-ar="تنسيق البرامج التخصصية">Specialty program coordination</li>
-            <li data-en="Teaching hospital rotations"                         data-ar="دورات المستشفيات التعليمية">Teaching hospital rotations</li>
-            <li data-en="Trainee reports and evaluations"                     data-ar="تقارير المتدربين والتقييمات">Trainee reports and evaluations</li>
-            <li data-en="Final report grading and certification workflow"     data-ar="تقييم التقارير النهائية وسير عمل الشهادات">Final report grading and certification workflow</li>
+            <li data-en="Specialty program coordination"                  data-ar="تنسيق برامج التخصص">Specialty program coordination</li>
+            <li data-en="Teaching hospital rotations"                      data-ar="دورات المستشفيات التعليمية">Teaching hospital rotations</li>
+            <li data-en="Trainee reports and evaluations"                  data-ar="تقارير وتقييمات المتدربين">Trainee reports and evaluations</li>
+            <li data-en="Final report grading and certification workflow"  data-ar="تقييم التقرير النهائي ومسار إصدار الشهادات">Final report grading and certification workflow</li>
           </ul>
           <a href="#" onclick="event.preventDefault();openLoginPanel()">
             <button class="btn-track" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
