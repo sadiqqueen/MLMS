@@ -1,6 +1,6 @@
-# MidLearn LMS
+# MTMS
 
-A Medical Learning Management System for managing trainee clinical rotations, evaluations, reports, and certificates.
+Medical Training Management System for managing trainee clinical rotations, evaluations, reports, and certificates.
 
 ---
 
@@ -73,13 +73,42 @@ npm run frontend
 npm run backend
 ```
 
-The frontend proxies `/api` and `/uploads` requests to the local backend during development.
+The Vite frontend proxies `/api` and `/uploads` requests to the local backend during development. The public landing page source is `frontend/landing.html`; the React portal entry is generated as `frontend/dist/app.html` during builds.
+
+Useful local checks:
+
+```bash
+npm run build:frontend
+npm run check:backend
+npm run deploy:check
+```
 
 ---
 
 ## Deployment
 
-Set backend environment variables in the server environment:
+### VPS Layout
+
+The production application lives at:
+
+```bash
+/var/www/MLMS
+```
+
+Nginx serves `frontend/dist`. Do not commit `frontend/dist`; it is generated on the VPS from source during deployment:
+
+- `frontend/landing.html` builds into `frontend/dist/landing.html`
+- the React portal builds into `frontend/dist/app.html`
+
+The backend runs under PM2 as:
+
+```bash
+mlms-backend
+```
+
+### Required Server Files
+
+Create and maintain `backend/.env` manually on the VPS. It must not be committed.
 
 ```bash
 MONGO_URI=mongodb://...
@@ -89,7 +118,33 @@ FRONTEND_URL=https://your-production-domain
 PORT=5000
 ```
 
-Build the frontend during deployment instead of committing `frontend/dist`.
+The `backend/uploads` directory contains runtime server data. Do not commit it and do not delete it during deployment.
+
+### Deploy From The VPS
+
+Run:
+
+```bash
+cd /var/www/MLMS
+bash scripts/deploy-vps.sh
+```
+
+The script:
+
+- pulls `origin main`
+- installs root, backend, and frontend dependencies
+- includes frontend dev dependencies so Vite is available on clean servers
+- builds `frontend/dist`
+- clears PM2 logs and restarts `mlms-backend` with `--update-env`
+- validates and reloads nginx
+- checks the local backend `/health` endpoint
+- prints the live bundle references from `/app.html`
+
+Optional overrides:
+
+```bash
+APP_DIR=/var/www/MLMS PM2_APP_NAME=mlms-backend LIVE_URL=https://mlmsksb.com bash scripts/deploy-vps.sh
+```
 
 ---
 

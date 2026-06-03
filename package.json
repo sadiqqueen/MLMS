@@ -1,12 +1,16 @@
 {
   "name": "midlearn-lms",
   "version": "1.0.0",
-  "description": "Medical Learning Management System",
+  "description": "Medical Training Management System",
   "scripts": {
     "dev": "concurrently \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
     "frontend": "npm --prefix frontend run dev",
     "backend": "npm --prefix backend run dev",
-    "install:all": "npm install && npm --prefix frontend install && npm --prefix backend install"
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "build:frontend": "cd frontend && npm install --include=dev && npm run build",
+    "check:backend": "node --check backend/server.js",
+    "build:backend-check": "npm run check:backend",
+    "deploy:check": "npm run build:frontend && npm run check:backend"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
