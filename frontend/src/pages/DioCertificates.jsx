@@ -1,5 +1,6 @@
 // frontend/src/pages/DioCertificates.jsx
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Toast from '../components/Toast';
 import api from '../api/axios';
@@ -45,6 +46,7 @@ function traineeFromCertificate(cert) {
 }
 
 export default function DioCertificates() {
+  const navigate = useNavigate();
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -317,6 +319,14 @@ export default function DioCertificates() {
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: 6 }}>
+                            <button
+                              type="button"
+                              className="btn-action edit"
+                              onClick={() => navigate(`/dio/certificates/${c?._id}/print`)}
+                              disabled={!c?._id}
+                            >
+                              Print
+                            </button>
                             {!isRevoked && (
                               <button
                                 type="button"

@@ -405,6 +405,7 @@ function EvaluationsTable({ evaluations, onAdd }) {
 
 function CertificatesTable({ certificates }) {
   const rows = safeArr(certificates);
+  const navigate = useNavigate();
   return (
     <section className="admin-card">
       <div className="admin-card-header">
@@ -414,12 +415,12 @@ function CertificatesTable({ certificates }) {
         <table className="admin-table">
           <thead>
             <tr>
-              <th>Type</th><th>Issue Date</th><th>Hospital</th><th>Status</th><th>Issued By</th><th>Notes</th>
+              <th>Type</th><th>Issue Date</th><th>Hospital</th><th>Status</th><th>Issued By</th><th>Notes</th><th>Action</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={6} className="admin-empty">No certificates found</td></tr>
+              <tr><td colSpan={7} className="admin-empty">No certificates found</td></tr>
             ) : rows.map((certificate, index) => {
               const revoked = !!certificate?.revokedAt;
               return (
@@ -433,7 +434,18 @@ function CertificatesTable({ certificates }) {
                     </span>
                   </td>
                   <td>{certificate?.issuedBy?.name || '-'}</td>
-                  <td style={{ maxWidth:260 }}>{certificate?.notes || '-'}</td>
+                  <td style={{ maxWidth:200 }}>{certificate?.notes || '-'}</td>
+                  <td>
+                    {!revoked && certificate?._id && (
+                      <button
+                        className="btn-action edit"
+                        style={{ fontSize:11, background:'#FEF3C7', color:'#92400E' }}
+                        onClick={() => navigate(`/dio/certificates/${certificate._id}/print`)}
+                      >
+                        🖨 Print
+                      </button>
+                    )}
+                  </td>
                 </tr>
               );
             })}
@@ -534,17 +546,48 @@ export default function DioTraineeDetail() {
     <>
       <Navbar />
       <main className="admin-main">
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, flexWrap:'wrap', marginBottom:18 }}>
+        {/* Header row */}
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap', marginBottom:18 }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <button className="btn-outline" onClick={() => navigate('/dio/trainees')}>Back</button>
+            <button className="btn-outline" onClick={() => navigate('/dio/trainees')}>← Back</button>
             <div>
               <div style={{ fontSize:22, fontWeight:900, color:'#1B1464' }}>{trainee.name || 'Trainee'}</div>
-              <div style={{ fontSize:13, color:'#8B8FA8' }}>{trainee.studentId || '-'} - {trainee.email || '-'}</div>
+              <div style={{ fontSize:13, color:'#8B8FA8' }}>{trainee.studentId || '-'} · {trainee.email || '-'}</div>
             </div>
           </div>
-          <span style={{ background:ungraded.length ? '#FEE2E2' : '#D1FAE5', color:ungraded.length ? '#991B1B' : '#065F46', borderRadius:20, padding:'6px 12px', fontSize:12, fontWeight:800 }}>
-            {ungraded.length} ungraded report{ungraded.length !== 1 ? 's' : ''}
-          </span>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+            <span style={{ background:ungraded.length ? '#FEE2E2' : '#D1FAE5', color:ungraded.length ? '#991B1B' : '#065F46', borderRadius:20, padding:'6px 12px', fontSize:12, fontWeight:800 }}>
+              {ungraded.length} ungraded report{ungraded.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
+
+        {/* Quick-action buttons */}
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:18, padding:'14px 16px', background:'#F8FAFD', borderRadius:12, border:'1px solid #E8E9EF' }}>
+          <div style={{ fontSize:12, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'.05em', alignSelf:'center', marginRight:4 }}>
+            Quick Actions:
+          </div>
+          <button className="btn-action edit"
+            onClick={() => navigate('/dio/trainees', { state: { editId: trainee._id } })}>
+            ✏ Edit Trainee
+          </button>
+          <button className="btn-action edit"
+            style={{ background:'#EFF6FF', color:'#1D4ED8' }}
+            onClick={() => navigate('/dio/distributions?new=1')}>
+            ＋ Create Distribution
+          </button>
+          <button className="btn-action edit"
+            style={{ background:'#F0FDF4', color:'#065F46' }}
+            onClick={() => navigate('/dio/rotations?new=1')}>
+            ＋ Create Rotation
+          </button>
+          {certificates.length > 0 && !certificates[0]?.revokedAt && (
+            <button className="btn-action edit"
+              style={{ background:'#FEF3C7', color:'#92400E' }}
+              onClick={() => navigate(`/dio/certificates/${certificates[0]._id}/print`)}>
+              🖨 Print Latest Certificate
+            </button>
+          )}
         </div>
 
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(210px, 1fr))', gap:12, marginBottom:16 }}>

@@ -33,6 +33,9 @@ import DioSupervisors from './pages/DioSupervisors';
 import DioProgramDirectors from './pages/DioProgramDirectors';
 import DioSecretaries from './pages/DioSecretaries';
 import DioCertificates from './pages/DioCertificates';
+import DioDistributions from './pages/DioDistributions';
+import DioRotations from './pages/DioRotations';
+import CertificatePrint from './pages/CertificatePrint';
 
 import PresidentTrainees from './pages/PresidentTrainees';
 import PresidentSupervisors from './pages/PresidentSupervisors';
@@ -173,6 +176,21 @@ export default function App() {
           <Route path="/dio/certificates" element={
             <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
               <DioCertificates />
+            </ProtectedRoute>
+          } />
+          <Route path="/dio/certificates/:id/print" element={
+            <ProtectedRoute allowedRoles={['dio', 'super_admin', 'program_director', 'president']}>
+              <CertificatePrint />
+            </ProtectedRoute>
+          } />
+          <Route path="/dio/distributions" element={
+            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
+              <DioDistributions />
+            </ProtectedRoute>
+          } />
+          <Route path="/dio/rotations" element={
+            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
+              <DioRotations />
             </ProtectedRoute>
           } />
 

@@ -9,14 +9,20 @@ async function seed() {
     await mongoose.connect(process.env.MONGO_URI);
     console.log('✅ Connected to MongoDB');
 
-    const email    = process.env.SUPERADMIN_EMAIL    || 'admin@mtms.com';
-    const password = process.env.SUPERADMIN_PASSWORD || 'Admin@123456';
+    const email = process.env.SUPERADMIN_EMAIL || 'admin@mtms.com';
 
     const existing = await User.findOne({ email: email.toLowerCase() });
     if (existing) {
       console.log(`⏭  Super admin already exists: ${email}`);
       await mongoose.disconnect();
       process.exit(0);
+    }
+
+    const password = process.env.SUPERADMIN_PASSWORD;
+    if (!password || password.length < 12) {
+      console.error('ERROR: Set SUPERADMIN_PASSWORD to a strong password (12+ chars) before creating a super admin.');
+      await mongoose.disconnect();
+      process.exit(1);
     }
 
     // Build initials from email prefix
@@ -34,7 +40,7 @@ async function seed() {
     });
 
     console.log(`✅ Super admin created: ${email}`);
-    console.log(`   Password: ${password}`);
+    console.log('   Password was read from SUPERADMIN_PASSWORD.');
     console.log('   ⚠️  Change this password after first login!');
 
   } catch (err) {

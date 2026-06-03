@@ -13,7 +13,7 @@ const rotationSchema = new mongoose.Schema(
     // Status tracks where this rotation is in time
     status: {
       type: String,
-      enum: ['completed', 'current', 'upcoming'],
+      enum: ['completed', 'current', 'upcoming', 'cancelled'],
       default: 'upcoming'
     },
 
