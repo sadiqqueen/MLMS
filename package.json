@@ -10,7 +10,8 @@
     "build:frontend": "cd frontend && npm install --include=dev && npm run build",
     "check:backend": "node --check backend/server.js",
     "build:backend-check": "npm run check:backend",
-    "deploy:check": "npm run build:frontend && npm run check:backend"
+    "deploy:check": "npm run build:frontend && npm run check:backend",
+    "reseed:professional": "node backend/migrations/reseedProfessionalData.js"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
