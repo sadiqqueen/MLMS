@@ -332,9 +332,13 @@ export default function DioRotations() {
                       <td>
                         <div style={{ display:'flex', gap:5 }}>
                           <button className="btn-action edit"
+                            title="Edit"
+                            aria-label={`Edit rotation for ${r.student?.name || 'trainee'}`}
                             onClick={() => { setEditItem(r); setShowModal(true); }}>Edit</button>
                           {canDelete && (
-                          <button className="btn-action delete"
+                            <button className="btn-action delete"
+                              title="Cancel"
+                              aria-label={`Cancel rotation for ${r.student?.name || 'trainee'}`}
                               onClick={() => setConfirmDel(r)}>Cancel</button>
                           )}
                         </div>

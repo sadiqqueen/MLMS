@@ -388,9 +388,13 @@ export default function DioDistributions() {
                       <td>
                         <div style={{ display:'flex', gap:5 }}>
                           <button className="btn-action edit"
+                            title="Edit"
+                            aria-label={`Edit distribution for ${trainee?.name || 'trainee'}`}
                             onClick={() => { setEditItem(d); setShowModal(true); }}>Edit</button>
                           {canCancel && (
                             <button className="btn-action delete"
+                              title="Cancel"
+                              aria-label={`Cancel distribution for ${trainee?.name || 'trainee'}`}
                               onClick={() => setConfirmCancel(d)}>Cancel</button>
                           )}
                         </div>

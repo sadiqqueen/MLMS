@@ -322,6 +322,8 @@ export default function DioCertificates() {
                             <button
                               type="button"
                               className="btn-action edit"
+                              title="Print"
+                              aria-label={`Print certificate for ${trainee?.name || 'trainee'}`}
                               onClick={() => navigate(`/dio/certificates/${c?._id}/print`)}
                               disabled={!c?._id}
                             >
@@ -331,6 +333,8 @@ export default function DioCertificates() {
                               <button
                                 type="button"
                                 style={{ padding: '5px 10px', borderRadius: 6, background: '#FEF3C7', color: '#92400E', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                                title="Revoke"
+                                aria-label={`Revoke certificate for ${trainee?.name || 'trainee'}`}
                                 onClick={() => handleRevoke(c)}
                                 disabled={revoking === c?._id}
                               >
@@ -340,6 +344,8 @@ export default function DioCertificates() {
                             <button
                               type="button"
                               className="btn-action delete"
+                              title="Delete"
+                              aria-label={`Delete certificate for ${trainee?.name || 'trainee'}`}
                               onClick={() => handleDelete(c)}
                               disabled={deleting === c?._id}
                             >
