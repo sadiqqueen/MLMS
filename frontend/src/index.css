@@ -209,6 +209,20 @@ a      { text-decoration: none; }
 .topnav-white .bell-btn:hover { color: #1B1464; }
 .topnav-white .hamburger-btn span { background: #1B1464; }
 
+/* ── PORTAL NAVBAR (navy, light logo) ─────────────────────────────────────
+   Scoped to the React portal navbar only. Loaded exclusively via app.html;
+   never affects the self-contained landing.html navbar. The base .topnav
+   already supplies light nav-link text, bell, hamburger and avatar styling,
+   so this modifier only sets the brand-navy background + orange avatar accent. */
+.portal-navbar {
+  background: #0C447C;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 2px 8px rgba(12,68,124,0.18);
+}
+.portal-navbar .avatar { background: #FF6B35; }
+.portal-navbar .avatar:hover { background: #E85A26; }
+.portal-logo { height: 72px; width: auto; display: block; }
+
 /* ── NOTIFICATION PANEL ─────────────────────────────────────────────────── */
 .notif-panel { position: absolute; top: calc(100% + 8px); right: 0; width: 320px; background: white; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 1000; overflow: hidden; }
 .notif-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid #f0f0f0; }
