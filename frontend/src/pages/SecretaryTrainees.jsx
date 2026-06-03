@@ -12,6 +12,14 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function weeksBetween(startDate, endDate) {
+  if (!startDate || !endDate) return null;
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  return Math.max(1, Math.ceil((end - start) / (7 * 24 * 60 * 60 * 1000)));
+}
+
 const IconEdit = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -218,7 +226,6 @@ function RotationModal({ trainees, supervisors, hospitals, onSave, onClose, savi
     supervisorId:  '',
     startDate:     '',
     endDate:       '',
-    durationWeeks: '',
   });
   const [errors, setErrors] = useState({});
 
@@ -249,14 +256,13 @@ function RotationModal({ trainees, supervisors, hospitals, onSave, onClose, savi
     if (!form.supervisorId)  e.supervisorId  = true;
     if (!form.startDate)     e.startDate     = true;
     if (!form.endDate)       e.endDate       = true;
-    if (!form.durationWeeks) e.durationWeeks = true;
     setErrors(e);
     return !Object.keys(e).length;
   }
 
   function handleSave() {
     if (!validate()) return;
-    onSave({ ...form, durationWeeks: Number(form.durationWeeks) });
+    onSave(form);
   }
 
   useEffect(() => {
@@ -359,26 +365,6 @@ function RotationModal({ trainees, supervisors, hospitals, onSave, onClose, savi
                 onChange={e => set('endDate', e.target.value)}
               />
               {errors.endDate && <div style={{ fontSize: 11, color: '#DC2626', marginTop: 3 }}>Required</div>}
-            </div>
-          </div>
-
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 5 }}>
-              Duration (weeks) *
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="52"
-              className={errors.durationWeeks ? 'invalid admin-search' : 'admin-search'}
-              style={{ width: '100%' }}
-              placeholder="e.g. 8"
-              value={form.durationWeeks}
-              onChange={e => set('durationWeeks', e.target.value)}
-            />
-            {errors.durationWeeks && <div style={{ fontSize: 11, color: '#DC2626', marginTop: 3 }}>Required</div>}
-            <div style={{ fontSize: 11, color: '#8B8FA8', marginTop: 3 }}>
-              Number of weeks the trainee will be in this rotation
             </div>
           </div>
 
@@ -657,10 +643,11 @@ export default function SecretaryTrainees() {
                   {filteredDists.map((d, i) => {
                     const trainee    = d.traineeId    || d.student  || {};
                     const supervisor = d.supervisorId  || d.doctor   || {};
-                    const hospital   = d.hospitalId    || {};
-                    const status     = d.status || 'active';
-                    const statusColor = status === 'active' ? '#059669' : status === 'completed' ? '#1B1464' : '#D97706';
-                    const statusBg    = status === 'active' ? '#D1FAE5' : status === 'completed' ? '#EEEDFE'  : '#FEF3C7';
+                    const hospital   = d.hospitalId || d.hospital || {};
+                    const status     = d.status || 'upcoming';
+                    const duration   = d.durationWeeks || weeksBetween(d.startDate, d.endDate);
+                    const statusColor = status === 'current' ? '#059669' : status === 'completed' ? '#1B1464' : status === 'cancelled' ? '#991B1B' : '#D97706';
+                    const statusBg    = status === 'current' ? '#D1FAE5' : status === 'completed' ? '#EEEDFE' : status === 'cancelled' ? '#FEE2E2' : '#FEF3C7';
                     return (
                       <tr key={d._id}>
                         <td style={{ color: '#8B8FA8' }}>{i + 1}</td>
@@ -678,8 +665,8 @@ export default function SecretaryTrainees() {
                         <td style={{ fontSize: 13, color: '#4B5563' }}>{fmtDate(d.startDate)}</td>
                         <td style={{ fontSize: 13, color: '#4B5563' }}>{fmtDate(d.endDate)}</td>
                         <td>
-                          {d.durationWeeks
-                            ? <span style={{ fontWeight: 600, color: '#1B1464' }}>{d.durationWeeks} weeks</span>
+                          {duration
+                            ? <span style={{ fontWeight: 600, color: '#1B1464' }}>{duration} weeks</span>
                             : <span style={{ color: '#D1D5DB' }}>—</span>
                           }
                         </td>

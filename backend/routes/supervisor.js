@@ -4,6 +4,7 @@ const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const auditLog       = require('../middleware/auditLogger');
 const Distribution   = require('../models/Distribution');
+const Rotation       = require('../models/Rotation');
 const Report         = require('../models/Report');
 const Evaluation     = require('../models/Evaluation');
 const Notification   = require('../models/Notification');
@@ -20,15 +21,25 @@ async function getAssignedTraineeIds(supervisorId) {
 
   const distributions = await Distribution.find({
     $or: [
+      { supervisorId, traineeId: { $ne: null } },
+      { doctor: supervisorId, student: { $ne: null } }
+    ]
+  }).select('traineeId student');
+
+  const rotations = await Rotation.find({
+    $or: [
       { supervisorId },
       { doctor: supervisorId }
-    ]
+    ],
+    status: { $in: ['current', 'upcoming'] }
   }).select('traineeId student');
 
   return [...new Set([
     ...directTrainees.map(t => t._id),
     ...distributions.map(d => d.traineeId).filter(Boolean),
-    ...distributions.map(d => d.student).filter(Boolean)
+    ...distributions.map(d => d.student).filter(Boolean),
+    ...rotations.map(r => r.traineeId).filter(Boolean),
+    ...rotations.map(r => r.student).filter(Boolean)
   ].map(id => id.toString()))];
 }
 
@@ -51,10 +62,42 @@ router.get('/trainees', auth, allowRoles(...SUPERVISOR), async (req, res) => {
       .populate('specialtyId', 'name')
       .populate('hospitalId', 'name city');
 
-    const distributionDocs = await Distribution.find({
+    const rotationDocs = await Rotation.find({
       $or: [
         { supervisorId: req.user._id },
         { doctor: req.user._id }
+      ],
+      status: { $in: ['current', 'upcoming'] }
+    })
+      .populate({
+        path: 'traineeId',
+        match: { role: 'trainee', isActive: { $ne: false } },
+        select: 'name email studentId specialtyId hospitalId photoUrl initials year phone',
+        populate: [
+          { path: 'specialtyId', select: 'name' },
+          { path: 'hospitalId', select: 'name city' }
+        ]
+      })
+      .populate({
+        path: 'student',
+        match: { role: 'trainee', isActive: { $ne: false } },
+        select: 'name email studentId specialtyId hospitalId photoUrl initials year phone',
+        populate: [
+          { path: 'specialtyId', select: 'name' },
+          { path: 'hospitalId', select: 'name city' }
+        ]
+      })
+      .populate('supervisorId', 'name email')
+      .populate('hospitalId', 'name city')
+      .populate('doctor', 'name email')
+      .populate('hospital', 'name city')
+      .populate('specialtyId','name')
+      .sort({ startDate: -1 });
+
+    const legacyDistributionDocs = await Distribution.find({
+      $or: [
+        { supervisorId: req.user._id, traineeId: { $ne: null } },
+        { doctor: req.user._id, student: { $ne: null } }
       ]
     })
       .populate({
@@ -83,11 +126,22 @@ router.get('/trainees', auth, allowRoles(...SUPERVISOR), async (req, res) => {
     const seen = new Set();
     const data = [];
 
-    for (const doc of distributionDocs) {
+    for (const doc of rotationDocs) {
       const d = doc.toObject();
       const trainee = d.traineeId || d.student;
       const traineeId = trainee?._id?.toString?.() || trainee?.toString?.();
       if (!trainee || !traineeId) continue;
+      d.traineeId = trainee;
+      d.student = trainee;
+      seen.add(traineeId);
+      data.push(d);
+    }
+
+    for (const doc of legacyDistributionDocs) {
+      const d = doc.toObject();
+      const trainee = d.traineeId || d.student;
+      const traineeId = trainee?._id?.toString?.() || trainee?.toString?.();
+      if (!trainee || !traineeId || seen.has(traineeId)) continue;
       d.traineeId = trainee;
       d.student = trainee;
       seen.add(traineeId);

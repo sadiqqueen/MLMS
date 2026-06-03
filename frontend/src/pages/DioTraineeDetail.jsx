@@ -456,10 +456,111 @@ function CertificatesTable({ certificates }) {
   );
 }
 
+// ── Rotation Timeline section ────────────────────────────────────────────
+const ROT_STATUS_STYLE = {
+  upcoming:  { bg:'#EFF6FF', color:'#1D4ED8', label:'Upcoming' },
+  current:   { bg:'#D1FAE5', color:'#065F46', label:'Current'  },
+  completed: { bg:'#E8E9EF', color:'#374151', label:'Completed'},
+  cancelled: { bg:'#FEE2E2', color:'#991B1B', label:'Cancelled'},
+};
+
+function RotationTimeline({ rotations, traineeId, navigate }) {
+  if (!rotations || rotations.length === 0) return (
+    <section className="admin-card" style={{ marginBottom:16 }}>
+      <div className="admin-card-header">
+        <div className="admin-card-title">Rotation Timeline</div>
+        <button className="btn-action edit" title="Add rotation"
+          onClick={() => navigate('/dio/rotations')}>+ Add Rotation</button>
+      </div>
+      <div className="admin-empty">No rotations found for this trainee.</div>
+    </section>
+  );
+
+  const buckets = [
+    { key:'current',   label:'Current Rotation',    icon:'🔵', items: rotations.filter(r => r.status === 'current') },
+    { key:'upcoming',  label:'Upcoming Rotations',   icon:'🔜', items: rotations.filter(r => r.status === 'upcoming') },
+    { key:'completed', label:'Completed Rotations',  icon:'✅', items: rotations.filter(r => r.status === 'completed') },
+    { key:'cancelled', label:'Cancelled Rotations',  icon:'🚫', items: rotations.filter(r => r.status === 'cancelled') },
+  ].filter(b => b.items.length > 0);
+
+  return (
+    <section className="admin-card" style={{ marginBottom:16 }}>
+      <div className="admin-card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <div className="admin-card-title">Rotation Timeline</div>
+        <button className="btn-action edit" style={{ fontSize:12, width:'auto', padding:'0 12px', height:36 }}
+          title="Add rotation for this trainee"
+          onClick={() => navigate('/dio/rotations')}>
+          + Add Rotation
+        </button>
+      </div>
+
+      <div style={{ padding:'0 0 4px' }}>
+        {buckets.map(bucket => (
+          <div key={bucket.key} style={{ marginBottom:16 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'.05em', padding:'0 18px', marginBottom:8 }}>
+              {bucket.icon} {bucket.label} ({bucket.items.length})
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:8, padding:'0 18px' }}>
+              {bucket.items.map(r => {
+                const hospital   = r.hospitalId  || r.hospital   || {};
+                const supervisor = r.supervisorId || r.doctor    || {};
+                const specialty  = r.specialtyId?.name || r.specialty || null;
+                const st         = ROT_STATUS_STYLE[r.status] || { bg:'#F3F4F6', color:'#374151', label: r.status };
+                const canCancel  = r.status === 'upcoming';
+                const canEdit    = r.status === 'upcoming' || r.status === 'current';
+                return (
+                  <div key={r._id} style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, border:'1px solid #F0F0F0', borderRadius:10, padding:'12px 14px', background:'#FAFAFA', flexWrap:'wrap' }}>
+                    <div style={{ flex:1, minWidth:200 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:5 }}>
+                        <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:20, background:st.bg, color:st.color }}>
+                          {st.label}
+                        </span>
+                        {specialty && (
+                          <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'#EEEDFE', color:'#3C3489' }}>
+                            {specialty}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontWeight:700, fontSize:14, color:'#1B1464', marginBottom:3 }}>
+                        {hospital?.name || '—'}
+                      </div>
+                      <div style={{ fontSize:12, color:'#6B7280' }}>
+                        {supervisor?.name ? `Supervisor: ${supervisor.name}` : 'No supervisor assigned'}
+                      </div>
+                      <div style={{ fontSize:12, color:'#9CA3AF', marginTop:2 }}>
+                        {fmtDate(r.startDate)} → {fmtDate(r.endDate)}
+                      </div>
+                    </div>
+                    {(canEdit || canCancel) && (
+                      <div style={{ display:'flex', gap:5, flexShrink:0 }}>
+                        {canEdit && (
+                          <button className="btn-action edit"
+                            title="Edit rotation" aria-label="Edit rotation"
+                            onClick={() => navigate('/dio/rotations')}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function DioTraineeDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
+  const [rotations, setRotations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [gradeModal, setGradeModal] = useState(null);
@@ -476,12 +577,19 @@ export default function DioTraineeDetail() {
     const showPageLoading = options.showPageLoading !== false;
     if (showPageLoading) setLoading(true);
     setError('');
-    return api.get(`/api/dio/trainees/${id}/details`)
-      .then(r => setData(r.data?.data || r.data))
-      .catch(err => setError(err.response?.data?.message || 'Failed to load trainee details'))
-      .finally(() => {
-        if (showPageLoading) setLoading(false);
-      });
+    return Promise.all([
+      api.get(`/api/dio/trainees/${id}/details`),
+      api.get(`/api/rotations/student/${id}`),
+    ]).then(([detailsRes, rotationsRes]) => {
+      setData(detailsRes.data?.data || detailsRes.data);
+      const rots = Array.isArray(rotationsRes.data) ? rotationsRes.data : [];
+      // Sort: current first, then upcoming, then completed, then cancelled
+      const order = { current:0, upcoming:1, completed:2, cancelled:3 };
+      setRotations([...rots].sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9)));
+    }).catch(err => setError(err.response?.data?.message || 'Failed to load trainee details'))
+    .finally(() => {
+      if (showPageLoading) setLoading(false);
+    });
   }
 
   useEffect(() => {
@@ -609,12 +717,14 @@ export default function DioTraineeDetail() {
           <InfoCard title="Training Assignment" rows={[
             ['Hospital', nameOf(data?.hospital)],
             ['Specialty', data?.specialty?.name || trainee.specialty],
-            ['Current Rotation', currentRotation ? `${fmtDate(currentRotation.startDate)} - ${fmtDate(currentRotation.endDate)}` : '-'],
             ['Supervisor', nameOf(data?.supervisor)],
             ['Program Director', nameOf(data?.programDirector)],
-            ['Rotation Status', currentRotation?.status || '-'],
+            ['Rotations', `${rotations.filter(r=>r.status==='current').length} current, ${rotations.filter(r=>r.status==='upcoming').length} upcoming`],
           ]} />
         </div>
+
+        {/* ─── Rotation Timeline ─────────────────────────────────────── */}
+        <RotationTimeline rotations={rotations} traineeId={trainee._id} navigate={navigate} />
 
         <section style={{ background:'#fff', border:'1px solid #E8E9EF', borderRadius:12, padding:18, marginBottom:16 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, marginBottom:12 }}>

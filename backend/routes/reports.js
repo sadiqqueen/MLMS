@@ -84,7 +84,12 @@ router.get('/doctor/:doctorId', auth, allowRoles('supervisor', 'program_director
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
-    const rotations = await Rotation.find({ doctor: req.params.doctorId }).select('_id');
+    const rotations = await Rotation.find({
+      $or: [
+        { doctor: req.params.doctorId },
+        { supervisorId: req.params.doctorId }
+      ]
+    }).select('_id traineeId student');
     const distributions = await Distribution.find({
       $or: [
         { supervisorId: req.params.doctorId },
@@ -95,6 +100,8 @@ router.get('/doctor/:doctorId', auth, allowRoles('supervisor', 'program_director
     const rotationIds = rotations.map(r => r._id);
     const distributionIds = distributions.map(d => d._id);
     const traineeIds = [
+      ...rotations.map(r => r.traineeId).filter(Boolean),
+      ...rotations.map(r => r.student).filter(Boolean),
       ...distributions.map(d => d.traineeId).filter(Boolean),
       ...distributions.map(d => d.student).filter(Boolean)
     ];
@@ -149,7 +156,7 @@ router.post('/', auth, allowRoles('trainee'), upload.single('file'), async (req,
     let hospitalId = hospital || null;
 
     if (assignmentId && mongoose.Types.ObjectId.isValid(assignmentId)) {
-      const distribution = await Distribution.findOne({
+      const rotationDoc = await Rotation.findOne({
         _id: assignmentId,
         $or: [
           { traineeId: req.user._id },
@@ -157,14 +164,20 @@ router.post('/', auth, allowRoles('trainee'), upload.single('file'), async (req,
         ]
       });
 
-      if (distribution) {
-        distributionId = distribution._id;
-        hospitalId = distribution.hospitalId || distribution.hospital || hospitalId;
+      if (rotationDoc) {
+        rotationId = rotationDoc._id;
+        hospitalId = rotationDoc.hospitalId || rotationDoc.hospital || hospitalId;
       } else {
-        const legacyRotation = await Rotation.findOne({ _id: assignmentId, student: req.user._id });
-        if (legacyRotation) {
-          rotationId = legacyRotation._id;
-          hospitalId = legacyRotation.hospital || hospitalId;
+        const legacyDistribution = await Distribution.findOne({
+          _id: assignmentId,
+          $or: [
+            { traineeId: req.user._id },
+            { student: req.user._id }
+          ]
+        });
+        if (legacyDistribution) {
+          distributionId = legacyDistribution._id;
+          hospitalId = legacyDistribution.hospitalId || legacyDistribution.hospital || hospitalId;
         }
       }
     }
@@ -201,18 +214,24 @@ router.put('/:id/grade', auth, allowRoles('supervisor', 'program_director', 'sup
     if (!existing) return res.status(404).json({ success: false, message: 'Report not found' });
 
     if (!['super_admin', 'dio'].includes(req.user.role)) {
-      const dist = await Distribution.findOne({
+      const rotation = await Rotation.findOne({
         $or: [
           { traineeId: existing.student, supervisorId: req.user._id },
-          { student:   existing.student, doctor:       req.user._id },
-          { traineeId: existing.student, doctor:       req.user._id },
+          { student: existing.student, doctor: req.user._id },
+          { traineeId: existing.student, doctor: req.user._id },
+          { _id: existing.rotation, supervisorId: req.user._id },
+          { _id: existing.rotation, doctor: req.user._id }
+        ]
+      });
+      const dist = !rotation ? await Distribution.findOne({
+        $or: [
+          { traineeId: existing.student, supervisorId: req.user._id },
+          { student: existing.student, doctor: req.user._id },
+          { traineeId: existing.student, doctor: req.user._id },
           { _id: existing.distribution, supervisorId: req.user._id },
           { _id: existing.distribution, doctor: req.user._id }
         ]
-      });
-      const rotation = !dist && existing.rotation
-        ? await Rotation.findOne({ _id: existing.rotation, doctor: req.user._id })
-        : null;
+      }) : null;
       if (!dist && !rotation) {
         return res.status(403).json({ success: false, message: 'You are not assigned to this trainee' });
       }

@@ -11,6 +11,21 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function weeksBetween(startDate, endDate) {
+  if (!startDate || !endDate) return null;
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  return Math.max(1, Math.ceil((end - start) / (7 * 24 * 60 * 60 * 1000)));
+}
+
+function getStatusStyle(status) {
+  if (status === 'current' || status === 'active') return { color: '#059669', bg: '#D1FAE5' };
+  if (status === 'completed') return { color: '#1B1464', bg: '#EEEDFE' };
+  if (status === 'cancelled') return { color: '#991B1B', bg: '#FEE2E2' };
+  return { color: '#D97706', bg: '#FEF3C7' };
+}
+
 function getSpecialtyName(trainee) {
   return trainee.specialtyId?.name || trainee.specialty || '—';
 }
@@ -105,9 +120,9 @@ function TraineeModal({ trainee, distributions, onClose }) {
           ) : myDists.map(d => {
             const specName = d.specialtyId?.name || d.specialty || '—';
             const supName  = d.supervisorId?.name || d.doctor?.name || '—';
-            const status   = d.status || 'active';
-            const statusColor = status === 'active' ? '#059669' : status === 'completed' ? '#1B1464' : '#D97706';
-            const statusBg    = status === 'active' ? '#D1FAE5' : status === 'completed' ? '#EEEDFE'  : '#FEF3C7';
+            const status   = d.status || 'upcoming';
+            const style    = getStatusStyle(status);
+            const duration = d.durationWeeks || weeksBetween(d.startDate, d.endDate);
 
             return (
               <div key={d._id} style={{
@@ -118,7 +133,7 @@ function TraineeModal({ trainee, distributions, onClose }) {
                   <div style={{ fontSize: 14, fontWeight: 600, color: '#1B1464' }}>{specName}</div>
                   <span style={{
                     fontSize: 11, fontWeight: 600, padding: '2px 8px',
-                    borderRadius: 20, background: statusBg, color: statusColor
+                    borderRadius: 20, background: style.bg, color: style.color
                   }}>{status}</span>
                 </div>
                 <div style={{ fontSize: 12, color: '#4B5563', marginBottom: 4 }}>
@@ -126,7 +141,7 @@ function TraineeModal({ trainee, distributions, onClose }) {
                 </div>
                 <div style={{ fontSize: 12, color: '#8B8FA8' }}>
                   {fmtDate(d.startDate)} → {fmtDate(d.endDate)}
-                  {d.durationWeeks ? ` · ${d.durationWeeks} weeks` : ''}
+                  {duration ? ` · ${duration} weeks` : ''}
                 </div>
               </div>
             );
@@ -328,9 +343,8 @@ export default function ProgramDirectorTrainees() {
                     const tid = d.traineeId?._id || d.traineeId || d.student?._id || d.student;
                     return tid?.toString() === t._id?.toString();
                   });
-                  const status      = myDist?.status || 'active';
-                  const statusColor = status==='active' ? '#059669' : status==='completed' ? '#1B1464' : '#D97706';
-                  const statusBg    = status==='active' ? '#D1FAE5' : status==='completed' ? '#EEEDFE'  : '#FEF3C7';
+                  const status      = myDist?.status || 'upcoming';
+                  const statusStyle = getStatusStyle(status);
 
                   return (
                     <tr key={t._id} style={{ cursor:'pointer' }} onClick={() => setSelected(t)}>
@@ -358,7 +372,7 @@ export default function ProgramDirectorTrainees() {
                       <td>
                         <span style={{
                           fontSize:11, fontWeight:600, padding:'3px 9px',
-                          borderRadius:20, background:statusBg, color:statusColor
+                          borderRadius:20, background:statusStyle.bg, color:statusStyle.color
                         }}>{status}</span>
                       </td>
                       <td>

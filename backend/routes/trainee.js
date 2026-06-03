@@ -4,6 +4,7 @@ const auth         = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const scopeGuard   = require('../middleware/scopeGuard');
 const Distribution = require('../models/Distribution');
+const Rotation     = require('../models/Rotation');
 const Report       = require('../models/Report');
 const Evaluation   = require('../models/Evaluation');
 
@@ -20,10 +21,11 @@ function uniqueById(items) {
 }
 
 // GET /api/trainee/timeline
-// Returns all distributions (rotations) for this trainee
+// Returns all rotations for this trainee. Legacy trainee distributions are appended
+// only if no real rotations exist, preserving old data without making it authoritative.
 router.get('/timeline', auth, allowRoles(...TRAINEE), scopeGuard(), async (req, res) => {
   try {
-    const distributions = await Distribution.find({
+    const rotations = await Rotation.find({
       $or: [
         { traineeId: req.user._id },
         { student: req.user._id }
@@ -36,7 +38,24 @@ router.get('/timeline', auth, allowRoles(...TRAINEE), scopeGuard(), async (req, 
       .populate('hospital',     'name city')
       .sort({ startDate: 1 });
 
-    res.json({ success: true, data: uniqueById(distributions) });
+    if (rotations.length) {
+      return res.json({ success: true, data: uniqueById(rotations) });
+    }
+
+    const legacyDistributions = await Distribution.find({
+      $or: [
+        { traineeId: req.user._id },
+        { student: req.user._id }
+      ]
+    })
+      .populate('supervisorId', 'name specialty initials photoUrl')
+      .populate('doctor',       'name specialty initials photoUrl')
+      .populate('specialtyId',  'name')
+      .populate('hospitalId',   'name city')
+      .populate('hospital',     'name city')
+      .sort({ startDate: 1 });
+
+    res.json({ success: true, data: uniqueById(legacyDistributions) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -46,8 +65,21 @@ router.get('/timeline', auth, allowRoles(...TRAINEE), scopeGuard(), async (req, 
 // Returns active distribution info (with specialty PDF links) + all submitted reports
 router.get('/reports', auth, allowRoles(...TRAINEE), scopeGuard(), async (req, res) => {
   try {
-    // Find active distribution, supporting both V2 traineeId and legacy student fields.
-    const distribution = await Distribution.findOne({
+    const currentRotation = await Rotation.findOne({
+      $or: [
+        { traineeId: req.user._id },
+        { student: req.user._id }
+      ],
+      status: 'current'
+    })
+      .populate('specialtyId', 'name weeklyReportPdf monthlyReportPdf finalReportPdf')
+      .populate('hospitalId',  'name')
+      .populate('hospital',    'name')
+      .populate('supervisorId','name')
+      .populate('doctor',      'name');
+
+    // Legacy fallback only for old data that has not yet been migrated.
+    const distribution = currentRotation || await Distribution.findOne({
       $or: [
         { traineeId: req.user._id },
         { student: req.user._id }
@@ -68,7 +100,7 @@ router.get('/reports', auth, allowRoles(...TRAINEE), scopeGuard(), async (req, r
       .populate('gradedBy', 'name initials')
       .sort({ date: -1 });
 
-    res.json({ success: true, data: { distribution, reports } });
+    res.json({ success: true, data: { distribution, currentRotation, reports } });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

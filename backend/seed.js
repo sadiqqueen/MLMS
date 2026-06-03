@@ -137,32 +137,50 @@ async function seed() {
   await Hospital.findByIdAndUpdate(h2._id, { assignedDoctor: d3._id });
   await Hospital.findByIdAndUpdate(h3._id, { assignedDoctor: d2._id });
 
-  // ── DISTRIBUTIONS ──────────────────────────────────────────────────────────
+  // ── SUPERVISOR DISTRIBUTIONS + TRAINEE ROTATIONS ──────────────────────────
   await Distribution.insertMany([
     {
-      traineeId: s1._id, supervisorId: d1._id, specialtyId: specialtyByName.Surgery._id, hospitalId: h1._id,
-      student: s1._id, doctor: d1._id, hospital: h1._id, specialty: 'Surgery',
-      startDate: new Date('2025-01-01'), endDate: new Date('2025-06-30'), status: 'active'
+      supervisorId: d1._id, specialtyId: specialtyByName.Surgery._id, hospitalId: h1._id,
+      doctor: d1._id, hospital: h1._id, specialty: 'Surgery', status: 'active'
     },
     {
-      traineeId: s1._id, supervisorId: d2._id, specialtyId: specialtyByName['Internal Medicine']._id, hospitalId: h3._id,
-      student: s1._id, doctor: d2._id, hospital: h3._id, specialty: 'Internal Medicine',
-      startDate: new Date('2025-01-01'), endDate: new Date('2025-06-30'), status: 'active'
+      supervisorId: d2._id, specialtyId: specialtyByName['Internal Medicine']._id, hospitalId: h3._id,
+      doctor: d2._id, hospital: h3._id, specialty: 'Internal Medicine', status: 'active'
     },
     {
-      traineeId: s2._id, supervisorId: d3._id, specialtyId: specialtyByName.Pediatrics._id, hospitalId: h2._id,
-      student: s2._id, doctor: d3._id, hospital: h2._id, specialty: 'Pediatrics',
-      startDate: new Date('2025-02-01'), endDate: new Date('2025-07-31'), status: 'active'
+      supervisorId: d3._id, specialtyId: specialtyByName.Pediatrics._id, hospitalId: h2._id,
+      doctor: d3._id, hospital: h2._id, specialty: 'Pediatrics', status: 'active'
     },
     {
-      traineeId: s2._id, supervisorId: d4._id, specialtyId: specialtyByName.Cardiology._id, hospitalId: h2._id,
-      student: s2._id, doctor: d4._id, hospital: h2._id, specialty: 'Cardiology',
-      startDate: new Date('2025-03-01'), endDate: new Date('2025-08-31'), status: 'active'
+      supervisorId: d4._id, specialtyId: specialtyByName.Cardiology._id, hospitalId: h2._id,
+      doctor: d4._id, hospital: h2._id, specialty: 'Cardiology', status: 'active'
     },
     {
-      traineeId: s1._id, supervisorId: d5._id, specialtyId: specialtyByName.Orthopedics._id, hospitalId: h1._id,
-      student: s1._id, doctor: d5._id, hospital: h1._id, specialty: 'Orthopedics',
-      startDate: new Date('2024-09-01'), endDate: new Date('2024-12-31'), status: 'completed'
+      supervisorId: d5._id, specialtyId: specialtyByName.Orthopedics._id, hospitalId: h1._id,
+      doctor: d5._id, hospital: h1._id, specialty: 'Orthopedics', status: 'active'
+    }
+  ]);
+
+  await Rotation.insertMany([
+    {
+      traineeId: s1._id, student: s1._id, supervisorId: d1._id, doctor: d1._id,
+      specialtyId: specialtyByName.Surgery._id, hospitalId: h1._id, hospital: h1._id,
+      startDate: new Date('2025-01-01'), endDate: new Date('2025-06-30'), status: 'completed'
+    },
+    {
+      traineeId: s1._id, student: s1._id, supervisorId: d2._id, doctor: d2._id,
+      specialtyId: specialtyByName['Internal Medicine']._id, hospitalId: h3._id, hospital: h3._id,
+      startDate: new Date('2025-07-01'), endDate: new Date('2025-12-31'), status: 'completed'
+    },
+    {
+      traineeId: s2._id, student: s2._id, supervisorId: d3._id, doctor: d3._id,
+      specialtyId: specialtyByName.Pediatrics._id, hospitalId: h2._id, hospital: h2._id,
+      startDate: new Date('2025-02-01'), endDate: new Date('2025-07-31'), status: 'completed'
+    },
+    {
+      traineeId: s2._id, student: s2._id, supervisorId: d4._id, doctor: d4._id,
+      specialtyId: specialtyByName.Cardiology._id, hospitalId: h2._id, hospital: h2._id,
+      startDate: new Date('2025-08-01'), endDate: new Date('2026-01-31'), status: 'completed'
     }
   ]);
 

@@ -5,6 +5,7 @@ const { allowRoles } = require('../middleware/roles');
 const auditLog       = require('../middleware/auditLogger');
 const User           = require('../models/User');
 const Distribution   = require('../models/Distribution');
+const Rotation       = require('../models/Rotation');
 const Report         = require('../models/Report');
 const Evaluation     = require('../models/Evaluation');
 const Notification   = require('../models/Notification');
@@ -34,15 +35,20 @@ router.get('/trainees', auth, allowRoles(...PD), async (req, res) => {
       .sort({ name: 1 });
 
     const traineeIds = trainees.map(t => t._id);
-    const distributions = await Distribution.find({
+    const distributions = await Rotation.find({
       $or: [
         { traineeId: { $in: traineeIds } },
+        { student: { $in: traineeIds } },
         { hospitalId }
       ]
     })
       .populate('traineeId', 'name email studentId')
+      .populate('student', 'name email studentId')
       .populate('specialtyId',  'name')
       .populate('supervisorId', 'name email')
+      .populate('doctor', 'name email')
+      .populate('hospitalId', 'name city')
+      .populate('hospital', 'name city')
       .sort({ startDate: -1 });
 
     res.json({ success: true, data: { trainees, distributions } });
@@ -69,7 +75,7 @@ router.get('/supervisors', auth, allowRoles(...PD), async (req, res) => {
       .sort({ name: 1 });
 
     const supervisorIds = supervisors.map(s => s._id);
-    const distCounts = await Distribution.aggregate([
+    const distCounts = await Rotation.aggregate([
       { $match: { $or: [
         { supervisorId: { $in: supervisorIds } },
         { doctor:       { $in: supervisorIds } }

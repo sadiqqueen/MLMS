@@ -5,7 +5,7 @@ import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
 const ROWS_OPT = [8, 16, 32];
-const API_BASE = '';
+const STATUS_OPTS = ['active', 'inactive'];
 
 const IconEdit = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -13,39 +13,49 @@ const IconEdit = () => (
     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
   </svg>
 );
-const IconDelete = () => (
+
+const IconPower = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6"/>
-    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-    <path d="M10 11v6M14 11v6"/>
-    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+    <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+    <line x1="12" y1="2" x2="12" y2="12"/>
   </svg>
 );
 
-function fmtDate(d) {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+function safeArr(v) {
+  return Array.isArray(v) ? v : [];
 }
 
-// ── Distribution Modal ─────────────────────────────────────────────────────
-function DistModal({ item, doctors, hospitals, onSave, onClose, saving }) {
+function getData(res) {
+  return safeArr(res?.data?.data || res?.data);
+}
+
+function getId(value) {
+  return value?._id || value || '';
+}
+
+function getStatusClass(status) {
+  return status === 'active' ? 'badge-active' : 'badge-inactive';
+}
+
+function DistModal({ item, supervisors, hospitals, specialties, onSave, onClose, saving }) {
   const [form, setForm] = useState({
-    doctor:    item?.doctor?._id    || item?.doctor    || '',
-    hospital:  item?.hospital?._id  || item?.hospital  || '',
-    specialty: item?.specialty  || '',
-    startDate: item?.startDate ? item.startDate.slice(0, 10) : '',
-    endDate:   item?.endDate   ? item.endDate.slice(0, 10)   : '',
-    status:    item?.status    || 'active'
+    supervisorId: getId(item?.supervisorId || item?.doctor),
+    hospitalId:   getId(item?.hospitalId || item?.hospital),
+    specialtyId:  getId(item?.specialtyId),
+    status:       item?.status || 'active'
   });
   const [errors, setErrors] = useState({});
 
-  function set(k, v) { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: false })); }
+  function set(k, v) {
+    setForm(f => ({ ...f, [k]: v }));
+    setErrors(e => ({ ...e, [k]: false }));
+  }
 
   function handleSave() {
     const e = {};
-    if (!form.doctor)    e.doctor    = true;
-    if (!form.hospital)  e.hospital  = true;
-    if (!form.specialty.trim()) e.specialty = true;
+    if (!form.supervisorId) e.supervisorId = true;
+    if (!form.hospitalId)   e.hospitalId   = true;
+    if (!form.specialtyId)  e.specialtyId  = true;
     setErrors(e);
     if (Object.keys(e).length) return;
     onSave(form);
@@ -62,82 +72,73 @@ function DistModal({ item, doctors, hospitals, onSave, onClose, saving }) {
       <div className="admin-modal">
         <div className="admin-modal-header">
           <div className="admin-modal-title">{item ? 'Edit Distribution' : 'Add Distribution'}</div>
-          <button className="admin-modal-close" onClick={onClose}>✕</button>
+          <button className="admin-modal-close" onClick={onClose} aria-label="Close distribution form">x</button>
         </div>
         <div className="admin-modal-body">
           <div className="admin-form-grid">
-
             <div className="admin-field full">
-              <label>Doctor *</label>
-              <select className={errors.doctor ? 'invalid' : ''} value={form.doctor} onChange={e => set('doctor', e.target.value)}>
-                <option value="">— Select doctor —</option>
-                {doctors.map(d => <option key={d._id} value={d._id}>{d.name} ({d.specialty || '—'})</option>)}
+              <label>Supervisor *</label>
+              <select className={errors.supervisorId ? 'invalid' : ''} value={form.supervisorId} onChange={e => set('supervisorId', e.target.value)}>
+                <option value="">-- Select supervisor --</option>
+                {safeArr(supervisors).map(s => <option key={s._id} value={s._id}>{s.name} ({s.specialty || '-'})</option>)}
               </select>
             </div>
 
             <div className="admin-field full">
               <label>Hospital *</label>
-              <select className={errors.hospital ? 'invalid' : ''} value={form.hospital} onChange={e => set('hospital', e.target.value)}>
-                <option value="">— Select hospital —</option>
-                {hospitals.map(h => <option key={h._id} value={h._id}>{h.name} ({h.city || '—'})</option>)}
+              <select className={errors.hospitalId ? 'invalid' : ''} value={form.hospitalId} onChange={e => set('hospitalId', e.target.value)}>
+                <option value="">-- Select hospital --</option>
+                {safeArr(hospitals).map(h => <option key={h._id} value={h._id}>{h.name} ({h.city || '-'})</option>)}
               </select>
             </div>
 
             <div className="admin-field full">
               <label>Specialty *</label>
-              <input className={errors.specialty ? 'invalid' : ''} value={form.specialty} onChange={e => set('specialty', e.target.value)} placeholder="e.g. Surgery" />
-            </div>
-
-            <div className="admin-field">
-              <label>Start Date</label>
-              <input type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
-            </div>
-
-            <div className="admin-field">
-              <label>End Date</label>
-              <input type="date" value={form.endDate} onChange={e => set('endDate', e.target.value)} />
+              <select className={errors.specialtyId ? 'invalid' : ''} value={form.specialtyId} onChange={e => set('specialtyId', e.target.value)}>
+                <option value="">-- Select specialty --</option>
+                {safeArr(specialties).map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+              </select>
             </div>
 
             <div className="admin-field full">
               <label>Status</label>
               <select value={form.status} onChange={e => set('status', e.target.value)}>
-                <option value="active">Active</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
+                {STATUS_OPTS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
               </select>
             </div>
-
           </div>
         </div>
         <div className="admin-modal-footer">
-          <button className="btn-red"    onClick={onClose}>Close</button>
-          <button className="btn-purple" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+          <button className="btn-red" onClick={onClose}>Close</button>
+          <button className="btn-purple" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
         </div>
       </div>
     </div>
   );
 }
 
-function ConfirmDelete({ name, onConfirm, onCancel }) {
+function ConfirmStatus({ item, action, onConfirm, onCancel }) {
+  const supervisor = item?.supervisorId || item?.doctor || {};
+  const verb = action === 'reactivate' ? 'Reactivate' : 'Deactivate';
   return (
     <div className="confirm-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
       <div className="confirm-box">
-        <h3>Delete Distribution</h3>
-        <p>Delete distribution for <strong>{name}</strong>?</p>
+        <h3>{verb} Distribution</h3>
+        <p>{verb} distribution for <strong>{supervisor?.name || 'this supervisor'}</strong>?</p>
         <div className="confirm-btns">
           <button className="btn-outline" onClick={onCancel}>Cancel</button>
-          <button className="btn-red"     onClick={onConfirm}>Delete</button>
+          <button className="btn-red" onClick={onConfirm}>{verb}</button>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Main Page ──────────────────────────────────────────────────────────────
 export default function Distributions() {
   const [items,      setItems    ] = useState([]);
-  const [doctors,    setDoctors  ] = useState([]);
+  const [supervisors,setSupervisors] = useState([]);
   const [hospitals,  setHospitals] = useState([]);
+  const [specialties,setSpecialties] = useState([]);
   const [loading,    setLoading  ] = useState(true);
   const [view,       setView     ] = useState('table');
   const [search,     setSearch   ] = useState('');
@@ -147,9 +148,8 @@ export default function Distributions() {
   const [showModal,  setShowModal] = useState(false);
   const [editItem,   setEditItem ] = useState(null);
   const [saving,     setSaving   ] = useState(false);
-  const [delItem,    setDelItem  ] = useState(null);
+  const [confirmStatus, setConfirmStatus] = useState(null);
 
-  // Filters
   const [filterHosp,  setFilterHosp ] = useState('');
   const [filterSpec,  setFilterSpec ] = useState('');
   const [filterStatus,setFilterStatus] = useState('');
@@ -164,24 +164,29 @@ export default function Distributions() {
     Promise.all([
       api.get('/api/distributions'),
       api.get('/api/users/supervisors'),
-      api.get('/api/hospitals')
-    ]).then(([d, doc, h]) => {
-      setItems(d.data);
-      setDoctors(doc.data);
-      setHospitals(h.data);
+      api.get('/api/hospitals'),
+      api.get('/api/specialties')
+    ]).then(([d, sup, h, sp]) => {
+      setItems(getData(d));
+      setSupervisors(getData(sup));
+      setHospitals(getData(h));
+      setSpecialties(getData(sp));
     }).catch(() => showToast('Failed to load', 'error'))
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = items.filter(item => {
+  const filtered = safeArr(items).filter(item => {
+    const supervisor = item?.supervisorId || item?.doctor || {};
+    const hospital = item?.hospitalId || item?.hospital || {};
+    const specialty = item?.specialtyId?.name || item?.specialty || '';
     const q = search.toLowerCase();
     const matchSearch = !q ||
-      item.doctor?.name?.toLowerCase().includes(q) ||
-      item.hospital?.name?.toLowerCase().includes(q) ||
-      item.specialty?.toLowerCase().includes(q);
-    const matchHosp   = !filterHosp   || item.hospital?._id === filterHosp;
-    const matchSpec   = !filterSpec   || item.specialty?.toLowerCase().includes(filterSpec.toLowerCase());
-    const matchStatus = !filterStatus || item.status === filterStatus;
+      supervisor?.name?.toLowerCase().includes(q) ||
+      hospital?.name?.toLowerCase().includes(q) ||
+      specialty.toLowerCase().includes(q);
+    const matchHosp   = !filterHosp || hospital?._id === filterHosp || hospital === filterHosp;
+    const matchSpec   = !filterSpec || specialty.toLowerCase().includes(filterSpec.toLowerCase());
+    const matchStatus = !filterStatus || item?.status === filterStatus;
     return matchSearch && matchHosp && matchSpec && matchStatus;
   });
 
@@ -193,14 +198,17 @@ export default function Distributions() {
     try {
       if (editItem) {
         const res = await api.put(`/api/distributions/${editItem._id}`, payload);
-        setItems(p => p.map(d => d._id === editItem._id ? res.data : d));
+        const updated = res.data?.data || res.data;
+        setItems(p => safeArr(p).map(d => d._id === editItem._id ? updated : d));
         showToast('Updated');
       } else {
         const res = await api.post('/api/distributions', payload);
-        setItems(p => [res.data, ...p]);
+        const created = res.data?.data || res.data;
+        setItems(p => [created, ...safeArr(p)]);
         showToast('Created');
       }
       setShowModal(false);
+      setEditItem(null);
     } catch (err) {
       showToast(err.response?.data?.message || 'Save failed', 'error');
     } finally {
@@ -208,56 +216,35 @@ export default function Distributions() {
     }
   }
 
-  async function confirmDelete() {
+  async function applyStatusAction() {
+    const { item, action } = confirmStatus;
     try {
-      await api.delete(`/api/distributions/${delItem._id}`);
-      setItems(p => p.filter(d => d._id !== delItem._id));
-      showToast('Deleted');
-    } catch { showToast('Delete failed', 'error'); }
-    finally   { setDelItem(null); }
+      const res = action === 'reactivate'
+        ? await api.patch(`/api/distributions/${item._id}/reactivate`)
+        : await api.delete(`/api/distributions/${item._id}`);
+      const updated = res.data?.data || { ...item, status: action === 'reactivate' ? 'active' : 'inactive' };
+      setItems(p => safeArr(p).map(d => d._id === item._id ? updated : d));
+      showToast(action === 'reactivate' ? 'Reactivated' : 'Deactivated');
+    } catch {
+      showToast('Status update failed', 'error');
+    } finally {
+      setConfirmStatus(null);
+    }
   }
 
   if (loading) return (
     <>
       <Navbar />
       <main className="admin-main">
-        <div className="admin-page-header">
-          <Sk w={170} h={38} r={8} />
-        </div>
+        <div className="admin-page-header"><Sk w={170} h={38} r={8} /></div>
         <div className="admin-card">
-          <div className="admin-toolbar">
-            <Sk h={36} r={8} style={{ flex: 1, minWidth: 200 }} />
-            <Sk w={70}  h={36} r={8} />
-            <Sk w={110} h={36} r={8} />
-          </div>
-          <div className="filter-bar" style={{ display: 'flex', gap: 8, padding: '0 20px 14px' }}>
-            <Sk w={140} h={34} r={8} />
-            <Sk w={170} h={34} r={8} />
-            <Sk w={140} h={34} r={8} />
-          </div>
+          <div className="admin-toolbar"><Sk h={36} r={8} style={{ flex: 1, minWidth: 200 }} /><Sk w={70} h={36} r={8} /><Sk w={110} h={36} r={8} /></div>
           <div className="admin-table-wrap">
             <table className="admin-table">
-              <thead>
-                <tr>
-                  {['#', 'Doctor', 'Hospital', 'Specialty', 'Start Date', 'End Date', 'Status', 'Actions'].map(c => <th key={c}>{c}</th>)}
-                </tr>
-              </thead>
               <tbody>
                 {[...Array(8)].map((_, i) => (
                   <tr key={i}>
-                    <td><Sk w={20} h={13} /></td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Sk w={36}  h={36} r="50%" />
-                        <Sk w={130} h={13} />
-                      </div>
-                    </td>
-                    <td><Sk w={120} h={13} /></td>
-                    <td><Sk w={90}  h={20} r={20} /></td>
-                    <td><Sk w={80}  h={13} /></td>
-                    <td><Sk w={80}  h={13} /></td>
-                    <td><Sk w={60}  h={20} r={20} /></td>
-                    <td><div style={{ display: 'flex', gap: 6 }}><Sk w={28} h={28} r={6} /><Sk w={28} h={28} r={6} /></div></td>
+                    {[20,150,120,100,70,80].map((w, j) => <td key={j}><Sk w={w} h={13} /></td>)}
                   </tr>
                 ))}
               </tbody>
@@ -272,30 +259,26 @@ export default function Distributions() {
     <>
       <Navbar />
       <main className="admin-main">
-
         <div className="admin-page-header">
           <button className="btn-purple" onClick={() => { setEditItem(null); setShowModal(true); }}>+ Add Distribution</button>
         </div>
 
         <div className="admin-card">
-
-          {/* Toolbar */}
           <div className="admin-toolbar">
-            <input className="admin-search" placeholder="Search by doctor, hospital, specialty…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+            <input className="admin-search" placeholder="Search by supervisor, hospital, specialty..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
             <div className="view-toggle">
-              <button className={`view-btn${view === 'table' ? ' active' : ''}`} onClick={() => setView('table')}>☰</button>
-              <button className={`view-btn${view === 'card'  ? ' active' : ''}`} onClick={() => setView('card')}>⊞</button>
+              <button className={`view-btn${view === 'table' ? ' active' : ''}`} onClick={() => setView('table')} title="Table view" aria-label="Table view">T</button>
+              <button className={`view-btn${view === 'card'  ? ' active' : ''}`} onClick={() => setView('card')} title="Card view" aria-label="Card view">C</button>
             </div>
             <select className="rows-select" value={rows} onChange={e => { setRows(+e.target.value); setPage(1); }}>
               {ROWS_OPT.map(r => <option key={r} value={r}>{r} / page</option>)}
             </select>
           </div>
 
-          {/* Filter bar */}
           <div className="filter-bar">
             <select value={filterHosp} onChange={e => { setFilterHosp(e.target.value); setPage(1); }}>
               <option value="">All Hospitals</option>
-              {hospitals.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
+              {safeArr(hospitals).map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
             </select>
             <input
               placeholder="Filter by specialty"
@@ -305,121 +288,104 @@ export default function Distributions() {
             />
             <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1); }}>
               <option value="">All Statuses</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
+              {STATUS_OPTS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
             </select>
           </div>
 
-          {/* TABLE */}
           {view === 'table' && (
             <div className="admin-table-wrap">
               <table className="admin-table">
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>Doctor</th>
+                    <th>Supervisor</th>
                     <th>Hospital</th>
                     <th>Specialty</th>
-                    <th>Start Date</th>
-                    <th>End Date</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {currentItems.length === 0 && (
-                    <tr><td colSpan={8} className="admin-empty">No distributions found</td></tr>
+                    <tr><td colSpan={6} className="admin-empty">No distributions found</td></tr>
                   )}
-                  {currentItems.map((item, i) => (
-                    <tr key={item._id}>
-                      <td style={{ color: '#aaa' }}>{(page - 1) * rows + i + 1}</td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          {item.doctor?.photoUrl
-                            ? <img src={`${API_BASE}${item.doctor.photoUrl}`} alt="" className="cell-photo" />
-                            : <div className="cell-initials">{item.doctor?.initials || '?'}</div>
-                          }
-                          <strong>{item.doctor?.name || '—'}</strong>
-                        </div>
-                      </td>
-                      <td>{item.hospital?.name || '—'}</td>
-                      <td><span className="specialty-tag">{item.specialty}</span></td>
-                      <td>{fmtDate(item.startDate)}</td>
-                      <td>{fmtDate(item.endDate)}</td>
-                      <td>
-                        <span className={item.status === 'active' ? 'badge-active' : 'badge-inactive'}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="action-btns">
-                          <button className="btn-action edit"   onClick={() => { setEditItem(item); setShowModal(true); }}><IconEdit /></button>
-                          <button className="btn-action delete" onClick={() => setDelItem(item)}><IconDelete /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {currentItems.map((item, i) => {
+                    const supervisor = item?.supervisorId || item?.doctor || {};
+                    const hospital = item?.hospitalId || item?.hospital || {};
+                    const specialty = item?.specialtyId?.name || item?.specialty || '-';
+                    const isActive = item?.status === 'active';
+                    return (
+                      <tr key={item._id}>
+                        <td style={{ color: '#aaa' }}>{(page - 1) * rows + i + 1}</td>
+                        <td><strong>{supervisor?.name || '-'}</strong></td>
+                        <td>{hospital?.name || '-'}</td>
+                        <td><span className="specialty-tag">{specialty}</span></td>
+                        <td><span className={getStatusClass(item?.status)}>{item?.status || '-'}</span></td>
+                        <td>
+                          <div className="action-btns">
+                            <button className="btn-action edit" title="Edit" aria-label={`Edit distribution for ${supervisor?.name || 'supervisor'}`} onClick={() => { setEditItem(item); setShowModal(true); }}><IconEdit /></button>
+                            <button className="btn-action delete" title={isActive ? 'Deactivate' : 'Reactivate'} aria-label={`${isActive ? 'Deactivate' : 'Reactivate'} distribution for ${supervisor?.name || 'supervisor'}`} onClick={() => setConfirmStatus({ item, action: isActive ? 'deactivate' : 'reactivate' })}><IconPower /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           )}
 
-          {/* CARD VIEW */}
           {view === 'card' && (
             <div className="admin-card-grid">
               {currentItems.length === 0 && <div className="admin-empty">No distributions found</div>}
-              {currentItems.map(item => (
-                <div className="dist-card" key={item._id}>
-                  <div className="dist-card-header">
-                    {item.doctor?.photoUrl
-                      ? <img src={`${API_BASE}${item.doctor.photoUrl}`} alt="" className="cell-photo" />
-                      : <div className="cell-initials">{item.doctor?.initials || '?'}</div>
-                    }
-                    <div>
-                      <div className="dist-card-name">{item.doctor?.name || '—'}</div>
-                      <div className="dist-card-sub">{item.hospital?.name || '—'}</div>
+              {currentItems.map(item => {
+                const supervisor = item?.supervisorId || item?.doctor || {};
+                const hospital = item?.hospitalId || item?.hospital || {};
+                const specialty = item?.specialtyId?.name || item?.specialty || '-';
+                const isActive = item?.status === 'active';
+                return (
+                  <div className="dist-card" key={item._id}>
+                    <div className="dist-card-header">
+                      <div>
+                        <div className="dist-card-name">{supervisor?.name || '-'}</div>
+                        <div className="dist-card-sub">{hospital?.name || '-'}</div>
+                      </div>
+                    </div>
+                    <div className="dist-card-row">
+                      <span className="specialty-tag">{specialty}</span>
+                      <span className={getStatusClass(item?.status)}>{item?.status || '-'}</span>
+                    </div>
+                    <div className="dist-card-actions">
+                      <button className="btn-action edit" title="Edit" aria-label={`Edit distribution for ${supervisor?.name || 'supervisor'}`} onClick={() => { setEditItem(item); setShowModal(true); }}><IconEdit /></button>
+                      <button className="btn-action delete" title={isActive ? 'Deactivate' : 'Reactivate'} aria-label={`${isActive ? 'Deactivate' : 'Reactivate'} distribution for ${supervisor?.name || 'supervisor'}`} onClick={() => setConfirmStatus({ item, action: isActive ? 'deactivate' : 'reactivate' })}><IconPower /></button>
                     </div>
                   </div>
-                  <div className="dist-card-row">
-                    <span className="specialty-tag">{item.specialty}</span>
-                    <span className={item.status === 'active' ? 'badge-active' : 'badge-inactive'}>{item.status}</span>
-                  </div>
-                  <div className="dist-card-row" style={{ fontSize: 11, color: '#888' }}>
-                    {fmtDate(item.startDate)} → {fmtDate(item.endDate)}
-                  </div>
-                  <div className="dist-card-actions">
-                    <button className="btn-action edit"   onClick={() => { setEditItem(item); setShowModal(true); }}><IconEdit /></button>
-                    <button className="btn-action delete" onClick={() => setDelItem(item)}><IconDelete /></button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
-          {/* PAGINATION */}
           <div className="admin-pagination">
-            <span>Showing {Math.min((page - 1) * rows + 1, filtered.length)}–{Math.min(page * rows, filtered.length)} of {filtered.length}</span>
+            <span>Showing {filtered.length ? Math.min((page - 1) * rows + 1, filtered.length) : 0}-{Math.min(page * rows, filtered.length)} of {filtered.length}</span>
             <div className="pagination-btns">
-              <button className="pg-btn" disabled={page === 1} onClick={() => setPage(1)}>«</button>
-              <button className="pg-btn" disabled={page === 1} onClick={() => setPage(p => p - 1)}>‹</button>
+              <button className="pg-btn" disabled={page === 1} onClick={() => setPage(1)}>&lt;&lt;</button>
+              <button className="pg-btn" disabled={page === 1} onClick={() => setPage(p => p - 1)}>&lt;</button>
               {Array.from({ length: totalPages }, (_, i) => i + 1)
                 .filter(n => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
                 .map(n => <button key={n} className={`pg-btn${n === page ? ' active-pg' : ''}`} onClick={() => setPage(n)}>{n}</button>)
               }
-              <button className="pg-btn" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>›</button>
-              <button className="pg-btn" disabled={page === totalPages} onClick={() => setPage(totalPages)}>»</button>
+              <button className="pg-btn" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>&gt;</button>
+              <button className="pg-btn" disabled={page === totalPages} onClick={() => setPage(totalPages)}>&gt;&gt;</button>
             </div>
           </div>
-
         </div>
       </main>
 
       {showModal && (
-        <DistModal item={editItem} doctors={doctors} hospitals={hospitals} onSave={handleSave} onClose={() => setShowModal(false)} saving={saving} />
+        <DistModal item={editItem} supervisors={supervisors} hospitals={hospitals} specialties={specialties} onSave={handleSave} onClose={() => setShowModal(false)} saving={saving} />
       )}
-      {delItem && (
-        <ConfirmDelete name={delItem.doctor?.name || 'this record'} onConfirm={confirmDelete} onCancel={() => setDelItem(null)} />
+      {confirmStatus && (
+        <ConfirmStatus item={confirmStatus.item} action={confirmStatus.action} onConfirm={applyStatusAction} onCancel={() => setConfirmStatus(null)} />
       )}
       <Toast toasts={toasts} />
     </>

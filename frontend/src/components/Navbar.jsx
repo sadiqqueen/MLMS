@@ -26,8 +26,8 @@ const ROLE_LINKS = {
     { to: '/dio/supervisors',       label: 'Supervisors'   },
     { to: '/dio/program-directors', label: 'Prog.Directors'},
     { to: '/dio/secretaries',       label: 'Secretaries'   },
-    { to: '/dio/distributions',     label: 'Distributions' },
-    { to: '/dio/rotations',         label: 'Rotations'     },
+    { to: '/dio/distributions',     label: 'Sup.Dist.'    },
+    { to: '/dio/rotations',         label: 'Rotations'    },
     { to: '/dio/certificates',      label: 'Certificates'  },
   ],
   supervisor: [

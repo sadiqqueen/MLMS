@@ -3,8 +3,9 @@ const mongoose = require('mongoose');
 
 const distributionSchema = new mongoose.Schema(
   {
-    // V2: renamed and new fields
-    traineeId:     { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    // V2 supervisor placement: which supervisor is assigned to which hospital/specialty.
+    // traineeId/student/startDate/endDate remain optional legacy fields for old data only.
+    traineeId:     { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
     supervisorId:  { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     specialtyId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Specialty', required: true, index: true },
     hospitalId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital', required: true, index: true },
@@ -19,7 +20,7 @@ const distributionSchema = new mongoose.Schema(
       }
     },
     durationWeeks: { type: Number },
-    status:        { type: String, enum: ['upcoming', 'active', 'completed', 'cancelled'], default: 'active', index: true },
+    status:        { type: String, enum: ['active', 'inactive'], default: 'active', index: true },
     createdBy:     { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
     // Keep legacy fields for backwards compatibility with existing data

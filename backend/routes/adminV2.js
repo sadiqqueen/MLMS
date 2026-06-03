@@ -11,6 +11,7 @@ const auditLog       = require('../middleware/auditLogger');
 const User           = require('../models/User');
 const Hospital       = require('../models/Hospital');
 const Distribution   = require('../models/Distribution');
+const Rotation       = require('../models/Rotation');
 const Certificate    = require('../models/Certificate');
 const AuditLog       = require('../models/AuditLog');
 const Specialty      = require('../models/Specialty');
@@ -47,7 +48,7 @@ router.get('/stats', auth, allowRoles(...ADMIN), async (req, res) => {
         User.countDocuments({ isActive: { $ne: false } }),
         Hospital.countDocuments({ isActive: { $ne: false } }),
         Specialty.countDocuments({ isActive: { $ne: false } }),
-        Distribution.countDocuments({ status: 'active' }),
+        Rotation.countDocuments({ status: 'current' }),
         Certificate.countDocuments({ revokedAt: null }),
         User.countDocuments({ role: 'trainee',    isActive: { $ne: false } }),
         User.countDocuments({ role: 'supervisor', isActive: { $ne: false } })

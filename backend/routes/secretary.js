@@ -5,7 +5,7 @@ const { allowRoles } = require('../middleware/roles');
 const auditLog       = require('../middleware/auditLogger');
 const User           = require('../models/User');
 const Hospital       = require('../models/Hospital');
-const Distribution   = require('../models/Distribution');
+const Rotation       = require('../models/Rotation');
 
 const SECRETARY = ['secretary'];
 const CREATE_USER_FIELDS = ['name', 'email', 'password', 'phone', 'gender', 'city',
@@ -15,7 +15,7 @@ const UPDATE_USER_FIELDS = ['name', 'phone', 'gender', 'city', 'department',
   'specialty', 'year', 'studentId', 'enrolledSince', 'hospitalId',
   'hospital', 'supervisorId', 'supervisor', 'photoUrl', 'isActive'];
 const HOSPITAL_UPDATE_FIELDS = ['name', 'city', 'governorate', 'address', 'phone', 'email'];
-const DISTRIBUTION_UPDATE_FIELDS = ['startDate', 'endDate', 'durationWeeks', 'status', 'supervisorId'];
+const ROTATION_UPDATE_FIELDS = ['startDate', 'endDate', 'status', 'supervisorId'];
 
 function pick(body, allowed) {
   const data = {};
@@ -33,6 +33,56 @@ function getHospital(user) {
 
 function getSecretaryQuery(req) {
   return { specialtyId: req.user.specialtyId };
+}
+
+function dateOnly(d) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function inferRotationStatus(startDate, endDate) {
+  const today = dateOnly(new Date());
+  const start = dateOnly(new Date(startDate));
+  const end = dateOnly(new Date(endDate));
+  if (end < today) return 'completed';
+  if (start > today) return 'upcoming';
+  return 'current';
+}
+
+function populateRotation(query) {
+  return query
+    .populate('traineeId', 'name email initials photoUrl studentId')
+    .populate('student', 'name email initials photoUrl studentId')
+    .populate('supervisorId', 'name specialty initials')
+    .populate('doctor', 'name specialty initials')
+    .populate('specialtyId', 'name')
+    .populate('hospitalId', 'name city')
+    .populate('hospital', 'name city');
+}
+
+async function validateRotationDates({ traineeId, startDate, endDate, existingId = null }, res) {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    res.status(400).json({ success: false, message: 'Invalid startDate or endDate' });
+    return false;
+  }
+  if (end <= start) {
+    res.status(400).json({ success: false, message: 'endDate must be after startDate' });
+    return false;
+  }
+
+  const overlap = await Rotation.findOne({
+    $or: [{ traineeId }, { student: traineeId }],
+    status: { $ne: 'cancelled' },
+    ...(existingId ? { _id: { $ne: existingId } } : {}),
+    startDate: { $lt: end },
+    endDate: { $gt: start }
+  });
+  if (overlap) {
+    res.status(409).json({ success: false, message: 'Trainee already has an overlapping rotation' });
+    return false;
+  }
+  return true;
 }
 
 function requireSecretarySpecialty(req, res) {
@@ -305,19 +355,19 @@ router.patch('/hospitals/:id',
 // ── DISTRIBUTIONS ─────────────────────────────────────────────────────────
 
 // POST /api/secretary/distributions
-// Create a rotation assignment for a trainee
+// Compatibility URL: creates a Rotation assignment for a trainee.
 router.post('/distributions',
   auth,
   allowRoles(...SECRETARY),
-  auditLog('create_distribution', 'Distribution'),
+  auditLog('create_rotation', 'Rotation'),
   async (req, res) => {
     try {
       const specialtyId = getSpecialty(req.user);
       const hospitalId  = getHospital(req.user);
-      const { traineeId, supervisorId, startDate, endDate, durationWeeks } = req.body;
+      const { traineeId, supervisorId, startDate, endDate } = req.body;
 
-      if (!traineeId || !supervisorId) {
-        return res.status(400).json({ message: 'traineeId and supervisorId are required' });
+      if (!traineeId || !supervisorId || !startDate || !endDate) {
+        return res.status(400).json({ message: 'traineeId, supervisorId, startDate, and endDate are required' });
       }
 
       if (!specialtyId) {
@@ -344,26 +394,22 @@ router.post('/distributions',
         return res.status(403).json({ success: false, message: 'Supervisor is not in secretary specialty' });
       }
 
-      const dist = await Distribution.create({
+      if (!(await validateRotationDates({ traineeId, startDate, endDate }, res))) return;
+
+      const rotation = await Rotation.create({
         traineeId,
+        student:       traineeId,
         supervisorId,
-        student:       traineeId,    // legacy compatibility
         doctor:        supervisorId, // legacy compatibility
         specialtyId:   specialtyId   || null,
         hospitalId:    hospitalId    || null,
         hospital:      hospitalId    || null, // legacy
         startDate,
         endDate,
-        durationWeeks: durationWeeks || null,
-        status:        'active',
-        createdBy:     req.user._id
+        status:        inferRotationStatus(startDate, endDate)
       });
 
-      const populated = await Distribution.findById(dist._id)
-        .populate('traineeId',   'name email initials photoUrl')
-        .populate('supervisorId','name specialty initials')
-        .populate('specialtyId', 'name')
-        .populate('hospitalId',  'name city');
+      const populated = await populateRotation(Rotation.findById(rotation._id));
 
       res.status(201).json({ success: true, data: populated });
     } catch (err) {
@@ -373,17 +419,13 @@ router.post('/distributions',
 );
 
 // GET /api/secretary/distributions
+// Compatibility URL: returns Rotation records in the secretary specialty.
 router.get('/distributions', auth, allowRoles(...SECRETARY), async (req, res) => {
   try {
     const specialtyId = getSpecialty(req.user);
     const query = specialtyId ? { specialtyId } : { _id: null };
 
-    const distributions = await Distribution.find(query)
-      .populate('traineeId',   'name email initials photoUrl')
-      .populate('supervisorId','name specialty initials')
-      .populate('specialtyId', 'name')
-      .populate('hospitalId',  'name city')
-      .sort({ createdAt: -1 });
+    const distributions = await populateRotation(Rotation.find(query)).sort({ createdAt: -1 });
 
     res.json({ success: true, data: distributions });
   } catch (err) {
@@ -395,14 +437,14 @@ router.get('/distributions', auth, allowRoles(...SECRETARY), async (req, res) =>
 router.patch('/distributions/:id',
   auth,
   allowRoles(...SECRETARY),
-  auditLog('update_distribution', 'Distribution'),
+  auditLog('update_rotation', 'Rotation'),
   async (req, res) => {
     try {
       const specialtyId = getSpecialty(req.user);
-      const existing = await Distribution.findOne({ _id: req.params.id, specialtyId });
-      if (!existing) return res.status(404).json({ success: false, message: 'Distribution not found in secretary specialty' });
+      const existing = await Rotation.findOne({ _id: req.params.id, specialtyId });
+      if (!existing) return res.status(404).json({ success: false, message: 'Rotation not found in secretary specialty' });
 
-      const updates = pick(req.body, DISTRIBUTION_UPDATE_FIELDS);
+      const updates = pick(req.body, ROTATION_UPDATE_FIELDS);
       if (updates.supervisorId) {
         const supervisor = await User.findOne({
           _id: updates.supervisorId,
@@ -413,14 +455,19 @@ router.patch('/distributions/:id',
         if (!supervisor) {
           return res.status(403).json({ success: false, message: 'Supervisor is not in secretary specialty' });
         }
+        updates.doctor = updates.supervisorId;
       }
 
-      const dist = await Distribution.findByIdAndUpdate(req.params.id, updates, { new: true })
-        .populate('traineeId',   'name email initials photoUrl')
-        .populate('supervisorId','name specialty initials')
-        .populate('specialtyId', 'name')
-        .populate('hospitalId',  'name city');
-      if (!dist) return res.status(404).json({ message: 'Distribution not found' });
+      const startDate = updates.startDate || existing.startDate;
+      const endDate = updates.endDate || existing.endDate;
+      const traineeId = existing.traineeId || existing.student;
+      if (updates.startDate || updates.endDate) {
+        if (!(await validateRotationDates({ traineeId, startDate, endDate, existingId: req.params.id }, res))) return;
+        if (!updates.status) updates.status = inferRotationStatus(startDate, endDate);
+      }
+
+      const dist = await populateRotation(Rotation.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true }));
+      if (!dist) return res.status(404).json({ message: 'Rotation not found' });
       res.json({ success: true, data: dist });
     } catch (err) {
       res.status(500).json({ message: err.message });

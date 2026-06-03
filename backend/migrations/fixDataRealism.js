@@ -26,7 +26,7 @@ require('dotenv').config();
 const mongoose   = require('mongoose');
 const User         = require('../models/User');
 const Specialty    = require('../models/Specialty');
-const Distribution = require('../models/Distribution');
+const Rotation     = require('../models/Rotation');
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
@@ -65,17 +65,17 @@ function dryTag() { return DRY_RUN ? ' [DRY RUN — no write]' : ''; }
 async function fixFutureDistributions() {
   log('\n━━━ FIX-1: Future active distributions → upcoming ━━━');
 
-  const records = await Distribution.find({
-    status:    'active',
+  const records = await Rotation.find({
+    status:    'current',
     startDate: { $gt: NOW },
   }).lean();
 
   if (records.length === 0) {
-    skip('No future "active" distributions found. Nothing to do.');
+    skip('No future "current" rotations found. Nothing to do.');
     return { found: 0, changed: 0 };
   }
 
-  info(`Found ${records.length} distribution(s) with status "active" and startDate in the future:`);
+  info(`Found ${records.length} rotation(s) with status "current" and startDate in the future:`);
   for (const d of records) {
     info(
       `  id=${d._id}  traineeId=${d.traineeId}` +
@@ -87,12 +87,12 @@ async function fixFutureDistributions() {
 
   if (!DRY_RUN) {
     const ids    = records.map(r => r._id);
-    const result = await Distribution.updateMany(
+    const result = await Rotation.updateMany(
       { _id: { $in: ids } },
       { $set: { status: 'upcoming' } },
       { runValidators: true }        // model now accepts 'upcoming'
     );
-    ok(`Updated ${result.modifiedCount} distribution(s) to "upcoming".`);
+    ok(`Updated ${result.modifiedCount} rotation(s) to "upcoming".`);
     return { found: records.length, changed: result.modifiedCount };
   }
 

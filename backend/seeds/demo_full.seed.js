@@ -6,6 +6,7 @@ const User         = require('../models/User');
 const Hospital     = require('../models/Hospital');
 const Specialty    = require('../models/Specialty');
 const Distribution = require('../models/Distribution');
+const Rotation     = require('../models/Rotation');
 const Report       = require('../models/Report');
 const Evaluation   = require('../models/Evaluation');
 
@@ -207,7 +208,28 @@ async function seed() {
   // ── 7. DISTRIBUTIONS / ROTATIONS ─────────────────────────────────────────────
   // Distribution status enum: 'active' | 'completed' | 'cancelled'  (no 'upcoming')
   console.log('\n── Creating rotations (3 per trainee)...');
-  let distCount = 0;
+  let placementCount = 0;
+  for (const { doc: supDoc, specialty } of supervisors) {
+    const specDoc = specialtyMap[specialty];
+    if (!specDoc) continue;
+    const exists = await Distribution.findOne({ supervisorId: supDoc._id });
+    if (!exists) {
+      await Distribution.create({
+        supervisorId: supDoc._id,
+        doctor:       supDoc._id,
+        specialtyId:  specDoc._id,
+        specialty,
+        hospitalId:   supDoc.hospitalId,
+        hospital:     supDoc.hospitalId,
+        status:       'active',
+        createdBy:    supDoc._id,
+      });
+      placementCount++;
+    }
+  }
+  console.log(`  ✅ ${placementCount} supervisor distributions created`);
+
+  let rotationCount = 0;
 
   for (const { doc: trainee, specialty } of trainees) {
     const specDoc  = specialtyMap[specialty];
@@ -232,43 +254,42 @@ async function seed() {
         startDate:     monthsAgo(2),
         endDate:       monthsAhead(1),
         durationWeeks: 12,
-        status:        'active',
+        status:        'current',
       },
       {
         hospitalId:    hospitals[2]._id,
         startDate:     monthsAhead(1),
         endDate:       monthsAhead(4),
         durationWeeks: 12,
-        status:        'active',  // no 'upcoming' in enum — use 'active'
+        status:        'upcoming',
       },
     ];
 
     for (const rot of rotations) {
-      const exists = await Distribution.findOne({
+      const exists = await Rotation.findOne({
         traineeId:  trainee._id,
         hospitalId: rot.hospitalId,
+        startDate:  rot.startDate,
+        endDate:    rot.endDate,
       });
       if (!exists) {
-        await Distribution.create({
+        await Rotation.create({
           traineeId:    trainee._id,
+          student:      trainee._id,
           supervisorId: supDoc._id,
+          doctor:       supDoc._id,
           specialtyId:  specDoc._id,
           hospitalId:   rot.hospitalId,
-          // legacy fields
-          doctor:       supDoc._id,
           hospital:     rot.hospitalId,
-          specialty:    specialty,
           startDate:    rot.startDate,
           endDate:      rot.endDate,
-          durationWeeks: rot.durationWeeks,
           status:       rot.status,
-          createdBy:    supDoc._id,
         });
-        distCount++;
+        rotationCount++;
       }
     }
   }
-  console.log(`  ✅ ${distCount} rotations created`);
+  console.log(`  ✅ ${rotationCount} rotations created`);
 
   // ── 8. REPORTS ────────────────────────────────────────────────────────────────
   // Report schema: student (required), hospital, title (required), type (required), date (required), status, grade, reviewNote
@@ -377,6 +398,7 @@ async function seed() {
     supervisors:   await User.countDocuments({ role: 'supervisor' }),
     programDirs:   await User.countDocuments({ role: 'program_director' }),
     distributions: await Distribution.countDocuments(),
+    rotations:     await Rotation.countDocuments(),
     reports:       await Report.countDocuments(),
     evaluations:   await Evaluation.countDocuments(),
   };
@@ -411,7 +433,8 @@ DATABASE TOTALS:
   Trainees:      ${counts.trainees}
   Supervisors:   ${counts.supervisors}
   Program Dirs:  ${counts.programDirs}
-  Rotations:     ${counts.distributions}
+  Distributions: ${counts.distributions}
+  Rotations:     ${counts.rotations}
   Reports:       ${counts.reports}
   Evaluations:   ${counts.evaluations}
 

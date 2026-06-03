@@ -23,6 +23,21 @@ function getHospital(dist) {
   return dist.hospitalId?.name || dist.hospital?.name || '—';
 }
 
+function weeksBetween(startDate, endDate) {
+  if (!startDate || !endDate) return null;
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  return Math.max(1, Math.ceil((end - start) / (7 * 24 * 60 * 60 * 1000)));
+}
+
+function getStatusStyle(status) {
+  if (status === 'current' || status === 'active') return { color: '#00B894', bg: '#E8FDF3' };
+  if (status === 'completed') return { color: '#1B1464', bg: '#EEEDFE' };
+  if (status === 'cancelled') return { color: '#991B1B', bg: '#FEE2E2' };
+  return { color: '#D97706', bg: '#FEF3C7' };
+}
+
 function Avatar({ user, size = 56 }) {
   if (user?.photoUrl) {
     return (
@@ -103,8 +118,8 @@ function TraineeModal({ dist, onClose }) {
               ['Hospital',    getHospital(dist)],
               ['Start Date',  fmtDate(dist.startDate)],
               ['End Date',    fmtDate(dist.endDate)],
-              ['Duration',    dist.durationWeeks ? `${dist.durationWeeks} weeks` : '—'],
-              ['Status',      dist.status || 'active'],
+              ['Duration',    (dist.durationWeeks || weeksBetween(dist.startDate, dist.endDate)) ? `${dist.durationWeeks || weeksBetween(dist.startDate, dist.endDate)} weeks` : '—'],
+              ['Status',      dist.status || 'upcoming'],
             ].map(([label, value]) => (
               <div key={label}>
                 <div style={{
@@ -249,12 +264,9 @@ export default function SupervisorTrainees() {
         }}>
           {filtered.map(dist => {
             const trainee     = getTrainee(dist);
-            const statusColor = (dist.status || 'active') === 'active' ? '#00B894'
-                              : dist.status === 'completed'             ? '#1B1464'
-                              :                                           '#D97706';
-            const statusBg    = (dist.status || 'active') === 'active' ? '#E8FDF3'
-                              : dist.status === 'completed'             ? '#EEEDFE'
-                              :                                           '#FEF3C7';
+            const status      = dist.status || 'upcoming';
+            const statusStyle = getStatusStyle(status);
+            const duration    = dist.durationWeeks || weeksBetween(dist.startDate, dist.endDate);
 
             return (
               <div
@@ -298,15 +310,15 @@ export default function SupervisorTrainees() {
 
                 <div style={{ fontSize:11, color:'#8B8FA8', marginBottom:6 }}>
                   {fmtDate(dist.startDate)} – {fmtDate(dist.endDate)}
-                  {dist.durationWeeks ? ` · ${dist.durationWeeks}w` : ''}
+                  {duration ? ` · ${duration}w` : ''}
                 </div>
 
                 <div style={{ marginBottom:14 }}>
                   <span style={{
                     fontSize:11, fontWeight:600, padding:'2px 9px',
-                    borderRadius:20, background:statusBg, color:statusColor
+                    borderRadius:20, background:statusStyle.bg, color:statusStyle.color
                   }}>
-                    {dist.status || 'active'}
+                    {status}
                   </span>
                 </div>
 

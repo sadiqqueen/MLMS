@@ -8,8 +8,9 @@ const AuditLog       = require('../models/AuditLog');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 
-const STAFF = ['super_admin', 'secretary', 'dio'];
-const STATUSES = ['upcoming', 'active', 'completed', 'cancelled'];
+const READ_ROLES  = ['super_admin', 'dio', 'president'];
+const WRITE_ROLES = ['super_admin', 'dio'];
+const STATUSES    = ['active', 'inactive'];
 
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -26,12 +27,10 @@ function isValidObjectId(id) {
 }
 
 function normalizeDistributionData(data) {
-  if (data.traineeId && !data.student) data.student = data.traineeId;
-  if (data.student && !data.traineeId) data.traineeId = data.student;
-  if (data.supervisorId && !data.doctor) data.doctor = data.supervisorId;
   if (data.doctor && !data.supervisorId) data.supervisorId = data.doctor;
-  if (data.hospitalId && !data.hospital) data.hospital = data.hospitalId;
+  if (data.supervisorId && !data.doctor) data.doctor = data.supervisorId;
   if (data.hospital && !data.hospitalId) data.hospitalId = data.hospital;
+  if (data.hospitalId && !data.hospital) data.hospital = data.hospitalId;
   return data;
 }
 
@@ -48,14 +47,14 @@ async function audit(req, action, targetId, metadata = {}) {
 
 async function validateDistributionPayload(data, res, { creating = false, existingId = null } = {}) {
   normalizeDistributionData(data);
-  const required = creating ? ['traineeId', 'supervisorId', 'specialtyId', 'hospitalId'] : [];
+  const required = creating ? ['supervisorId', 'hospitalId', 'specialtyId'] : [];
   const missing = required.filter(k => !data[k]);
   if (missing.length) {
     res.status(400).json({ success: false, message: `Missing required field(s): ${missing.join(', ')}` });
     return false;
   }
 
-  for (const field of ['traineeId', 'student', 'supervisorId', 'doctor', 'specialtyId', 'hospitalId', 'hospital']) {
+  for (const field of ['supervisorId', 'doctor', 'hospitalId', 'hospital', 'specialtyId']) {
     if (data[field] && !isValidObjectId(data[field])) {
       res.status(400).json({ success: false, message: `Invalid ${field}` });
       return false;
@@ -65,27 +64,6 @@ async function validateDistributionPayload(data, res, { creating = false, existi
   if (data.status && !STATUSES.includes(data.status)) {
     res.status(400).json({ success: false, message: 'Invalid distribution status' });
     return false;
-  }
-
-  if (data.startDate || data.endDate) {
-    const start = data.startDate ? new Date(data.startDate) : null;
-    const end = data.endDate ? new Date(data.endDate) : null;
-    if ((start && Number.isNaN(start.getTime())) || (end && Number.isNaN(end.getTime()))) {
-      res.status(400).json({ success: false, message: 'Invalid startDate or endDate' });
-      return false;
-    }
-    if (start && end && end <= start) {
-      res.status(400).json({ success: false, message: 'endDate must be after startDate' });
-      return false;
-    }
-  }
-
-  if (data.traineeId) {
-    const trainee = await User.findOne({ _id: data.traineeId, role: 'trainee', isActive: { $ne: false } });
-    if (!trainee) {
-      res.status(400).json({ success: false, message: 'Trainee not found or inactive' });
-      return false;
-    }
   }
 
   if (data.supervisorId) {
@@ -113,14 +91,17 @@ async function validateDistributionPayload(data, res, { creating = false, existi
     if (!data.specialty) data.specialty = specialty.name;
   }
 
-  if (creating && data.traineeId && ['active', 'upcoming'].includes(data.status || 'active')) {
+  if (data.supervisorId && (creating || data.status === 'active')) {
     const duplicate = await Distribution.findOne({
-      traineeId: data.traineeId,
-      status: { $in: ['active'] },
+      supervisorId: data.supervisorId,
+      status: 'active',
       ...(existingId ? { _id: { $ne: existingId } } : {})
     });
     if (duplicate) {
-      res.status(409).json({ success: false, message: 'Trainee already has an active distribution' });
+      res.status(409).json({
+        success: false,
+        message: 'Supervisor already has an active distribution. Deactivate it before creating another.'
+      });
       return false;
     }
   }
@@ -130,63 +111,68 @@ async function validateDistributionPayload(data, res, { creating = false, existi
 
 function populateDistribution(query) {
   return query
-    .populate('traineeId', 'name email studentId photoUrl initials')
-    .populate('supervisorId', 'name specialty photoUrl initials')
+    .populate('supervisorId', 'name email specialty photoUrl initials')
     .populate('specialtyId', 'name')
     .populate('hospitalId', 'name city')
-    .populate('doctor', 'name specialty photoUrl initials')
-    .populate('hospital', 'name city');
+    .populate('doctor', 'name email specialty photoUrl initials')
+    .populate('hospital', 'name city')
+    .populate('traineeId', 'name email studentId photoUrl initials')
+    .populate('student', 'name email studentId photoUrl initials');
 }
 
-// GET /api/distributions — supports ?hospital= ?specialty= ?status= filters
-router.get('/', auth, allowRoles(...STAFF), async (req, res) => {
+// GET /api/distributions - supervisor placement list
+router.get('/', auth, allowRoles(...READ_ROLES), async (req, res) => {
   try {
     const query = {};
     const and = [];
+
     if (req.query.hospital) {
       const hospitalMatch = [{ hospital: req.query.hospital }];
-      if (mongoose.Types.ObjectId.isValid(req.query.hospital)) {
-        hospitalMatch.push({ hospitalId: req.query.hospital });
-      }
+      if (isValidObjectId(req.query.hospital)) hospitalMatch.push({ hospitalId: req.query.hospital });
       and.push({ $or: hospitalMatch });
     }
+
     if (req.query.specialty) {
       const safeSpecialty = new RegExp(escapeRegex(req.query.specialty.slice(0, 100)), 'i');
       const specialtyMatch = [{ specialty: safeSpecialty }];
-      if (mongoose.Types.ObjectId.isValid(req.query.specialty)) {
-        specialtyMatch.push({ specialtyId: req.query.specialty });
-      }
+      if (isValidObjectId(req.query.specialty)) specialtyMatch.push({ specialtyId: req.query.specialty });
       and.push({ $or: specialtyMatch });
     }
-    if (req.query.status)    query.status     = req.query.status;
+
+    if (req.query.supervisorId) {
+      if (!isValidObjectId(req.query.supervisorId)) return res.status(400).json({ success: false, message: 'Invalid supervisorId' });
+      query.supervisorId = req.query.supervisorId;
+    }
+
+    if (req.query.status) {
+      if (!STATUSES.includes(req.query.status)) return res.status(400).json({ success: false, message: 'Invalid distribution status' });
+      query.status = req.query.status;
+    }
+
     if (and.length) query.$and = and;
 
-    const distributions = await Distribution.find(query)
-      .populate('traineeId', 'name email studentId photoUrl initials')
-      .populate('supervisorId', 'name specialty photoUrl initials')
-      .populate('specialtyId', 'name')
-      .populate('hospitalId', 'name city')
-      .populate('doctor',   'name specialty photoUrl initials')
-      .populate('hospital', 'name city')
-      .sort({ createdAt: -1 });
+    const distributions = await populateDistribution(Distribution.find(query)).sort({ createdAt: -1 });
     res.json(distributions);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-router.post('/', auth, allowRoles(...STAFF), async (req, res) => {
+router.post('/', auth, allowRoles(...WRITE_ROLES), async (req, res) => {
   try {
-    const ALLOWED = ['traineeId', 'supervisorId', 'specialtyId', 'hospitalId',
-                     'startDate', 'endDate', 'durationWeeks', 'status',
-                     'student', 'doctor', 'hospital', 'specialty'];
+    const ALLOWED = ['supervisorId', 'specialtyId', 'hospitalId', 'status', 'doctor', 'hospital', 'specialty'];
     const data = pick(req.body, ALLOWED);
     data.createdBy = req.user._id;
     data.status = data.status || 'active';
     if (!(await validateDistributionPayload(data, res, { creating: true }))) return;
 
-    const dist      = await Distribution.create(data);
-    await audit(req, 'create_distribution', dist._id, { status: dist.status, traineeId: dist.traineeId });
+    const dist = await Distribution.create(data);
+    await audit(req, 'create_distribution', dist._id, {
+      supervisorId: dist.supervisorId,
+      hospitalId: dist.hospitalId,
+      specialtyId: dist.specialtyId,
+      status: dist.status
+    });
     const populated = await populateDistribution(Distribution.findById(dist._id));
     res.status(201).json(populated);
   } catch (err) {
@@ -194,35 +180,54 @@ router.post('/', auth, allowRoles(...STAFF), async (req, res) => {
   }
 });
 
-router.put('/:id', auth, allowRoles(...STAFF), async (req, res) => {
+router.put('/:id', auth, allowRoles(...WRITE_ROLES), async (req, res) => {
   try {
     if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid distribution id' });
-    const UPDATE_ALLOWED = ['startDate', 'endDate', 'durationWeeks', 'status',
-                            'supervisorId', 'specialtyId', 'hospitalId',
-                            'doctor', 'hospital', 'specialty'];
+    const existing = await Distribution.findById(req.params.id);
+    if (!existing) return res.status(404).json({ message: 'Distribution not found' });
+
+    const UPDATE_ALLOWED = ['supervisorId', 'specialtyId', 'hospitalId', 'status', 'doctor', 'hospital', 'specialty'];
     const updates = pick(req.body, UPDATE_ALLOWED);
+    if (updates.status === 'active' && !updates.supervisorId && !updates.doctor) {
+      updates.supervisorId = existing.supervisorId || existing.doctor;
+    }
     if (!(await validateDistributionPayload(updates, res, { existingId: req.params.id }))) return;
 
     const dist = await populateDistribution(Distribution.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true }));
-    if (!dist) return res.status(404).json({ message: 'Distribution not found' });
-    await audit(req, updates.status === 'cancelled' ? 'cancel_distribution' : 'update_distribution', dist._id, { fields: Object.keys(updates), status: dist.status });
+    await audit(req, updates.status === 'inactive' ? 'deactivate_distribution' : 'update_distribution', dist._id, {
+      fields: Object.keys(updates),
+      status: dist.status
+    });
     res.json(dist);
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-router.delete('/:id', auth, allowRoles(...STAFF), async (req, res) => {
+router.delete('/:id', auth, allowRoles(...WRITE_ROLES), async (req, res) => {
   try {
     if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid distribution id' });
-    const dist = await Distribution.findByIdAndUpdate(
-      req.params.id,
-      { status: 'cancelled' },
-      { new: true }
-    );
+    const dist = await Distribution.findByIdAndUpdate(req.params.id, { status: 'inactive' }, { new: true, runValidators: true });
     if (!dist) return res.status(404).json({ message: 'Distribution not found' });
-    await audit(req, 'cancel_distribution', dist._id, { status: 'cancelled' });
-    res.json({ message: 'Distribution cancelled', data: dist });
+    await audit(req, 'deactivate_distribution', dist._id, { status: 'inactive' });
+    res.json({ success: true, message: 'Distribution deactivated', data: dist });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.patch('/:id/reactivate', auth, allowRoles(...WRITE_ROLES), async (req, res) => {
+  try {
+    if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid distribution id' });
+    const existing = await Distribution.findById(req.params.id);
+    if (!existing) return res.status(404).json({ message: 'Distribution not found' });
+    if (!(await validateDistributionPayload({ supervisorId: existing.supervisorId, status: 'active' }, res, { existingId: req.params.id }))) return;
+
+    existing.status = 'active';
+    await existing.save();
+    await audit(req, 'reactivate_distribution', existing._id, { status: 'active' });
+    const populated = await populateDistribution(Distribution.findById(existing._id));
+    res.json({ success: true, message: 'Distribution reactivated', data: populated });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

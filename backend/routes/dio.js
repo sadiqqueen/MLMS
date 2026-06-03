@@ -9,6 +9,7 @@ const User           = require('../models/User');
 const Hospital       = require('../models/Hospital');
 const Specialty      = require('../models/Specialty');
 const Distribution   = require('../models/Distribution');
+const Rotation       = require('../models/Rotation');
 const Report         = require('../models/Report');
 const Evaluation     = require('../models/Evaluation');
 const Certificate    = require('../models/Certificate');
@@ -183,9 +184,9 @@ router.get('/stats', auth, allowRoles(...DIO), async (req, res) => {
       User.countDocuments({ role: 'supervisor', ...hospitalQuery, isActive: { $ne: false } }),
       User.countDocuments({ role: 'program_director', ...hospitalQuery, isActive: { $ne: false } }),
       User.countDocuments({ role: 'secretary',        ...hospitalQuery, isActive: { $ne: false } }),
-      Distribution.countDocuments({
+      Rotation.countDocuments({
         ...(hospitalId ? { $or: [{ hospitalId }, { hospital: hospitalId }] } : {}),
-        status: 'active'
+        status: 'current'
       }),
       Certificate.countDocuments({ hospital: hospitalId, revokedAt: null })
     ]);
@@ -202,8 +203,8 @@ router.get('/stats', auth, allowRoles(...DIO), async (req, res) => {
       { $sort: { count: -1 } }
     ]);
 
-    // Chart: distributions by specialty
-    const distributionsBySpecialty = await Distribution.aggregate([
+    // Chart: rotations by specialty, kept under old key for frontend compatibility
+    const distributionsBySpecialty = await Rotation.aggregate([
       { $match: hospitalId ? { $or: [{ hospitalId }, { hospital: hospitalId }] } : {} },
       { $lookup: { from: 'specialties', localField: 'specialtyId', foreignField: '_id', as: 'spec' } },
       { $unwind: { path: '$spec', preserveNullAndEmptyArrays: true } },
@@ -513,12 +514,21 @@ router.get('/trainees/:id/details', auth, allowRoles(...DIO, 'super_admin'), asy
     }
 
     const hospitalId = trainee.hospitalId?._id || trainee.hospital?._id || trainee.hospitalId || trainee.hospital;
-    const [currentRotation, programDirector, reports, evaluations, certificates] = await Promise.all([
-      Distribution.findOne({
+    const [currentRotation, rotations, programDirector, reports, evaluations, certificates] = await Promise.all([
+      Rotation.findOne({
         $or: [{ traineeId: trainee._id }, { student: trainee._id }],
-        status: 'active'
+        status: 'current'
       })
         .sort({ startDate: -1 })
+        .populate('hospitalId', 'name city governorate')
+        .populate('hospital', 'name city governorate')
+        .populate('specialtyId', 'name')
+        .populate('supervisorId', 'name email phone specialty')
+        .populate('doctor', 'name email phone specialty'),
+      Rotation.find({
+        $or: [{ traineeId: trainee._id }, { student: trainee._id }]
+      })
+        .sort({ startDate: 1 })
         .populate('hospitalId', 'name city governorate')
         .populate('hospital', 'name city governorate')
         .populate('specialtyId', 'name')
@@ -568,6 +578,7 @@ router.get('/trainees/:id/details', auth, allowRoles(...DIO, 'super_admin'), asy
         hospital: trainee.hospitalId || trainee.hospital || null,
         specialty: trainee.specialtyId || (trainee.specialty ? { name: trainee.specialty } : null),
         currentRotation,
+        rotations,
         supervisor: trainee.supervisorId || trainee.supervisor || currentRotation?.supervisorId || currentRotation?.doctor || null,
         programDirector,
         reports: plainReports,
