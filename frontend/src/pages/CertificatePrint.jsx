@@ -84,7 +84,7 @@ export default function CertificatePrint() {
       </div>
 
       {/* Certificate document */}
-      <div className="cert-page" id="cert-print-area">
+      <div className="cert-page certificate-print-area" id="cert-print-area">
 
         {/* Watermark for revoked */}
         {isRevoked && (

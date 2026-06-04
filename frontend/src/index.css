@@ -1641,7 +1641,8 @@ a      { text-decoration: none; }
   .cert-actions,
   .portal-navbar,
   .topnav,
-  .topnav-white { display: none !important; visibility: hidden !important; }
+  .topnav-white,
+  .no-print { display: none !important; visibility: hidden !important; }
 
   .cert-print-root {
     background: white !important;
@@ -1661,12 +1662,21 @@ a      { text-decoration: none; }
   }
 
   body, body * { visibility: hidden !important; }
-  .cert-page, .cert-page * { visibility: visible !important; }
+  .certificate-print-area,
+  .certificate-print-area * { visibility: visible !important; }
+  .certificate-print-area {
+    background: white !important;
+    box-shadow: none !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+  }
   .cert-page { position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; }
 
   @page {
     size: A4 portrait;
-    margin: 0;
+    margin: 12mm;
   }
 
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }

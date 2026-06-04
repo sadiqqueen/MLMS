@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import SearchableSelect from '../components/SearchableSelect';
 import ViewToggle from '../components/ViewToggle';
@@ -34,6 +35,14 @@ const IconDelete = () => (
   </svg>
 );
 
+const IconPrint = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="6 9 6 2 18 2 18 9" />
+    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+    <rect x="6" y="14" width="12" height="8" />
+  </svg>
+);
+
 const EMPTY_FORM = {
   studentSearch: '',
   student:       null,
@@ -48,6 +57,7 @@ const lbl = {
 };
 
 export default function Certificates() {
+  const navigate = useNavigate();
   const [students,     setStudents    ] = useState([]);
   const [certificates, setCertificates] = useState([]);
   const [loading,      setLoading     ] = useState(true);
@@ -190,9 +200,24 @@ export default function Certificates() {
                       <td>{fmtDate(c.issueDate)}</td>
                       <td style={{ maxWidth: 180, color: '#666', fontSize: 13 }}>{c.notes || '—'}</td>
                       <td>
-                        <button className="btn-action btn-action-del" onClick={() => deleteCert(c._id)} title="Delete">
+                        <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
+                          {!c.revokedAt && c._id && (
+                            <button
+                              type="button"
+                              className="btn-action edit"
+                              style={{ width:'auto', padding:'0 10px', gap:6 }}
+                              onClick={() => navigate(`/admin/certificates/${c._id}/print`)}
+                              title="Print Certificate"
+                              aria-label={`Print Certificate for ${c.student?.name || 'trainee'}`}
+                            >
+                              <IconPrint />
+                              Print Certificate
+                            </button>
+                          )}
+                        <button className="btn-action btn-action-del" onClick={() => deleteCert(c._id)} title="Delete" aria-label={`Delete certificate for ${c.student?.name || 'trainee'}`}>
                           <IconDelete />
                         </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -213,6 +238,19 @@ export default function Certificates() {
                     </div>
                     <div className="management-card-sub">{c.hospital?.name || '—'} - {fmtDate(c.issueDate)}</div>
                     <div className="management-card-actions">
+                      {!c.revokedAt && c._id && (
+                        <button
+                          type="button"
+                          className="btn-action edit"
+                          style={{ width:'auto', padding:'0 10px', gap:6 }}
+                          onClick={() => navigate(`/admin/certificates/${c._id}/print`)}
+                          title="Print Certificate"
+                          aria-label={`Print Certificate for ${c.student?.name || 'trainee'}`}
+                        >
+                          <IconPrint />
+                          Print Certificate
+                        </button>
+                      )}
                       <button className="btn-action btn-action-del" onClick={() => deleteCert(c._id)} title="Delete" aria-label={`Delete certificate for ${c.student?.name || 'trainee'}`}>
                         <IconDelete />
                       </button>

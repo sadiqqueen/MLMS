@@ -252,6 +252,11 @@ export default function App() {
               <Certificates />
             </ProtectedRoute>
           } />
+          <Route path="/admin/certificates/:id/print" element={
+            <ProtectedRoute allowedRoles={['super_admin']}>
+              <CertificatePrint />
+            </ProtectedRoute>
+          } />
           <Route path="/admin/specialties" element={
             <ProtectedRoute allowedRoles={['super_admin']}>
               <AdminSpecialties />

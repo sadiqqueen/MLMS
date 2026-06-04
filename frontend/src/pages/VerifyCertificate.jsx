@@ -4,7 +4,16 @@ import api from '../api/axios';
 
 function fmt(d) {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
+}
+
+function textValue(value, fallback = '—') {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'object') return value.name || value.fullName || value.title || fallback;
+  return fallback;
 }
 
 export default function VerifyCertificate() {
@@ -12,6 +21,7 @@ export default function VerifyCertificate() {
   const [result,     setResult    ] = useState(null);
   const [loading,    setLoading   ] = useState(false);
   const [manualCode, setManualCode] = useState(code || '');
+  const verifiedCode = result?.verifyCode || manualCode || code || '—';
 
   async function verify(verifyCode) {
     if (!verifyCode.trim()) return;
@@ -90,7 +100,14 @@ export default function VerifyCertificate() {
         )}
 
         {!loading && result?.valid && (
-          <div style={{ border:'2px solid #059669', borderRadius:12, padding:24, background:'#F0FDF4' }}>
+          <div className="certificate-print-area" style={{ border:'2px solid #059669', borderRadius:12, padding:24, background:'#F0FDF4', position:'relative' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, marginBottom:18, borderBottom:'1px solid #BBF7D0', paddingBottom:14 }}>
+              <img src="/logo.png" alt="MTMS" style={{ height:44, width:'auto' }} onError={e => { e.currentTarget.style.display = 'none'; }} />
+              <div style={{ textAlign:'right' }}>
+                <div style={{ fontSize:15, fontWeight:800, color:'#0C2D5E' }}>Certificate of Training</div>
+                <div style={{ fontSize:11, color:'#047857' }}>Medical Training Management System</div>
+              </div>
+            </div>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
               <div style={{
                 width:44, height:44, borderRadius:'50%', background:'#059669',
@@ -105,12 +122,12 @@ export default function VerifyCertificate() {
 
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px 20px' }}>
               {[
-                ['Trainee Name', result.holder    || result.trainee   || '—'],
-                ['Student ID',   result.studentId || '—'],
-                ['Specialty',    result.specialty || '—'],
-                ['Hospital',     result.hospital  || '—'],
+                ['Trainee Name', textValue(result.holder || result.trainee)],
+                ['Student ID',   textValue(result.studentId)],
+                ['Specialty',    textValue(result.specialty)],
+                ['Hospital',     textValue(result.hospital)],
                 ['Issue Date',   fmt(result.issueDate || result.issuedAt)],
-                ['Issued By',    result.issuedBy  || '—'],
+                ['Issued By',    textValue(result.issuedBy)],
               ].map(([label, value]) => (
                 <div key={label}>
                   <div style={{ fontSize:10, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:3 }}>{label}</div>
@@ -124,8 +141,28 @@ export default function VerifyCertificate() {
               borderRadius:8, fontSize:12, color:'#065F46', fontFamily:'monospace',
               wordBreak:'break-all'
             }}>
-              Verify Code: {manualCode || code}
+              Verify Code: {verifiedCode}
             </div>
+
+            <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:18, marginTop:22 }}>
+              <div style={{ width:62, height:62, borderRadius:'50%', border:'3px solid #0C2D5E', opacity:.28, display:'flex', alignItems:'center', justifyContent:'center', color:'#0C2D5E', fontSize:8, fontWeight:800, textAlign:'center', lineHeight:1.2 }}>
+                OFFICIAL<br />SEAL
+              </div>
+              <div style={{ flex:1, textAlign:'center' }}>
+                <div style={{ borderBottom:'2px solid #0C2D5E', width:140, margin:'0 auto 6px' }}></div>
+                <div style={{ fontSize:11, fontWeight:700, color:'#374151' }}>{textValue(result.issuedBy, 'Authorized Officer')}</div>
+                <div style={{ fontSize:10, color:'#6B7280' }}>Authorized Signature</div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="no-print"
+              onClick={() => window.print()}
+              style={{ marginTop:18, width:'100%', height:42, borderRadius:8, background:'#1B1464', color:'#fff', border:'none', fontWeight:700, fontSize:13, cursor:'pointer' }}
+            >
+              Print Certificate
+            </button>
           </div>
         )}
 

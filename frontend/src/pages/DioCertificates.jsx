@@ -327,16 +327,19 @@ export default function DioCertificates() {
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: 6 }}>
-                            <button
-                              type="button"
-                              className="btn-action edit"
-                              title="Print"
-                              aria-label={`Print certificate for ${trainee?.name || 'trainee'}`}
-                              onClick={() => navigate(`/dio/certificates/${c?._id}/print`)}
-                              disabled={!c?._id}
-                            >
-                              Print
-                            </button>
+                            {!isRevoked && (
+                              <button
+                                type="button"
+                                className="btn-action edit"
+                                style={{ width: 'auto', padding: '0 10px' }}
+                                title="Print Certificate"
+                                aria-label={`Print Certificate for ${trainee?.name || 'trainee'}`}
+                                onClick={() => navigate(`/dio/certificates/${c?._id}/print`)}
+                                disabled={!c?._id}
+                              >
+                                Print Certificate
+                              </button>
+                            )}
                             {!isRevoked && (
                               <button
                                 type="button"
@@ -389,7 +392,9 @@ export default function DioCertificates() {
                       </div>
                       <div className="management-card-sub">{textValue(c?.specialty)} - {fmt(c?.issueDate || c?.issuedAt)}</div>
                       <div className="management-card-actions">
-                        <button type="button" className="btn-action edit" title="Print" aria-label={`Print certificate for ${trainee?.name || 'trainee'}`} onClick={() => navigate(`/dio/certificates/${c?._id}/print`)} disabled={!c?._id}>Print</button>
+                        {!isRevoked && (
+                          <button type="button" className="btn-action edit" style={{ width: 'auto', padding: '0 10px' }} title="Print Certificate" aria-label={`Print Certificate for ${trainee?.name || 'trainee'}`} onClick={() => navigate(`/dio/certificates/${c?._id}/print`)} disabled={!c?._id}>Print Certificate</button>
+                        )}
                         {!isRevoked && (
                           <button type="button" style={{ padding: '5px 10px', borderRadius: 6, background: '#FEF3C7', color: '#92400E', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer' }} title="Revoke" aria-label={`Revoke certificate for ${trainee?.name || 'trainee'}`} onClick={() => handleRevoke(c)} disabled={revoking === c?._id}>
                             {revoking === c?._id ? '...' : 'Revoke'}

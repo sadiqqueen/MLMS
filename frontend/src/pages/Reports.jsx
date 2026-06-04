@@ -67,7 +67,7 @@ function ReportModal({ report, student, onClose }) {
         <div className="print-header">
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
             <div>
-              <div className="print-logo"><img src="/logo.png" alt="MedLearn LMS" className="print-logo-img" /></div>
+              <div className="print-logo"><img src="/logo.png" alt="MTMS" className="print-logo-img" /></div>
               <div className="print-subtitle">Clinical Training Assessment Report</div>
             </div>
             <div style={{ textAlign:'right', fontSize:11, color:'#666' }}>

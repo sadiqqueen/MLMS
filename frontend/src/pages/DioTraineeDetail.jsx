@@ -439,10 +439,12 @@ function CertificatesTable({ certificates }) {
                     {!revoked && certificate?._id && (
                       <button
                         className="btn-action edit"
-                        style={{ fontSize:11, background:'#FEF3C7', color:'#92400E' }}
+                        style={{ fontSize:11, background:'#FEF3C7', color:'#92400E', width:'auto', padding:'0 10px' }}
+                        title="Print Certificate"
+                        aria-label="Print Certificate"
                         onClick={() => navigate(`/dio/certificates/${certificate._id}/print`)}
                       >
-                        🖨 Print
+                        Print Certificate
                       </button>
                     )}
                   </td>
@@ -691,9 +693,11 @@ export default function DioTraineeDetail() {
           </button>
           {certificates.length > 0 && !certificates[0]?.revokedAt && (
             <button className="btn-action edit"
-              style={{ background:'#FEF3C7', color:'#92400E' }}
+              style={{ background:'#FEF3C7', color:'#92400E', width:'auto', padding:'0 12px' }}
+              title="Print Certificate"
+              aria-label="Print latest certificate"
               onClick={() => navigate(`/dio/certificates/${certificates[0]._id}/print`)}>
-              🖨 Print Latest Certificate
+              Print Latest Certificate
             </button>
           )}
         </div>
