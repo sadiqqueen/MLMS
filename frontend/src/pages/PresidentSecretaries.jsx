@@ -4,6 +4,32 @@ import Toast  from '../components/Toast';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
+const EMPTY = '—';
+
+function label(value) {
+  if (value === null || value === undefined || value === '') return '';
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'object') return value.name || value.title || '';
+  return '';
+}
+
+function firstLabel(...values) {
+  return values.map(label).find(Boolean) || EMPTY;
+}
+
+function renderValue(value) {
+  if (Array.isArray(value)) return value.map(label).filter(Boolean).join(', ') || EMPTY;
+  return firstLabel(value);
+}
+
+function getSpecialty(user) {
+  return firstLabel(user?.specialtyId, user?.specialty, user?.specialtyName);
+}
+
+function getHospital(user) {
+  return firstLabel(user?.hospitalId, user?.hospital, user?.hospitalName);
+}
+
 function DetailModal({ item, fields, onClose }) {
   useEffect(() => {
     const h = e => { if (e.key === 'Escape') onClose(); };
@@ -30,7 +56,7 @@ function DetailModal({ item, fields, onClose }) {
             {fields.map(([label, value]) => (
               <div key={label}>
                 <div style={{ fontSize:10, color:'#8B8FA8', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em', marginBottom:3 }}>{label}</div>
-                <div style={{ fontSize:14, color:'#1B1464', fontWeight:500 }}>{value || '—'}</div>
+                <div style={{ fontSize:14, color:'#1B1464', fontWeight:500 }}>{renderValue(value)}</div>
               </div>
             ))}
           </div>
@@ -68,7 +94,7 @@ export default function PresidentSecretaries() {
     return !q
       || s.name?.toLowerCase().includes(q)
       || s.email?.toLowerCase().includes(q)
-      || (s.specialtyId?.name || '').toLowerCase().includes(q);
+      || getSpecialty(s).toLowerCase().includes(q);
   });
 
   if (loading) return (
@@ -121,7 +147,7 @@ export default function PresidentSecretaries() {
                   </td></tr>
                 )}
                 {filtered.map((s, i) => {
-                  const specName = s.specialtyId?.name || '—';
+                  const specName = getSpecialty(s);
                   const isActive = s.isActive !== false;
                   return (
                     <tr key={s._id} style={{ cursor:'pointer' }} onClick={() => setSelected(s)}>
@@ -154,10 +180,10 @@ export default function PresidentSecretaries() {
           <DetailModal
             item={selected}
             fields={[
-              ['Specialty', selected.specialtyId?.name],
+              ['Specialty', getSpecialty(selected)],
               ['Phone',     selected.phone],
               ['City',      selected.city],
-              ['Hospital',  selected.hospitalId?.name || selected.hospital?.name],
+              ['Hospital',  getHospital(selected)],
               ['Status',    selected.isActive === false ? 'Inactive' : 'Active'],
             ]}
             onClose={() => setSelected(null)}

@@ -10,6 +10,32 @@ import Toast  from '../components/Toast';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
+const EMPTY = '—';
+
+function label(value) {
+  if (value === null || value === undefined || value === '') return '';
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'object') return value.name || value.title || '';
+  return '';
+}
+
+function firstLabel(...values) {
+  return values.map(label).find(Boolean) || EMPTY;
+}
+
+function renderValue(value) {
+  if (Array.isArray(value)) return value.map(label).filter(Boolean).join(', ') || EMPTY;
+  return firstLabel(value);
+}
+
+function getSpecialty(user) {
+  return firstLabel(user?.specialtyId, user?.specialty, user?.specialtyName);
+}
+
+function getProgramDirector(hospital) {
+  return firstLabel(hospital?.programDirector, hospital?.programDirectorName);
+}
+
 function HospitalModal({ hospital, onClose }) {
   useEffect(() => {
     const h = e => { if (e.key === 'Escape') onClose(); };
@@ -56,11 +82,11 @@ function HospitalModal({ hospital, onClose }) {
               ['Address',         hospital.address],
               ['Phone',           hospital.phone],
               ['Email',           hospital.email],
-              ['Program Director',hospital.programDirector?.name],
-            ].map(([label, value]) => value ? (
+              ['Program Director',getProgramDirector(hospital)],
+            ].map(([label, value]) => renderValue(value) !== EMPTY ? (
               <div key={label}>
                 <div style={{ fontSize:10, color:'#8B8FA8', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em', marginBottom:3 }}>{label}</div>
-                <div style={{ fontSize:13, color:'#1B1464', fontWeight:500 }}>{value}</div>
+                <div style={{ fontSize:13, color:'#1B1464', fontWeight:500 }}>{renderValue(value)}</div>
               </div>
             ) : null)}
           </div>
@@ -74,8 +100,8 @@ function HospitalModal({ hospital, onClose }) {
               <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                 {hospital.supervisors.map(s => (
                   <div key={s._id} style={{ display:'flex', justifyContent:'space-between', fontSize:13, color:'#374151', background:'#F9FAFB', borderRadius:8, padding:'8px 12px' }}>
-                    <span style={{ fontWeight:600 }}>{s.name}</span>
-                    <span style={{ color:'#8B8FA8' }}>{s.specialty || s.specialtyId?.name || '—'}</span>
+                    <span style={{ fontWeight:600 }}>{firstLabel(s.name)}</span>
+                    <span style={{ color:'#8B8FA8' }}>{getSpecialty(s)}</span>
                   </div>
                 ))}
               </div>
@@ -210,7 +236,7 @@ export default function PresidentHospitals() {
                           {h.supervisorsCount ?? 0}
                         </span>
                       </td>
-                      <td style={{ fontSize:13, color:'#4B5563' }}>{h.programDirector?.name || '—'}</td>
+                      <td style={{ fontSize:13, color:'#4B5563' }}>{getProgramDirector(h)}</td>
                       <td>
                         <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20,
                           background: active ? '#D1FAE5' : '#FEE2E2',

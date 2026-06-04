@@ -11,6 +11,28 @@ import Sk     from '../components/Skeleton';
 
 const API_BASE = '';
 
+const EMPTY = '—';
+
+function label(value) {
+  if (value === null || value === undefined || value === '') return '';
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'object') return value.name || value.title || '';
+  return '';
+}
+
+function firstLabel(...values) {
+  return values.map(label).find(Boolean) || EMPTY;
+}
+
+function renderValue(value) {
+  if (Array.isArray(value)) return value.map(label).filter(Boolean).join(', ') || EMPTY;
+  return firstLabel(value);
+}
+
+function getHospital(user) {
+  return firstLabel(user?.hospitalId, user?.hospital, user?.hospitalName);
+}
+
 function DetailModal({ item, onClose }) {
   useEffect(() => {
     const h = e => { if (e.key === 'Escape') onClose(); };
@@ -21,7 +43,7 @@ function DetailModal({ item, onClose }) {
   const fields = [
     ['Phone',    item.phone],
     ['City',     item.city],
-    ['Hospital', item.hospital?.name],
+    ['Hospital', getHospital(item)],
     ['Status',   item.isActive === false ? 'Inactive' : 'Active'],
     ['Joined',   item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : null],
   ];
@@ -45,7 +67,7 @@ function DetailModal({ item, onClose }) {
             {fields.map(([label, value]) => (
               <div key={label}>
                 <div style={{ fontSize:10, color:'#8B8FA8', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em', marginBottom:3 }}>{label}</div>
-                <div style={{ fontSize:14, color:'#1B1464', fontWeight:500 }}>{value || '—'}</div>
+                <div style={{ fontSize:14, color:'#1B1464', fontWeight:500 }}>{renderValue(value)}</div>
               </div>
             ))}
           </div>
@@ -83,7 +105,7 @@ export default function PresidentDios() {
     return !q
       || d.name?.toLowerCase().includes(q)
       || d.email?.toLowerCase().includes(q)
-      || (d.hospital?.name || '').toLowerCase().includes(q);
+      || getHospital(d).toLowerCase().includes(q);
   });
 
   if (loading) return (
@@ -154,7 +176,7 @@ export default function PresidentDios() {
                         </div>
                       </div>
                     </td>
-                    <td style={{ fontSize:13, color:'#4B5563' }}>{d.hospital?.name || '—'}</td>
+                    <td style={{ fontSize:13, color:'#4B5563' }}>{getHospital(d)}</td>
                     <td style={{ fontSize:13, color:'#4B5563' }}>{d.phone || '—'}</td>
                   </tr>
                 ))}

@@ -6,6 +6,32 @@ import Sk     from '../components/Skeleton';
 
 const API_BASE = '';
 
+const EMPTY = '—';
+
+function label(value) {
+  if (value === null || value === undefined || value === '') return '';
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'object') return value.name || value.title || '';
+  return '';
+}
+
+function firstLabel(...values) {
+  return values.map(label).find(Boolean) || EMPTY;
+}
+
+function renderValue(value) {
+  if (Array.isArray(value)) return value.map(label).filter(Boolean).join(', ') || EMPTY;
+  return firstLabel(value);
+}
+
+function getSpecialty(s) {
+  return firstLabel(s?.specialtyId, s?.specialty, s?.specialtyName);
+}
+
+function getHospital(s) {
+  return firstLabel(s?.hospitalId, s?.hospital, s?.hospitalName);
+}
+
 function DetailModal({ item, fields, onClose }) {
   useEffect(() => {
     const h = e => { if (e.key === 'Escape') onClose(); };
@@ -32,7 +58,7 @@ function DetailModal({ item, fields, onClose }) {
             {fields.map(([label, value]) => (
               <div key={label}>
                 <div style={{ fontSize:10, color:'#8B8FA8', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em', marginBottom:3 }}>{label}</div>
-                <div style={{ fontSize:14, color:'#1B1464', fontWeight:500 }}>{value || '—'}</div>
+                <div style={{ fontSize:14, color:'#1B1464', fontWeight:500 }}>{renderValue(value)}</div>
               </div>
             ))}
           </div>
@@ -70,7 +96,7 @@ export default function PresidentSupervisors() {
     return !q
       || s.name?.toLowerCase().includes(q)
       || s.email?.toLowerCase().includes(q)
-      || (s.specialtyId?.name || s.specialty || '').toLowerCase().includes(q)
+      || getSpecialty(s).toLowerCase().includes(q)
       || (s.department || '').toLowerCase().includes(q);
   });
 
@@ -136,7 +162,7 @@ export default function PresidentSupervisors() {
                         <div><strong>{s.name}</strong><div style={{ fontSize:11, color:'#8B8FA8' }}>{s.email}</div></div>
                       </div>
                     </td>
-                    <td><span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'#EEEDFE', color:'#3C3489' }}>{s.specialtyId?.name || s.specialty || '—'}</span></td>
+                    <td><span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'#EEEDFE', color:'#3C3489' }}>{getSpecialty(s)}</span></td>
                     <td style={{ fontSize:13, color:'#4B5563' }}>{s.department || '—'}</td>
                     <td style={{ fontSize:13, color:'#4B5563' }}>{s.phone || '—'}</td>
                   </tr>
@@ -150,11 +176,11 @@ export default function PresidentSupervisors() {
           <DetailModal
             item={selected}
             fields={[
-              ['Specialty',  selected.specialtyId?.name || selected.specialty],
+              ['Specialty',  getSpecialty(selected)],
               ['Department', selected.department],
               ['Phone',      selected.phone],
               ['City',       selected.city],
-              ['Hospital',   selected.hospitalId?.name || selected.hospital?.name],
+              ['Hospital',   getHospital(selected)],
               ['Status',     selected.isActive === false ? 'Inactive' : 'Active'],
             ]}
             onClose={() => setSelected(null)}

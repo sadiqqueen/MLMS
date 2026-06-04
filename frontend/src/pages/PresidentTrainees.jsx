@@ -6,8 +6,26 @@ import Sk     from '../components/Skeleton';
 
 const API_BASE = '';
 
-function getSpecialty(t) { return t.specialtyId?.name || t.specialty || '—'; }
-function getHospital(t)  { return t.hospitalId?.name  || t.hospital?.name || '—'; }
+const EMPTY = '—';
+
+function label(value) {
+  if (value === null || value === undefined || value === '') return '';
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'object') return value.name || value.title || '';
+  return '';
+}
+
+function firstLabel(...values) {
+  return values.map(label).find(Boolean) || EMPTY;
+}
+
+function renderValue(value) {
+  if (Array.isArray(value)) return value.map(label).filter(Boolean).join(', ') || EMPTY;
+  return firstLabel(value);
+}
+
+function getSpecialty(t) { return firstLabel(t?.specialtyId, t?.specialty, t?.specialtyName); }
+function getHospital(t)  { return firstLabel(t?.hospitalId, t?.hospital, t?.hospitalName); }
 
 function DetailModal({ item, fields, onClose }) {
   useEffect(() => {
@@ -35,7 +53,7 @@ function DetailModal({ item, fields, onClose }) {
             {fields.map(([label, value]) => (
               <div key={label}>
                 <div style={{ fontSize:10, color:'#8B8FA8', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em', marginBottom:3 }}>{label}</div>
-                <div style={{ fontSize:14, color:'#1B1464', fontWeight:500 }}>{value || '—'}</div>
+                <div style={{ fontSize:14, color:'#1B1464', fontWeight:500 }}>{renderValue(value)}</div>
               </div>
             ))}
           </div>
