@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
+import SearchableSelect from '../components/SearchableSelect';
+import ViewToggle from '../components/ViewToggle';
 import api from '../api/axios';
 import Sk from '../components/Skeleton';
 
@@ -14,6 +16,13 @@ function today() {
 
 function asArray(v) {
   return Array.isArray(v?.data) ? v.data : Array.isArray(v) ? v : [];
+}
+
+function textValue(value, fallback = '—') {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'object') return value.name || value.title || fallback;
+  return fallback;
 }
 
 const IconDelete = () => (
@@ -42,6 +51,7 @@ export default function Certificates() {
   const [students,     setStudents    ] = useState([]);
   const [certificates, setCertificates] = useState([]);
   const [loading,      setLoading     ] = useState(true);
+  const [view,         setView        ] = useState('list');
   const [showForm,     setShowForm    ] = useState(false);
   const [submitting,   setSubmitting  ] = useState(false);
   const [form,         setForm        ] = useState(EMPTY_FORM);
@@ -67,7 +77,7 @@ export default function Certificates() {
       ...f,
       studentSearch: student.name,
       student,
-      specialty: student.specialtyId?.name || student.specialty || '',
+      specialty: textValue(student.specialtyId || student.specialty, ''),
       hospital: student.hospitalId || student.hospital || null,
     }));
     setDropOpen(false);
@@ -114,7 +124,11 @@ export default function Certificates() {
       <Navbar />
       <main className="admin-main">
 
-        <div>
+        <div className="admin-toolbar" style={{ marginBottom: 16 }}>
+          <ViewToggle value={view} onChange={setView} />
+          <span style={{ fontSize:13, color:'#8B8FA8', flexShrink:0 }}>
+            {certificates.length} certificate{certificates.length !== 1 ? 's' : ''}
+          </span>
           <button className="btn-purple" onClick={() => { setShowForm(true); setForm(EMPTY_FORM); }}>
             + New Certificate
           </button>
@@ -154,6 +168,7 @@ export default function Certificates() {
           </div>
         ) : (
           <div className="admin-card">
+            {view === 'list' && (
             <div className="admin-table-wrap">
               <table className="admin-table">
                 <thead>
@@ -170,7 +185,7 @@ export default function Certificates() {
                         <div style={{ fontWeight: 600 }}>{c.student?.name || '—'}</div>
                         <div style={{ fontSize: 11, color: '#aaa' }}>{c.student?.studentId || ''}</div>
                       </td>
-                      <td>{c.specialty || '—'}</td>
+                      <td>{textValue(c.specialty)}</td>
                       <td>{c.hospital?.name || '—'}</td>
                       <td>{fmtDate(c.issueDate)}</td>
                       <td style={{ maxWidth: 180, color: '#666', fontSize: 13 }}>{c.notes || '—'}</td>
@@ -184,6 +199,28 @@ export default function Certificates() {
                 </tbody>
               </table>
             </div>
+            )}
+            {view === 'card' && (
+              <div className="management-card-grid">
+                {certificates.map(c => (
+                  <div className="management-card" key={c._id}>
+                    <div>
+                      <div className="management-card-title">{c.student?.name || '—'}</div>
+                      <div className="management-card-sub">{c.student?.studentId || 'No student ID'}</div>
+                    </div>
+                    <div className="management-card-meta">
+                      <span className="specialty-tag">{textValue(c.specialty)}</span>
+                    </div>
+                    <div className="management-card-sub">{c.hospital?.name || '—'} - {fmtDate(c.issueDate)}</div>
+                    <div className="management-card-actions">
+                      <button className="btn-action btn-action-del" onClick={() => deleteCert(c._id)} title="Delete" aria-label={`Delete certificate for ${c.student?.name || 'trainee'}`}>
+                        <IconDelete />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -286,21 +323,18 @@ export default function Certificates() {
                           <div style={{ color: '#999', fontSize: 11, marginBottom: 2 }}>Doctor</div>
                           <div style={{ fontWeight: 600 }}>{form.student.doctor.name}</div>
                           {form.student.doctor.specialty && (
-                            <div style={{ fontSize: 11, color: '#aaa' }}>{form.student.doctor.specialty}</div>
+                            <div style={{ fontSize: 11, color: '#aaa' }}>{textValue(form.student.doctor.specialty)}</div>
                           )}
                         </div>
                       )}
                       <div style={{ gridColumn: '1 / -1', marginTop: 4 }}>
                         <div style={{ color: '#999', fontSize: 11, marginBottom: 4 }}>Specialty</div>
-                        <select
-                          className="admin-search"
-                          style={{ width: '100%', boxSizing: 'border-box' }}
+                        <SearchableSelect
                           value={form.specialty}
-                          onChange={e => setForm(f => ({ ...f, specialty: e.target.value }))}
-                        >
-                          <option value="">— Select specialty —</option>
-                          {specialtyOptions.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                          onChange={value => setForm(f => ({ ...f, specialty: value }))}
+                          options={specialtyOptions.map(s => ({ value: s, label: s }))}
+                          placeholder="Search specialty..."
+                        />
                       </div>
                     </div>
                   </div>

@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
+import SearchableSelect from '../components/SearchableSelect';
+import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
@@ -139,6 +141,9 @@ function UserModal({ editUser, hospitals, supervisors, specialties, onSave, onCl
     !form.specialtyId ||
     (s.specialtyId?._id || s.specialtyId)?.toString() === form.specialtyId
   );
+  const specialtyOptions = specialties.map(s => ({ value: s._id, label: s.name }));
+  const hospitalOptions = hospitals.map(h => ({ value: h._id, label: h.name }));
+  const supervisorOptions = filteredSupervisors.map(s => ({ value: s._id, label: s.name }));
 
   return (
     <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -216,10 +221,7 @@ function UserModal({ editUser, hospitals, supervisors, specialties, onSave, onCl
             {showField(role, 'specialtyId') && (
               <div className="admin-field">
                 <label>Specialty</label>
-                <select value={form.specialtyId} onChange={e => set('specialtyId', e.target.value)}>
-                  <option value="">— Select specialty —</option>
-                  {specialties.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
-                </select>
+                <SearchableSelect value={form.specialtyId} onChange={v => set('specialtyId', v)} options={specialtyOptions} placeholder="Search specialty..." />
               </div>
             )}
 
@@ -227,10 +229,7 @@ function UserModal({ editUser, hospitals, supervisors, specialties, onSave, onCl
             {showField(role, 'hospitalId') && (
               <div className="admin-field">
                 <label>Hospital</label>
-                <select value={form.hospitalId} onChange={e => set('hospitalId', e.target.value)}>
-                  <option value="">— Select hospital —</option>
-                  {hospitals.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
-                </select>
+                <SearchableSelect value={form.hospitalId} onChange={v => set('hospitalId', v)} options={hospitalOptions} placeholder="Search hospital..." />
               </div>
             )}
 
@@ -238,12 +237,7 @@ function UserModal({ editUser, hospitals, supervisors, specialties, onSave, onCl
             {showField(role, 'supervisorId') && (
               <div className="admin-field">
                 <label>Supervisor</label>
-                <select value={form.supervisorId} onChange={e => set('supervisorId', e.target.value)}>
-                  <option value="">— Select supervisor —</option>
-                  {filteredSupervisors.map(s => (
-                    <option key={s._id} value={s._id}>{s.name}</option>
-                  ))}
-                </select>
+                <SearchableSelect value={form.supervisorId} onChange={v => set('supervisorId', v)} options={supervisorOptions} placeholder="Search supervisor..." />
                 {form.specialtyId && filteredSupervisors.length === 0 && (
                   <span style={{ fontSize: 11, color: '#8B8FA8' }}>No supervisors for this specialty</span>
                 )}
@@ -362,11 +356,11 @@ function ConfirmDelete({ name, onConfirm, onCancel }) {
   return (
     <div className="confirm-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
       <div className="confirm-box">
-        <h3>Delete User</h3>
-        <p>Are you sure you want to delete <strong>{name}</strong>? This cannot be undone.</p>
+        <h3>Deactivate User</h3>
+        <p>Deactivate <strong>{name}</strong>? The account will no longer be active.</p>
         <div className="confirm-btns">
           <button className="btn-outline" onClick={onCancel}>Cancel</button>
-          <button className="btn-red"     onClick={onConfirm}>Delete</button>
+          <button className="btn-red"     onClick={onConfirm}>Deactivate</button>
         </div>
       </div>
     </div>
@@ -459,8 +453,8 @@ export default function Users() {
     try {
       await api.delete(`/api/users/${deleteUser._id}`);
       setUsers(prev => prev.filter(u => u._id !== deleteUser._id));
-      showToast('User deleted');
-    } catch { showToast('Delete failed', 'error'); }
+      showToast('User deactivated');
+    } catch { showToast('Deactivate failed', 'error'); }
     finally  { setDeleteUser(null); }
   }
 
@@ -514,13 +508,6 @@ export default function Users() {
     <>
       <Navbar />
       <main className="admin-main">
-
-        <div className="admin-page-header">
-          <button className="btn-purple" onClick={() => { setEditUser(null); setShowModal(true); }}>
-            + Add New User
-          </button>
-        </div>
-
         <div className="admin-card">
 
           {/* Role filter tabs */}
@@ -554,10 +541,8 @@ export default function Users() {
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
             />
-            <div className="view-toggle">
-              <button className={`view-btn${view === 'table' ? ' active' : ''}`} onClick={() => setView('table')}>☰</button>
-              <button className={`view-btn${view === 'card'  ? ' active' : ''}`} onClick={() => setView('card')}>⊞</button>
-            </div>
+            <button className="btn-purple" onClick={() => { setEditUser(null); setShowModal(true); }}>+ Add New User</button>
+            <ViewToggle value={view} onChange={setView} listValue="table" />
             <select className="rows-select" value={rows} onChange={e => { setRows(+e.target.value); setPage(1); }}>
               {ROWS_OPT.map(r => <option key={r} value={r}>{r} / page</option>)}
             </select>
@@ -591,13 +576,13 @@ export default function Users() {
                       <td>{u.phone || '—'}</td>
                       <td>
                         <div className="action-btns">
-                          <button className="btn-action edit"     title="Edit"            onClick={() => { setEditUser(u); setShowModal(true); }}><IconEdit /></button>
-                          <button className="btn-action password" title="Change password" onClick={() => { setPassUserId(u._id); setShowPass(true); }}><IconPassword /></button>
-                          <button className="btn-action lock"     title={u.locked ? 'Unlock' : 'Lock'} onClick={() => handleLock(u)}>
+                          <button className="btn-action edit"     title="Edit"            aria-label={`Edit ${u.name}`} onClick={() => { setEditUser(u); setShowModal(true); }}><IconEdit /></button>
+                          <button className="btn-action password" title="Change password" aria-label={`Change password for ${u.name}`} onClick={() => { setPassUserId(u._id); setShowPass(true); }}><IconPassword /></button>
+                          <button className="btn-action lock"     title={u.locked ? 'Unlock' : 'Lock'} aria-label={`${u.locked ? 'Unlock' : 'Lock'} ${u.name}`} onClick={() => handleLock(u)}>
                             {u.locked ? <IconUnlock /> : <IconLock />}
                           </button>
                           {u._id !== me?._id && (
-                            <button className="btn-action delete" title="Delete" onClick={() => setDeleteUser(u)}><IconDelete /></button>
+                            <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${u.name}`} onClick={() => setDeleteUser(u)}><IconDelete /></button>
                           )}
                         </div>
                       </td>
@@ -624,9 +609,13 @@ export default function Users() {
                     <span className={ROLE_BADGE[u.role] || 'badge-role'}>{u.role?.replace(/_/g, ' ')}</span>
                     <div className="user-card-sub">{u.city || '—'}</div>
                     <div className="user-card-actions">
-                      <button className="btn-action edit" onClick={() => { setEditUser(u); setShowModal(true); }}><IconEdit /></button>
+                      <button className="btn-action edit" title="Edit" aria-label={`Edit ${u.name}`} onClick={() => { setEditUser(u); setShowModal(true); }}><IconEdit /></button>
+                      <button className="btn-action password" title="Change password" aria-label={`Change password for ${u.name}`} onClick={() => { setPassUserId(u._id); setShowPass(true); }}><IconPassword /></button>
+                      <button className="btn-action lock" title={u.locked ? 'Unlock' : 'Lock'} aria-label={`${u.locked ? 'Unlock' : 'Lock'} ${u.name}`} onClick={() => handleLock(u)}>
+                        {u.locked ? <IconUnlock /> : <IconLock />}
+                      </button>
                       {u._id !== me?._id && (
-                        <button className="btn-action delete" onClick={() => setDeleteUser(u)}><IconDelete /></button>
+                        <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${u.name}`} onClick={() => setDeleteUser(u)}><IconDelete /></button>
                       )}
                     </div>
                   </div>

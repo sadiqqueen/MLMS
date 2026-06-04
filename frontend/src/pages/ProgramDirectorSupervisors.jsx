@@ -6,6 +6,13 @@ import Sk      from '../components/Skeleton';
 
 const API_BASE = '';
 
+function textValue(value, fallback = '—') {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'object') return value.name || value.title || fallback;
+  return fallback;
+}
+
 function SupervisorModal({ supervisor, onClose }) {
   useEffect(() => {
     const h = e => { if (e.key === 'Escape') onClose(); };
@@ -55,7 +62,7 @@ function SupervisorModal({ supervisor, onClose }) {
         <div style={{ padding: '20px 24px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 20px', marginBottom: 20 }}>
             {[
-              ['Specialty',        supervisor.specialtyId?.name || supervisor.specialty || '—'],
+              ['Specialty',        textValue(supervisor.specialtyId || supervisor.specialty)],
               ['Department',       supervisor.department || '—'],
               ['Phone',            supervisor.phone     || '—'],
               ['City',             supervisor.city      || '—'],
@@ -118,7 +125,7 @@ export default function ProgramDirectorSupervisors() {
     return !q
       || s.name?.toLowerCase().includes(q)
       || s.email?.toLowerCase().includes(q)
-      || (s.specialtyId?.name || s.specialty || '').toLowerCase().includes(q)
+      || textValue(s.specialtyId || s.specialty, '').toLowerCase().includes(q)
       || (s.department || '').toLowerCase().includes(q);
   });
 
@@ -247,7 +254,7 @@ export default function ProgramDirectorSupervisors() {
                         fontSize:11, fontWeight:600, padding:'3px 9px',
                         borderRadius:20, background:'#EEEDFE', color:'#3C3489'
                       }}>
-                        {s.specialtyId?.name || s.specialty || '—'}
+                        {textValue(s.specialtyId || s.specialty)}
                       </span>
                     </td>
                     <td style={{ fontSize:13, color:'#4B5563' }}>{s.department || '—'}</td>

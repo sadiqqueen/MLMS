@@ -12,6 +12,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
+import SearchableSelect from '../components/SearchableSelect';
+import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
@@ -32,7 +34,13 @@ function fmtDate(d) {
 function traineeOf(r) { return r?.traineeId || r?.student || {}; }
 function supervisorOf(r) { return r?.supervisorId || r?.doctor || {}; }
 function hospitalOf(r) { return r?.hospitalId || r?.hospital || {}; }
-function specialtyOf(r) { return r?.specialtyId?.name || r?.specialty || '—'; }
+function textValue(value, fallback = '-') {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'object') return value.name || value.title || fallback;
+  return fallback;
+}
+function specialtyOf(r) { return textValue(r?.specialtyId || r?.specialty); }
 
 // ── Inline SVG icons ──────────────────────────────────────────────────────
 const IconPencil = () => (
@@ -112,6 +120,10 @@ function RotationModal({ item, trainees, supervisors, hospitals, specialties, on
       status:      form.status,
     });
   }
+  const traineeOptions = trainees.map(t => ({ value: t._id, label: `${t.name}${t.studentId ? ` (${t.studentId})` : ''}` }));
+  const hospitalOptions = hospitals.map(h => ({ value: h._id, label: `${h.name}${h.city ? ` (${h.city})` : ''}` }));
+  const supervisorOptions = supervisors.map(s => ({ value: s._id, label: `${s.name}${textValue(s.specialty || s.specialtyId, '') ? ` - ${textValue(s.specialty || s.specialtyId)}` : ''}` }));
+  const specialtyOptions = specialties.map(s => ({ value: s._id, label: s.name }));
 
   return (
     <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -121,47 +133,48 @@ function RotationModal({ item, trainees, supervisors, hospitals, specialties, on
           <button className="admin-modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="admin-modal-body">
-          <div style={{ background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:8, padding:'9px 13px', marginBottom:14, fontSize:12, color:'#065F46' }}>
-            Status is auto-set from dates if not changed: past → completed, today → current, future → upcoming.
-          </div>
           <div className="admin-form-grid">
 
             <div className="admin-field full">
               <label>Trainee *</label>
-              <select className={errors.traineeId ? 'invalid' : ''} value={form.traineeId}
-                onChange={e => set('traineeId', e.target.value)}>
-                <option value="">— select trainee —</option>
-                {trainees.map(t => (
-                  <option key={t._id} value={t._id}>{t.name}{t.studentId ? ` (${t.studentId})` : ''}</option>
-                ))}
-              </select>
+              <SearchableSelect
+                value={form.traineeId}
+                onChange={v => set('traineeId', v)}
+                options={traineeOptions}
+                placeholder="Search trainee..."
+                error={errors.traineeId}
+              />
             </div>
 
             <div className="admin-field">
               <label>Hospital *</label>
-              <select className={errors.hospitalId ? 'invalid' : ''} value={form.hospitalId}
-                onChange={e => set('hospitalId', e.target.value)}>
-                <option value="">— select hospital —</option>
-                {hospitals.map(h => <option key={h._id} value={h._id}>{h.name}{h.city ? ` (${h.city})` : ''}</option>)}
-              </select>
+              <SearchableSelect
+                value={form.hospitalId}
+                onChange={v => set('hospitalId', v)}
+                options={hospitalOptions}
+                placeholder="Search hospital..."
+                error={errors.hospitalId}
+              />
             </div>
 
             <div className="admin-field">
               <label>Supervisor (optional)</label>
-              <select value={form.supervisorId} onChange={e => set('supervisorId', e.target.value)}>
-                <option value="">— none —</option>
-                {supervisors.map(s => (
-                  <option key={s._id} value={s._id}>{s.name}{s.specialty ? ` — ${s.specialty}` : ''}</option>
-                ))}
-              </select>
+              <SearchableSelect
+                value={form.supervisorId}
+                onChange={v => set('supervisorId', v)}
+                options={supervisorOptions}
+                placeholder="Search supervisor or leave empty..."
+              />
             </div>
 
             <div className="admin-field">
               <label>Specialty (optional)</label>
-              <select value={form.specialtyId} onChange={e => set('specialtyId', e.target.value)}>
-                <option value="">— none —</option>
-                {specialties.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
-              </select>
+              <SearchableSelect
+                value={form.specialtyId}
+                onChange={v => set('specialtyId', v)}
+                options={specialtyOptions}
+                placeholder="Search specialty or leave empty..."
+              />
             </div>
 
             <div className="admin-field">
@@ -210,6 +223,7 @@ export default function DioRotations() {
   const [saving,      setSaving     ] = useState(false);
   const [search,      setSearch     ] = useState('');
   const [filterStatus,setFilterStatus] = useState('');
+  const [view,        setView       ] = useState('list');
   const [showModal,   setShowModal  ] = useState(false);
   const [editItem,    setEditItem   ] = useState(null);
   const [confirmDel,  setConfirmDel ] = useState(null);
@@ -309,15 +323,6 @@ export default function DioRotations() {
     <>
       <Navbar />
       <main className="admin-main">
-
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap', gap:10 }}>
-          <div>
-            <div style={{ fontSize:20, fontWeight:700, color:'#1B1464' }}>Trainee Rotations</div>
-            <div style={{ fontSize:12, color:'#8B8FA8' }}>{rotations.length} total · trainee hospital placements over time</div>
-          </div>
-          <button className="btn-purple" onClick={() => { setEditItem(null); setShowModal(true); }}>+ Add Rotation</button>
-        </div>
-
         {/* Status filter pills */}
         <div className="filter-tabs" style={{ marginBottom:14 }}>
           {[['', 'All'], ...ROTATION_STATUSES.map(s => [s, s.charAt(0).toUpperCase() + s.slice(1)])].map(([val, label]) => {
@@ -336,10 +341,11 @@ export default function DioRotations() {
             <input className="admin-search" style={{ flex:1, minWidth:200 }}
               placeholder="Search by trainee, supervisor, hospital, specialty…"
               value={search} onChange={e => setSearch(e.target.value)} />
+            <ViewToggle value={view} onChange={setView} />
             <span style={{ fontSize:13, color:'#8B8FA8' }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
+            <button className="btn-purple" onClick={() => { setEditItem(null); setShowModal(true); }}>+ Add Rotation</button>
           </div>
-
-          <div className="admin-table-wrap">
+          {view === 'list' && <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr><th>#</th><th>Trainee</th><th>Hospital</th><th>Supervisor</th><th>Specialty</th><th>Start</th><th>End</th><th>Status</th><th>Actions</th></tr>
@@ -372,7 +378,7 @@ export default function DioRotations() {
                       <td style={{ fontSize:13 }}>{hospital?.name || '—'}</td>
                       <td style={{ fontSize:13 }}>{supervisor?.name || '—'}</td>
                       <td>
-                        {specialty !== '—'
+                        {specialty !== '-'
                           ? <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'#EEEDFE', color:'#3C3489' }}>{specialty}</span>
                           : <span style={{ color:'#B8BBC8' }}>—</span>
                         }
@@ -407,7 +413,29 @@ export default function DioRotations() {
                 })}
               </tbody>
             </table>
-          </div>
+          </div>}
+          {view === 'card' && (
+            <div className="management-card-grid">
+              {filtered.length === 0 && <div className="admin-empty" style={{ gridColumn:'1/-1' }}>{rotations.length === 0 ? 'No rotations yet. Create the first one.' : 'No match.'}</div>}
+              {filtered.map(r => {
+                const trainee = traineeOf(r);
+                const supervisor = supervisorOf(r);
+                const hospital = hospitalOf(r);
+                const specialty = specialtyOf(r);
+                const st = STATUS_STYLE[r.status] || { bg:'#F3F4F6', color:'#374151' };
+                const canCancel = r.status !== 'completed' && r.status !== 'cancelled';
+                return (
+                  <div className="management-card" key={r._id}>
+                    <div className="management-card-title">{trainee?.name || '-'}</div>
+                    <div className="management-card-sub">{hospital?.name || '-'} - {fmtDate(r.startDate)} to {fmtDate(r.endDate)}</div>
+                    <div className="management-card-sub">Supervisor: {supervisor?.name || '-'}</div>
+                    <div className="management-card-meta">{specialty !== '-' && <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'#EEEDFE', color:'#3C3489' }}>{specialty}</span>}<span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:st.bg, color:st.color }}>{r.status ? r.status.charAt(0).toUpperCase() + r.status.slice(1) : '-'}</span></div>
+                    <div className="management-card-actions"><button className="btn-action edit" title="Edit rotation" aria-label={`Edit rotation for ${trainee?.name || 'trainee'}`} onClick={() => { setEditItem(r); setShowModal(true); }}><IconPencil /></button>{canCancel && <button className="btn-action delete" title="Cancel rotation" aria-label={`Cancel rotation for ${trainee?.name || 'trainee'}`} onClick={() => setConfirmDel(r)}><IconXCircle /></button>}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {showModal && (

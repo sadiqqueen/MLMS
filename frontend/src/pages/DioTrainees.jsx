@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
+import SearchableSelect from '../components/SearchableSelect';
+import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
@@ -137,6 +139,11 @@ function TraineeModal({ trainee, hospitals, specialties, onClose, onSaved }) {
       setSaving(false);
     }
   }
+  const hospitalOptions = hospitals.map(h => ({
+    value: h._id,
+    label: `${h.name}${h.city ? ` (${h.city})` : ''}`,
+  }));
+  const specialtyOptions = specialties.map(s => ({ value: s._id, label: s.name }));
 
   return (
     <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -191,20 +198,24 @@ function TraineeModal({ trainee, hospitals, specialties, onClose, onSaved }) {
 
             <div className="admin-field">
               <label>Hospital *</label>
-              <select className={errors.hospitalId ? 'invalid' : ''} value={form.hospitalId}
-                onChange={e => set('hospitalId', e.target.value)}>
-                <option value="">— select hospital —</option>
-                {hospitals.map(h => <option key={h._id} value={h._id}>{h.name}{h.city ? ` (${h.city})` : ''}</option>)}
-              </select>
+              <SearchableSelect
+                value={form.hospitalId}
+                onChange={v => set('hospitalId', v)}
+                options={hospitalOptions}
+                placeholder="Search hospital..."
+                error={errors.hospitalId}
+              />
             </div>
 
             <div className="admin-field">
               <label>Specialty *</label>
-              <select className={errors.specialtyId ? 'invalid' : ''} value={form.specialtyId}
-                onChange={e => set('specialtyId', e.target.value)}>
-                <option value="">— select specialty —</option>
-                {specialties.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
-              </select>
+              <SearchableSelect
+                value={form.specialtyId}
+                onChange={v => set('specialtyId', v)}
+                options={specialtyOptions}
+                placeholder="Search specialty..."
+                error={errors.specialtyId}
+              />
             </div>
 
           </div>
@@ -234,6 +245,7 @@ export default function DioTrainees() {
   const [hospitals,     setHospitals    ] = useState([]);
   const [specialties,   setSpecialties  ] = useState([]);
   const [loading,       setLoading      ] = useState(true);
+  const [view,          setView         ] = useState('list');
   const [search,        setSearch       ] = useState('');
   const [specFilter,    setSpecFilter   ] = useState('All');
   const [showInactive,  setShowInactive ] = useState(false);
@@ -362,22 +374,6 @@ export default function DioTrainees() {
     <>
       <Navbar />
       <main className="admin-main">
-
-        {/* Page header */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap', gap:10 }}>
-          <div>
-            <div style={{ fontSize:20, fontWeight:700, color:'#1B1464' }}>Trainees</div>
-            <div style={{ fontSize:12, color:'#8B8FA8' }}>{trainees.length} total</div>
-          </div>
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-            <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'#4B5563', cursor:'pointer' }}>
-              <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
-              Show inactive
-            </label>
-            <button className="btn-purple" onClick={openAdd}>+ Add Trainee</button>
-          </div>
-        </div>
-
         {/* Specialty filter tabs */}
         <div className="filter-tabs" style={{ marginBottom: 14 }}>
           {specOptions.map(s => (
@@ -393,12 +389,18 @@ export default function DioTrainees() {
             <input className="admin-search" style={{ flex:1, minWidth:180 }}
               placeholder="Search by name, student ID, email, specialty…"
               value={search} onChange={e => setSearch(e.target.value)} />
+            <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'#4B5563', cursor:'pointer' }}>
+              <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
+              Show inactive
+            </label>
+            <ViewToggle value={view} onChange={setView} />
             <span style={{ fontSize:13, color:'#8B8FA8', flexShrink:0 }}>
               {filtered.length} result{filtered.length !== 1 ? 's' : ''}
             </span>
+            <button className="btn-purple" onClick={openAdd}>+ Add Trainee</button>
           </div>
 
-          <div className="admin-table-wrap">
+          {view === 'list' && <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr><th>#</th><th>Trainee</th><th>Specialty</th><th>Hospital</th><th>Student ID</th><th>Status</th><th>Actions</th></tr>
@@ -477,7 +479,47 @@ export default function DioTrainees() {
                 })}
               </tbody>
             </table>
-          </div>
+          </div>}
+
+          {view === 'card' && (
+            <div className="management-card-grid">
+              {filtered.length === 0 && (
+                <div className="admin-empty" style={{ gridColumn:'1/-1' }}>
+                  {trainees.length === 0 ? 'No trainees yet. Click "+ Add Trainee" to begin.' : 'No trainees match your search.'}
+                </div>
+              )}
+              {filtered.map(t => {
+                const active = t.isActive !== false;
+                return (
+                  <div className="management-card" key={t._id} style={{ opacity: active ? 1 : 0.65 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      {t.photoUrl
+                        ? <img src={`${API_BASE}${t.photoUrl}`} alt="" className="cell-photo" />
+                        : <div className="cell-initials">{t.initials || t.name?.[0] || '?'}</div>
+                      }
+                      <div>
+                        <div className="management-card-title">{t.name}</div>
+                        <div className="management-card-sub">{t.email}</div>
+                      </div>
+                    </div>
+                    <div className="management-card-meta">
+                      <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'#EEEDFE', color:'#3C3489' }}>{getSpecialty(t)}</span>
+                      <span style={{ fontSize:11, fontWeight:600, padding:'3px 8px', borderRadius:20, background: active ? '#D1FAE5' : '#FEE2E2', color: active ? '#065F46' : '#991B1B' }}>{active ? 'Active' : 'Inactive'}</span>
+                    </div>
+                    <div className="management-card-sub">{getHospital(t)} - {t.studentId || 'No ID'}</div>
+                    <div className="management-card-actions">
+                      <button className="btn-action view" title="View details" aria-label={`View details for ${t.name}`} onClick={() => navigate(`/dio/trainees/${t._id}`)}><IconEye /></button>
+                      <button className="btn-action edit" title="Edit" aria-label={`Edit ${t.name}`} onClick={() => openEdit(t)}><IconPencil /></button>
+                      {active
+                        ? <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${t.name}`} onClick={() => setConfirmDeact(t)}><IconBan /></button>
+                        : <button className="btn-action reactivate" title="Reactivate" aria-label={`Reactivate ${t.name}`} onClick={() => setConfirmReact(t)}><IconUserCheck /></button>
+                      }
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Modals */}

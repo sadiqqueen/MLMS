@@ -7,10 +7,15 @@
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
+import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
 const EMPTY = '—';
+
+function safeArr(value) {
+  return Array.isArray(value) ? value : [];
+}
 
 function label(value) {
   if (value === null || value === undefined || value === '') return '';
@@ -120,6 +125,7 @@ function HospitalModal({ hospital, onClose }) {
 export default function PresidentHospitals() {
   const [hospitals, setHospitals] = useState([]);
   const [loading,   setLoading  ] = useState(true);
+  const [view,      setView     ] = useState('list');
   const [search,    setSearch   ] = useState('');
   const [selected,  setSelected ] = useState(null);
   const [toasts,    setToasts   ] = useState([]);
@@ -132,12 +138,12 @@ export default function PresidentHospitals() {
 
   useEffect(() => {
     api.get('/api/president/hospitals')
-      .then(r => setHospitals(r.data?.data || r.data || []))
+      .then(r => setHospitals(safeArr(r.data?.data || r.data)))
       .catch(() => showToast('Failed to load hospitals'))
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = hospitals.filter(h => {
+  const filtered = safeArr(hospitals).filter(h => {
     const q = search.toLowerCase();
     return !q
       || h.name?.toLowerCase().includes(q)
@@ -170,28 +176,20 @@ export default function PresidentHospitals() {
     </>
   );
 
-  const totalTrainees   = hospitals.reduce((s, h) => s + (h.traineesCount   || 0), 0);
-  const totalSupervisors= hospitals.reduce((s, h) => s + (h.supervisorsCount || 0), 0);
-
   return (
     <>
       <Navbar />
       <main className="admin-main">
-
-        <div style={{ background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:10, padding:'12px 16px', marginBottom:16, fontSize:13, color:'#166534', display:'flex', alignItems:'center', gap:8 }}>
-          <span>👁</span> Read-only view — {hospitals.length} hospital{hospitals.length !== 1 ? 's' : ''} ·{' '}
-          {totalTrainees} trainee{totalTrainees !== 1 ? 's' : ''} ·{' '}
-          {totalSupervisors} supervisor{totalSupervisors !== 1 ? 's' : ''} across the system
-        </div>
-
         <div className="admin-card">
           <div className="admin-toolbar">
             <input className="admin-search" style={{ flex:1, minWidth:200 }}
               placeholder="Search by hospital name, city, or governorate…"
               value={search} onChange={e => setSearch(e.target.value)} />
+            <ViewToggle value={view} onChange={setView} />
             <span style={{ fontSize:13, color:'#8B8FA8', flexShrink:0 }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
           </div>
 
+          {view === 'list' && (
           <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
@@ -250,6 +248,37 @@ export default function PresidentHospitals() {
               </tbody>
             </table>
           </div>
+          )}
+          {view === 'card' && (
+            <div className="management-card-grid">
+              {filtered.length === 0 && (
+                <div className="admin-empty" style={{ gridColumn:'1/-1' }}>
+                  {hospitals.length === 0 ? 'No hospitals found' : 'No results match your search'}
+                </div>
+              )}
+              {filtered.map(h => {
+                const active = h.isActive !== false;
+                return (
+                  <div className="management-card" key={h._id} onClick={() => setSelected(h)} style={{ cursor:'pointer' }}>
+                    <div>
+                      <div className="management-card-title">{h.name}</div>
+                      <div className="management-card-sub">{[h.city, h.governorate].filter(Boolean).join(', ') || EMPTY}</div>
+                    </div>
+                    <div className="management-card-meta">
+                      <span style={{ fontSize:12, fontWeight:700, padding:'3px 10px', borderRadius:20, background:'#DBEAFE', color:'#1E40AF' }}>
+                        {h.traineesCount ?? 0} trainees
+                      </span>
+                      <span style={{ fontSize:12, fontWeight:700, padding:'3px 10px', borderRadius:20, background:'#D1FAE5', color:'#065F46' }}>
+                        {h.supervisorsCount ?? 0} supervisors
+                      </span>
+                      <span className={active ? 'badge-active' : 'badge-inactive'}>{active ? 'Active' : 'Inactive'}</span>
+                    </div>
+                    <div className="management-card-sub">PD: {getProgramDirector(h)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {selected && <HospitalModal hospital={selected} onClose={() => setSelected(null)} />}

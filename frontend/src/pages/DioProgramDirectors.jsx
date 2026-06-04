@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
+import SearchableSelect from '../components/SearchableSelect';
+import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
@@ -100,6 +102,10 @@ function PDModal({ pd, hospitals, onClose, onSaved }) {
       setApiErr(err.response?.data?.message || 'Save failed');
     } finally { setSaving(false); }
   }
+  const hospitalOptions = hospitals.map(h => ({
+    value: h._id,
+    label: `${h.name}${h.city ? ` (${h.city})` : ''}`,
+  }));
 
   return (
     <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -109,9 +115,6 @@ function PDModal({ pd, hospitals, onClose, onSaved }) {
           <button className="admin-modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="admin-modal-body">
-          <div style={{ background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:8, padding:'10px 14px', marginBottom:14, fontSize:13, color:'#1E40AF' }}>
-            Program Directors are hospital-based and do not require a specialty assignment.
-          </div>
           <div className="admin-form-grid">
             <div className="admin-field">
               <label>Full Name *</label>
@@ -143,11 +146,13 @@ function PDModal({ pd, hospitals, onClose, onSaved }) {
             </div>
             <div className="admin-field full">
               <label>Hospital *</label>
-              <select className={errors.hospitalId ? 'invalid' : ''} value={form.hospitalId}
-                onChange={e => set('hospitalId', e.target.value)}>
-                <option value="">— select hospital —</option>
-                {hospitals.map(h => <option key={h._id} value={h._id}>{h.name}{h.city ? ` (${h.city})` : ''}</option>)}
-              </select>
+              <SearchableSelect
+                value={form.hospitalId}
+                onChange={v => set('hospitalId', v)}
+                options={hospitalOptions}
+                placeholder="Search hospital..."
+                error={errors.hospitalId}
+              />
             </div>
           </div>
           {apiErr && (
@@ -171,6 +176,7 @@ export default function DioProgramDirectors() {
   const [pds,          setPds         ] = useState([]);
   const [hospitals,    setHospitals   ] = useState([]);
   const [loading,      setLoading     ] = useState(true);
+  const [view,         setView        ] = useState('list');
   const [search,       setSearch      ] = useState('');
   const [showInactive, setShowInactive] = useState(false);
   const [showModal,    setShowModal   ] = useState(false);
@@ -263,31 +269,19 @@ export default function DioProgramDirectors() {
     <>
       <Navbar />
       <main className="admin-main">
-
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap', gap:10 }}>
-          <div>
-            <div style={{ fontSize:20, fontWeight:700, color:'#1B1464' }}>Program Directors</div>
-            <div style={{ fontSize:12, color:'#8B8FA8' }}>{pds.length} total</div>
-          </div>
-          <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-            <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'#4B5563', cursor:'pointer' }}>
-              <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
-              Show inactive
-            </label>
-            <button className="btn-purple" onClick={() => { setEditItem(null); setShowModal(true); }}>+ Add Program Director</button>
-          </div>
-        </div>
-
         <div className="admin-card">
           <div className="admin-toolbar">
             <input className="admin-search" style={{ flex:1, minWidth:180 }}
               placeholder="Search by name, email, department…"
               value={search} onChange={e => setSearch(e.target.value)} />
+            <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'#4B5563', cursor:'pointer' }}><input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} /> Show inactive</label>
+            <ViewToggle value={view} onChange={setView} />
             <span style={{ fontSize:13, color:'#8B8FA8', flexShrink:0 }}>
               {filtered.length} program director{filtered.length !== 1 ? 's' : ''}
             </span>
+            <button className="btn-purple" onClick={() => { setEditItem(null); setShowModal(true); }}>+ Add Program Director</button>
           </div>
-          <div className="admin-table-wrap">
+          {view === 'list' && <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr><th>#</th><th>Program Director</th><th>Department</th><th>Hospital</th><th>Status</th><th>Actions</th></tr>
@@ -355,7 +349,24 @@ export default function DioProgramDirectors() {
                 })}
               </tbody>
             </table>
-          </div>
+          </div>}
+          {view === 'card' && (
+            <div className="management-card-grid">
+              {filtered.length === 0 && <div className="admin-empty" style={{ gridColumn:'1/-1' }}>{pds.length === 0 ? 'No program directors yet.' : 'No match.'}</div>}
+              {filtered.map(p => {
+                const active = p.isActive !== false;
+                const hospital = p.hospitalId?.name || p.hospital?.name || '-';
+                return (
+                  <div className="management-card" key={p._id} style={{ opacity: active ? 1 : 0.65 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>{p.photoUrl ? <img src={`${API_BASE}${p.photoUrl}`} alt="" className="cell-photo" /> : <div className="cell-initials">{p.initials || p.name?.[0] || '?'}</div>}<div><div className="management-card-title">{p.name}</div><div className="management-card-sub">{p.email}</div></div></div>
+                    <div className="management-card-sub">{p.department || 'No department'} - {hospital}</div>
+                    <div className="management-card-meta"><span style={{ fontSize:11, fontWeight:600, padding:'3px 8px', borderRadius:20, background: active ? '#D1FAE5' : '#FEE2E2', color: active ? '#065F46' : '#991B1B' }}>{active ? 'Active' : 'Inactive'}</span></div>
+                    <div className="management-card-actions"><button className="btn-action edit" title="Edit" aria-label={`Edit ${p.name}`} onClick={() => { setEditItem(p); setShowModal(true); }}><IconPencil /></button>{active ? <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${p.name}`} onClick={() => setConfirmDeact(p)}><IconBan /></button> : <button className="btn-action reactivate" title="Reactivate" aria-label={`Reactivate ${p.name}`} onClick={() => setConfirmReact(p)}><IconUserCheck /></button>}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {showModal && (

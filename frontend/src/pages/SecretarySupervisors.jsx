@@ -1,10 +1,18 @@
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
+import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
 const API_BASE = '';
+
+function textValue(value, fallback = '—') {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'object') return value.name || value.title || fallback;
+  return fallback;
+}
 
 const IconEdit = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -147,6 +155,7 @@ function SupervisorModal({ editSupervisor, onSave, onClose, saving }) {
 export default function SecretarySupervisors() {
   const [supervisors,    setSupervisors   ] = useState([]);
   const [loading,        setLoading       ] = useState(true);
+  const [view,           setView          ] = useState('list');
   const [search,         setSearch        ] = useState('');
   const [showModal,      setShowModal     ] = useState(false);
   const [editSupervisor, setEditSupervisor] = useState(null);
@@ -204,7 +213,7 @@ export default function SecretarySupervisors() {
     return !q
       || s.name?.toLowerCase().includes(q)
       || s.email?.toLowerCase().includes(q)
-      || (s.specialty  || '').toLowerCase().includes(q)
+      || textValue(s.specialty, '').toLowerCase().includes(q)
       || (s.department || '').toLowerCase().includes(q);
   });
 
@@ -212,7 +221,6 @@ export default function SecretarySupervisors() {
     <>
       <Navbar />
       <main className="admin-main">
-        <div style={{ marginBottom: 20 }}><Sk w={140} h={36} r={8} /></div>
         <div className="admin-card">
           <div className="admin-toolbar"><Sk h={36} r={8} style={{ flex: 1 }} /></div>
           <div className="admin-table-wrap">
@@ -241,16 +249,6 @@ export default function SecretarySupervisors() {
     <>
       <Navbar />
       <main className="admin-main">
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <div style={{ fontSize: 13, color: '#8B8FA8' }}>
-            {supervisors.length} supervisor{supervisors.length !== 1 ? 's' : ''} in this specialty
-          </div>
-          <button className="btn-purple" onClick={() => { setEditSupervisor(null); setShowModal(true); }}>
-            + Add Supervisor
-          </button>
-        </div>
-
         <div className="admin-card">
           <div className="admin-toolbar">
             <input
@@ -260,7 +258,15 @@ export default function SecretarySupervisors() {
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
+            <ViewToggle value={view} onChange={setView} />
+            <span style={{ fontSize: 13, color: '#8B8FA8', flexShrink: 0 }}>
+              {filtered.length} supervisor{filtered.length !== 1 ? 's' : ''}
+            </span>
+            <button className="btn-purple" onClick={() => { setEditSupervisor(null); setShowModal(true); }}>
+              + Add Supervisor
+            </button>
           </div>
+          {view === 'list' && (
           <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
@@ -298,7 +304,7 @@ export default function SecretarySupervisors() {
                       <span style={{
                         fontSize: 11, fontWeight: 600, padding: '3px 9px',
                         borderRadius: 20, background: '#EEEDFE', color: '#3C3489'
-                      }}>{s.specialty || '—'}</span>
+                      }}>{textValue(s.specialty)}</span>
                     </td>
                     <td style={{ color: '#4B5563', fontSize: 13 }}>{s.department || '—'}</td>
                     <td style={{ color: '#4B5563', fontSize: 13 }}>{s.phone || '—'}</td>
@@ -317,6 +323,36 @@ export default function SecretarySupervisors() {
               </tbody>
             </table>
           </div>
+          )}
+          {view === 'card' && (
+            <div className="management-card-grid">
+              {filtered.length === 0 && (
+                <div className="admin-empty" style={{ gridColumn:'1/-1' }}>
+                  {supervisors.length === 0 ? 'No supervisors yet' : 'No supervisors match your search'}
+                </div>
+              )}
+              {filtered.map(s => (
+                <div className="management-card" key={s._id}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    {s.photoUrl
+                      ? <img src={`${API_BASE}${s.photoUrl}`} alt="" className="cell-photo" />
+                      : <div className="cell-initials">{s.initials || s.name?.[0] || '?'}</div>
+                    }
+                    <div>
+                      <div className="management-card-title">{s.name}</div>
+                      <div className="management-card-sub">{s.email}</div>
+                    </div>
+                  </div>
+                  <div className="management-card-meta"><span className="specialty-tag">{textValue(s.specialty)}</span></div>
+                  <div className="management-card-sub">{s.department || 'No department'} - {s.phone || 'No phone'}</div>
+                  <div className="management-card-actions">
+                    <button className="btn-action edit" title="Edit" aria-label={`Edit ${s.name}`} onClick={() => { setEditSupervisor(s); setShowModal(true); }}><IconEdit /></button>
+                    <button className="btn-action delete" title="Delete" aria-label={`Delete ${s.name}`} onClick={() => setDelSupervisor(s)}><IconDelete /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {showModal && (

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
+import SearchableSelect from '../components/SearchableSelect';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
@@ -80,6 +81,8 @@ function TraineeModal({ editTrainee, hospitals, supervisors, secretarySpecialty,
     const sid = (s.specialtyId?._id || s.specialtyId || '')?.toString();
     return sid === specId.toString();
   });
+  const hospitalOptions = hospitals.map(h => ({ value: h._id, label: h.name }));
+  const supervisorOptions = filteredSups.map(s => ({ value: s._id, label: s.name }));
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: false })); }
 
@@ -166,20 +169,22 @@ function TraineeModal({ editTrainee, hospitals, supervisors, secretarySpecialty,
 
             <div className="admin-field">
               <label>Hospital</label>
-              <select value={form.hospitalId} onChange={e => set('hospitalId', e.target.value)}>
-                <option value="">— Select hospital —</option>
-                {hospitals.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
-              </select>
+              <SearchableSelect
+                value={form.hospitalId}
+                onChange={value => set('hospitalId', value)}
+                options={hospitalOptions}
+                placeholder="Search hospital..."
+              />
             </div>
 
             <div className="admin-field">
               <label>Supervisor</label>
-              <select value={form.supervisorId} onChange={e => set('supervisorId', e.target.value)}>
-                <option value="">— Select supervisor —</option>
-                {filteredSups.map(s => (
-                  <option key={s._id} value={s._id}>{s.name}</option>
-                ))}
-              </select>
+              <SearchableSelect
+                value={form.supervisorId}
+                onChange={value => set('supervisorId', value)}
+                options={supervisorOptions}
+                placeholder="Search supervisor..."
+              />
               {specName && filteredSups.length === 0 && (
                 <span style={{ fontSize: 11, color: '#8B8FA8', marginTop: 3, display: 'block' }}>
                   No supervisors found for {specName}
@@ -239,6 +244,9 @@ function RotationModal({ trainees, supervisors, hospitals, onSave, onClose, savi
     const sid = (s.specialtyId?._id || s.specialtyId || '')?.toString();
     return sid === traineeSpecialtyId;
   });
+  const traineeOptions = trainees.map(t => ({ value: t._id, label: `${t.name}${t.studentId ? ` (${t.studentId})` : ''}` }));
+  const hospitalOptions = hospitals.map(h => ({ value: h._id, label: h.name }));
+  const supervisorOptions = filteredSups.map(s => ({ value: s._id, label: s.name }));
 
   function set(k, v) {
     setForm(f => {
@@ -284,17 +292,13 @@ function RotationModal({ trainees, supervisors, hospitals, onSave, onClose, savi
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 5 }}>
               Trainee *
             </label>
-            <select
-              className={errors.traineeId ? 'invalid admin-search' : 'admin-search'}
-              style={{ width: '100%' }}
+            <SearchableSelect
               value={form.traineeId}
-              onChange={e => set('traineeId', e.target.value)}
-            >
-              <option value="">— Select trainee —</option>
-              {trainees.map(t => (
-                <option key={t._id} value={t._id}>{t.name}{t.studentId ? ` (${t.studentId})` : ''}</option>
-              ))}
-            </select>
+              onChange={value => set('traineeId', value)}
+              options={traineeOptions}
+              placeholder="Search trainee..."
+              error={errors.traineeId}
+            />
             {errors.traineeId && <div style={{ fontSize: 11, color: '#DC2626', marginTop: 3 }}>Required</div>}
           </div>
 
@@ -302,17 +306,13 @@ function RotationModal({ trainees, supervisors, hospitals, onSave, onClose, savi
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 5 }}>
               Hospital *
             </label>
-            <select
-              className={errors.hospitalId ? 'invalid admin-search' : 'admin-search'}
-              style={{ width: '100%' }}
+            <SearchableSelect
               value={form.hospitalId}
-              onChange={e => set('hospitalId', e.target.value)}
-            >
-              <option value="">— Select hospital —</option>
-              {hospitals.map(h => (
-                <option key={h._id} value={h._id}>{h.name}</option>
-              ))}
-            </select>
+              onChange={value => set('hospitalId', value)}
+              options={hospitalOptions}
+              placeholder="Search hospital..."
+              error={errors.hospitalId}
+            />
             {errors.hospitalId && <div style={{ fontSize: 11, color: '#DC2626', marginTop: 3 }}>Required</div>}
           </div>
 
@@ -320,17 +320,13 @@ function RotationModal({ trainees, supervisors, hospitals, onSave, onClose, savi
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 5 }}>
               Supervisor *{form.traineeId ? ' (filtered by trainee specialty)' : ''}
             </label>
-            <select
-              className={errors.supervisorId ? 'invalid admin-search' : 'admin-search'}
-              style={{ width: '100%' }}
+            <SearchableSelect
               value={form.supervisorId}
-              onChange={e => set('supervisorId', e.target.value)}
-            >
-              <option value="">— Select supervisor —</option>
-              {filteredSups.map(s => (
-                <option key={s._id} value={s._id}>{s.name}</option>
-              ))}
-            </select>
+              onChange={value => set('supervisorId', value)}
+              options={supervisorOptions}
+              placeholder="Search supervisor..."
+              error={errors.supervisorId}
+            />
             {errors.supervisorId && <div style={{ fontSize: 11, color: '#DC2626', marginTop: 3 }}>Required</div>}
             {form.traineeId && filteredSups.length === 0 && (
               <div style={{ fontSize: 11, color: '#8B8FA8', marginTop: 3 }}>

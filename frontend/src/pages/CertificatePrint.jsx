@@ -17,6 +17,13 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
 }
 
+function textValue(value, fallback = '—') {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'object') return value.name || value.title || value.fullName || fallback;
+  return fallback;
+}
+
 export default function CertificatePrint() {
   const { id }     = useParams();
   const navigate   = useNavigate();
@@ -51,6 +58,8 @@ export default function CertificatePrint() {
   const verifyUrl   = cert.verificationUrl || `${window.location.origin}/verify/${cert.verifyCode || cert.code}`;
   const certType    = cert.type || 'Completion';
   const isRevoked   = cert.status === 'revoked';
+  const specialtyName = textValue(cert.specialty, '');
+  const hospitalName = textValue(cert.hospital || cert.trainingSite, '');
 
   return (
     <div className="cert-print-root">
@@ -129,11 +138,11 @@ export default function CertificatePrint() {
         {/* Body text */}
         <div style={{ textAlign:'center', fontSize:13, color:'#374151', lineHeight:1.8, marginBottom:'7mm', maxWidth:'140mm', margin:'0 auto 7mm', position:'relative', zIndex:1 }}>
           has successfully completed the required clinical training program
-          {cert.specialty ? (
-            <> in <strong style={{ color:'#0C2D5E' }}>{cert.specialty}</strong></>
+          {specialtyName ? (
+            <> in <strong style={{ color:'#0C2D5E' }}>{specialtyName}</strong></>
           ) : null}
-          {(hospital?.name || cert.trainingSite) ? (
-            <> at <strong style={{ color:'#0C2D5E' }}>{hospital.name || cert.trainingSite}</strong></>
+          {hospitalName ? (
+            <> at <strong style={{ color:'#0C2D5E' }}>{hospitalName}</strong></>
           ) : null}
           {(startDate || endDate) ? (
             <>, from <strong>{fmtDate(startDate)}</strong> to <strong>{fmtDate(endDate)}</strong></>
@@ -144,8 +153,8 @@ export default function CertificatePrint() {
         {/* Info grid */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'4mm 8mm', background:'#F8FAFD', border:'1px solid #E5E7EB', borderRadius:8, padding:'6mm', marginBottom:'8mm', position:'relative', zIndex:1 }}>
           {[
-            ['Specialty / Program', cert.specialty || '—'],
-            ['Training Site', hospital?.name || cert.trainingSite || '—'],
+            ['Specialty / Program', specialtyName || '—'],
+            ['Training Site', hospitalName || '—'],
             ['Issue Date', fmtDate(cert.issueDate)],
             ['Training From', fmtDate(startDate)],
             ['Training To', fmtDate(endDate)],

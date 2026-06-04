@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
+import SearchableSelect from '../components/SearchableSelect';
+import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
@@ -99,6 +101,11 @@ function SecretaryModal({ secretary, hospitals, specialties, onClose, onSaved })
       setApiErr(err.response?.data?.message || 'Save failed');
     } finally { setSaving(false); }
   }
+  const hospitalOptions = hospitals.map(h => ({
+    value: h._id,
+    label: `${h.name}${h.city ? ` (${h.city})` : ''}`,
+  }));
+  const specialtyOptions = specialties.map(s => ({ value: s._id, label: s.name }));
 
   return (
     <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -135,18 +142,22 @@ function SecretaryModal({ secretary, hospitals, specialties, onClose, onSaved })
             </div>
             <div className="admin-field">
               <label>Hospital *</label>
-              <select className={errors.hospitalId ? 'invalid' : ''} value={form.hospitalId}
-                onChange={e => set('hospitalId', e.target.value)}>
-                <option value="">— select hospital —</option>
-                {hospitals.map(h => <option key={h._id} value={h._id}>{h.name}{h.city ? ` (${h.city})` : ''}</option>)}
-              </select>
+              <SearchableSelect
+                value={form.hospitalId}
+                onChange={v => set('hospitalId', v)}
+                options={hospitalOptions}
+                placeholder="Search hospital..."
+                error={errors.hospitalId}
+              />
             </div>
             <div className="admin-field">
               <label>Assigned Specialty (optional)</label>
-              <select value={form.specialtyId} onChange={e => set('specialtyId', e.target.value)}>
-                <option value="">— no specialty —</option>
-                {specialties.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
-              </select>
+              <SearchableSelect
+                value={form.specialtyId}
+                onChange={v => set('specialtyId', v)}
+                options={specialtyOptions}
+                placeholder="Search specialty or leave empty..."
+              />
             </div>
           </div>
           {apiErr && (
@@ -171,6 +182,7 @@ export default function DioSecretaries() {
   const [hospitals,    setHospitals   ] = useState([]);
   const [specialties,  setSpecialties ] = useState([]);
   const [loading,      setLoading     ] = useState(true);
+  const [view,         setView        ] = useState('list');
   const [search,       setSearch      ] = useState('');
   const [showInactive, setShowInactive] = useState(false);
   const [showModal,    setShowModal   ] = useState(false);
@@ -264,39 +276,19 @@ export default function DioSecretaries() {
     <>
       <Navbar />
       <main className="admin-main">
-
-        <div style={{ background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:12, padding:'14px 18px', marginBottom:16, display:'flex', gap:10, alignItems:'center' }}>
-          <div style={{ fontSize:20 }}>📋</div>
-          <div style={{ fontSize:13, color:'#1E40AF', lineHeight:1.6 }}>
-            As DIO you can create secretaries, assign specialties, and manage account status.
-          </div>
-        </div>
-
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap', gap:10 }}>
-          <div>
-            <div style={{ fontSize:20, fontWeight:700, color:'#1B1464' }}>Secretaries</div>
-            <div style={{ fontSize:12, color:'#8B8FA8' }}>{secretaries.length} total</div>
-          </div>
-          <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-            <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'#4B5563', cursor:'pointer' }}>
-              <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
-              Show inactive
-            </label>
-            <button className="btn-purple" onClick={() => { setEditItem(null); setShowModal(true); }}>+ Add Secretary</button>
-          </div>
-        </div>
-
         <div className="admin-card">
           <div className="admin-toolbar">
             <input className="admin-search" style={{ flex:1, minWidth:180 }}
               placeholder="Search by name, email, specialty…"
               value={search} onChange={e => setSearch(e.target.value)} />
+            <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'#4B5563', cursor:'pointer' }}><input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} /> Show inactive</label>
+            <ViewToggle value={view} onChange={setView} />
             <span style={{ fontSize:13, color:'#8B8FA8', flexShrink:0 }}>
               {filtered.length} secretar{filtered.length !== 1 ? 'ies' : 'y'}
             </span>
+            <button className="btn-purple" onClick={() => { setEditItem(null); setShowModal(true); }}>+ Add Secretary</button>
           </div>
-
-          <div className="admin-table-wrap">
+          {view === 'list' && <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr><th>#</th><th>Secretary</th><th>Specialty</th><th>Hospital</th><th>Status</th><th>Actions</th></tr>
@@ -371,7 +363,25 @@ export default function DioSecretaries() {
                 })}
               </tbody>
             </table>
-          </div>
+          </div>}
+          {view === 'card' && (
+            <div className="management-card-grid">
+              {filtered.length === 0 && <div className="admin-empty" style={{ gridColumn:'1/-1' }}>{secretaries.length === 0 ? 'No secretaries yet.' : 'No match.'}</div>}
+              {filtered.map(s => {
+                const active = s.isActive !== false;
+                const specName = s.specialtyId?.name || '-';
+                const hospital = s.hospitalId?.name || s.hospital?.name || '-';
+                return (
+                  <div className="management-card" key={s._id} style={{ opacity: active ? 1 : 0.65 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>{s.photoUrl ? <img src={`${API_BASE}${s.photoUrl}`} alt="" className="cell-photo" /> : <div className="cell-initials">{s.initials || s.name?.[0] || '?'}</div>}<div><div className="management-card-title">{s.name}</div><div className="management-card-sub">{s.email}</div></div></div>
+                    <div className="management-card-meta"><span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background: specName === '-' ? '#F3F4F6' : '#EEEDFE', color: specName === '-' ? '#6B7280' : '#3C3489' }}>{specName}</span><span style={{ fontSize:11, fontWeight:600, padding:'3px 8px', borderRadius:20, background: active ? '#D1FAE5' : '#FEE2E2', color: active ? '#065F46' : '#991B1B' }}>{active ? 'Active' : 'Inactive'}</span></div>
+                    <div className="management-card-sub">{hospital}</div>
+                    <div className="management-card-actions"><button className="btn-action edit" title="Edit" aria-label={`Edit ${s.name}`} onClick={() => { setEditItem(s); setShowModal(true); }}><IconPencil /></button>{active ? <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${s.name}`} onClick={() => setConfirmDeact(s)}><IconBan /></button> : <button className="btn-action reactivate" title="Reactivate" aria-label={`Reactivate ${s.name}`} onClick={() => setConfirmReact(s)}><IconUserCheck /></button>}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {showModal && (

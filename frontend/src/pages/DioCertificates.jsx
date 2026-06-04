@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Toast from '../components/Toast';
+import ViewToggle from '../components/ViewToggle';
 import api from '../api/axios';
 import Sk from '../components/Skeleton';
 
@@ -41,6 +42,13 @@ function readListPayload(payload) {
   return [];
 }
 
+function textValue(value, fallback = '-') {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'object') return value.name || value.title || fallback;
+  return fallback;
+}
+
 function traineeFromCertificate(cert) {
   return cert?.student || cert?.traineeId || {};
 }
@@ -49,6 +57,7 @@ export default function DioCertificates() {
   const navigate = useNavigate();
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState('list');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [searchQuery, setSearchQuery] = useState('');
@@ -147,7 +156,7 @@ export default function DioCertificates() {
       studentId: trainee?.studentId || '',
       hospital: trainee?.hospitalId?.name || trainee?.hospital?.name || '-',
       supervisor: trainee?.supervisorId?.name || trainee?.supervisor?.name || '-',
-      specialty: trainee?.specialtyId?.name || trainee?.specialty || '-',
+      specialty: textValue(trainee?.specialtyId || trainee?.specialty),
     }));
     setSearchQuery(trainee?.name || '');
     setSearchResults([]);
@@ -253,13 +262,11 @@ export default function DioCertificates() {
     <>
       <Navbar />
       <main className="admin-main">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: '#1B1464' }}>Certificates</div>
-            <div style={{ fontSize: 13, color: '#8B8FA8', marginTop: 2 }}>
-              {validCount} valid - {revokedCount} revoked - {totalCount} total
-            </div>
-          </div>
+        <div className="admin-toolbar" style={{ marginBottom: 16 }}>
+          <ViewToggle value={view} onChange={setView} />
+          <span style={{ fontSize: 13, color: '#8B8FA8', flexShrink: 0 }}>
+            {validCount} valid - {revokedCount} revoked - {totalCount} total
+          </span>
           <button className="btn-purple" onClick={openIssueForm}>
             + Issue Certificate
           </button>
@@ -272,6 +279,7 @@ export default function DioCertificates() {
           </div>
         ) : (
           <div className="admin-card">
+            {view === 'list' && (
             <div className="admin-table-wrap">
               <table className="admin-table">
                 <thead>
@@ -298,7 +306,7 @@ export default function DioCertificates() {
                           <div style={{ fontSize: 11, color: '#8B8FA8' }}>{trainee?.email || ''}</div>
                         </td>
                         <td style={{ fontSize: 13, color: '#4B5563' }}>{trainee?.studentId || '-'}</td>
-                        <td style={{ fontSize: 13, color: '#4B5563' }}>{c?.specialty || '-'}</td>
+                        <td style={{ fontSize: 13, color: '#4B5563' }}>{textValue(c?.specialty)}</td>
                         <td>
                           <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: '#EEEDFE', color: '#3C3489' }}>
                             {c?.type || 'Completion'}
@@ -359,6 +367,43 @@ export default function DioCertificates() {
                 </tbody>
               </table>
             </div>
+            )}
+            {view === 'card' && (
+              <div className="management-card-grid">
+                {safeArr(certificates).map((c, i) => {
+                  const trainee = traineeFromCertificate(c);
+                  const isRevoked = !!c?.revokedAt;
+                  return (
+                    <div className="management-card" key={c?._id || i} style={{ opacity: isRevoked ? 0.65 : 1 }}>
+                      <div>
+                        <div className="management-card-title">{trainee?.name || '-'}</div>
+                        <div className="management-card-sub">{trainee?.studentId || 'No student ID'}</div>
+                      </div>
+                      <div className="management-card-meta">
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: '#EEEDFE', color: '#3C3489' }}>
+                          {c?.type || 'Completion'}
+                        </span>
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: isRevoked ? '#FEE2E2' : '#D1FAE5', color: isRevoked ? '#991B1B' : '#065F46' }}>
+                          {isRevoked ? `Revoked ${fmt(c?.revokedAt)}` : 'Valid'}
+                        </span>
+                      </div>
+                      <div className="management-card-sub">{textValue(c?.specialty)} - {fmt(c?.issueDate || c?.issuedAt)}</div>
+                      <div className="management-card-actions">
+                        <button type="button" className="btn-action edit" title="Print" aria-label={`Print certificate for ${trainee?.name || 'trainee'}`} onClick={() => navigate(`/dio/certificates/${c?._id}/print`)} disabled={!c?._id}>Print</button>
+                        {!isRevoked && (
+                          <button type="button" style={{ padding: '5px 10px', borderRadius: 6, background: '#FEF3C7', color: '#92400E', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer' }} title="Revoke" aria-label={`Revoke certificate for ${trainee?.name || 'trainee'}`} onClick={() => handleRevoke(c)} disabled={revoking === c?._id}>
+                            {revoking === c?._id ? '...' : 'Revoke'}
+                          </button>
+                        )}
+                        <button type="button" className="btn-action delete" title="Delete" aria-label={`Delete certificate for ${trainee?.name || 'trainee'}`} onClick={() => handleDelete(c)} disabled={deleting === c?._id}>
+                          {deleting === c?._id ? '...' : 'Delete'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

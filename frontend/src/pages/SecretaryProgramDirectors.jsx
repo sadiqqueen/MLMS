@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
+import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
@@ -125,6 +126,7 @@ function PDModal({ editPD, onSave, onClose, saving }) {
 export default function SecretaryProgramDirectors() {
   const [pds,       setPds      ] = useState([]);
   const [loading,   setLoading  ] = useState(true);
+  const [view,      setView     ] = useState('list');
   const [search,    setSearch   ] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editPD,    setEditPD   ] = useState(null);
@@ -189,7 +191,6 @@ export default function SecretaryProgramDirectors() {
     <>
       <Navbar />
       <main className="admin-main">
-        <div style={{ marginBottom: 20 }}><Sk w={180} h={36} r={8} /></div>
         <div className="admin-card">
           <div className="admin-toolbar"><Sk h={36} r={8} style={{ flex: 1 }} /></div>
           <div className="admin-table-wrap">
@@ -217,16 +218,6 @@ export default function SecretaryProgramDirectors() {
     <>
       <Navbar />
       <main className="admin-main">
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <div style={{ fontSize: 13, color: '#8B8FA8' }}>
-            {pds.length} program director{pds.length !== 1 ? 's' : ''}
-          </div>
-          <button className="btn-purple" onClick={() => { setEditPD(null); setShowModal(true); }}>
-            + Add Program Director
-          </button>
-        </div>
-
         <div className="admin-card">
           <div className="admin-toolbar">
             <input
@@ -236,7 +227,15 @@ export default function SecretaryProgramDirectors() {
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
+            <ViewToggle value={view} onChange={setView} />
+            <span style={{ fontSize: 13, color: '#8B8FA8', flexShrink: 0 }}>
+              {filtered.length} program director{filtered.length !== 1 ? 's' : ''}
+            </span>
+            <button className="btn-purple" onClick={() => { setEditPD(null); setShowModal(true); }}>
+              + Add Program Director
+            </button>
           </div>
+          {view === 'list' && (
           <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
@@ -287,6 +286,35 @@ export default function SecretaryProgramDirectors() {
               </tbody>
             </table>
           </div>
+          )}
+          {view === 'card' && (
+            <div className="management-card-grid">
+              {filtered.length === 0 && (
+                <div className="admin-empty" style={{ gridColumn:'1/-1' }}>
+                  {pds.length === 0 ? 'No program directors yet' : 'No program directors match your search'}
+                </div>
+              )}
+              {filtered.map(p => (
+                <div className="management-card" key={p._id}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    {p.photoUrl
+                      ? <img src={`${API_BASE}${p.photoUrl}`} alt="" className="cell-photo" />
+                      : <div className="cell-initials">{p.initials || p.name?.[0] || '?'}</div>
+                    }
+                    <div>
+                      <div className="management-card-title">{p.name}</div>
+                      <div className="management-card-sub">{p.email}</div>
+                    </div>
+                  </div>
+                  <div className="management-card-sub">{p.department || 'No department'} - {p.phone || 'No phone'}</div>
+                  <div className="management-card-actions">
+                    <button className="btn-action edit" title="Edit" aria-label={`Edit ${p.name}`} onClick={() => { setEditPD(p); setShowModal(true); }}><IconEdit /></button>
+                    <button className="btn-action delete" title="Delete" aria-label={`Delete ${p.name}`} onClick={() => setDelPD(p)}><IconDelete /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {showModal && (

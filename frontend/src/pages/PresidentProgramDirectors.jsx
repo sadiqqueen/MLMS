@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
+import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
@@ -68,6 +69,7 @@ function DetailModal({ item, fields, onClose }) {
 export default function PresidentProgramDirectors() {
   const [pds,      setPds     ] = useState([]);
   const [loading,  setLoading ] = useState(true);
+  const [view,     setView    ] = useState('list');
   const [search,   setSearch  ] = useState('');
   const [selected, setSelected] = useState(null);
   const [toasts,   setToasts  ] = useState([]);
@@ -121,15 +123,13 @@ export default function PresidentProgramDirectors() {
       <Navbar />
       <main className="admin-main">
 
-        <div style={{ background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:10, padding:'12px 16px', marginBottom:16, fontSize:13, color:'#166534', display:'flex', alignItems:'center', gap:8 }}>
-          <span>👁</span> Read-only view — {pds.length} program director{pds.length !== 1 ? 's' : ''} across the system
-        </div>
-
         <div className="admin-card">
           <div className="admin-toolbar">
             <input className="admin-search" style={{ flex:1, minWidth:200 }} placeholder="Search by name, email, or department…" value={search} onChange={e => setSearch(e.target.value)} />
+            <ViewToggle value={view} onChange={setView} />
             <span style={{ fontSize:13, color:'#8B8FA8', flexShrink:0 }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
           </div>
+          {view === 'list' && (
           <div className="admin-table-wrap">
             <table className="admin-table">
               <thead><tr><th>#</th><th>Program Director</th><th>Department</th><th>Phone</th></tr></thead>
@@ -158,6 +158,29 @@ export default function PresidentProgramDirectors() {
               </tbody>
             </table>
           </div>
+          )}
+          {view === 'card' && (
+            <div className="management-card-grid">
+              {filtered.length === 0 && (
+                <div className="admin-empty" style={{ gridColumn:'1/-1' }}>
+                  {pds.length === 0 ? 'No program directors found' : 'No results match your search'}
+                </div>
+              )}
+              {filtered.map(p => (
+                <div className="management-card" key={p._id} onClick={() => setSelected(p)} style={{ cursor:'pointer' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <div className="cell-initials">{p.initials || p.name?.[0] || '?'}</div>
+                    <div>
+                      <div className="management-card-title">{p.name}</div>
+                      <div className="management-card-sub">{p.email}</div>
+                    </div>
+                  </div>
+                  <div className="management-card-sub">{p.department || EMPTY}</div>
+                  <div className="management-card-sub">{getHospital(p)} - {p.phone || 'No phone'}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {selected && (

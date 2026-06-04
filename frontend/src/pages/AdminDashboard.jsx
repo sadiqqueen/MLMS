@@ -30,6 +30,13 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function textValue(value, fallback = '-') {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'object') return value.name || value.title || fallback;
+  return fallback;
+}
+
 export default function AdminDashboard() {
   const [stats,   setStats  ] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -197,7 +204,7 @@ export default function AdminDashboard() {
                     <td>{ev.student?.name ?? '—'}</td>
                     <td>{ev.doctor?.name  ?? '—'}</td>
                     <td>{ev.hospital?.name ?? '—'}</td>
-                    <td>{ev.specialty || '—'}</td>
+                    <td>{textValue(ev.specialty)}</td>
                     <td>{fmtDate(ev.date)}</td>
                     <td>
                       <span className={ev.status === 'completed' ? 'badge-completed' : 'badge-pending'}>

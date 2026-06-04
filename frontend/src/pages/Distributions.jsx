@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
+import SearchableSelect from '../components/SearchableSelect';
+import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
@@ -31,6 +33,13 @@ function getData(res) {
 
 function getId(value) {
   return value?._id || value || '';
+}
+
+function textValue(value, fallback = '-') {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'object') return value.name || value.title || fallback;
+  return fallback;
 }
 
 function getStatusClass(status) {
@@ -66,6 +75,9 @@ function DistModal({ item, supervisors, hospitals, specialties, onSave, onClose,
     document.addEventListener('keydown', h);
     return () => document.removeEventListener('keydown', h);
   }, [onClose]);
+  const supervisorOptions = safeArr(supervisors).map(s => ({ value: s._id, label: `${s.name}${textValue(s.specialty || s.specialtyId, '') ? ` (${textValue(s.specialty || s.specialtyId)})` : ''}` }));
+  const hospitalOptions = safeArr(hospitals).map(h => ({ value: h._id, label: `${h.name}${h.city ? ` (${h.city})` : ''}` }));
+  const specialtyOptions = safeArr(specialties).map(s => ({ value: s._id, label: s.name }));
 
   return (
     <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -78,26 +90,17 @@ function DistModal({ item, supervisors, hospitals, specialties, onSave, onClose,
           <div className="admin-form-grid">
             <div className="admin-field full">
               <label>Supervisor *</label>
-              <select className={errors.supervisorId ? 'invalid' : ''} value={form.supervisorId} onChange={e => set('supervisorId', e.target.value)}>
-                <option value="">-- Select supervisor --</option>
-                {safeArr(supervisors).map(s => <option key={s._id} value={s._id}>{s.name} ({s.specialty || '-'})</option>)}
-              </select>
+              <SearchableSelect value={form.supervisorId} onChange={v => set('supervisorId', v)} options={supervisorOptions} placeholder="Search supervisor..." error={errors.supervisorId} />
             </div>
 
             <div className="admin-field full">
               <label>Hospital *</label>
-              <select className={errors.hospitalId ? 'invalid' : ''} value={form.hospitalId} onChange={e => set('hospitalId', e.target.value)}>
-                <option value="">-- Select hospital --</option>
-                {safeArr(hospitals).map(h => <option key={h._id} value={h._id}>{h.name} ({h.city || '-'})</option>)}
-              </select>
+              <SearchableSelect value={form.hospitalId} onChange={v => set('hospitalId', v)} options={hospitalOptions} placeholder="Search hospital..." error={errors.hospitalId} />
             </div>
 
             <div className="admin-field full">
               <label>Specialty *</label>
-              <select className={errors.specialtyId ? 'invalid' : ''} value={form.specialtyId} onChange={e => set('specialtyId', e.target.value)}>
-                <option value="">-- Select specialty --</option>
-                {safeArr(specialties).map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
-              </select>
+              <SearchableSelect value={form.specialtyId} onChange={v => set('specialtyId', v)} options={specialtyOptions} placeholder="Search specialty..." error={errors.specialtyId} />
             </div>
 
             <div className="admin-field full">
@@ -178,7 +181,7 @@ export default function Distributions() {
   const filtered = safeArr(items).filter(item => {
     const supervisor = item?.supervisorId || item?.doctor || {};
     const hospital = item?.hospitalId || item?.hospital || {};
-    const specialty = item?.specialtyId?.name || item?.specialty || '';
+    const specialty = textValue(item?.specialtyId || item?.specialty, '');
     const q = search.toLowerCase();
     const matchSearch = !q ||
       supervisor?.name?.toLowerCase().includes(q) ||
@@ -236,7 +239,6 @@ export default function Distributions() {
     <>
       <Navbar />
       <main className="admin-main">
-        <div className="admin-page-header"><Sk w={170} h={38} r={8} /></div>
         <div className="admin-card">
           <div className="admin-toolbar"><Sk h={36} r={8} style={{ flex: 1, minWidth: 200 }} /><Sk w={70} h={36} r={8} /><Sk w={110} h={36} r={8} /></div>
           <div className="admin-table-wrap">
@@ -259,17 +261,11 @@ export default function Distributions() {
     <>
       <Navbar />
       <main className="admin-main">
-        <div className="admin-page-header">
-          <button className="btn-purple" onClick={() => { setEditItem(null); setShowModal(true); }}>+ Add Distribution</button>
-        </div>
-
         <div className="admin-card">
           <div className="admin-toolbar">
             <input className="admin-search" placeholder="Search by supervisor, hospital, specialty..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
-            <div className="view-toggle">
-              <button className={`view-btn${view === 'table' ? ' active' : ''}`} onClick={() => setView('table')} title="Table view" aria-label="Table view">T</button>
-              <button className={`view-btn${view === 'card'  ? ' active' : ''}`} onClick={() => setView('card')} title="Card view" aria-label="Card view">C</button>
-            </div>
+            <button className="btn-purple" onClick={() => { setEditItem(null); setShowModal(true); }}>+ Add Distribution</button>
+            <ViewToggle value={view} onChange={setView} listValue="table" />
             <select className="rows-select" value={rows} onChange={e => { setRows(+e.target.value); setPage(1); }}>
               {ROWS_OPT.map(r => <option key={r} value={r}>{r} / page</option>)}
             </select>
@@ -312,7 +308,7 @@ export default function Distributions() {
                   {currentItems.map((item, i) => {
                     const supervisor = item?.supervisorId || item?.doctor || {};
                     const hospital = item?.hospitalId || item?.hospital || {};
-                    const specialty = item?.specialtyId?.name || item?.specialty || '-';
+                    const specialty = textValue(item?.specialtyId || item?.specialty);
                     const isActive = item?.status === 'active';
                     return (
                       <tr key={item._id}>
@@ -341,7 +337,7 @@ export default function Distributions() {
               {currentItems.map(item => {
                 const supervisor = item?.supervisorId || item?.doctor || {};
                 const hospital = item?.hospitalId || item?.hospital || {};
-                const specialty = item?.specialtyId?.name || item?.specialty || '-';
+                const specialty = textValue(item?.specialtyId || item?.specialty);
                 const isActive = item?.status === 'active';
                 return (
                   <div className="dist-card" key={item._id}>
