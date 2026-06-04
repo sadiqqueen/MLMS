@@ -7,7 +7,7 @@ const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 
 // GET /api/dashboard/stats
-router.get('/stats', auth, allowRoles('super_admin', 'dio'), async (req, res) => {
+router.get('/stats', auth, allowRoles('super_admin', 'dio', 'president'), async (req, res) => {
   try {
     // Basic counts
     const [totalHospitals, totalDoctors, totalDistributions, totalEvaluations, pendingEvaluations] =

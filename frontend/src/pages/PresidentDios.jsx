@@ -1,15 +1,30 @@
+/**
+ * PresidentDios.jsx
+ * Read-only view of all DIOs for the President role.
+ * Endpoint: GET /api/president/dios
+ */
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
-function DetailModal({ item, fields, onClose }) {
+const API_BASE = '';
+
+function DetailModal({ item, onClose }) {
   useEffect(() => {
     const h = e => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', h);
     return () => document.removeEventListener('keydown', h);
   }, [onClose]);
+
+  const fields = [
+    ['Phone',    item.phone],
+    ['City',     item.city],
+    ['Hospital', item.hospital?.name],
+    ['Status',   item.isActive === false ? 'Inactive' : 'Active'],
+    ['Joined',   item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : null],
+  ];
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
@@ -43,32 +58,32 @@ function DetailModal({ item, fields, onClose }) {
   );
 }
 
-export default function PresidentSecretaries() {
-  const [secretaries, setSecretaries] = useState([]);
-  const [loading,     setLoading    ] = useState(true);
-  const [search,      setSearch     ] = useState('');
-  const [selected,    setSelected   ] = useState(null);
-  const [toasts,      setToasts     ] = useState([]);
+export default function PresidentDios() {
+  const [dios,     setDios    ] = useState([]);
+  const [loading,  setLoading ] = useState(true);
+  const [search,   setSearch  ] = useState('');
+  const [selected, setSelected] = useState(null);
+  const [toasts,   setToasts  ] = useState([]);
 
-  function showToast(msg, type='error') {
+  function showToast(msg, type = 'error') {
     const id = Date.now();
-    setToasts(p => [...p, { id, message:msg, type }]);
+    setToasts(p => [...p, { id, message: msg, type }]);
     setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3200);
   }
 
   useEffect(() => {
-    api.get('/api/president/secretaries')
-      .then(r => setSecretaries(r.data?.data || r.data || []))
-      .catch(() => showToast('Failed to load secretaries'))
+    api.get('/api/president/dios')
+      .then(r => setDios(r.data?.data || r.data || []))
+      .catch(() => showToast('Failed to load DIOs'))
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = secretaries.filter(s => {
+  const filtered = dios.filter(d => {
     const q = search.toLowerCase();
     return !q
-      || s.name?.toLowerCase().includes(q)
-      || s.email?.toLowerCase().includes(q)
-      || (s.specialtyId?.name || '').toLowerCase().includes(q);
+      || d.name?.toLowerCase().includes(q)
+      || d.email?.toLowerCase().includes(q)
+      || (d.hospital?.name || '').toLowerCase().includes(q);
   });
 
   if (loading) return (
@@ -83,8 +98,8 @@ export default function PresidentSecretaries() {
                 <tr key={i}>
                   <td><Sk w={20} h={13} /></td>
                   <td><div style={{ display:'flex', alignItems:'center', gap:8 }}><Sk w={36} h={36} r="50%" /><Sk w={130} h={13} /></div></td>
-                  <td><Sk w={100} h={22} r={20} /></td>
-                  <td><Sk w={80}  h={22} r={20} /></td>
+                  <td><Sk w={120} h={13} /></td>
+                  <td><Sk w={80}  h={13} /></td>
                 </tr>
               ))}
             </tbody></table>
@@ -100,69 +115,55 @@ export default function PresidentSecretaries() {
       <main className="admin-main">
 
         <div style={{ background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:10, padding:'12px 16px', marginBottom:16, fontSize:13, color:'#166534', display:'flex', alignItems:'center', gap:8 }}>
-          <span>👁</span> Read-only view — {secretaries.length} secretar{secretaries.length !== 1 ? 'ies' : 'y'} across the system
+          <span>👁</span> Read-only view — {dios.length} DIO{dios.length !== 1 ? 's' : ''} across the system
         </div>
 
         <div className="admin-card">
           <div className="admin-toolbar">
-            <input className="admin-search" style={{ flex:1, minWidth:200 }} placeholder="Search by name, email, or specialty…" value={search} onChange={e => setSearch(e.target.value)} />
+            <input className="admin-search" style={{ flex:1, minWidth:200 }}
+              placeholder="Search by name, email, or hospital…"
+              value={search} onChange={e => setSearch(e.target.value)} />
             <span style={{ fontSize:13, color:'#8B8FA8', flexShrink:0 }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
           </div>
           <div className="admin-table-wrap">
             <table className="admin-table">
-              <thead><tr><th>#</th><th>Secretary</th><th>Assigned Specialty</th><th>Status</th></tr></thead>
+              <thead>
+                <tr><th>#</th><th>DIO</th><th>Hospital</th><th>Phone</th></tr>
+              </thead>
               <tbody>
                 {filtered.length === 0 && (
                   <tr><td colSpan={4} style={{ textAlign:'center', padding:40, color:'#8B8FA8' }}>
-                    <div style={{ fontSize:32, marginBottom:8 }}>📋</div>
+                    <div style={{ fontSize:32, marginBottom:8 }}>🏥</div>
                     <div style={{ fontSize:15, fontWeight:600, color:'#4B5563' }}>
-                      {secretaries.length === 0 ? 'No secretaries found' : 'No results match your search'}
+                      {dios.length === 0 ? 'No DIOs found' : 'No results match your search'}
                     </div>
                   </td></tr>
                 )}
-                {filtered.map((s, i) => {
-                  const specName = s.specialtyId?.name || '—';
-                  const isActive = s.isActive !== false;
-                  return (
-                    <tr key={s._id} style={{ cursor:'pointer' }} onClick={() => setSelected(s)}>
-                      <td style={{ color:'#8B8FA8' }}>{i+1}</td>
-                      <td>
-                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                          <div className="cell-initials">{s.initials || s.name?.[0] || '?'}</div>
-                          <div><strong>{s.name}</strong><div style={{ fontSize:11, color:'#8B8FA8' }}>{s.email}</div></div>
+                {filtered.map((d, i) => (
+                  <tr key={d._id} style={{ cursor:'pointer' }} onClick={() => setSelected(d)}>
+                    <td style={{ color:'#8B8FA8' }}>{i+1}</td>
+                    <td>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        {d.photoUrl
+                          ? <img src={`${API_BASE}${d.photoUrl}`} alt="" className="cell-photo" />
+                          : <div className="cell-initials">{d.initials || d.name?.[0] || '?'}</div>
+                        }
+                        <div>
+                          <strong>{d.name}</strong>
+                          <div style={{ fontSize:11, color:'#8B8FA8' }}>{d.email}</div>
                         </div>
-                      </td>
-                      <td>
-                        <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background: specName === '—' ? '#F3F4F6' : '#EEEDFE', color: specName === '—' ? '#6B7280' : '#3C3489' }}>
-                          {specName}
-                        </span>
-                      </td>
-                      <td>
-                        <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background: isActive ? '#D1FAE5' : '#FEE2E2', color: isActive ? '#065F46' : '#991B1B' }}>
-                          {isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                      </div>
+                    </td>
+                    <td style={{ fontSize:13, color:'#4B5563' }}>{d.hospital?.name || '—'}</td>
+                    <td style={{ fontSize:13, color:'#4B5563' }}>{d.phone || '—'}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         </div>
 
-        {selected && (
-          <DetailModal
-            item={selected}
-            fields={[
-              ['Specialty', selected.specialtyId?.name],
-              ['Phone',     selected.phone],
-              ['City',      selected.city],
-              ['Hospital',  selected.hospitalId?.name || selected.hospital?.name],
-              ['Status',    selected.isActive === false ? 'Inactive' : 'Active'],
-            ]}
-            onClose={() => setSelected(null)}
-          />
-        )}
+        {selected && <DetailModal item={selected} onClose={() => setSelected(null)} />}
         <Toast toasts={toasts} />
       </main>
     </>

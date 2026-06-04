@@ -81,6 +81,7 @@ export default function Profile() {
   );
 
   const p = profile || user;
+  const isPresident = p?.role === 'president';
 
   function hospitalName() {
     return p?.hospitalId?.name || p?.hospital?.name || currentHospital || '—';
@@ -174,6 +175,8 @@ export default function Profile() {
                 ? <img src={photoUrl} alt={p?.name} />
                 : <span>{p?.initials}</span>}
             </div>
+            {!isPresident && (
+              <>
             <input
               ref={fileInputRef}
               type="file"
@@ -188,6 +191,8 @@ export default function Profile() {
             >
               {photoUploading ? 'Uploading…' : 'Change photo'}
             </button>
+              </>
+            )}
           </div>
           <div className="profile-info">
             <div className="profile-name">{p?.name}</div>
@@ -222,6 +227,8 @@ export default function Profile() {
             </div>
           </div>
 
+          {!isPresident && (
+            <>
           {/* DIVIDER */}
           <div className="profile-divider" />
 
@@ -278,6 +285,8 @@ export default function Profile() {
               </button>
             </form>
           </div>
+            </>
+          )}
 
         </div>
 

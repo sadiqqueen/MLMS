@@ -44,7 +44,8 @@ const ROLE_ALLOWED = {
   president:        [],
   super_admin:      null
 };
-const STAFF = ['secretary', 'dio', 'program_director', 'president', 'super_admin'];
+const READ_STAFF = ['secretary', 'dio', 'program_director', 'president', 'super_admin'];
+const WRITE_STAFF = ['secretary', 'dio', 'program_director', 'super_admin'];
 const PASSWORD_RESET_ROLES = ['super_admin'];
 const ROLE_RANK = {
   trainee: 10,
@@ -61,7 +62,7 @@ function hasHigherRole(actorRole, targetRole) {
 }
 
 // GET /api/users — all users
-router.get('/', auth, allowRoles(...STAFF), async (req, res) => {
+router.get('/', auth, allowRoles(...READ_STAFF), async (req, res) => {
   try {
     const users = await User.find()
       .select('-password')
@@ -131,7 +132,7 @@ router.get('/students', auth, allowRoles('supervisor', 'program_director', 'secr
 router.get('/:id', auth, async (req, res) => {
   try {
     const isSelf  = req.params.id === req.user._id.toString();
-    const isStaff = STAFF.includes(req.user.role);
+    const isStaff = READ_STAFF.includes(req.user.role);
     if (!isSelf && !isStaff) return res.status(403).json({ success: false, message: 'Access denied' });
 
     const user = await User.findById(req.params.id)
@@ -146,7 +147,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // POST /api/users — create user with optional photo
-router.post('/', auth, allowRoles(...STAFF), upload.single('photo'), async (req, res) => {
+router.post('/', auth, allowRoles(...WRITE_STAFF), upload.single('photo'), async (req, res) => {
   try {
     const data = {};
     ALLOWED_CREATE_FIELDS.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
@@ -178,7 +179,10 @@ router.post('/', auth, allowRoles(...STAFF), upload.single('photo'), async (req,
 router.put('/:id', auth, upload.single('photo'), async (req, res) => {
   try {
     const isSelf  = req.user._id.toString() === req.params.id;
-    const isAdmin = STAFF.includes(req.user.role);
+    if (req.user.role === 'president') {
+      return res.status(403).json({ message: 'President is read-only' });
+    }
+    const isAdmin = WRITE_STAFF.includes(req.user.role);
     if (!isSelf && !isAdmin) return res.status(403).json({ message: 'Access denied' });
     const target = await User.findById(req.params.id).select('role isActive');
     if (!target || target.isActive === false) return res.status(404).json({ message: 'User not found' });
@@ -226,7 +230,7 @@ router.put('/:id/password', auth, allowRoles(...PASSWORD_RESET_ROLES), async (re
 });
 
 // PUT /api/users/:id/lock — toggle locked status
-router.put('/:id/lock', auth, allowRoles(...STAFF), async (req, res) => {
+router.put('/:id/lock', auth, allowRoles(...WRITE_STAFF), async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -242,7 +246,7 @@ router.put('/:id/lock', auth, allowRoles(...STAFF), async (req, res) => {
 });
 
 // DELETE /api/users/:id
-router.delete('/:id', auth, allowRoles(...STAFF), async (req, res) => {
+router.delete('/:id', auth, allowRoles(...WRITE_STAFF), async (req, res) => {
   try {
     const target = await User.findById(req.params.id);
     if (!target || target.isActive === false) return res.status(404).json({ message: 'User not found' });

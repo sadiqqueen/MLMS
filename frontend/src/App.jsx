@@ -41,6 +41,8 @@ import PresidentTrainees from './pages/PresidentTrainees';
 import PresidentSupervisors from './pages/PresidentSupervisors';
 import PresidentProgramDirectors from './pages/PresidentProgramDirectors';
 import PresidentSecretaries from './pages/PresidentSecretaries';
+import PresidentDios from './pages/PresidentDios';
+import PresidentHospitals from './pages/PresidentHospitals';
 
 import AdminSpecialties from './pages/AdminSpecialties';
 import AuditLog from './pages/AuditLog';
@@ -212,6 +214,16 @@ export default function App() {
           <Route path="/president/secretaries" element={
             <ProtectedRoute allowedRoles={['president']}>
               <PresidentSecretaries />
+            </ProtectedRoute>
+          } />
+          <Route path="/president/dios" element={
+            <ProtectedRoute allowedRoles={['president']}>
+              <PresidentDios />
+            </ProtectedRoute>
+          } />
+          <Route path="/president/hospitals" element={
+            <ProtectedRoute allowedRoles={['president']}>
+              <PresidentHospitals />
             </ProtectedRoute>
           } />
 

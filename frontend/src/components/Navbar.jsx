@@ -41,10 +41,12 @@ const ROLE_LINKS = {
     { to: '/grades',   label: 'Grades'   },
   ],
   president: [
-    { to: '/president/trainees',          label: 'Trainees'         },
-    { to: '/president/supervisors',       label: 'Supervisors'      },
-    { to: '/president/program-directors', label: 'Program Directors'},
-    { to: '/president/secretaries',       label: 'Secretaries'      },
+    { to: '/president/trainees',          label: 'Trainees'        },
+    { to: '/president/supervisors',       label: 'Supervisors'     },
+    { to: '/president/program-directors', label: 'Prog.Directors'  },
+    { to: '/president/dios',             label: 'DIOs'            },
+    { to: '/president/secretaries',       label: 'Secretaries'     },
+    { to: '/president/hospitals',         label: 'Hospitals'       },
   ],
   program_director: [
     { to: '/program-director/trainees',    label: 'Trainees'   },

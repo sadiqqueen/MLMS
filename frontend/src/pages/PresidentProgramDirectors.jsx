@@ -100,7 +100,7 @@ export default function PresidentProgramDirectors() {
       <main className="admin-main">
 
         <div style={{ background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:10, padding:'12px 16px', marginBottom:16, fontSize:13, color:'#166534', display:'flex', alignItems:'center', gap:8 }}>
-          <span>👁</span> Read-only view — {pds.length} program director{pds.length !== 1 ? 's' : ''} in this hospital
+          <span>👁</span> Read-only view — {pds.length} program director{pds.length !== 1 ? 's' : ''} across the system
         </div>
 
         <div className="admin-card">
@@ -116,7 +116,7 @@ export default function PresidentProgramDirectors() {
                   <tr><td colSpan={4} style={{ textAlign:'center', padding:40, color:'#8B8FA8' }}>
                     <div style={{ fontSize:32, marginBottom:8 }}>⭐</div>
                     <div style={{ fontSize:15, fontWeight:600, color:'#4B5563' }}>
-                      {pds.length === 0 ? 'No program directors in this hospital' : 'No results match your search'}
+                      {pds.length === 0 ? 'No program directors found' : 'No results match your search'}
                     </div>
                   </td></tr>
                 )}
