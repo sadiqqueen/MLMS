@@ -11,7 +11,8 @@
     "seed:superadmin": "node seeds/superadmin.seed.js",
     "seed:all": "npm run seed:specialties && npm run seed:superadmin",
     "seed:demo": "node seeds/demo_full.seed.js",
-    "migrate:legacy-roles": "node migrations/migrateLegacyRoles.js"
+    "migrate:legacy-roles": "node migrations/migrateLegacyRoles.js",
+    "security-events": "node scripts/showSecurityEvents.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

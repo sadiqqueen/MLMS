@@ -25,8 +25,13 @@ const path         = require('path');
 const helmet       = require('helmet');
 const cookieParser = require('cookie-parser');
 const { globalLimiter, writeLimiter } = require('./middleware/rateLimiter');
+const honeypot = require('./middleware/honeypot');
 
 const app = express();
+if (process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+}
+
 const writeMethodsOnly = (req, res, next) => (
   ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)
     ? writeLimiter(req, res, next)
@@ -98,6 +103,8 @@ app.use('/api/dio',               require('./routes/dio'));
 app.use('/api/president',         require('./routes/president'));
 app.use('/api/trainee',           require('./routes/trainee'));
 app.use('/api/admin',             require('./routes/adminV2'));
+
+app.use(honeypot());
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
