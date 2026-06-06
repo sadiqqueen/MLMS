@@ -11,9 +11,12 @@
     "check:backend": "node --check backend/server.js",
     "build:backend-check": "npm run check:backend",
     "deploy:check": "npm run build:frontend && npm run check:backend",
-    "reseed:professional": "node backend/migrations/reseedProfessionalData.js"
+    "reseed:professional": "node backend/migrations/reseedProfessionalData.js",
+    "test:e2e:trainee": "playwright test tests/e2e/trainee-readonly.spec.js",
+    "test:e2e:trainee:headed": "playwright test tests/e2e/trainee-readonly.spec.js --headed"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "concurrently": "^8.2.2"
   }
 }
