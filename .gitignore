@@ -54,3 +54,4 @@ MTMS_demo_accounts_by_specialty.docx
 .claude/settings.local.json
 .claude/**/__pycache__/
 .claude/**/*.pyc
+.claude/
