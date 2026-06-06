@@ -10,6 +10,20 @@ const Rotation     = require('../models/Rotation');
 const Report       = require('../models/Report');
 const Evaluation   = require('../models/Evaluation');
 
+const DEMO_SEED_PASSWORD = process.env.MTMS_DEMO_SEED_PASSWORD;
+
+function requireLocalDemoSeed() {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Demo seed is disabled in production.');
+  }
+  if (process.env.ALLOW_LOCAL_DEMO_SEED !== 'true' || process.env.CONFIRM_LOCAL_DEMO_SEED !== 'true') {
+    throw new Error('Demo seed requires ALLOW_LOCAL_DEMO_SEED=true and CONFIRM_LOCAL_DEMO_SEED=true.');
+  }
+  if (!DEMO_SEED_PASSWORD || DEMO_SEED_PASSWORD.length < 12) {
+    throw new Error('MTMS_DEMO_SEED_PASSWORD is required and must be at least 12 characters.');
+  }
+}
+
 // ── REAL IRAQI HOSPITALS ───────────────────────────────────────────────────────
 const HOSPITALS_DATA = [
   {
@@ -78,6 +92,8 @@ async function findOrCreate(Model, findQuery, createData) {
 
 // ── MAIN SEED ──────────────────────────────────────────────────────────────────
 async function seed() {
+  requireLocalDemoSeed();
+
   await mongoose.connect(process.env.MONGO_URI);
   console.log('\n✅ Connected to MongoDB\n');
 
@@ -118,8 +134,8 @@ async function seed() {
       {
         name:       pd.name,
         email:      pd.email,
-        // plain password — pre-save hook will hash it
-        password:   '123456',
+        // Plain password is hashed by the User pre-save hook.
+        password:   DEMO_SEED_PASSWORD,
         role:       'program_director',
         department: pd.department,
         phone:      pd.phone,
@@ -144,7 +160,7 @@ async function seed() {
       {
         name:        sup.name,
         email:       sup.email,
-        password:    '123456',
+        password:    DEMO_SEED_PASSWORD,
         role:        'supervisor',
         department:  sup.department,
         phone:       sup.phone,
@@ -174,7 +190,7 @@ async function seed() {
       {
         name:         t.name,
         email:        t.email,
-        password:     '123456',
+        password:     DEMO_SEED_PASSWORD,
         role:         'trainee',
         studentId:    t.studentId,
         year:         t.year,
@@ -413,20 +429,9 @@ HOSPITALS (${counts.hospitals}):
   ✅ Al-Yarmouk Teaching Hospital  — Al-Karkh, Baghdad
   ✅ Al-Kindi Teaching Hospital    — Rusafa, Baghdad
 
-PROGRAM DIRECTORS (${counts.programDirs}):
-  ✅ pd.baghdad@mtms.com   / 123456
-  ✅ pd.yarmouk@mtms.com   / 123456
-  ✅ pd.kindi@mtms.com     / 123456
-
-SUPERVISORS (${counts.supervisors}):
-  ✅ sup.internal@mtms.com    / 123456  → Internal Medicine
-  ✅ sup.surgery@mtms.com     / 123456  → Surgery
-  ✅ sup.pediatrics@mtms.com  / 123456  → Pediatrics
-  ✅ sup.obs@mtms.com         / 123456  → Obstetrics & Gynecology
-  ✅ sup.emergency@mtms.com   / 123456  → Emergency Medicine
-
-TRAINEES (${counts.trainees}):
-  ✅ trainee1@mtms.com  → trainee10@mtms.com  / 123456
+PROGRAM DIRECTORS: ${counts.programDirs}
+SUPERVISORS:       ${counts.supervisors}
+TRAINEES:          ${counts.trainees}
 
 DATABASE TOTALS:
   Hospitals:     ${counts.hospitals}
@@ -438,8 +443,7 @@ DATABASE TOTALS:
   Reports:       ${counts.reports}
   Evaluations:   ${counts.evaluations}
 
-ADMIN: admin@mtms.com / Admin@123456
-ALL OTHERS: [email] / 123456
+Demo user passwords were read from MTMS_DEMO_SEED_PASSWORD and were not printed.
 ════════════════════════════════════════════════════════════════
   `);
 

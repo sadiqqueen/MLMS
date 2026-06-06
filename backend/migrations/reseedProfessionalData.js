@@ -2,6 +2,7 @@
 
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const Hospital = require('../models/Hospital');
@@ -15,7 +16,8 @@ const Certificate = require('../models/Certificate');
 const DRY_RUN = process.env.DRY_RUN !== 'false';
 const CONFIRMED = process.env.CONFIRM_RESEED === 'true';
 
-const DEMO_PASSWORD = '123456';
+const APPLY_PASSWORD = process.env.MTMS_RESEED_PASSWORD || process.env.MTMS_DEMO_SEED_PASSWORD || '';
+const DEMO_PASSWORD = APPLY_PASSWORD || (DRY_RUN ? crypto.randomBytes(18).toString('base64url') : '');
 const PASSWORDS = {
   super_admin: DEMO_PASSWORD,
   dio: DEMO_PASSWORD,
@@ -585,8 +587,23 @@ function printValidation(summary) {
 }
 
 async function main() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('ERROR: Professional reseed is disabled in production.');
+    process.exit(1);
+  }
+
   if (!process.env.MONGO_URI) {
     console.error('ERROR: MONGO_URI is required in backend/.env');
+    process.exit(1);
+  }
+
+  if (!DRY_RUN && (!DEMO_PASSWORD || DEMO_PASSWORD.length < 12)) {
+    console.error('ERROR: Apply mode requires MTMS_RESEED_PASSWORD or MTMS_DEMO_SEED_PASSWORD with at least 12 characters.');
+    process.exit(1);
+  }
+
+  if (!DRY_RUN && process.env.ALLOW_LOCAL_DEMO_SEED !== 'true') {
+    console.error('ERROR: Apply mode requires ALLOW_LOCAL_DEMO_SEED=true.');
     process.exit(1);
   }
 
@@ -597,8 +614,7 @@ async function main() {
   }
 
   console.log(`Professional MTMS reseed starting. DRY_RUN=${DRY_RUN} CONFIRM_RESEED=${CONFIRMED}`);
-  console.log(`Demo password for all generated users: ${DEMO_PASSWORD}`);
-  console.log('Passwords are assigned through the User model and hashes are never printed.');
+  console.log('Generated user passwords are sourced from environment variables and are not printed.');
   await mongoose.connect(process.env.MONGO_URI);
 
   const professional = await buildProfessionalData();

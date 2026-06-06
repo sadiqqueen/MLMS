@@ -1,5 +1,6 @@
-// Run with: node seed.js  (from the server/ folder)
+// Local/dev only. Run with: node seed.js  (from the backend/ folder)
 // Wipes all collections and re-creates fresh sample data for every feature.
+// Requires ALLOW_LOCAL_DEMO_SEED=true, CONFIRM_LOCAL_DEMO_SEED=true, and MTMS_DEMO_SEED_PASSWORD.
 
 require('dotenv').config();
 const mongoose     = require('mongoose');
@@ -14,7 +15,26 @@ const Rotation     = require('./models/Rotation');
 const Report       = require('./models/Report');
 const Notification = require('./models/Notification');
 
+const DEMO_SEED_PASSWORD = process.env.MTMS_DEMO_SEED_PASSWORD;
+
+function requireLocalDemoSeed() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('ERROR: Demo seed is disabled in production.');
+    process.exit(1);
+  }
+  if (process.env.ALLOW_LOCAL_DEMO_SEED !== 'true' || process.env.CONFIRM_LOCAL_DEMO_SEED !== 'true') {
+    console.error('ERROR: Demo seed requires ALLOW_LOCAL_DEMO_SEED=true and CONFIRM_LOCAL_DEMO_SEED=true.');
+    process.exit(1);
+  }
+  if (!DEMO_SEED_PASSWORD || DEMO_SEED_PASSWORD.length < 12) {
+    console.error('ERROR: MTMS_DEMO_SEED_PASSWORD is required and must be at least 12 characters.');
+    process.exit(1);
+  }
+}
+
 async function seed() {
+  requireLocalDemoSeed();
+
   await mongoose.connect(process.env.MONGO_URI);
   console.log('Connected to MongoDB');
 
@@ -69,52 +89,52 @@ async function seed() {
   const [, , , d1, d2, d3, d4, d5, s1, s2] = await User.insertMany([
     {
       name: 'Sadeq Queen', email: 'superadmin@medlearn.com',
-      password: await hash('123456'), role: 'super_admin',
+      password: await hash(DEMO_SEED_PASSWORD), role: 'super_admin',
       initials: 'SQ', gender: 'male', city: 'Baghdad'
     },
     {
       name: 'Ahmed Queen', email: 'admin@medlearn.com',
-      password: await hash('123456'), role: 'super_admin',
+      password: await hash(DEMO_SEED_PASSWORD), role: 'super_admin',
       initials: 'AQ', gender: 'male', city: 'Baghdad'
     },
     {
       name: 'Prof. Jawad Al-Sharafi', email: 'professor@medlearn.com',
-      password: await hash('123456'), role: 'dio',
+      password: await hash(DEMO_SEED_PASSWORD), role: 'dio',
       initials: 'JA', department: 'Medicine', gender: 'male', city: 'Baghdad'
     },
     {
       name: 'Dr. Fatima Al-Zahra', email: 'doctor1@medlearn.com',
-      password: await hash('123456'), role: 'supervisor',
+      password: await hash(DEMO_SEED_PASSWORD), role: 'supervisor',
       initials: 'FA', specialty: 'Surgery', specialtyId: specialtyByName.Surgery._id,
       gender: 'female', city: 'Baghdad', hospital: h1._id, hospitalId: h1._id
     },
     {
       name: 'Dr. Omar Khalid', email: 'doctor2@medlearn.com',
-      password: await hash('123456'), role: 'supervisor',
+      password: await hash(DEMO_SEED_PASSWORD), role: 'supervisor',
       initials: 'OK', specialty: 'Internal Medicine', specialtyId: specialtyByName['Internal Medicine']._id,
       gender: 'male', city: 'Baghdad', hospital: h3._id, hospitalId: h3._id
     },
     {
       name: 'Dr. Ali Hassan', email: 'doctor3@medlearn.com',
-      password: await hash('123456'), role: 'supervisor',
+      password: await hash(DEMO_SEED_PASSWORD), role: 'supervisor',
       initials: 'AH', specialty: 'Pediatrics', specialtyId: specialtyByName.Pediatrics._id,
       gender: 'male', city: 'Baghdad', hospital: h2._id, hospitalId: h2._id
     },
     {
       name: 'Dr. Sara Mohammed', email: 'doctor4@medlearn.com',
-      password: await hash('123456'), role: 'supervisor',
+      password: await hash(DEMO_SEED_PASSWORD), role: 'supervisor',
       initials: 'SM', specialty: 'Cardiology', specialtyId: specialtyByName.Cardiology._id,
       gender: 'female', city: 'Basra', hospital: h2._id, hospitalId: h2._id
     },
     {
       name: 'Dr. Kareem Abbas', email: 'doctor5@medlearn.com',
-      password: await hash('123456'), role: 'supervisor',
+      password: await hash(DEMO_SEED_PASSWORD), role: 'supervisor',
       initials: 'KA', specialty: 'Orthopedics', specialtyId: specialtyByName.Orthopedics._id,
       gender: 'male', city: 'Baghdad', hospital: h1._id, hospitalId: h1._id
     },
     {
       name: 'Ahmed Hassan', email: 'student@medlearn.com',
-      password: await hash('123456'), role: 'trainee',
+      password: await hash(DEMO_SEED_PASSWORD), role: 'trainee',
       initials: 'AH', year: 2, studentId: 'MED-2024-001',
       enrolledSince: new Date('2024-09-01'),
       gender: 'male', city: 'Baghdad', phone: '+964 770 123 4567',
@@ -123,7 +143,7 @@ async function seed() {
     },
     {
       name: 'Lina Mustafa', email: 'student2@medlearn.com',
-      password: await hash('123456'), role: 'trainee',
+      password: await hash(DEMO_SEED_PASSWORD), role: 'trainee',
       initials: 'LM', year: 3, studentId: 'MED-2024-002',
       enrolledSince: new Date('2023-09-01'),
       gender: 'female', city: 'Basra', phone: '+964 770 987 6543',
@@ -229,17 +249,7 @@ async function seed() {
   ]);
 
   console.log('\n✅ Seed complete!\n');
-  console.log('Login credentials (all passwords: 123456):');
-  console.log('  superadmin@medlearn.com  — Sadeq Queen (Super Admin)');
-  console.log('  admin@medlearn.com       — Ahmed Queen (Admin)');
-  console.log('  professor@medlearn.com   — Prof. Jawad Al-Sharafi');
-  console.log('  doctor1@medlearn.com     — Dr. Fatima (Surgery)');
-  console.log('  doctor2@medlearn.com     — Dr. Omar (Internal Medicine)');
-  console.log('  doctor3@medlearn.com     — Dr. Ali (Pediatrics)');
-  console.log('  doctor4@medlearn.com     — Dr. Sara (Cardiology)');
-  console.log('  doctor5@medlearn.com     — Dr. Kareem (Orthopedics)');
-  console.log('  student@medlearn.com     — Ahmed Hassan');
-  console.log('  student2@medlearn.com    — Lina Mustafa\n');
+  console.log('Demo user passwords were read from MTMS_DEMO_SEED_PASSWORD and were not printed.');
 
   await mongoose.disconnect();
 }

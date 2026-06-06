@@ -9,11 +9,16 @@ async function seed() {
     await mongoose.connect(process.env.MONGO_URI);
     console.log('✅ Connected to MongoDB');
 
-    const email = process.env.SUPERADMIN_EMAIL || 'admin@mtms.com';
+    const email = process.env.SUPERADMIN_EMAIL;
+    if (!email) {
+      console.error('ERROR: SUPERADMIN_EMAIL is required before creating a super admin.');
+      await mongoose.disconnect();
+      process.exit(1);
+    }
 
     const existing = await User.findOne({ email: email.toLowerCase() });
     if (existing) {
-      console.log(`⏭  Super admin already exists: ${email}`);
+      console.log('⏭  Super admin already exists.');
       await mongoose.disconnect();
       process.exit(0);
     }
@@ -39,9 +44,8 @@ async function seed() {
       loginAttempts: 0
     });
 
-    console.log(`✅ Super admin created: ${email}`);
+    console.log('✅ Super admin created.');
     console.log('   Password was read from SUPERADMIN_PASSWORD.');
-    console.log('   ⚠️  Change this password after first login!');
 
   } catch (err) {
     console.error('❌ Seed failed:', err.message);
