@@ -32,34 +32,34 @@ Requirements:
 - Do not run tests.
 - Show me the diff after editing.
 
-Use this credential example format inside the skill:
+Use this placeholder credential example format inside the skill:
 
 Credentials for this test session only:
 
 trainee:
-email:trainee30@mtms.com
+email:
 password:
 
 supervisor:
-email:sup.obgyn.kadhimain@mtms.com
-password:123456
+email:
+password:
 
 secretary:
-email:secretary@mtms.com
-password:123456
+email:
+password:
 
 program director:
-email:pd@mtms.com
-password:123456
+email:
+password:
 
 DIO:
-email:dio@mtms.com
-password:123456
+email:
+password:
 
 president:
-email:president@mtms.com
-password:123456
+email:
+password:
 
 super admin:
-email:sadeq@mtms.com
-password:123456
+email:
+password:
