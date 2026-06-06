@@ -114,7 +114,7 @@ function UserModal({ editUser, hospitals, supervisors, specialties, onSave, onCl
     const e = {};
     if (!form.name.trim())  e.name  = true;
     if (!form.email.trim()) e.email = true;
-    if (!editUser && form.password.length < 6) e.password = true;
+    if (!editUser && form.password.length < 8) e.password = true;
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -211,9 +211,9 @@ function UserModal({ editUser, hospitals, supervisors, specialties, onSave, onCl
                   type="password"
                   value={form.password}
                   onChange={e => set('password', e.target.value)}
-                  placeholder="Min. 6 characters"
+                  placeholder="Min. 8 characters"
                 />
-                {errors.password && <span style={{ fontSize: 11, color: '#e74c3c' }}>At least 6 characters required</span>}
+                {errors.password && <span style={{ fontSize: 11, color: '#e74c3c' }}>At least 8 characters required</span>}
               </div>
             )}
 
@@ -303,7 +303,7 @@ function UserModal({ editUser, hospitals, supervisors, specialties, onSave, onCl
         </div>
 
         <div className="admin-modal-footer">
-          <button className="btn-red" onClick={onClose}>Close</button>
+          <button className="btn-outline" onClick={onClose}>Cancel</button>
           <button className="btn-purple" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </button>
@@ -319,7 +319,7 @@ function PasswordModal({ userId, onClose, showToast }) {
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
-    if (pw.length < 6) return showToast('Password must be at least 6 characters', 'error');
+    if (pw.length < 8) return showToast('Password must be at least 8 characters', 'error');
     setSaving(true);
     try {
       await api.put(`/api/users/${userId}/password`, { newPassword: pw });
@@ -338,12 +338,12 @@ function PasswordModal({ userId, onClose, showToast }) {
         </div>
         <div className="admin-modal-body">
           <div className="admin-field">
-            <label>New Password (min 6 chars)</label>
+            <label>New Password (min 8 chars)</label>
             <input type="password" value={pw} onChange={e => setPw(e.target.value)} placeholder="New password" />
           </div>
         </div>
         <div className="admin-modal-footer">
-          <button className="btn-red" onClick={onClose}>Close</button>
+          <button className="btn-outline" onClick={onClose}>Cancel</button>
           <button className="btn-purple" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
         </div>
       </div>

@@ -49,3 +49,8 @@ Thumbs.db
 .claude/settings.local.json
 
 MTMS_demo_accounts_by_specialty.docx
+
+# Claude local/private files
+.claude/settings.local.json
+.claude/**/__pycache__/
+.claude/**/*.pyc

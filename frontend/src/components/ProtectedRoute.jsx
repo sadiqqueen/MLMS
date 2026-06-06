@@ -14,7 +14,7 @@ const ROLE_HOME = {
 export default function ProtectedRoute({ children, allowedRoles }) {
   const { user, loading } = useAuth();
 
-  if (loading) return null;
+  if (loading) return <div className="loading">Loading…</div>;
 
   if (!user) return <Navigate to="/" replace />;
 

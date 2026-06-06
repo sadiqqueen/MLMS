@@ -22,7 +22,7 @@ export default function Profile() {
   useEffect(() => {
     if (!user) return;
     const calls = [api.get('/api/auth/me')];
-    if (['student', 'trainee'].includes(user.role)) calls.push(api.get(`/api/rotations/current/${user._id}`));
+    if (user.role === 'trainee') calls.push(api.get(`/api/rotations/current/${user._id}`));
     Promise.all(calls)
       .then(([meRes, rotRes]) => {
         const me = meRes.data?.data || meRes.data;
@@ -93,18 +93,18 @@ export default function Profile() {
   }
 
   function roleExtra() {
-    if (['doctor', 'supervisor', 'student', 'trainee', 'program_director', 'secretary', 'dio'].includes(p?.role)) {
+    if (['supervisor', 'trainee', 'program_director', 'secretary', 'dio'].includes(p?.role)) {
       return { label: 'Hospital', value: hospitalName() };
     }
-    if (['professor', 'president', 'director'].includes(p?.role)) {
+    if (p?.role === 'president') {
       return { label: 'Department', value: p?.department || '—' };
     }
     return { label: 'Role', value: roleLabel(p?.role) };
   }
   const extra = roleExtra();
 
-  const showHospital  = ['doctor', 'supervisor', 'student', 'trainee', 'program_director', 'secretary', 'dio'].includes(p?.role);
-  const showSpecialty = ['doctor', 'supervisor', 'student', 'trainee', 'program_director', 'secretary'].includes(p?.role);
+  const showHospital  = ['supervisor', 'trainee', 'program_director', 'secretary', 'dio'].includes(p?.role);
+  const showSpecialty = ['supervisor', 'trainee', 'program_director', 'secretary'].includes(p?.role);
 
   const infoRows = [
     ['Full name',  p?.name],

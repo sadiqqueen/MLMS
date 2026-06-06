@@ -871,24 +871,6 @@ a      { text-decoration: none; }
 }
 .admin-search:focus { border-color: #185FA5; }
 
-.view-toggle {
-  display: flex;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  overflow: hidden;
-}
-.view-btn {
-  width: 34px; height: 34px;
-  background: white;
-  border: none;
-  cursor: pointer;
-  font-size: 15px;
-  display: flex; align-items: center; justify-content: center;
-  color: #888;
-  transition: background 0.15s, color 0.15s;
-}
-.view-btn.active { background: #185FA5; color: white; }
-
 .rows-select {
   height: 34px;
   border: 1px solid #e5e7eb;
