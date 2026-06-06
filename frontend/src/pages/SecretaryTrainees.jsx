@@ -90,7 +90,7 @@ function TraineeModal({ editTrainee, hospitals, supervisors, secretarySpecialty,
     const e = {};
     if (!form.name.trim())  e.name  = true;
     if (!form.email.trim()) e.email = true;
-    if (!editTrainee && (!form.password || form.password.length < 6)) e.password = true;
+    if (!editTrainee && (!form.password || form.password.length < 8)) e.password = true;
     setErrors(e);
     return !Object.keys(e).length;
   }
@@ -132,8 +132,8 @@ function TraineeModal({ editTrainee, hospitals, supervisors, secretarySpecialty,
               <div className="admin-field">
                 <label>Password *</label>
                 <input className={errors.password ? 'invalid' : ''} type="password" value={form.password || ''}
-                  onChange={e => set('password', e.target.value)} placeholder="Min. 6 characters" />
-                {errors.password && <span style={{ fontSize: 11, color: '#e74c3c' }}>At least 6 characters required</span>}
+                  onChange={e => set('password', e.target.value)} placeholder="Min. 8 characters" />
+                {errors.password && <span style={{ fontSize: 11, color: '#e74c3c' }}>At least 8 characters required</span>}
               </div>
             )}
 
