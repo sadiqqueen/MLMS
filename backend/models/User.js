@@ -1,4 +1,4 @@
-// backend/models/User.js
+﻿// backend/models/User.js
 const mongoose = require('mongoose');
 const bcrypt   = require('bcryptjs');
 
@@ -8,10 +8,10 @@ const userSchema = new mongoose.Schema(
     email:    { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true },
 
-    // V2: updated role enum — 7 roles
+    // V2: updated role enum — 7 app roles + ASG.1/ASG.2 (consultant memo)
     role: {
       type: String,
-      enum: ['super_admin', 'secretary', 'dio', 'supervisor', 'trainee', 'president', 'program_director'],
+      enum: ['super_admin', 'secretary', 'dio', 'supervisor', 'trainee', 'president', 'program_director', 'asg1', 'asg2'],
       required: true,
       index: true
     },

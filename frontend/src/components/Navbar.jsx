@@ -30,7 +30,13 @@ const ROLE_LINKS = {
     { to: '/dio/distributions',     label: 'Sup.Dist.'    },
     { to: '/dio/rotations',         label: 'Rotations'    },
     { to: '/dio/certificates',      label: 'Certificates'  },
-    { to: '/consultant-memo',       label: 'مذكرة الاستشاري' },
+  ],
+  // ASG.1 / ASG.2 — consultant-memo is their only function
+  asg1: [
+    { to: '/consultant-memo', label: 'مذكرة الاستشاري' },
+  ],
+  asg2: [
+    { to: '/consultant-memo', label: 'مذكرة الاستشاري' },
   ],
   supervisor: [
     { to: '/supervisor/trainees',    label: 'My Trainees' },
@@ -65,6 +71,8 @@ const ROLE_HOME = {
   trainee:          '/timeline',
   president:        '/president/trainees',
   program_director: '/program-director/trainees',
+  asg1:             '/consultant-memo',
+  asg2:             '/consultant-memo',
 };
 
 export default function Navbar() {

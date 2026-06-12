@@ -54,17 +54,25 @@ const ROLE_RANK = {
   program_director: 50,
   dio: 60,
   president: 70,
+  // ASG.1 / ASG.2 sit just below super_admin so ONLY super_admin can
+  // edit, lock, or delete them.
+  asg1: 90,
+  asg2: 90,
   super_admin: 100
 };
+
+// ASG accounts are visible to super_admin only.
+const HIDDEN_FROM_NON_ADMIN = ['asg1', 'asg2'];
 
 function hasHigherRole(actorRole, targetRole) {
   return (ROLE_RANK[actorRole] || 0) > (ROLE_RANK[targetRole] || 0);
 }
 
-// GET /api/users — all users
+// GET /api/users — all users (ASG accounts only appear for super_admin)
 router.get('/', auth, allowRoles(...READ_STAFF), async (req, res) => {
   try {
-    const users = await User.find()
+    const filter = req.user.role === 'super_admin' ? {} : { role: { $nin: HIDDEN_FROM_NON_ADMIN } };
+    const users = await User.find(filter)
       .select('-password')
       .populate('hospital', 'name city')
       .populate('doctor', 'name specialty')
@@ -134,6 +142,14 @@ router.get('/:id', auth, async (req, res) => {
     const isSelf  = req.params.id === req.user._id.toString();
     const isStaff = READ_STAFF.includes(req.user.role);
     if (!isSelf && !isStaff) return res.status(403).json({ success: false, message: 'Access denied' });
+
+    // ASG accounts are hidden from everyone except super_admin (and themselves)
+    if (!isSelf && req.user.role !== 'super_admin') {
+      const target = await User.findById(req.params.id).select('role');
+      if (target && HIDDEN_FROM_NON_ADMIN.includes(target.role)) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+    }
 
     const user = await User.findById(req.params.id)
       .select('-password')

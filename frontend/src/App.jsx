@@ -58,6 +58,8 @@ const ROLE_HOME = {
   trainee: '/timeline',
   president: '/president/trainees',
   program_director: '/program-director/trainees',
+  asg1: '/consultant-memo',
+  asg2: '/consultant-memo',
 };
 
 function RootRedirect() {
@@ -198,12 +200,12 @@ export default function App() {
             </ProtectedRoute>
           } />
           <Route path="/consultant-memo" element={
-            <ProtectedRoute allowedRoles={['dio']}>
+            <ProtectedRoute allowedRoles={['asg1', 'asg2']}>
               <ConsultantMemo />
             </ProtectedRoute>
           } />
           <Route path="/consultant-memo/all" element={
-            <ProtectedRoute allowedRoles={['dio']}>
+            <ProtectedRoute allowedRoles={['asg1', 'asg2']}>
               <ConsultantMemoAll />
             </ProtectedRoute>
           } />

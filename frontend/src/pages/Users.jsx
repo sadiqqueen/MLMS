@@ -7,7 +7,7 @@ import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
-const ROLES = ['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president', 'super_admin'];
+const ROLES = ['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president', 'asg1', 'asg2', 'super_admin'];
 
 const ROLE_BADGE = {
   trainee:          'badge-role badge-student',
@@ -16,6 +16,8 @@ const ROLE_BADGE = {
   secretary:        'badge-role badge-admin',
   dio:              'badge-role badge-super_admin',
   president:        'badge-role badge-super_admin',
+  asg1:             'badge-role badge-super_admin',
+  asg2:             'badge-role badge-super_admin',
   super_admin:      'badge-role badge-super_admin',
 };
 
@@ -26,6 +28,8 @@ const ROLE_FIELDS = {
   secretary:        ['specialtyId', 'phone'],
   dio:              ['phone'],
   president:        ['phone'],
+  asg1:             ['phone'],
+  asg2:             ['phone'],
   super_admin:      [],
 };
 
@@ -33,8 +37,10 @@ function showField(role, field) {
   return (ROLE_FIELDS[role] || []).includes(field);
 }
 
+const ROLE_DISPLAY = { asg1: 'ASG.1', asg2: 'ASG.2' };
+
 function roleLabel(r) {
-  return r.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  return ROLE_DISPLAY[r] || r.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 const ROWS_OPT = [8, 16, 32];
@@ -570,7 +576,7 @@ export default function Users() {
                       <td><PhotoCell u={u} /></td>
                       <td>
                         <span className={ROLE_BADGE[u.role] || 'badge-role'}>
-                          {u.role?.replace(/_/g, ' ')}
+                          {u.role ? roleLabel(u.role) : ''}
                         </span>
                       </td>
                       <td>{u.phone || '—'}</td>
@@ -606,7 +612,7 @@ export default function Users() {
                       : <div className="user-card-initials">{u.initials || u.name?.[0] || '?'}</div>
                     }
                     <div className="user-card-name">{u.name}</div>
-                    <span className={ROLE_BADGE[u.role] || 'badge-role'}>{u.role?.replace(/_/g, ' ')}</span>
+                    <span className={ROLE_BADGE[u.role] || 'badge-role'}>{u.role ? roleLabel(u.role) : ''}</span>
                     <div className="user-card-sub">{u.city || '—'}</div>
                     <div className="user-card-actions">
                       <button className="btn-action edit" title="Edit" aria-label={`Edit ${u.name}`} onClick={() => { setEditUser(u); setShowModal(true); }}><IconEdit /></button>

@@ -7,7 +7,7 @@ const ConsultantMemo = require('../models/ConsultantMemo');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 
-const DIO = ['dio'];
+const ASG = ['asg1', 'asg2'];  // ASG.1 / ASG.2 — the only roles with access
 const MEMO_FIELDS = [
   'topicName', 'source', 'topicDateTime',
   'attachments', 'attachmentFiles', 'attachmentsDateTime',
@@ -48,7 +48,7 @@ const uploadAttachment = multer({
   },
 });
 
-router.post('/upload', auth, allowRoles(...DIO), (req, res) => {
+router.post('/upload', auth, allowRoles(...ASG), (req, res) => {
   uploadAttachment.single('file')(req, res, err => {
     if (err) return res.status(400).json({ message: err.message });
     if (!req.file) return res.status(400).json({ message: 'No file provided' });
@@ -82,7 +82,7 @@ function cacheKey(text) {
   return crypto.createHash('sha256').update(text).digest('hex');
 }
 
-router.post('/translate', auth, allowRoles(...DIO), async (req, res) => {
+router.post('/translate', auth, allowRoles(...ASG), async (req, res) => {
   try {
     if (!process.env.ANTHROPIC_API_KEY) {
       return res.status(503).json({ message: 'Translation is not configured (ANTHROPIC_API_KEY missing)' });
@@ -116,7 +116,7 @@ router.post('/translate', auth, allowRoles(...DIO), async (req, res) => {
       const response = await client.messages.create({
         model: 'claude-opus-4-8',
         max_tokens: 16000,
-        system: 'You are a professional Arabic→English translator for official medical-education council documents. '
+        system: 'You are a professional Arabic-to-English translator for official medical-education council documents. '
           + 'Translate the Arabic values of the JSON object the user sends into formal English. '
           + 'Return a JSON object with exactly the same keys and the translated values. '
           + 'Preserve line breaks within values. Do not add commentary.',
@@ -144,7 +144,7 @@ router.post('/translate', auth, allowRoles(...DIO), async (req, res) => {
 // ── CRUD ──────────────────────────────────────────────────────────────────
 
 // List — optional ?status=saved|draft filter; returns card-sized projections.
-router.get('/', auth, allowRoles(...DIO), async (req, res) => {
+router.get('/', auth, allowRoles(...ASG), async (req, res) => {
   try {
     const filter = {};
     if (req.query.status === 'saved' || req.query.status === 'draft') filter.status = req.query.status;
@@ -167,7 +167,7 @@ router.get('/', auth, allowRoles(...DIO), async (req, res) => {
   }
 });
 
-router.get('/:id', auth, allowRoles(...DIO), async (req, res) => {
+router.get('/:id', auth, allowRoles(...ASG), async (req, res) => {
   try {
     const memo = await ConsultantMemo.findById(req.params.id);
     if (!memo) return res.status(404).json({ message: 'Memo not found' });
@@ -178,7 +178,7 @@ router.get('/:id', auth, allowRoles(...DIO), async (req, res) => {
 });
 
 // Create — used by save, first-time autosave, and duplicate (نسخ).
-router.post('/', auth, allowRoles(...DIO), async (req, res) => {
+router.post('/', auth, allowRoles(...ASG), async (req, res) => {
   try {
     const data = pick(req.body, MEMO_FIELDS);
     data.memoNumber = await nextMemoNumber();
@@ -192,7 +192,7 @@ router.post('/', auth, allowRoles(...DIO), async (req, res) => {
 
 // Update — save/autosave content, and status transitions (move-to-draft,
 // restore) via the `status` field.
-router.put('/:id', auth, allowRoles(...DIO), async (req, res) => {
+router.put('/:id', auth, allowRoles(...ASG), async (req, res) => {
   try {
     const data = pick(req.body, MEMO_FIELDS);
     if (data.status === 'draft') data.movedToDraftAt = new Date();
@@ -207,7 +207,7 @@ router.put('/:id', auth, allowRoles(...DIO), async (req, res) => {
 
 // Permanent delete — server-side enforcement of the two-stage flow:
 // only memos already moved to draft (مسودة) can be deleted.
-router.delete('/:id', auth, allowRoles(...DIO), async (req, res) => {
+router.delete('/:id', auth, allowRoles(...ASG), async (req, res) => {
   try {
     const memo = await ConsultantMemo.findById(req.params.id);
     if (!memo) return res.status(404).json({ message: 'Memo not found' });

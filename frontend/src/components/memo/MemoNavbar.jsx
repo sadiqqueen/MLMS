@@ -64,7 +64,9 @@ export default function MemoNavbar({ onNewMemo, guardNavigation }) {
             : <span className="cmx-avatar" aria-hidden="true">{user?.initials}</span>}
           <span className="cmx-profile-text">
             <span className="cmx-profile-name">{user?.name}</span>
-            <span className="cmx-profile-role">DIO</span>
+            <span className="cmx-profile-role">
+              {user?.role === 'asg1' ? 'ASG.1' : user?.role === 'asg2' ? 'ASG.2' : (user?.role || '').toUpperCase()}
+            </span>
           </span>
           <IconChevron />
         </button>
@@ -114,7 +116,7 @@ export default function MemoNavbar({ onNewMemo, guardNavigation }) {
       {/* Board logo — far LEFT corner in both directions */}
       <button
         className="cmx-logo-wrap"
-        onClick={guarded(() => navigate('/dio/dashboard'))}
+        onClick={guarded(() => navigate('/'))}
         title={t('backToApp')}
         aria-label={t('backToApp')}
       >

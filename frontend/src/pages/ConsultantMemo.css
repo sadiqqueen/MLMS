@@ -14,9 +14,10 @@
   --cmx-muted: #6E6C66;
   --cmx-border: #C9C7C0;
   --cmx-border-soft: #D8D6CF;
-  --cmx-accent: rgba(27, 20, 100, 0.65);
-  --cmx-accent-solid: #1B1464;
-  --cmx-accent-tint: rgba(27, 20, 100, 0.08);
+  /* Formal teal — the same #156B67 used on the printed form */
+  --cmx-accent: #156B67;
+  --cmx-accent-solid: #0F514E;
+  --cmx-accent-tint: rgba(21, 107, 103, 0.08);
   --cmx-green: #1E7B45;
   --cmx-green-bg: #DDF2E4;
   --cmx-amber: #9A6700;
@@ -37,9 +38,10 @@
   --cmx-muted: #9B9A93;
   --cmx-border: #3A3A37;
   --cmx-border-soft: #4A4A46;
-  --cmx-accent: rgba(96, 88, 190, 0.65);
-  --cmx-accent-solid: #6058BE;
-  --cmx-accent-tint: rgba(96, 88, 190, 0.14);
+  /* Brightened teal — the light value is too dark on dark surfaces */
+  --cmx-accent: #1B847E;
+  --cmx-accent-solid: #22968F;
+  --cmx-accent-tint: rgba(27, 132, 126, 0.18);
   --cmx-green: #5ECB8B;
   --cmx-green-bg: rgba(46, 160, 90, 0.18);
   --cmx-amber: #E5B454;
@@ -213,6 +215,8 @@
   font-size: 22px;
   font-weight: 700;
   margin: 4px 0 18px;
+  /* same red as the required-field marker in the labels */
+  color: var(--cmx-red);
 }
 
 .cmx-banner {
@@ -230,7 +234,7 @@
 .cmx-bar {
   background: var(--cmx-accent);
   color: #fff;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   padding: 7px 12px;
   border-radius: 8px;
@@ -241,7 +245,7 @@
 .cmx-row2 { display: flex; gap: 14px; flex-wrap: wrap; }
 .cmx-field { flex: 1 1 180px; display: flex; flex-direction: column; gap: 6px; }
 .cmx-field-wide { flex: 2 1 320px; }
-.cmx-field label { font-size: 13px; font-weight: 600; }
+.cmx-field label { font-size: 16px; font-weight: 600; }
 .cmx-req { color: var(--cmx-red); }
 
 .cmx input[type="text"],
@@ -255,7 +259,7 @@
   border-radius: 8px;
   min-height: 40px;
   padding: 8px 12px;
-  font-size: 14px;
+  font-size: 16px;
   font-family: inherit;
   width: 100%;
 }
@@ -284,7 +288,7 @@
 }
 
 /* Larger inputs for topic name / source / attachment text rows */
-.cmx input[type="text"].cmx-input-lg { min-height: 52px; font-size: 15.5px; padding: 10px 14px; }
+.cmx input[type="text"].cmx-input-lg { min-height: 52px; font-size: 16px; padding: 10px 14px; }
 
 .cmx-attachments { display: flex; flex-direction: column; gap: 8px; }
 .cmx-attach-row { display: flex; gap: 8px; align-items: center; }

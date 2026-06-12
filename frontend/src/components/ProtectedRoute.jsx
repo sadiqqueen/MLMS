@@ -9,6 +9,8 @@ const ROLE_HOME = {
   trainee:          '/timeline',
   president:        '/president/trainees',
   program_director: '/program-director/trainees',
+  asg1:             '/consultant-memo',
+  asg2:             '/consultant-memo',
 };
 
 export default function ProtectedRoute({ children, allowedRoles }) {
