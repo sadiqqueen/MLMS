@@ -22,7 +22,8 @@
   --cmx-green-bg: #DDF2E4;
   --cmx-amber: #9A6700;
   --cmx-amber-bg: #FFF1D6;
-  --cmx-red: #C0392B;
+  /* The crescent red sampled from the Arab Board logo */
+  --cmx-red: #DE001C;
 
   min-height: 100vh;
   background: var(--cmx-bg);
@@ -46,7 +47,7 @@
   --cmx-green-bg: rgba(46, 160, 90, 0.18);
   --cmx-amber: #E5B454;
   --cmx-amber-bg: rgba(229, 180, 84, 0.14);
-  --cmx-red: #E5604F;
+  --cmx-red: #FF4D5C;  /* brightened logo red for dark surfaces */
 }
 
 .cmx * { box-sizing: border-box; }
@@ -558,6 +559,10 @@
   text-decoration: underline;
   margin: 0 0 7mm;
   font-family: inherit;
+  /* same red as the logo's crescent (rgb(222, 0, 28)) */
+  color: #DE001C;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
 .cmxp-section { margin-bottom: 6mm; break-inside: avoid; }
@@ -594,8 +599,7 @@
 }
 .cmxp-sign-col { text-align: center; width: 38%; }
 .cmxp-sign-title { font-weight: bold; font-size: 13pt; margin-bottom: 12mm; }
-.cmxp-sign-line { border-bottom: 1px solid #111; margin-bottom: 2mm; }
-.cmxp-sign-label { font-size: 11pt; color: #333; }
+.cmxp-sign-line { border-bottom: 1px solid #111; }
 
 /* Annexes — uploaded attachments rendered inside the المرفقات section,
    flowing between the attachments list and the العرض section. */

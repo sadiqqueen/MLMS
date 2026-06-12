@@ -97,12 +97,10 @@ export default function MemoPrint({ memo, lang = 'ar', attachmentPreviews = [] }
         <div className="cmxp-sign-col">
           <div className="cmxp-sign-title">{t('signSecretary')}</div>
           <div className="cmxp-sign-line" />
-          <div className="cmxp-sign-label">{t('signNameLabel')}</div>
         </div>
         <div className="cmxp-sign-col">
-          <div className="cmxp-sign-title">{t('stamp')}</div>
+          <div className="cmxp-sign-title">{t('signCouncilSecretary')}</div>
           <div className="cmxp-sign-line" />
-          <div className="cmxp-sign-label">&nbsp;</div>
         </div>
       </div>
 

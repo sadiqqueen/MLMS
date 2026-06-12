@@ -103,7 +103,6 @@ export default function Navbar() {
 
   const isLanding   = location.pathname === '/' || location.pathname === '/index.html';
   const navbarClass = isLanding ? 'topnav' : 'topnav portal-navbar';
-  const logoSrc     = isLanding ? '/logo.png' : '/logo-light.png';
 
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
@@ -135,14 +134,14 @@ export default function Navbar() {
   return (
     <nav className={navbarClass}>
 
-      {/* LOGO */}
+      {/* LOGO — MTMS logo temporarily removed; the area still navigates home */}
       <div
         className="nav-logo"
         onClick={() => navigate(ROLE_HOME[user?.role] || '/')}
         style={{ cursor: 'pointer' }}
-      >
-        <img src={logoSrc} alt="MTMS" className="nav-logo-img portal-logo" />
-      </div>
+        role="link"
+        aria-label="Home"
+      />
 
       {/* PAGE LINKS — desktop */}
       <div className="nav-links">
