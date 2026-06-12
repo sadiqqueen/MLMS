@@ -9,7 +9,10 @@ export default function MemoPrint({ memo, lang = 'ar' }) {
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
   const today = fmtDateTime(new Date(), lang);
 
-  const attachments = (memo.attachments || []).filter(a => a && a.trim() !== '');
+  const attachments = [
+    ...(memo.attachments || []).filter(a => a && a.trim() !== ''),
+    ...(memo.attachmentFiles || []).map(f => f?.name).filter(Boolean),
+  ];
 
   const sections = [
     {

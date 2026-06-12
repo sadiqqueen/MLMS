@@ -94,21 +94,22 @@ export default function MemoNavbar({ onNewMemo, guardNavigation }) {
         >EN</button>
       </div>
 
-      <span className="cmx-vdiv" aria-hidden="true" />
+      {/* Centered between the profile cluster and the logo */}
+      <div className="cmx-nav-center">
+        <button
+          className={'cmx-btn cmx-btn-ghost' + (onAllView ? ' cmx-btn-active' : '')}
+          aria-current={onAllView ? 'page' : undefined}
+          onClick={guarded(() => navigate('/consultant-memo/all'))}
+        >
+          <IconFolder />
+          <span>{t('allMemos')}</span>
+        </button>
 
-      <button
-        className={'cmx-btn cmx-btn-ghost' + (onAllView ? ' cmx-btn-active' : '')}
-        aria-current={onAllView ? 'page' : undefined}
-        onClick={guarded(() => navigate('/consultant-memo/all'))}
-      >
-        <IconFolder />
-        <span>{t('allMemos')}</span>
-      </button>
-
-      <button className="cmx-btn cmx-btn-primary" onClick={onNewMemo}>
-        <IconPlus />
-        <span>{t('newMemo')}</span>
-      </button>
+        <button className="cmx-btn cmx-btn-primary" onClick={onNewMemo}>
+          <IconPlus />
+          <span>{t('newMemo')}</span>
+        </button>
+      </div>
 
       {/* Board logo — far LEFT corner in both directions */}
       <button

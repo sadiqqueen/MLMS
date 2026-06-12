@@ -56,6 +56,7 @@
 
 /* ── Feature navbar ──────────────────────────────────────────────────── */
 .cmx-nav {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -152,6 +153,18 @@
   transition: background-color 0.2s;
 }
 .cmx-lang.active { background: var(--cmx-accent); color: #fff; }
+
+/* جميع المذكرات + مذكرة جديدة sit in the true middle of the navbar.
+   (Absolutely centered — auto margins would only center them between the
+   profile cluster and the logo, which have different widths.) */
+.cmx-nav-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
 .cmx-logo-wrap {
   margin-inline-start: auto;
@@ -270,8 +283,30 @@
   color: var(--cmx-text);
 }
 
+/* Larger inputs for topic name / source / attachment text rows */
+.cmx input[type="text"].cmx-input-lg { min-height: 52px; font-size: 15.5px; padding: 10px 14px; }
+
 .cmx-attachments { display: flex; flex-direction: column; gap: 8px; }
 .cmx-attach-row { display: flex; gap: 8px; align-items: center; }
+.cmx-attach-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.cmx-attach-add:disabled { opacity: 0.6; cursor: default; }
+.cmx-file-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--cmx-surface);
+  border: 1px solid var(--cmx-border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  min-height: 44px;
+}
+.cmx-file-link {
+  color: inherit;
+  text-decoration: underline;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+  margin-inline-end: auto;
+}
 .cmx-attach-del {
   flex: none;
   width: 38px;
@@ -289,6 +324,9 @@
 .cmx-attach-del:hover { background: rgba(192, 57, 43, 0.1); }
 .cmx-attach-add {
   align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: none;
   border: 1px dashed var(--cmx-border);
   color: var(--cmx-text);
@@ -579,7 +617,18 @@
   body { background: #fff !important; }
   .cmx { background: #fff; }
   .cmx-screen { display: none !important; }
-  .cmx-print-mount { display: block !important; }
+  /* The app's certificate print rules set `body, body * { visibility: hidden
+     !important }` globally, which blanked our printout — re-assert visibility
+     on the print mount and everything inside it. */
+  .cmx-print-mount,
+  .cmx-print-mount * { visibility: visible !important; }
+  .cmx-print-mount {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    inset-inline-start: 0;
+    width: 100%;
+  }
   .cmxp-sheet {
     width: auto;
     min-height: 0;
@@ -595,6 +644,15 @@
 }
 
 /* ── Small screens ──────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  /* not enough room to absolutely center — let the buttons flow in line */
+  .cmx-nav-center {
+    position: static;
+    transform: none;
+    margin-inline: auto;
+  }
+}
+
 @media (max-width: 640px) {
   .cmx-nav { gap: 6px; padding: 8px 10px; }
   .cmx-profile-name { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

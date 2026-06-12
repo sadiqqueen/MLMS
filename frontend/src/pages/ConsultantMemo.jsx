@@ -23,6 +23,11 @@ const IconEye = () => (
     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
   </svg>
 );
+const IconPaperclip = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+  </svg>
+);
 const IconTrash = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -31,7 +36,7 @@ const IconTrash = () => (
 
 const EMPTY = {
   topicName: '', source: '', topicDateTime: '',
-  attachments: ['', ''], attachmentsDateTime: '',
+  attachments: ['', ''], attachmentFiles: [], attachmentsDateTime: '',
   presentation: '', presentationDateTime: '',
   executiveCommittee: '', executiveCommitteeDateTime: '',
   presidentRecommendation: '', presidentRecommendationDateTime: '',
@@ -51,14 +56,18 @@ function toLocalInput(iso) {
 }
 
 function fromMemo(m) {
-  const f = { ...EMPTY, attachments: m.attachments?.length ? [...m.attachments] : ['', ''] };
+  const f = {
+    ...EMPTY,
+    attachments: m.attachments?.length ? [...m.attachments] : ['', ''],
+    attachmentFiles: m.attachmentFiles?.length ? m.attachmentFiles.map(x => ({ name: x.name, url: x.url })) : [],
+  };
   TEXT_KEYS.forEach(k => { f[k] = m[k] || ''; });
   DT_KEYS.forEach(k => { f[k] = toLocalInput(m[k]); });
   return f;
 }
 
 function toPayload(f) {
-  const p = { attachments: f.attachments };
+  const p = { attachments: f.attachments, attachmentFiles: f.attachmentFiles };
   TEXT_KEYS.forEach(k => { p[k] = f[k]; });
   DT_KEYS.forEach(k => { p[k] = f[k] ? new Date(f[k]).toISOString() : null; });
   return p;
@@ -67,11 +76,12 @@ function toPayload(f) {
 function isEmptyForm(f) {
   return TEXT_KEYS.every(k => !f[k].trim())
     && f.attachments.every(a => !a.trim())
+    && f.attachmentFiles.length === 0
     && DT_KEYS.every(k => !f[k]);
 }
 
 function snapshot(f) {
-  return { ...f, attachments: [...f.attachments] };
+  return { ...f, attachments: [...f.attachments], attachmentFiles: [...f.attachmentFiles] };
 }
 
 function MemoForm() {
@@ -87,7 +97,9 @@ function MemoForm() {
   const [banner, setBanner]         = useState(null);   // 'translating' | 'translated' | 'failed'
   const [showPreview, setShowPreview] = useState(false);
   const [loadedKey, setLoadedKey]   = useState(0);
+  const [uploading, setUploading]   = useState(false);
   const { toasts, showToast, dismiss } = useMemoToasts();
+  const fileInputRef = useRef(null);
 
   const formRef = useRef(form);     formRef.current = form;
   const dirtyRef = useRef(dirty);   dirtyRef.current = dirty;
@@ -214,6 +226,27 @@ function MemoForm() {
     setForm(f => ({ ...f, attachments: f.attachments.filter((_, idx) => idx !== i) }));
     setDirty(true);
   };
+  const removeFile = i => {
+    setForm(f => ({ ...f, attachmentFiles: f.attachmentFiles.filter((_, idx) => idx !== i) }));
+    setDirty(true);
+  };
+  async function handleFileChosen(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await api.post('/api/consultant-memo/upload', fd);
+      setForm(f => ({ ...f, attachmentFiles: [...f.attachmentFiles, { name: res.data.name, url: res.data.url }] }));
+      setDirty(true);
+    } catch {
+      showToast(t('uploadFailed'), 'error');
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const guardNavigation = () => !dirtyRef.current || window.confirm(t('unsavedConfirm'));
 
@@ -259,11 +292,11 @@ function MemoForm() {
               <div className="cmx-row2">
                 <div className="cmx-field cmx-field-wide">
                   <label htmlFor="cmx-topic">{t('topicName')} <span className="cmx-req" aria-hidden="true">*</span></label>
-                  <input id="cmx-topic" type="text" required value={form.topicName} onChange={set('topicName')} />
+                  <input id="cmx-topic" className="cmx-input-lg" type="text" required value={form.topicName} onChange={set('topicName')} />
                 </div>
                 <div className="cmx-field">
                   <label htmlFor="cmx-source">{t('source')} <span className="cmx-req" aria-hidden="true">*</span></label>
-                  <input id="cmx-source" type="text" required value={form.source} onChange={set('source')} />
+                  <input id="cmx-source" className="cmx-input-lg" type="text" required value={form.source} onChange={set('source')} />
                 </div>
               </div>
               <DateTimeRow id="cmx-dt-topic" t={t} value={form.topicDateTime} onChange={set('topicDateTime')} />
@@ -277,6 +310,7 @@ function MemoForm() {
                   <div className="cmx-attach-row" key={i}>
                     <input
                       type="text"
+                      className="cmx-input-lg"
                       aria-label={`${t('attachment')} ${i + 1}`}
                       value={a}
                       onChange={setAttachment(i)}
@@ -291,9 +325,42 @@ function MemoForm() {
                     </button>
                   </div>
                 ))}
-                <button type="button" className="cmx-attach-add" onClick={addAttachment}>
-                  {t('addAttachment')}
-                </button>
+                {form.attachmentFiles.map((f0, i) => (
+                  <div className="cmx-file-row" key={f0.url + i}>
+                    <IconPaperclip />
+                    <a className="cmx-file-link" href={f0.url} target="_blank" rel="noreferrer">{f0.name}</a>
+                    <button
+                      type="button"
+                      className="cmx-attach-del"
+                      aria-label={`${t('removeFile')}: ${f0.name}`}
+                      onClick={() => removeFile(i)}
+                    >
+                      <IconTrash />
+                    </button>
+                  </div>
+                ))}
+                <div className="cmx-attach-btns">
+                  <button type="button" className="cmx-attach-add" onClick={addAttachment}>
+                    {t('addAttachment')}
+                  </button>
+                  <button
+                    type="button"
+                    className="cmx-attach-add"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    <IconPaperclip /> {uploading ? t('uploading') : t('uploadFile')}
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    hidden
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.png,.jpg,.jpeg"
+                    onChange={handleFileChosen}
+                  />
+                </div>
               </div>
               <DateTimeRow id="cmx-dt-attach" t={t} value={form.attachmentsDateTime} onChange={set('attachmentsDateTime')} />
             </section>

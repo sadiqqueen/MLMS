@@ -10,7 +10,11 @@ const consultantMemoSchema = new mongoose.Schema(
     source:        { type: String, default: '' },   // المصدر
     topicDateTime: { type: Date, default: null },
 
-    attachments:         { type: [String], default: ['', ''] },  // المرفقات
+    attachments:         { type: [String], default: ['', ''] },  // المرفقات (text rows)
+    attachmentFiles:     {                                       // uploaded files (pdf/doc/…)
+      type: [{ _id: false, name: String, url: String }],
+      default: [],
+    },
     attachmentsDateTime: { type: Date, default: null },
 
     presentation:         { type: String, default: '' },         // العرض

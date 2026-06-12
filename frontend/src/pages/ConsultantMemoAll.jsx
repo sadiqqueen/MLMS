@@ -30,7 +30,7 @@ const IconRestore = () => (
 );
 
 const CONTENT_FIELDS = [
-  'topicName', 'source', 'topicDateTime', 'attachments', 'attachmentsDateTime',
+  'topicName', 'source', 'topicDateTime', 'attachments', 'attachmentFiles', 'attachmentsDateTime',
   'presentation', 'presentationDateTime', 'executiveCommittee', 'executiveCommitteeDateTime',
   'presidentRecommendation', 'presidentRecommendationDateTime', 'jointCouncil', 'jointCouncilDateTime',
 ];

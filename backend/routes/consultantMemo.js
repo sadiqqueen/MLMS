@@ -1,5 +1,8 @@
 const crypto         = require('crypto');
 const router         = require('express').Router();
+const multer         = require('multer');
+const path           = require('path');
+const fs             = require('fs');
 const ConsultantMemo = require('../models/ConsultantMemo');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
@@ -7,7 +10,7 @@ const { allowRoles } = require('../middleware/roles');
 const DIO = ['dio'];
 const MEMO_FIELDS = [
   'topicName', 'source', 'topicDateTime',
-  'attachments', 'attachmentsDateTime',
+  'attachments', 'attachmentFiles', 'attachmentsDateTime',
   'presentation', 'presentationDateTime',
   'executiveCommittee', 'executiveCommitteeDateTime',
   'presidentRecommendation', 'presidentRecommendationDateTime',
@@ -20,6 +23,42 @@ function pick(body, allowed) {
   allowed.forEach(k => { if (body[k] !== undefined) data[k] = body[k]; });
   return data;
 }
+
+// ── Attachment file uploads (pdf, word, excel, images …) ─────────────────
+// Same multer pattern as routes/users.js photo uploads; files are served
+// statically from /uploads by server.js.
+const attachDir = path.join(__dirname, '../uploads/consultant-memos');
+if (!fs.existsSync(attachDir)) fs.mkdirSync(attachDir, { recursive: true });
+
+const attachStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, attachDir),
+  filename:    (req, file, cb) => {
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, unique + path.extname(file.originalname).toLowerCase());
+  },
+});
+const ATTACH_EXT = /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|png|jpg|jpeg)$/;
+const uploadAttachment = multer({
+  storage: attachStorage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    ATTACH_EXT.test(path.extname(file.originalname).toLowerCase())
+      ? cb(null, true)
+      : cb(new Error('Allowed file types: pdf, doc, docx, xls, xlsx, ppt, pptx, txt, png, jpg'));
+  },
+});
+
+router.post('/upload', auth, allowRoles(...DIO), (req, res) => {
+  uploadAttachment.single('file')(req, res, err => {
+    if (err) return res.status(400).json({ message: err.message });
+    if (!req.file) return res.status(400).json({ message: 'No file provided' });
+    res.status(201).json({
+      name: req.file.originalname,
+      url: `/uploads/consultant-memos/${req.file.filename}`,
+      size: req.file.size,
+    });
+  });
+});
 
 // Sequential memo number per year, e.g. "2026/014" (zero-padded so the
 // string sort below matches numeric order).
