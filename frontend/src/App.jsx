@@ -36,6 +36,7 @@ import DioCertificates from './pages/DioCertificates';
 import DioDistributions from './pages/DioDistributions';
 import DioRotations from './pages/DioRotations';
 import ConsultantMemo from './pages/ConsultantMemo';
+import ConsultantMemoAll from './pages/ConsultantMemoAll';
 import CertificatePrint from './pages/CertificatePrint';
 
 import PresidentTrainees from './pages/PresidentTrainees';
@@ -199,6 +200,11 @@ export default function App() {
           <Route path="/consultant-memo" element={
             <ProtectedRoute allowedRoles={['dio']}>
               <ConsultantMemo />
+            </ProtectedRoute>
+          } />
+          <Route path="/consultant-memo/all" element={
+            <ProtectedRoute allowedRoles={['dio']}>
+              <ConsultantMemoAll />
             </ProtectedRoute>
           } />
 

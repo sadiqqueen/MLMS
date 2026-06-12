@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import NotificationPanel from './NotificationPanel';
 import ProfileDropdown from './ProfileDropdown';
+import { APP_NAV_LABEL } from './memo/MemoPrefs';
 
 const ROLE_LINKS = {
   super_admin: [
@@ -76,6 +77,20 @@ export default function Navbar() {
   const [showProfile,   setShowProfile  ] = useState(false);
   const [menuOpen,      setMenuOpen     ] = useState(false);
 
+  // The consultant-memo feature has its own عربي/EN toggle; its navbar item
+  // here follows that choice (persisted as cm-lang).
+  const [memoLang, setMemoLang] = useState(() => localStorage.getItem('cm-lang') === 'en' ? 'en' : 'ar');
+  useEffect(() => {
+    const sync = () => setMemoLang(localStorage.getItem('cm-lang') === 'en' ? 'en' : 'ar');
+    window.addEventListener('cm-lang-changed', sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener('cm-lang-changed', sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
+  const linkLabel = l => l.to === '/consultant-memo' ? APP_NAV_LABEL[memoLang] : l.label;
+
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const isLanding   = location.pathname === '/' || location.pathname === '/index.html';
@@ -129,7 +144,7 @@ export default function Navbar() {
             to={l.to}
             className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}
           >
-            {l.label}
+            {linkLabel(l)}
           </NavLink>
         ))}
       </div>
@@ -182,7 +197,7 @@ export default function Navbar() {
               className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}
               onClick={() => setMenuOpen(false)}
             >
-              {l.label}
+              {linkLabel(l)}
             </NavLink>
           ))}
         </div>
