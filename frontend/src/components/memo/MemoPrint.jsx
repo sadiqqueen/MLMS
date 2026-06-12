@@ -92,24 +92,12 @@ export default function MemoPrint({ memo, lang = 'ar', attachmentPreviews = [] }
         </section>
       ))}
 
-      {/* Signature block */}
+      {/* Closing row — right: أمينة سر المجلس العلمي الاستشاري, left: التوقيع.
+          Nothing above or below it (no lines, no repeating footer). */}
       <div className="cmxp-signatures">
-        <div className="cmxp-sign-col">
-          <div className="cmxp-sign-title">{t('signSecretary')}</div>
-          <div className="cmxp-sign-line" />
-        </div>
-        <div className="cmxp-sign-col">
-          <div className="cmxp-sign-title">{t('signCouncilSecretary')}</div>
-          <div className="cmxp-sign-line" />
-        </div>
-      </div>
-
-      {/* Repeating footer (position:fixed repeats on every printed page):
-          right — أمينة سر المجلس العلمي الاستشاري, left — التوقيع */}
-      <footer className="cmxp-footer">
         <span>{t('footerRight')}</span>
         <span>{t('footerLeft')}</span>
-      </footer>
+      </div>
     </div>
   );
 }

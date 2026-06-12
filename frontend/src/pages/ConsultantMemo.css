@@ -591,15 +591,17 @@
   padding: 0 1.5mm 1mm;
 }
 
+/* Closing row at the end of the printed form — right: أمينة سر المجلس
+   العلمي الاستشاري, left: التوقيع. No lines above or below. */
 .cmxp-signatures {
   display: flex;
-  justify-content: space-around;
+  justify-content: space-between;
+  gap: 8mm;
   margin: 12mm 0 8mm;
+  font-weight: bold;
+  font-size: 13pt;
   break-inside: avoid;
 }
-.cmxp-sign-col { text-align: center; width: 38%; }
-.cmxp-sign-title { font-weight: bold; font-size: 13pt; margin-bottom: 12mm; }
-.cmxp-sign-line { border-bottom: 1px solid #111; }
 
 /* Annexes — uploaded attachments rendered inside the المرفقات section,
    flowing between the attachments list and the العرض section. */
@@ -638,19 +640,6 @@
 .cmxp-annex-doc td, .cmxp-annex-doc th { border: 1px solid #999; padding: 1mm 2mm; }
 .cmxp-annex-note { color: #555; font-size: 10.5pt; margin-bottom: 3mm; }
 
-.cmxp-footer {
-  border-top: 1px solid rgba(21, 107, 103, 0.55);
-  color: #333;
-  font-size: 10pt;
-  padding-top: 2mm;
-  margin-top: 6mm;
-  display: flex;
-  justify-content: space-between;
-  gap: 8mm;
-  print-color-adjust: exact;
-  -webkit-print-color-adjust: exact;
-}
-
 @media print {
   @page {
     size: A4;
@@ -683,11 +672,6 @@
     padding: 0;
   }
   .cmxp-watermark { position: fixed; top: 50%; }
-  .cmxp-footer {
-    position: fixed;
-    bottom: 0;
-    inset-inline: 0;
-  }
 }
 
 /* ── Small screens ──────────────────────────────────────────────────── */
