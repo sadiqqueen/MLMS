@@ -5,6 +5,7 @@ import { MemoPrefsProvider, useMemoPrefs } from '../components/memo/MemoPrefs';
 import MemoNavbar from '../components/memo/MemoNavbar';
 import MemoPrint from '../components/memo/MemoPrint';
 import { useMemoToasts, MemoToasts, MemoModal, AutoTextarea } from '../components/memo/MemoUi';
+import { buildAttachmentPreviews } from '../components/memo/attachmentPreviews';
 import './ConsultantMemo.css';
 
 const IconSave = () => (
@@ -98,8 +99,10 @@ function MemoForm() {
   const [showPreview, setShowPreview] = useState(false);
   const [loadedKey, setLoadedKey]   = useState(0);
   const [uploading, setUploading]   = useState(false);
+  const [attachmentPreviews, setAttachmentPreviews] = useState([]);
   const { toasts, showToast, dismiss } = useMemoToasts();
   const fileInputRef = useRef(null);
+  const previewsPromiseRef = useRef(Promise.resolve());
 
   const formRef = useRef(form);     formRef.current = form;
   const dirtyRef = useRef(dirty);   dirtyRef.current = dirty;
@@ -170,6 +173,24 @@ function MemoForm() {
     window.addEventListener('beforeunload', h);
     return () => window.removeEventListener('beforeunload', h);
   }, []);
+
+  // Pre-render uploaded attachments (images / PDF pages) for the print
+  // layout, so the annex pages are ready when the user hits طباعة.
+  const attachmentFilesKey = JSON.stringify(form.attachmentFiles.map(f => f.url));
+  useEffect(() => {
+    let cancelled = false;
+    const job = buildAttachmentPreviews(formRef.current.attachmentFiles)
+      .then(p => { if (!cancelled) setAttachmentPreviews(p); })
+      .catch(() => { if (!cancelled) setAttachmentPreviews([]); });
+    previewsPromiseRef.current = job;
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachmentFilesKey]);
+
+  async function handlePrint() {
+    await previewsPromiseRef.current;   // make sure annex pages are rendered
+    window.print();
+  }
 
   // ── Content translation when the feature is in EN mode ───────────────
   useEffect(() => {
@@ -390,7 +411,7 @@ function MemoForm() {
               <button type="submit" className="cmx-btn cmx-btn-primary" disabled={saving}>
                 <IconSave /> <span>{saving ? t('saving') : t('save')}</span>
               </button>
-              <button type="button" className="cmx-btn cmx-btn-outline" onClick={() => window.print()}>
+              <button type="button" className="cmx-btn cmx-btn-outline" onClick={handlePrint}>
                 <IconPrinter /> <span>{t('print')}</span>
               </button>
               <button type="button" className="cmx-btn cmx-btn-outline" onClick={() => setShowPreview(true)}>
@@ -412,7 +433,7 @@ function MemoForm() {
               </button>
             </div>
             <div className="cmx-preview-scroll">
-              <MemoPrint memo={printable} lang={lang} />
+              <MemoPrint memo={printable} lang={lang} attachmentPreviews={attachmentPreviews} />
             </div>
           </MemoModal>
         )}
@@ -422,7 +443,7 @@ function MemoForm() {
 
       {/* Hidden print layout — the only thing visible under @media print */}
       <div className="cmx-print-mount">
-        <MemoPrint memo={printable} lang={lang} />
+        <MemoPrint memo={printable} lang={lang} attachmentPreviews={attachmentPreviews} />
       </div>
     </div>
   );

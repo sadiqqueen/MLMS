@@ -4,7 +4,9 @@ import { STRINGS, fmtDateTime } from './MemoPrefs';
 // the ORIGINAL document's teal (#156B67), in the given language. Rendered
 // inside a hidden mount (shown only by @media print) and reused on screen
 // by the معاينة (preview) modal.
-export default function MemoPrint({ memo, lang = 'ar' }) {
+// `attachmentPreviews` (from buildAttachmentPreviews) appends the uploaded
+// files' rendered pages as annex pages after the signature block.
+export default function MemoPrint({ memo, lang = 'ar', attachmentPreviews = [] }) {
   const t = key => STRINGS[lang][key] ?? STRINGS.ar[key] ?? key;
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
   const today = fmtDateTime(new Date(), lang);
@@ -81,6 +83,17 @@ export default function MemoPrint({ memo, lang = 'ar' }) {
           <div className="cmxp-sign-label">&nbsp;</div>
         </div>
       </div>
+
+      {/* Annexes — the uploaded attachments' actual content */}
+      {attachmentPreviews.filter(p => p.pages.length > 0).map((p, i) => (
+        <section className="cmxp-annex" key={i}>
+          <div className="cmxp-bar cmxp-annex-title">{t('attachment')} {i + 1}: {p.name}</div>
+          {p.pages.map((src, j) => (
+            <img className="cmxp-annex-page" src={src} alt={`${p.name} — ${j + 1}`} key={j} />
+          ))}
+          {p.truncated && <div className="cmxp-annex-note">{t('annexTruncated')}</div>}
+        </section>
+      ))}
 
       {/* Repeating footer (position:fixed repeats on every printed page) */}
       <footer className="cmxp-footer">{t('footerOrg')}</footer>

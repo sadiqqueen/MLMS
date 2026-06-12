@@ -5,6 +5,7 @@ import { MemoPrefsProvider, useMemoPrefs, fmtDateTime } from '../components/memo
 import MemoNavbar from '../components/memo/MemoNavbar';
 import MemoPrint from '../components/memo/MemoPrint';
 import { useMemoToasts, MemoToasts, MemoModal } from '../components/memo/MemoUi';
+import { buildAttachmentPreviews } from '../components/memo/attachmentPreviews';
 import './ConsultantMemo.css';
 
 const IconPencil = () => (
@@ -130,7 +131,9 @@ function MemoAllView() {
   async function printCard(memo) {
     try {
       const full = (await api.get(`/api/consultant-memo/${memo._id}`)).data;
-      setPrintMemo(full);
+      // render the uploaded attachments' pages BEFORE opening the print dialog
+      const previews = await buildAttachmentPreviews(full.attachmentFiles);
+      setPrintMemo({ data: full, previews });
     } catch { showToast(t('actionError'), 'error'); }
   }
 
@@ -253,7 +256,7 @@ function MemoAllView() {
       {/* Hidden print layout for printing directly from a card */}
       {printMemo && (
         <div className="cmx-print-mount">
-          <MemoPrint memo={printMemo} lang={lang} />
+          <MemoPrint memo={printMemo.data} lang={lang} attachmentPreviews={printMemo.previews} />
         </div>
       )}
     </div>

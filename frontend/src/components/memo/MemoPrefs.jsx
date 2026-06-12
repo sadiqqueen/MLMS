@@ -51,6 +51,7 @@ export const STRINGS = {
     lh3: 'المجلس العلمي الاستشاري المشترك',
     memoNumberLabel: 'رقم المذكرة:', printDateLabel: 'تاريخ الطباعة:',
     signSecretary: 'توقيع الأمين العام', signNameLabel: 'الاسم والتوقيع', stamp: 'الختم',
+    annexTruncated: 'تم عرض أول ٢٠ صفحة فقط من هذا الملف',
     footerOrg: 'المجلس العربي للاختصاصات الصحية — المجلس العلمي الاستشاري المشترك',
   },
   en: {
@@ -94,6 +95,7 @@ export const STRINGS = {
     lh3: 'Joint Scientific Advisory Council',
     memoNumberLabel: 'Memo No.:', printDateLabel: 'Print date:',
     signSecretary: 'Signature of the Secretary General', signNameLabel: 'Name & signature', stamp: 'Stamp',
+    annexTruncated: 'Only the first 20 pages of this file are shown',
     footerOrg: 'Arab Board of Health Specializations — Joint Scientific Advisory Council',
   },
 };
