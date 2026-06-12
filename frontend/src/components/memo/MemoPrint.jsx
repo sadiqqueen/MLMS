@@ -9,7 +9,8 @@ import { STRINGS, fmtDate } from './MemoPrefs';
 export default function MemoPrint({ memo, lang = 'ar', attachmentPreviews = [] }) {
   const t = key => STRINGS[lang][key] ?? STRINGS.ar[key] ?? key;
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
-  const today = fmtDate(new Date(), lang);
+  // تاريخ الطباعة always renders in English (Latin digits), even in Arabic mode
+  const today = fmtDate(new Date(), 'en');
 
   const attachments = [
     ...(memo.attachments || []).filter(a => a && a.trim() !== ''),

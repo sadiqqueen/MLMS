@@ -70,6 +70,17 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(globalLimiter);
 
+// Download with the ORIGINAL (possibly Arabic) filename:
+// /uploads/consultant-memos/<file>?dl=<original name> sets an RFC 5987
+// Content-Disposition before the static handler streams the file.
+const { contentDisposition } = require('./utils/filename');
+app.use('/uploads/consultant-memos', (req, res, next) => {
+  if (typeof req.query.dl === 'string' && req.query.dl) {
+    res.setHeader('Content-Disposition', contentDisposition(req.query.dl));
+  }
+  next();
+});
+
 // Serve uploads as static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 

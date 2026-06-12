@@ -12,7 +12,17 @@ const consultantMemoSchema = new mongoose.Schema(
 
     attachments:         { type: [String], default: ['', ''] },  // المرفقات (text rows)
     attachmentFiles:     {                                       // uploaded files (pdf/doc/…)
-      type: [{ _id: false, name: String, url: String }],
+      // name = original (display) filename, UTF-8; the file on disk is
+      // always saved under the generated `fileId`, never the user's name.
+      type: [{
+        _id: false,
+        name: String,
+        url: String,
+        fileId: String,
+        mimeType: String,
+        size: Number,
+        uploadedAt: Date,
+      }],
       default: [],
     },
     attachmentsDateTime: { type: Date, default: null },

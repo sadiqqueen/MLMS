@@ -60,7 +60,9 @@ function fromMemo(m) {
   const f = {
     ...EMPTY,
     attachments: m.attachments?.length ? [...m.attachments] : ['', ''],
-    attachmentFiles: m.attachmentFiles?.length ? m.attachmentFiles.map(x => ({ name: x.name, url: x.url })) : [],
+    // keep ALL metadata (fileId/mimeType/size/uploadedAt) so re-saving
+    // doesn't strip it
+    attachmentFiles: m.attachmentFiles?.length ? m.attachmentFiles.map(x => ({ ...x })) : [],
   };
   TEXT_KEYS.forEach(k => { f[k] = m[k] || ''; });
   DT_KEYS.forEach(k => { f[k] = toLocalInput(m[k]); });
@@ -260,7 +262,7 @@ function MemoForm() {
       const fd = new FormData();
       fd.append('file', file);
       const res = await api.post('/api/consultant-memo/upload', fd);
-      setForm(f => ({ ...f, attachmentFiles: [...f.attachmentFiles, { name: res.data.name, url: res.data.url }] }));
+      setForm(f => ({ ...f, attachmentFiles: [...f.attachmentFiles, { ...res.data }] }));
       setDirty(true);
     } catch {
       showToast(t('uploadFailed'), 'error');
@@ -349,7 +351,8 @@ function MemoForm() {
                 {form.attachmentFiles.map((f0, i) => (
                   <div className="cmx-file-row" key={f0.url + i}>
                     <IconPaperclip />
-                    <a className="cmx-file-link" href={f0.url} target="_blank" rel="noreferrer">{f0.name}</a>
+                    {/* ?dl= makes the server send the original (Arabic) filename */}
+                    <a className="cmx-file-link" href={`${f0.url}?dl=${encodeURIComponent(f0.name)}`} target="_blank" rel="noreferrer">{f0.name}</a>
                     <button
                       type="button"
                       className="cmx-attach-del"

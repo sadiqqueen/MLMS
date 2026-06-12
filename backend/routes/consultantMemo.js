@@ -6,6 +6,7 @@ const fs             = require('fs');
 const ConsultantMemo = require('../models/ConsultantMemo');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
+const { decodeOriginalName } = require('../utils/filename');
 
 const ASG = ['asg1', 'asg2'];  // ASG.1 / ASG.2 — the only roles with access
 const MEMO_FIELDS = [
@@ -53,9 +54,13 @@ router.post('/upload', auth, allowRoles(...ASG), (req, res) => {
     if (err) return res.status(400).json({ message: err.message });
     if (!req.file) return res.status(400).json({ message: 'No file provided' });
     res.status(201).json({
-      name: req.file.originalname,
+      // recover UTF-8 names (busboy latin1-decodes multipart filenames)
+      name: decodeOriginalName(req.file),
       url: `/uploads/consultant-memos/${req.file.filename}`,
+      fileId: req.file.filename,
+      mimeType: req.file.mimetype,
       size: req.file.size,
+      uploadedAt: new Date(),
     });
   });
 });
