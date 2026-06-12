@@ -53,7 +53,7 @@ function toLocalInput(iso) {
   const d = new Date(iso);
   if (isNaN(d)) return '';
   const p = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;  // date only
 }
 
 function fromMemo(m) {
@@ -453,7 +453,7 @@ function DateTimeRow({ id, t, value, onChange }) {
   return (
     <div className="cmx-dtrow">
       <label htmlFor={id}>📅 {t('dateTime')}</label>
-      <input type="datetime-local" id={id} value={value} onChange={onChange} />
+      <input type="date" id={id} value={value} onChange={onChange} />
     </div>
   );
 }

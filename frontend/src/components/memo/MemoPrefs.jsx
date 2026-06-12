@@ -18,7 +18,7 @@ export const STRINGS = {
     secPresRec: 'توصية معالي رئيس المجلس الاستشاري',
     secJoint: 'المجلس العلمي الاستشاري المشترك',
     topicName: 'اسم الموضوع', source: 'المصدر',
-    dateTime: 'التاريخ والوقت:',
+    dateTime: 'التاريخ:',
     addAttachment: '+ إضافة مرفق', removeAttachment: 'حذف المرفق', attachment: 'مرفق',
     uploadFile: 'رفع ملف (PDF، Word…)', uploading: 'جارٍ الرفع…',
     uploadFailed: 'فشل رفع الملف', removeFile: 'حذف الملف',
@@ -54,7 +54,8 @@ export const STRINGS = {
     signCouncilSecretary: 'توقيع أمينة سر المجلس العلمي الاستشاري',
     annexTruncated: 'تم عرض أول ٢٠ صفحة فقط من هذا الملف',
     notRenderable: 'يُرفق كملف — لا يمكن عرض محتواه في الطباعة',
-    footerOrg: 'المجلس العربي للاختصاصات الصحية — المجلس العلمي الاستشاري المشترك',
+    footerRight: 'أمينة سر المجلس العلمي الاستشاري',
+    footerLeft: 'التوقيع',
   },
   en: {
     navAria: 'Consultant memo bar',
@@ -67,7 +68,7 @@ export const STRINGS = {
     secPresRec: 'Recommendation of H.E. the Council President',
     secJoint: 'Joint Scientific Advisory Council',
     topicName: 'Topic name', source: 'Source',
-    dateTime: 'Date & time:',
+    dateTime: 'Date:',
     addAttachment: '+ Add attachment', removeAttachment: 'Remove attachment', attachment: 'Attachment',
     uploadFile: 'Upload file (PDF, Word…)', uploading: 'Uploading…',
     uploadFailed: 'File upload failed', removeFile: 'Remove file',
@@ -100,7 +101,8 @@ export const STRINGS = {
     signCouncilSecretary: 'Signature of the Secretary of the Scientific Advisory Council',
     annexTruncated: 'Only the first 20 pages of this file are shown',
     notRenderable: 'Attached as a file — its content cannot be rendered in print',
-    footerOrg: 'Arab Board of Health Specializations — Joint Scientific Advisory Council',
+    footerRight: 'Secretary of the Scientific Advisory Council',
+    footerLeft: 'Signature',
   },
 };
 
@@ -129,7 +131,7 @@ export function MemoPrefsProvider({ children }) {
 
 export const useMemoPrefs = () => useContext(MemoPrefsContext);
 
-// Shared date·time formatter (cards, date rows, print)
+// Shared date·time formatter (all-memos cards)
 export function fmtDateTime(value, lang) {
   if (!value) return '—';
   const d = new Date(value);
@@ -137,4 +139,12 @@ export function fmtDateTime(value, lang) {
   const date = d.toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
   const time = d.toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
   return `${date} · ${time}`;
+}
+
+// Date-only formatter (form date rows, preview, and print)
+export function fmtDate(value, lang) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (isNaN(d)) return '—';
+  return d.toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
 }

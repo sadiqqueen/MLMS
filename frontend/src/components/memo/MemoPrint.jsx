@@ -1,4 +1,4 @@
-import { STRINGS, fmtDateTime } from './MemoPrefs';
+import { STRINGS, fmtDate } from './MemoPrefs';
 
 // Print layout for a consultant memo — always white paper / dark text with
 // the ORIGINAL document's teal (#156B67), in the given language. Rendered
@@ -9,7 +9,7 @@ import { STRINGS, fmtDateTime } from './MemoPrefs';
 export default function MemoPrint({ memo, lang = 'ar', attachmentPreviews = [] }) {
   const t = key => STRINGS[lang][key] ?? STRINGS.ar[key] ?? key;
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
-  const today = fmtDateTime(new Date(), lang);
+  const today = fmtDate(new Date(), lang);
 
   const attachments = [
     ...(memo.attachments || []).filter(a => a && a.trim() !== ''),
@@ -88,7 +88,7 @@ export default function MemoPrint({ memo, lang = 'ar', attachmentPreviews = [] }
         <section className={'cmxp-section' + (s.className ? ' ' + s.className : '')} key={i}>
           <div className="cmxp-bar">{s.title}</div>
           <div className="cmxp-body">{s.body}</div>
-          <div className="cmxp-dt">{t('dateTime')} {fmtDateTime(s.dt, lang)}</div>
+          <div className="cmxp-dt">{t('dateTime')} {fmtDate(s.dt, lang)}</div>
         </section>
       ))}
 
@@ -104,8 +104,12 @@ export default function MemoPrint({ memo, lang = 'ar', attachmentPreviews = [] }
         </div>
       </div>
 
-      {/* Repeating footer (position:fixed repeats on every printed page) */}
-      <footer className="cmxp-footer">{t('footerOrg')}</footer>
+      {/* Repeating footer (position:fixed repeats on every printed page):
+          right — أمينة سر المجلس العلمي الاستشاري, left — التوقيع */}
+      <footer className="cmxp-footer">
+        <span>{t('footerRight')}</span>
+        <span>{t('footerLeft')}</span>
+      </footer>
     </div>
   );
 }

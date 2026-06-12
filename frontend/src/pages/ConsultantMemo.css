@@ -251,7 +251,7 @@
 
 .cmx input[type="text"],
 .cmx input[type="search"],
-.cmx input[type="datetime-local"],
+.cmx input[type="date"],
 .cmx select,
 .cmx .cmx-textarea {
   background: var(--cmx-surface);
@@ -270,7 +270,7 @@
   outline-offset: 0;
   border-color: transparent;
 }
-.cmx[data-theme="dark"] input[type="datetime-local"] { color-scheme: dark; }
+.cmx[data-theme="dark"] input[type="date"] { color-scheme: dark; }
 
 .cmx-dtrow {
   display: flex;
@@ -281,10 +281,10 @@
   font-size: 12.5px;
 }
 .cmx-dtrow label { white-space: nowrap; }
-.cmx-dtrow input[type="datetime-local"] {
+.cmx-dtrow input[type="date"] {
   width: auto;
   min-height: 36px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--cmx-text);
 }
 
@@ -644,7 +644,9 @@
   font-size: 10pt;
   padding-top: 2mm;
   margin-top: 6mm;
-  text-align: start;
+  display: flex;
+  justify-content: space-between;
+  gap: 8mm;
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
 }
