@@ -1,0 +1,131 @@
+/* Consultant Memo — faithful reproduction of the official Arab Board form.
+   Theme fill #156B67, Sakkal Majalla, RTL, Word "Table Grid" borders. */
+
+.cm-page {
+  min-height: 100vh;
+  background: #e9ebf0;
+  padding: 28px 12px 48px;
+}
+
+/* Portrait Letter sheet */
+.cm-sheet {
+  max-width: 816px;
+  margin: 0 auto;
+  background: #fff;
+  padding: 21px 50px 40px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  font-family: "Sakkal Majalla", "Traditional Arabic", "Times New Roman", serif;
+  color: #000;
+  direction: rtl;
+}
+
+/* Letterhead — lines on the right, emblem next to them */
+.cm-letterhead {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 8px;
+}
+.cm-letterhead-lines {
+  text-align: right;
+  font-size: 16pt;
+  line-height: 1.35;
+}
+.cm-lh-bold { font-weight: bold; }
+.cm-logo { height: 100px; width: auto; }
+
+.cm-title {
+  text-align: center;
+  font-size: 16pt;
+  font-weight: bold;
+  text-decoration: underline;
+  font-family: inherit;
+  margin: 14px 0 16px;
+}
+
+/* Tables — Word "Table Grid": thin black borders on every cell */
+.cm-table {
+  width: 100%;
+  border-collapse: collapse;
+  direction: rtl;
+  table-layout: fixed;
+}
+.cm-table + .cm-table { margin-top: 28px; }
+.cm-table td {
+  border: 1px solid #000;
+  padding: 2px 6px;
+  vertical-align: top;
+}
+.cm-col-right { width: 72%; }  /* 369.35pt */
+.cm-col-left  { width: 28%; }  /* 141.35pt */
+
+/* Filled header cells — white-space: pre-wrap preserves the document's
+   exact double spaces inside labels */
+.cm-fill {
+  background: #156B67;
+  color: #fff;
+  font-weight: bold;
+  white-space: pre-wrap;
+  vertical-align: middle;
+}
+.cm-s14 { font-size: 14pt; }
+.cm-s16 { font-size: 16pt; }
+.cm-center { text-align: center; }
+.cm-underline { text-decoration: underline; }
+
+/* Invisible inputs — the table border is the only border */
+.cm-input,
+.cm-area {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+  font-size: 14pt;
+  color: #000;
+  text-align: right;
+  direction: rtl;
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.cm-input:focus,
+.cm-area:focus {
+  box-shadow: inset 0 0 0 2px rgba(21, 107, 103, 0.15);
+}
+.cm-area { resize: none; }
+.cm-area-presentation { min-height: 350px; }
+.cm-h-exec    { height: 87px; }
+.cm-h-pres    { height: 44px; }
+.cm-h-council { height: 114px; }
+.cm-cell-presentation { padding: 4px 6px; }
+
+.cm-pagenum {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 12pt;
+}
+
+/* Save button — outside the sheet */
+.cm-actions {
+  max-width: 816px;
+  margin: 18px auto 0;
+  display: flex;
+}
+.cm-save-btn {
+  background: #156B67;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 38px;
+  font-family: "Sakkal Majalla", "Traditional Arabic", "Times New Roman", serif;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.cm-save-btn:hover { background: #0f514e; }
+.cm-save-btn:focus-visible { outline: 2px solid #0f514e; outline-offset: 2px; }
+.cm-save-btn:disabled { opacity: 0.6; cursor: default; }
