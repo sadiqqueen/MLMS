@@ -377,23 +377,21 @@ function MemoForm() {
                   <label htmlFor="cmx-topic">{t('topicName')} <span className="cmx-req" aria-hidden="true">*</span></label>
                   <input id="cmx-topic" className="cmx-input-lg" type="text" required value={form.topicName} onChange={set('topicName')} />
                 </div>
+                {/* المجلس العلمي — replaces the former المصدر field */}
                 <div className="cmx-field">
-                  <label htmlFor="cmx-source">{t('source')} <span className="cmx-req" aria-hidden="true">*</span></label>
-                  <input id="cmx-source" className="cmx-input-lg" type="text" required value={form.source} onChange={set('source')} />
-                </div>
-              </div>
-              <div className="cmx-row2">
-                <div className="cmx-field cmx-field-wide">
-                  <label htmlFor="cmx-council">{t('councilLabel')}</label>
+                  <label htmlFor="cmx-council">{t('councilLabel')} <span className="cmx-req" aria-hidden="true">*</span></label>
                   <CouncilSelect
                     id="cmx-council"
                     options={councils}
+                    required
                     value={otherActive ? 'أخرى' : form.councilName}
                     onSelect={handleCouncilSelect}
                   />
                 </div>
-                {otherActive && (
-                  <div className="cmx-field">
+              </div>
+              {otherActive && (
+                <div className="cmx-row2">
+                  <div className="cmx-field cmx-field-wide">
                     <label htmlFor="cmx-council-new">{t('newCouncilLabel')} <span className="cmx-req" aria-hidden="true">*</span></label>
                     <input
                       id="cmx-council-new"
@@ -406,8 +404,8 @@ function MemoForm() {
                       onChange={e => { setOtherName(e.target.value); setDirty(true); }}
                     />
                   </div>
-                )}
-              </div>
+                </div>
+              )}
               <DateTimeRow id="cmx-dt-topic" t={t} value={form.topicDateTime} onChange={set('topicDateTime')} />
             </section>
 

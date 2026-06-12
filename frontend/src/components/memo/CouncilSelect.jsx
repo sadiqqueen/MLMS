@@ -12,7 +12,7 @@ const IconCaret = () => (
 // Searchable combobox for المجلس العلمي. Typing filters the options live
 // with Arabic normalization (أ/إ/آ≈ا, ة≈ه, ى≈ي); أخرى is always pinned
 // last and always available. Fully keyboard accessible.
-export default function CouncilSelect({ id, options, value, onSelect }) {
+export default function CouncilSelect({ id, options, value, onSelect, required = false }) {
   const [open, setOpen]   = useState(false);
   const [query, setQuery] = useState(null);  // null = not searching (input shows the selection)
   const [hi, setHi]       = useState(0);
@@ -83,6 +83,7 @@ export default function CouncilSelect({ id, options, value, onSelect }) {
         aria-autocomplete="list"
         aria-activedescendant={open && filtered[hi] ? `${id}-opt-${hi}` : undefined}
         autoComplete="off"
+        required={required}
         value={query !== null ? query : (value || '')}
         onChange={e => { setQuery(e.target.value); setOpen(true); setHi(0); }}
         onClick={() => setOpen(true)}

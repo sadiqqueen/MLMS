@@ -46,7 +46,6 @@ export default function MemoPrint({ memo, lang = 'ar', attachmentPreviews = [] }
       body: (
         <>
           <p><strong>{t('topicName')}:</strong> {memo.topicName || ''}</p>
-          <p><strong>{t('source')}:</strong> {memo.source || ''}</p>
           <p><strong>{t('councilLabel')}:</strong> <span dir="rtl" lang="ar">{memo.councilName || ''}</span></p>
         </>
       ),
