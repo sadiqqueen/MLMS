@@ -4,8 +4,8 @@ import { STRINGS, fmtDateTime } from './MemoPrefs';
 // the ORIGINAL document's teal (#156B67), in the given language. Rendered
 // inside a hidden mount (shown only by @media print) and reused on screen
 // by the معاينة (preview) modal.
-// `attachmentPreviews` (from buildAttachmentPreviews) appends the uploaded
-// files' rendered pages as annex pages after the signature block.
+// `attachmentPreviews` (from buildAttachmentPreviews) renders the uploaded
+// files' content inside the المرفقات section — below the list, above العرض.
 export default function MemoPrint({ memo, lang = 'ar', attachmentPreviews = [] }) {
   const t = key => STRINGS[lang][key] ?? STRINGS.ar[key] ?? key;
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
@@ -15,6 +15,28 @@ export default function MemoPrint({ memo, lang = 'ar', attachmentPreviews = [] }
     ...(memo.attachments || []).filter(a => a && a.trim() !== ''),
     ...(memo.attachmentFiles || []).map(f => f?.name).filter(Boolean),
   ];
+
+  const attachmentsBody = (
+    <>
+      {attachments.length > 0 && (
+        <ul className="cmxp-attachments">{attachments.map((a, i) => <li key={i}>— {a}</li>)}</ul>
+      )}
+      {attachmentPreviews.map((p, i) => (
+        <div className="cmxp-annex" key={i}>
+          <div className="cmxp-annex-title">{t('attachment')} {i + 1}: {p.name}</div>
+          {p.kind === 'docx' ? (
+            <div className="cmxp-annex-doc" dangerouslySetInnerHTML={{ __html: p.html || '' }} />
+          ) : (
+            p.pages.map((src, j) => (
+              <img className="cmxp-annex-page" src={src} alt={`${p.name} — ${j + 1}`} key={j} />
+            ))
+          )}
+          {p.kind === 'other' && <div className="cmxp-annex-note">{t('notRenderable')}</div>}
+          {p.truncated && <div className="cmxp-annex-note">{t('annexTruncated')}</div>}
+        </div>
+      ))}
+    </>
+  );
 
   const sections = [
     {
@@ -30,9 +52,9 @@ export default function MemoPrint({ memo, lang = 'ar', attachmentPreviews = [] }
     {
       title: t('secAttachments'),
       dt: memo.attachmentsDateTime,
-      body: attachments.length
-        ? <ul className="cmxp-attachments">{attachments.map((a, i) => <li key={i}>— {a}</li>)}</ul>
-        : null,
+      body: attachmentsBody,
+      // annex content can span multiple pages — don't force it onto one
+      className: 'cmxp-section-flow',
     },
     { title: t('secPresentation'), dt: memo.presentationDateTime, body: textBody(memo.presentation) },
     { title: t('secExec'),         dt: memo.executiveCommitteeDateTime, body: textBody(memo.executiveCommittee) },
@@ -63,7 +85,7 @@ export default function MemoPrint({ memo, lang = 'ar', attachmentPreviews = [] }
       <h1 className="cmxp-title">{t('pageTitle')}</h1>
 
       {sections.map((s, i) => (
-        <section className="cmxp-section" key={i}>
+        <section className={'cmxp-section' + (s.className ? ' ' + s.className : '')} key={i}>
           <div className="cmxp-bar">{s.title}</div>
           <div className="cmxp-body">{s.body}</div>
           <div className="cmxp-dt">{t('dateTime')} {fmtDateTime(s.dt, lang)}</div>
@@ -84,17 +106,6 @@ export default function MemoPrint({ memo, lang = 'ar', attachmentPreviews = [] }
         </div>
       </div>
 
-      {/* Annexes — the uploaded attachments' actual content */}
-      {attachmentPreviews.filter(p => p.pages.length > 0).map((p, i) => (
-        <section className="cmxp-annex" key={i}>
-          <div className="cmxp-bar cmxp-annex-title">{t('attachment')} {i + 1}: {p.name}</div>
-          {p.pages.map((src, j) => (
-            <img className="cmxp-annex-page" src={src} alt={`${p.name} — ${j + 1}`} key={j} />
-          ))}
-          {p.truncated && <div className="cmxp-annex-note">{t('annexTruncated')}</div>}
-        </section>
-      ))}
-
       {/* Repeating footer (position:fixed repeats on every printed page) */}
       <footer className="cmxp-footer">{t('footerOrg')}</footer>
     </div>
@@ -103,5 +114,5 @@ export default function MemoPrint({ memo, lang = 'ar', attachmentPreviews = [] }
 
 function textBody(text) {
   if (!text || !text.trim()) return null;
-  return text.split('\n').map((line, i) => <p key={i}>{line || ' '}</p>);
+  return text.split('\n').map((line, i) => <p key={i}>{line || ' '}</p>);
 }

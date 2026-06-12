@@ -3,22 +3,34 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
-const IMG_RE = /\.(png|jpe?g)(\?|$)/i;
-const PDF_RE = /\.pdf(\?|$)/i;
+const IMG_RE  = /\.(png|jpe?g)(\?|$)/i;
+const PDF_RE  = /\.pdf(\?|$)/i;
+const DOCX_RE = /\.docx(\?|$)/i;
 const MAX_PDF_PAGES = 20;
 
+// pdf.js needs these for real-world PDFs (CID/Arabic fonts, JPX images…);
+// copied from pdfjs-dist into frontend/public/pdfjs/.
+const PDFJS_ASSETS = {
+  cMapUrl: '/pdfjs/cmaps/',
+  cMapPacked: true,
+  standardFontDataUrl: '/pdfjs/standard_fonts/',
+  wasmUrl: '/pdfjs/wasm/',
+};
+
 // Convert uploaded attachment files into printable previews:
-//   images  → shown as-is
-//   PDFs    → every page rendered to an image (via pdf.js)
-//   other   → no preview (name still appears in the printed attachments list)
-// Returns [{ name, kind: 'image'|'pdf'|'other', pages: [src…], truncated }]
+//   images → inlined as data URLs (so printing never races the network)
+//   PDFs   → every page rendered to an image (pdf.js)
+//   .docx  → converted to HTML (mammoth)
+//   other  → name-only note in the printout
+// Returns [{ name, kind: 'image'|'pdf'|'docx'|'other', pages: [src…], html, truncated }]
 export async function buildAttachmentPreviews(files) {
   const out = [];
   for (const f of files || []) {
     if (!f?.url) continue;
     const probe = f.url + ' ' + (f.name || '');
+    const absolute = new URL(f.url, window.location.origin).href;
+
     if (IMG_RE.test(probe)) {
-      // inline as a data URL so the print annex never races the network
       try {
         const dataUrl = await new Promise((resolve, reject) => {
           const img = new Image();
@@ -30,17 +42,16 @@ export async function buildAttachmentPreviews(files) {
             resolve(c.toDataURL('image/png'));
           };
           img.onerror = reject;
-          img.src = new URL(f.url, window.location.origin).href;
+          img.src = absolute;
         });
         out.push({ name: f.name, kind: 'image', pages: [dataUrl], truncated: false });
       } catch (err) {
         console.error('attachment preview failed for', f.url, err);
         out.push({ name: f.name, kind: 'other', pages: [], truncated: false });
       }
+
     } else if (PDF_RE.test(probe)) {
-      // pdf.js v6 requires a params object with an absolute URL
-      const absolute = new URL(f.url, window.location.origin).href;
-      const task = pdfjsLib.getDocument({ url: absolute });
+      const task = pdfjsLib.getDocument({ url: absolute, ...PDFJS_ASSETS });
       try {
         const doc = await task.promise;
         const count = Math.min(doc.numPages, MAX_PDF_PAGES);
@@ -56,12 +67,23 @@ export async function buildAttachmentPreviews(files) {
         }
         out.push({ name: f.name, kind: 'pdf', pages, truncated: doc.numPages > count });
       } catch (err) {
-        // fall back to name-only in the printed list
         console.error('attachment preview failed for', f.url, err);
         out.push({ name: f.name, kind: 'other', pages: [], truncated: false });
       } finally {
         task.destroy().catch(() => {});
       }
+
+    } else if (DOCX_RE.test(probe)) {
+      try {
+        const mammoth = (await import('mammoth')).default ?? (await import('mammoth'));
+        const arrayBuffer = await (await fetch(absolute)).arrayBuffer();
+        const result = await mammoth.convertToHtml({ arrayBuffer });
+        out.push({ name: f.name, kind: 'docx', pages: [], html: result.value, truncated: false });
+      } catch (err) {
+        console.error('attachment preview failed for', f.url, err);
+        out.push({ name: f.name, kind: 'other', pages: [], truncated: false });
+      }
+
     } else {
       out.push({ name: f.name, kind: 'other', pages: [], truncated: false });
     }

@@ -52,6 +52,7 @@ export const STRINGS = {
     memoNumberLabel: 'رقم المذكرة:', printDateLabel: 'تاريخ الطباعة:',
     signSecretary: 'توقيع الأمين العام', signNameLabel: 'الاسم والتوقيع', stamp: 'الختم',
     annexTruncated: 'تم عرض أول ٢٠ صفحة فقط من هذا الملف',
+    notRenderable: 'يُرفق كملف — لا يمكن عرض محتواه في الطباعة',
     footerOrg: 'المجلس العربي للاختصاصات الصحية — المجلس العلمي الاستشاري المشترك',
   },
   en: {
@@ -96,6 +97,7 @@ export const STRINGS = {
     memoNumberLabel: 'Memo No.:', printDateLabel: 'Print date:',
     signSecretary: 'Signature of the Secretary General', signNameLabel: 'Name & signature', stamp: 'Stamp',
     annexTruncated: 'Only the first 20 pages of this file are shown',
+    notRenderable: 'Attached as a file — its content cannot be rendered in print',
     footerOrg: 'Arab Board of Health Specializations — Joint Scientific Advisory Council',
   },
 };
