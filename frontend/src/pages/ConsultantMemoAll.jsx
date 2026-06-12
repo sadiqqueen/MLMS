@@ -195,6 +195,9 @@ function MemoAllView() {
                     </span>
                   </div>
                   <div className="cmx-card-source">{t('sourceLabel')} {m.source?.trim() || '—'}</div>
+                  {m.councilName?.trim() && (
+                    <div className="cmx-card-source">{t('councilLabel')}: {m.councilName}</div>
+                  )}
                   <div className="cmx-card-dates">
                     {m.status === 'draft' && m.movedToDraftAt
                       ? `${t('movedToDraftAt')} ${fmtDateTime(m.movedToDraftAt, lang)}`

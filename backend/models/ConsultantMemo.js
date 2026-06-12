@@ -8,6 +8,8 @@ const consultantMemoSchema = new mongoose.Schema(
   {
     topicName:     { type: String, default: '' },   // اسم الموضوع
     source:        { type: String, default: '' },   // المصدر
+    council:       { type: mongoose.Schema.Types.ObjectId, ref: 'ScientificCouncil', default: null },  // المجلس العلمي
+    councilName:   { type: String, default: '' },   // name snapshot for display/print
     topicDateTime: { type: Date, default: null },
 
     attachments:         { type: [String], default: ['', ''] },  // المرفقات (text rows)

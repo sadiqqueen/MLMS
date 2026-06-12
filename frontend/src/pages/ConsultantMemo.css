@@ -291,6 +291,44 @@
 /* Larger inputs for topic name / source / attachment text rows */
 .cmx input[type="text"].cmx-input-lg { min-height: 52px; font-size: 16px; padding: 10px 14px; }
 
+/* المجلس العلمي searchable combobox */
+.cmx-combo { position: relative; }
+.cmx .cmx-combo-input { padding-inline-end: 36px; width: 100%; }
+.cmx-combo-caret {
+  position: absolute;
+  inset-inline-end: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--cmx-muted);
+  pointer-events: none;
+  display: flex;
+}
+.cmx-combo-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  inset-inline: 0;
+  background: var(--cmx-surface);
+  border: 1px solid var(--cmx-border);
+  border-radius: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 60;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.cmx-combo-opt {
+  padding: 9px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+}
+.cmx-combo-opt.active { background: var(--cmx-accent-tint); }
+.cmx-combo-opt[aria-selected="true"] { font-weight: 700; color: var(--cmx-accent-solid); }
+.cmx[data-theme="dark"] .cmx-combo-opt[aria-selected="true"] { color: var(--cmx-text); }
+.cmx-combo-other { border-top: 1px solid var(--cmx-border-soft); margin-top: 4px; }
+
 .cmx-attachments { display: flex; flex-direction: column; gap: 8px; }
 .cmx-attach-row { display: flex; gap: 8px; align-items: center; }
 .cmx-attach-btns { display: flex; gap: 8px; flex-wrap: wrap; }

@@ -6,6 +6,7 @@ import MemoNavbar from '../components/memo/MemoNavbar';
 import MemoPrint from '../components/memo/MemoPrint';
 import { useMemoToasts, MemoToasts, MemoModal, AutoTextarea } from '../components/memo/MemoUi';
 import { buildAttachmentPreviews } from '../components/memo/attachmentPreviews';
+import CouncilSelect from '../components/memo/CouncilSelect';
 import './ConsultantMemo.css';
 
 const IconSave = () => (
@@ -36,7 +37,7 @@ const IconTrash = () => (
 );
 
 const EMPTY = {
-  topicName: '', source: '', topicDateTime: '',
+  topicName: '', source: '', council: '', councilName: '', topicDateTime: '',
   attachments: ['', ''], attachmentFiles: [], attachmentsDateTime: '',
   presentation: '', presentationDateTime: '',
   executiveCommittee: '', executiveCommitteeDateTime: '',
@@ -66,6 +67,8 @@ function fromMemo(m) {
   };
   TEXT_KEYS.forEach(k => { f[k] = m[k] || ''; });
   DT_KEYS.forEach(k => { f[k] = toLocalInput(m[k]); });
+  f.council = m.council || '';
+  f.councilName = m.councilName || '';
   return f;
 }
 
@@ -73,6 +76,8 @@ function toPayload(f) {
   const p = { attachments: f.attachments, attachmentFiles: f.attachmentFiles };
   TEXT_KEYS.forEach(k => { p[k] = f[k]; });
   DT_KEYS.forEach(k => { p[k] = f[k] ? new Date(f[k]).toISOString() : null; });
+  p.council = f.council || null;
+  p.councilName = f.councilName || '';
   return p;
 }
 
@@ -80,6 +85,7 @@ function isEmptyForm(f) {
   return TEXT_KEYS.every(k => !f[k].trim())
     && f.attachments.every(a => !a.trim())
     && f.attachmentFiles.length === 0
+    && !f.councilName
     && DT_KEYS.every(k => !f[k]);
 }
 
@@ -102,9 +108,23 @@ function MemoForm() {
   const [loadedKey, setLoadedKey]   = useState(0);
   const [uploading, setUploading]   = useState(false);
   const [attachmentPreviews, setAttachmentPreviews] = useState([]);
+  const [councils, setCouncils]     = useState([]);
+  const [otherActive, setOtherActive] = useState(false);  // أخرى chosen
+  const [otherName, setOtherName]     = useState('');
   const { toasts, showToast, dismiss } = useMemoToasts();
   const fileInputRef = useRef(null);
   const previewsPromiseRef = useRef(Promise.resolve());
+  const otherActiveRef = useRef(false); otherActiveRef.current = otherActive;
+  const otherNameRef = useRef('');      otherNameRef.current = otherName;
+
+  // المجلس العلمي options — the seeded defaults + every saved custom council
+  const loadCouncils = useCallback(async () => {
+    try {
+      const res = await api.get('/api/scientific-councils');
+      setCouncils(res.data);
+    } catch { /* dropdown stays empty; selection still shows councilName */ }
+  }, []);
+  useEffect(() => { loadCouncils(); }, [loadCouncils]);
 
   const formRef = useRef(form);     formRef.current = form;
   const dirtyRef = useRef(dirty);   dirtyRef.current = dirty;
@@ -124,6 +144,8 @@ function MemoForm() {
         if (cancelled) return;
         setForm(fromMemo(res.data));
         setMemoNumber(res.data.memoNumber || '');
+        setOtherActive(false);
+        setOtherName('');
         setDirty(false);
         arBackupRef.current = null;
         setLoadedKey(k => k + 1);
@@ -143,6 +165,25 @@ function MemoForm() {
     setSaving(true);
     try {
       const payload = toPayload(formRef.current);
+
+      // أخرى flow: the new council is created ONLY on the explicit حفظ
+      // (never on autosave, so half-typed names can't become junk entries).
+      if (otherActiveRef.current) {
+        const newName = otherNameRef.current.trim();
+        if (!silent && newName) {
+          const created = (await api.post('/api/scientific-councils', { name: newName })).data;
+          payload.council = created._id;
+          payload.councilName = created.name;
+          setForm(f => ({ ...f, council: created._id, councilName: created.name }));
+          setOtherActive(false);
+          setOtherName('');
+          loadCouncils();  // it now appears in the dropdown for every memo
+        } else {
+          payload.council = null;
+          payload.councilName = '';
+        }
+      }
+
       if (memoIdRef.current) {
         await api.put(`/api/consultant-memo/${memoIdRef.current}`, payload);
       } else {
@@ -160,7 +201,7 @@ function MemoForm() {
       savingRef.current = false;
       setSaving(false);
     }
-  }, [lang, setSearchParams, showToast, t]);
+  }, [lang, setSearchParams, showToast, t, loadCouncils]);
 
   // Autosave: debounce ~2s after typing stops
   useEffect(() => {
@@ -271,6 +312,19 @@ function MemoForm() {
     }
   }
 
+  // المجلس العلمي selection from the combobox
+  const handleCouncilSelect = option => {
+    if (option.name === 'أخرى') {
+      setOtherActive(true);
+      setForm(f => ({ ...f, council: '', councilName: '' }));
+    } else {
+      setOtherActive(false);
+      setOtherName('');
+      setForm(f => ({ ...f, council: option._id, councilName: option.name }));
+    }
+    setDirty(true);
+  };
+
   const guardNavigation = () => !dirtyRef.current || window.confirm(t('unsavedConfirm'));
 
   const handleNew = () => {
@@ -281,10 +335,16 @@ function MemoForm() {
     setMemoNumber('');
     setDirty(false);
     setBanner(null);
+    setOtherActive(false);
+    setOtherName('');
     arBackupRef.current = null;
   };
 
-  const printable = { ...form, memoNumber };
+  const printable = {
+    ...form,
+    memoNumber,
+    councilName: form.councilName || (otherActive ? otherName.trim() : ''),
+  };
 
   const autoTime = lastAuto
     ? lastAuto.toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-GB', { hour: '2-digit', minute: '2-digit' })
@@ -321,6 +381,32 @@ function MemoForm() {
                   <label htmlFor="cmx-source">{t('source')} <span className="cmx-req" aria-hidden="true">*</span></label>
                   <input id="cmx-source" className="cmx-input-lg" type="text" required value={form.source} onChange={set('source')} />
                 </div>
+              </div>
+              <div className="cmx-row2">
+                <div className="cmx-field cmx-field-wide">
+                  <label htmlFor="cmx-council">{t('councilLabel')}</label>
+                  <CouncilSelect
+                    id="cmx-council"
+                    options={councils}
+                    value={otherActive ? 'أخرى' : form.councilName}
+                    onSelect={handleCouncilSelect}
+                  />
+                </div>
+                {otherActive && (
+                  <div className="cmx-field">
+                    <label htmlFor="cmx-council-new">{t('newCouncilLabel')} <span className="cmx-req" aria-hidden="true">*</span></label>
+                    <input
+                      id="cmx-council-new"
+                      className="cmx-input-lg"
+                      type="text"
+                      required
+                      dir="rtl"
+                      lang="ar"
+                      value={otherName}
+                      onChange={e => { setOtherName(e.target.value); setDirty(true); }}
+                    />
+                  </div>
+                )}
               </div>
               <DateTimeRow id="cmx-dt-topic" t={t} value={form.topicDateTime} onChange={set('topicDateTime')} />
             </section>

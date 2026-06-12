@@ -10,7 +10,7 @@ const { decodeOriginalName } = require('../utils/filename');
 
 const ASG = ['asg1', 'asg2'];  // ASG.1 / ASG.2 — the only roles with access
 const MEMO_FIELDS = [
-  'topicName', 'source', 'topicDateTime',
+  'topicName', 'source', 'council', 'councilName', 'topicDateTime',
   'attachments', 'attachmentFiles', 'attachmentsDateTime',
   'presentation', 'presentationDateTime',
   'executiveCommittee', 'executiveCommitteeDateTime',
@@ -155,11 +155,12 @@ router.get('/', auth, allowRoles(...ASG), async (req, res) => {
     if (req.query.status === 'saved' || req.query.status === 'draft') filter.status = req.query.status;
     const memos = await ConsultantMemo.find(filter)
       .sort({ createdAt: -1 })
-      .select('topicName source status presentation memoNumber movedToDraftAt createdAt updatedAt');
+      .select('topicName source councilName status presentation memoNumber movedToDraftAt createdAt updatedAt');
     res.json(memos.map(m => ({
       _id: m._id,
       topicName: m.topicName,
       source: m.source,
+      councilName: m.councilName,
       status: m.status,
       memoNumber: m.memoNumber,
       movedToDraftAt: m.movedToDraftAt,

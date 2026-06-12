@@ -115,6 +115,7 @@ app.use('/api/president',         require('./routes/president'));
 app.use('/api/trainee',           require('./routes/trainee'));
 app.use('/api/admin',             require('./routes/adminV2'));
 app.use('/api/consultant-memo',   require('./routes/consultantMemo'));
+app.use('/api/scientific-councils', require('./routes/scientificCouncils'));
 
 app.use(honeypot());
 
