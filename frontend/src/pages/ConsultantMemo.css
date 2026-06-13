@@ -728,3 +728,201 @@
   .cmx-main { padding: 18px 12px 50px; }
   .cmx-row2 { flex-direction: column; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Training Program Initiatives (مبادرات استحداث برامج تدريبية)
+   Kanban board + detail view. Reuses every --cmx-* token (incl. the teal
+   --cmx-accent) so light/dark + RTL/LTR come for free. Scoped under .cmx.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* shared chip */
+.cmx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 8px;
+  background: var(--cmx-surface-2);
+  color: var(--cmx-muted);
+  white-space: nowrap;
+}
+.cmx-level-chip { background: var(--cmx-accent-tint); color: var(--cmx-accent-solid); }
+.cmx[data-theme="dark"] .cmx-level-chip { color: var(--cmx-text); }
+.cmx-count-chip { background: var(--cmx-surface-2); color: var(--cmx-muted); }
+
+/* toolbar above the board */
+.cmx-board-toolbar { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+.cmx-board-empty, .cmx-col-empty {
+  color: var(--cmx-muted);
+  font-size: 14px;
+  text-align: center;
+  padding: 18px 8px;
+}
+
+/* board grid */
+.cmx-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+.cmx-col {
+  background: var(--cmx-surface-2);
+  border: 1px solid var(--cmx-border-soft);
+  border-radius: 12px;
+  padding: 10px;
+  min-height: 120px;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.cmx-col-over { border-color: var(--cmx-accent); background: var(--cmx-accent-tint); }
+.cmx-col-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 700;
+}
+/* three stage tones from the existing palette */
+.cmx-col-head-0 { background: var(--cmx-amber-bg); color: var(--cmx-amber); }
+.cmx-col-head-1 { background: var(--cmx-accent-tint); color: var(--cmx-accent-solid); }
+.cmx[data-theme="dark"] .cmx-col-head-1 { color: var(--cmx-text); }
+.cmx-col-head-2 { background: var(--cmx-green-bg); color: var(--cmx-green); }
+
+/* initiative card */
+.cmx-card {
+  background: var(--cmx-surface);
+  border: 1px solid var(--cmx-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: box-shadow 0.15s, border-color 0.15s, transform 0.05s;
+}
+.cmx-card:hover { border-color: var(--cmx-accent); box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
+.cmx-card:active { transform: scale(0.997); }
+.cmx-card:focus-visible { outline: 2px solid var(--cmx-accent); outline-offset: 2px; }
+.cmx-card-name { font-size: 15px; font-weight: 600; margin: 0 0 6px; color: var(--cmx-text); }
+.cmx-card-source { font-size: 12.5px; color: var(--cmx-muted); margin: 0 0 8px; }
+.cmx-card-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cmx-card-move {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--cmx-border-soft);
+}
+.cmx-move-btn {
+  width: 30px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--cmx-border);
+  background: var(--cmx-surface);
+  color: var(--cmx-text);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.cmx-move-btn:hover:not(:disabled) { border-color: var(--cmx-accent); color: var(--cmx-accent-solid); }
+.cmx-move-btn:disabled { opacity: 0.35; cursor: default; }
+
+/* ── Detail view ────────────────────────────────────────────────────── */
+.cmx-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.cmx-detail-title { font-size: 18px; font-weight: 700; flex: 1 1 auto; }
+.cmx-detail-chips { display: flex; gap: 6px; }
+.cmx-stage-chip-0 { background: var(--cmx-amber-bg); color: var(--cmx-amber); }
+.cmx-stage-chip-1 { background: var(--cmx-accent); color: #fff; }
+.cmx-stage-chip-2 { background: var(--cmx-green-bg); color: var(--cmx-green); }
+
+.cmx-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: var(--cmx-surface-2);
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 18px;
+}
+.cmx-step-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  background: var(--cmx-surface);
+  border: 1px solid var(--cmx-border);
+  color: var(--cmx-muted);
+}
+.cmx-step-pill.done { background: var(--cmx-green-bg); color: var(--cmx-green); border-color: transparent; }
+.cmx-step-pill.current { background: var(--cmx-accent); color: #fff; border-color: transparent; }
+
+/* approval steps */
+.cmx-steps { display: flex; flex-direction: column; }
+.cmx-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 4px;
+  border-top: 1px solid var(--cmx-border-soft);
+  flex-wrap: wrap;
+}
+.cmx-step:first-child { border-top: none; }
+.cmx-step-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  flex: none;
+}
+.cmx-step-toggle.is-done { background: var(--cmx-green-bg); color: var(--cmx-green); }
+.cmx-step-toggle.is-todo { background: var(--cmx-surface-2); color: var(--cmx-muted); border-color: var(--cmx-border); }
+.cmx-step-toggle:hover { filter: brightness(0.97); }
+.cmx-step-label { flex: 1 1 200px; font-size: 14px; color: var(--cmx-text); }
+.cmx-step.done .cmx-step-label { color: var(--cmx-text); }
+.cmx-step:not(.done) .cmx-step-label { color: var(--cmx-muted); }
+.cmx-step-date { font-size: 12px; color: var(--cmx-muted); white-space: nowrap; }
+.cmx .cmx-step-note {
+  flex: 1 1 160px;
+  min-height: 34px;
+  font-size: 13px;
+  min-width: 120px;
+}
+
+.cmx-stage-moves {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.cmx-detail-delete { margin-inline-start: auto; }
+
+@media (max-width: 760px) {
+  .cmx-board { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .cmx-step-label { flex-basis: 100%; }
+  .cmx-step-note { flex-basis: 100%; }
+}

@@ -37,6 +37,7 @@ import DioDistributions from './pages/DioDistributions';
 import DioRotations from './pages/DioRotations';
 import ConsultantMemo from './pages/ConsultantMemo';
 import ConsultantMemoAll from './pages/ConsultantMemoAll';
+import Initiatives from './pages/Initiatives';
 import CertificatePrint from './pages/CertificatePrint';
 
 import PresidentTrainees from './pages/PresidentTrainees';
@@ -207,6 +208,13 @@ export default function App() {
           <Route path="/consultant-memo/all" element={
             <ProtectedRoute allowedRoles={['asg1', 'asg2']}>
               <ConsultantMemoAll />
+            </ProtectedRoute>
+          } />
+          {/* Initiatives — ASG roles only (mirrors the backend 403 guard).
+              The page also self-gates via useInitiativeAccess. */}
+          <Route path="/initiatives" element={
+            <ProtectedRoute allowedRoles={['asg1', 'asg2']}>
+              <Initiatives />
             </ProtectedRoute>
           } />
 

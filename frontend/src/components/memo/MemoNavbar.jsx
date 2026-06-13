@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import ProfileDropdown from '../ProfileDropdown';
 import { useMemoPrefs } from './MemoPrefs';
+import { useInitiativeAccess } from './useInitiativeAccess';
+import { INIT_STRINGS } from './initiativeStrings';
 
 const IconMoon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -32,6 +34,11 @@ const IconChevron = () => (
     <polyline points="6 9 12 15 18 9"/>
   </svg>
 );
+const IconBoard = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>
+  </svg>
+);
 
 // The dedicated navbar for the consultant-memo pages.
 // `guardNavigation` (optional) is asked before leaving — the form page uses
@@ -39,10 +46,12 @@ const IconChevron = () => (
 export default function MemoNavbar({ onNewMemo, guardNavigation }) {
   const { user } = useAuth();
   const { theme, setTheme, lang, setLang, t } = useMemoPrefs();
+  const { allowed: canInitiatives } = useInitiativeAccess();
   const [showProfile, setShowProfile] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const onAllView = location.pathname.startsWith('/consultant-memo/all');
+  const onInitiatives = location.pathname.startsWith('/initiatives');
 
   const guarded = fn => () => {
     if (guardNavigation && !guardNavigation()) return;
@@ -98,6 +107,19 @@ export default function MemoNavbar({ onNewMemo, guardNavigation }) {
 
       {/* Centered between the profile cluster and the logo */}
       <div className="cmx-nav-center">
+        {/* Initiatives — placed immediately BEFORE "All memos"; only shown to
+            allowlisted (ASG) accounts. Backend 403 is the real guard. */}
+        {canInitiatives && (
+          <button
+            className={'cmx-btn cmx-btn-ghost' + (onInitiatives ? ' cmx-btn-active' : '')}
+            aria-current={onInitiatives ? 'page' : undefined}
+            onClick={guarded(() => navigate('/initiatives'))}
+          >
+            <IconBoard />
+            <span>{INIT_STRINGS[lang]?.navLabel ?? INIT_STRINGS.ar.navLabel}</span>
+          </button>
+        )}
+
         <button
           className={'cmx-btn cmx-btn-ghost' + (onAllView ? ' cmx-btn-active' : '')}
           aria-current={onAllView ? 'page' : undefined}

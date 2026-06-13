@@ -6,6 +6,7 @@ const multer      = require('multer');
 const User        = require('../models/User');
 const auth        = require('../middleware/auth');
 const { loginLimiter, refreshLimiter } = require('../middleware/rateLimiter');
+const { hasInitiativeAccess } = require('../middleware/requireInitiativeAccess');
 
 const photoStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, path.join(__dirname, '../uploads')),
@@ -100,7 +101,8 @@ router.post('/login', loginLimiter, async (req, res) => {
         hospitalId:    user.hospitalId,
         specialtyId:   user.specialtyId,
         enrolledSince: user.enrolledSince
-      }
+      },
+      permissions: { initiatives: hasInitiativeAccess(user) }
     });
 
   } catch (err) {
@@ -163,7 +165,7 @@ router.get('/me', auth, async (req, res) => {
       .populate('hospital',    'name city')
       .populate('hospitalId',  'name city')
       .populate('specialtyId', 'name');
-    res.json({ success: true, data: user });
+    res.json({ success: true, data: user, permissions: { initiatives: hasInitiativeAccess(user) } });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

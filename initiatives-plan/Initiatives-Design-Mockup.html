@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>مبادرات استحداث برامج تدريبية — التصميم</title>
+<style>
+:root{
+  --bg:#eef2f1; --surface:#ffffff; --surface2:#f4f7f6; --text:#13241f; --muted:#5f6f6a; --border:#dde4e1;
+  --teal:#0F6E56; --teal2:#1D9E75; --on-teal:#ffffff;
+  --warn-bg:#FAEEDA; --warn-tx:#854F0B; --info-bg:#E6F1FB; --info-tx:#0C447C; --succ-bg:#EAF3DE; --succ-tx:#3B6D11;
+  --chip-bg:#eceeec; --chip-tx:#5f6f6a; --danger:#A32D2D;
+}
+body.dark{
+  --bg:#0c1411; --surface:#13201b; --surface2:#16241e; --text:#e8efec; --muted:#9fb0aa; --border:#27362f;
+  --teal:#168a6c; --teal2:#27c08e; --on-teal:#ffffff;
+  --warn-bg:#3a2c10; --warn-tx:#FAC775; --info-bg:#0e2742; --info-tx:#85B7EB; --succ-bg:#1c2e10; --succ-tx:#97C459;
+  --chip-bg:#22312b; --chip-tx:#9fb0aa; --danger:#F09595;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Segoe UI",Tahoma,"Noto Sans Arabic",system-ui,sans-serif;line-height:1.6}
+.wrap{max-width:1000px;margin:0 auto;padding:24px 18px 60px}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.toolbar h1{font-size:20px;font-weight:600;margin:0}
+.toolbar .sub{font-size:13px;color:var(--muted)}
+.tbtn{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer}
+.screen-label{font-size:13px;color:var(--muted);margin:26px 4px 10px;font-weight:600;border-top:1px dashed var(--border);padding-top:18px}
+.nav{background:var(--teal);border-radius:12px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--on-teal)}
+.nav .user{display:flex;align-items:center;gap:8px;font-size:12px}
+.av{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.22);display:inline-flex;align-items:center;justify-content:center}
+.nbtn{font-size:12px;padding:6px 12px;border-radius:8px;color:var(--on-teal);background:rgba(255,255,255,.16);white-space:nowrap;border:none}
+.nbtn.active{background:#fff;color:var(--teal);font-weight:600}
+.hint{font-size:12px;color:var(--muted);text-align:center;margin:8px 0 0}
+.board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
+.col-head{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;margin-bottom:10px;font-size:14px;font-weight:600}
+.h-warn{background:var(--warn-bg);color:var(--warn-tx)} .h-info{background:var(--info-bg);color:var(--info-tx)} .h-succ{background:var(--succ-bg);color:var(--succ-tx)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.name{font-size:15px;font-weight:600;margin:0 0 8px}
+.row{display:flex;align-items:center;justify-content:space-between}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:2px 8px;border-radius:8px;background:var(--chip-bg);color:var(--chip-tx)}
+.chip.warn{background:var(--warn-bg);color:var(--warn-tx)} .chip.info{background:var(--info-bg);color:var(--info-tx)} .chip.succ{background:var(--succ-bg);color:var(--succ-tx)}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:10px}
+.step{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--border);font-size:13px}
+.dot{width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;flex:none}
+.dot.done{background:var(--succ-bg);color:var(--succ-tx)} .dot.todo{background:var(--chip-bg);color:var(--muted)}
+.bar{background:var(--teal);color:var(--on-teal);padding:8px 12px;border-radius:8px;font-weight:600;font-size:14px;margin:16px 0 10px}
+.lbl{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+.fld{width:100%;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:8px;padding:8px 10px;font:inherit}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.stepper{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--surface2);border-radius:12px;padding:10px;font-size:12px;margin-bottom:6px}
+.att{display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:13px}
+.btn{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;padding:7px 12px;font:inherit;font-size:13px;cursor:pointer}
+.btn.primary{background:var(--teal);color:var(--on-teal);border-color:var(--teal)}
+.right{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.left{display:flex;justify-content:flex-start;gap:8px;margin-top:14px}
+@media(max-width:640px){.board{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="toolbar">
+    <div>
+      <h1>مبادرات استحداث برامج تدريبية</h1>
+      <div class="sub">تصميم الواجهة — Training Program Initiatives (design mockup). يدعم العربية/الإنجليزية والوضع الفاتح/الداكن.</div>
+    </div>
+    <button class="tbtn" id="themeBtn" onclick="document.body.classList.toggle('dark');this.textContent=document.body.classList.contains('dark')?'☀ الوضع الفاتح':'🌙 الوضع الداكن'">🌙 الوضع الداكن</button>
+  </div>
+
+  <div class="screen-label">١ — الشريط العلوي + لوحة المراحل (Board)</div>
+
+  <div class="nav">
+    <div class="user"><span class="av">JI</span> جواد إبراهيم · ASG.1 <span class="chip" style="background:rgba(255,255,255,.16);color:#fff">عربي</span></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="nbtn">+ مذكرة جديدة</button>
+      <button class="nbtn active">▦ مبادرات استحداث برامج تدريبية</button>
+      <button class="nbtn">▤ جميع المذكرات</button>
+    </div>
+  </div>
+  <p class="hint">الزر الجديد يظهر قبل «جميع المذكرات» ويفتح اللوحة أدناه</p>
+
+  <div class="board">
+    <div>
+      <div class="col-head h-warn">قيد الدراسة <span class="chip warn">2</span></div>
+      <div class="card"><p class="name">طب طوارئ الأطفال</p><div class="row"><span class="chip">دقيق</span><span class="chip">1/2</span></div></div>
+      <div class="card"><p class="name">الطب النفسي للمسنين</p><div class="row"><span class="chip">دقيق</span><span class="chip">0/2</span></div></div>
+    </div>
+    <div>
+      <div class="col-head h-info">مرحلة أساسية <span class="chip info">2</span></div>
+      <div class="card" style="border-color:var(--teal2)"><p class="name">الأشعة التداخلية</p><div class="row"><span class="chip">رئيسي</span><span class="chip info">3/5</span></div></div>
+      <div class="card"><p class="name">زراعة الكلى</p><div class="row"><span class="chip">دقيق</span><span class="chip">2/5</span></div></div>
+    </div>
+    <div>
+      <div class="col-head h-succ">مرحلة نهائية <span class="chip succ">2</span></div>
+      <div class="card"><p class="name">طب الأسرة</p><div class="row"><span class="chip">رئيسي</span><span class="chip succ">5/5</span></div></div>
+      <div class="card"><p class="name">جراحة القلب</p><div class="row"><span class="chip">رئيسي</span><span class="chip">4/5</span></div></div>
+    </div>
+  </div>
+
+  <div class="screen-label">٢ — خطوات كل مرحلة (من المستندات الثلاثة)</div>
+
+  <div class="panel">
+    <div class="row"><strong>١ — قيد الدراسة</strong><span class="chip warn">المصدر · المستوى · ملاحظات</span></div>
+    <div class="step"><span class="dot done">✓</span><span style="flex:1">اعداد التصور في المجلس العلمي</span></div>
+    <div class="step"><span class="dot todo">◷</span><span style="flex:1;color:var(--muted)">تنفيذية - استشاري</span></div>
+  </div>
+  <div class="panel">
+    <div class="row"><strong>٢ — مرحلة أساسية</strong><span class="chip info">المصدر · المستوى · ملاحظات</span></div>
+    <div class="step"><span class="dot done">✓</span><span style="flex:1">اعتماد التصور - المجلس العلمي</span></div>
+    <div class="step"><span class="dot done">✓</span><span style="flex:1">دراسة الجدوى (توفر برامج تدريبية ومتدربين)</span></div>
+    <div class="step"><span class="dot done">✓</span><span style="flex:1">اعتماد الأمين العام</span></div>
+    <div class="step"><span class="dot todo">◷</span><span style="flex:1;color:var(--muted)">تنفيذية استشاري</span></div>
+    <div class="step"><span class="dot todo">◷</span><span style="flex:1;color:var(--muted)">المكتب التنفيذي</span></div>
+  </div>
+  <div class="panel">
+    <div class="row"><strong>٣ — مرحلة نهائية</strong><span class="chip succ">اعتماد ونشر</span></div>
+    <div class="step"><span class="dot done">✓</span><span style="flex:1">ترشيح اللجنة التأسيسية من المجلس العلمي</span></div>
+    <div class="step"><span class="dot done">✓</span><span style="flex:1">اعتماد الأمين العام واستكمال اللجنة</span></div>
+    <div class="step"><span class="dot todo">◷</span><span style="flex:1;color:var(--muted)">اعداد دليل الاختصاص من قبل اللجنة التأسيسية</span></div>
+    <div class="step"><span class="dot todo">◷</span><span style="flex:1;color:var(--muted)">اعتماد دليل الاختصاص من قبل المجلس العلمي</span></div>
+    <div class="step"><span class="dot todo">◷</span><span style="flex:1;color:var(--muted)">اعلان البرنامج - الأمانة العامة</span></div>
+  </div>
+
+  <div class="screen-label">٣ — شاشة تفاصيل المبادرة (عند النقر على بطاقة)</div>
+
+  <div class="panel">
+    <div class="row" style="margin-bottom:8px"><span style="display:inline-flex;align-items:center;gap:8px">→ <strong style="font-size:16px">الأشعة التداخلية</strong></span><span style="display:flex;gap:6px"><span class="chip info">مرحلة أساسية</span><span class="chip">رئيسي</span></span></div>
+
+    <div class="stepper">
+      <span class="chip succ">✓ قيد الدراسة</span> ‹
+      <span class="chip" style="background:var(--teal);color:#fff">مرحلة أساسية</span> ‹
+      <span class="chip">مرحلة نهائية</span>
+    </div>
+
+    <div class="bar">بيانات المبادرة</div>
+    <div class="grid2">
+      <div><label class="lbl">اسم المبادرة</label><input class="fld" value="الأشعة التداخلية"></div>
+      <div><label class="lbl">مصدر المبادرة</label><input class="fld" value="المجلس العلمي"></div>
+      <div><label class="lbl">المستوى</label><select class="fld"><option>رئيسي</option><option>دقيق</option></select></div>
+      <div><label class="lbl">تاريخ الإدراج</label><input class="fld" type="date" value="2026-01-12"></div>
+    </div>
+
+    <div class="bar">خطوات الاعتماد — مرحلة أساسية (3 من 5)</div>
+    <div class="step"><span class="chip succ">✓ تم</span><span style="flex:1">اعتماد التصور - المجلس العلمي</span><span style="font-size:12px;color:var(--muted)">2026-02-04</span></div>
+    <div class="step"><span class="chip succ">✓ تم</span><span style="flex:1">دراسة الجدوى (توفر برامج تدريبية ومتدربين)</span><span style="font-size:12px;color:var(--muted)">2026-02-18</span></div>
+    <div class="step"><span class="chip succ">✓ تم</span><span style="flex:1">اعتماد الأمين العام</span><span style="font-size:12px;color:var(--muted)">2026-03-01</span></div>
+    <div class="step"><span class="chip">◷ قيد الإنجاز</span><span style="flex:1;color:var(--muted)">تنفيذية استشاري</span><span style="font-size:12px;color:var(--muted)">—</span></div>
+    <div class="step"><span class="chip">◷ قيد الإنجاز</span><span style="flex:1;color:var(--muted)">المكتب التنفيذي</span><span style="font-size:12px;color:var(--muted)">—</span></div>
+
+    <div class="right">
+      <button class="btn">← إرجاع لمرحلة سابقة</button>
+      <button class="btn primary">نقل إلى: مرحلة نهائية ←</button>
+    </div>
+
+    <div class="bar">المرفقات</div>
+    <div class="att"><span style="color:var(--danger)">PDF</span><span style="flex:1">دراسة_الجدوى.pdf</span><span style="color:var(--danger);cursor:pointer">🗑</span></div>
+    <div class="att"><span style="color:var(--info-tx)">DOC</span><span style="flex:1">تصور_المجلس.docx</span><span style="color:var(--danger);cursor:pointer">🗑</span></div>
+    <div style="display:flex;gap:8px;margin-top:4px"><button class="btn">📎 رفع ملف (PDF, Word...)</button><button class="btn">+ إضافة مرفق</button></div>
+
+    <div class="bar">ملاحظات</div>
+    <textarea class="fld" rows="2">بانتظار موافقة اللجنة الاستشارية في الاجتماع القادم.</textarea>
+
+    <div class="left">
+      <button class="btn primary">حفظ</button>
+      <button class="btn">إلغاء</button>
+    </div>
+  </div>
+
+  <p class="hint" style="margin-top:20px">معاينة تصميم فقط — البيانات والأسماء وهمية. النصوص تُترجم تلقائيًا عبر مبدّل اللغة (EN/عربي) في التطبيق الفعلي.</p>
+
+</div>
+</body>
+</html>
