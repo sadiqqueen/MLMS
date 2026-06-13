@@ -158,16 +158,16 @@
 }
 .cmx-lang.active { background: var(--cmx-accent); color: #fff; }
 
-/* جميع المذكرات + مذكرة جديدة sit in the true middle of the navbar.
-   (Absolutely centered — auto margins would only center them between the
-   profile cluster and the logo, which have different widths.) */
+/* جميع المذكرات + مذكرة جديدة sit in the middle of the navbar. Flows in
+   normal order (flex:1, centered) so it never overlaps the side controls and
+   wraps onto a second line when the screen is too narrow. */
 .cmx-nav-center {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
 }
 
 .cmx-logo-wrap {
@@ -716,14 +716,6 @@
 }
 
 /* ── Small screens ──────────────────────────────────────────────────── */
-@media (max-width: 860px) {
-  /* not enough room to absolutely center — let the buttons flow in line */
-  .cmx-nav-center {
-    position: static;
-    transform: none;
-    margin-inline: auto;
-  }
-}
 
 @media (max-width: 640px) {
   .cmx-nav { gap: 6px; padding: 8px 10px; }
@@ -804,55 +796,38 @@
 .cmx-col-search { margin-bottom: 10px; }
 .cmx .cmx-col-search input.cmx-combo-input { min-height: 38px; font-size: 14px; padding: 8px 12px; }
 
-/* sliding switch — language (عربي|EN) and theme (Light|Dark). Fixed option
-   order (direction:ltr), animated accent thumb; works in light + dark. */
-.cmx-switch {
-  position: relative;
-  display: inline-flex;
-  direction: ltr;
-  align-items: stretch;
-  background: var(--cmx-surface-2);
-  border: 1px solid var(--cmx-border);
-  border-radius: 999px;
-  padding: 3px;
-  height: 44px;
-  flex: none;
-}
-.cmx-switch-thumb {
-  position: absolute;
-  top: 3px;
-  bottom: 3px;
-  left: 3px;
-  width: calc((100% - 6px) / 2);
-  border-radius: 999px;
-  background: var(--cmx-accent);
-  transition: transform 0.28s ease;
-  z-index: 0;
-  pointer-events: none;
-}
-.cmx-switch-thumb[data-pos="1"] { transform: translateX(100%); }
-.cmx-switch-opt {
-  position: relative;
-  z-index: 1;
-  flex: 1 1 0;
-  min-width: 58px;
+/* compact single-state toggle (theme + language) — shows only the current
+   state; the face flips when it changes. Works in light + dark. */
+.cmx-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  border: none;
-  background: none;
+  min-width: 42px;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--cmx-border);
+  border-radius: 8px;
+  background: var(--cmx-surface);
   color: var(--cmx-text);
   font-family: inherit;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  border-radius: 999px;
-  white-space: nowrap;
-  transition: color 0.25s ease, transform 0.15s ease;
+  flex: none;
+  perspective: 240px;
+  transition: border-color 0.2s, background-color 0.2s;
 }
-.cmx-switch-opt.active { color: #fff; }
-.cmx-switch-opt:hover { transform: scale(1.06); }
+.cmx-toggle:hover { border-color: var(--cmx-accent); background: var(--cmx-accent-tint); }
+.cmx-toggle-face {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  animation: cmx-toggle-flip 0.35s ease;
+}
+@keyframes cmx-toggle-flip {
+  from { transform: rotateX(-90deg); opacity: 0; }
+  to   { transform: rotateX(0deg); opacity: 1; }
+}
 
 /* profile user card (panel shown from the navbar profile menu) */
 .cmx-usercard { display: flex; flex-direction: column; gap: 14px; }

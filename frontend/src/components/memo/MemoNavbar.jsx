@@ -120,35 +120,27 @@ export default function MemoNavbar({ onNewMemo, guardNavigation }) {
 
       <span className="cmx-vdiv" aria-hidden="true" />
 
-      {/* Theme switch (Light | Dark) — fixed positions, sliding thumb */}
-      <div className="cmx-switch" role="group" aria-label="theme">
-        <span className="cmx-switch-thumb" data-pos={theme === 'light' ? '0' : '1'} aria-hidden="true" />
-        <button
-          className={'cmx-switch-opt' + (theme === 'light' ? ' active' : '')}
-          aria-pressed={theme === 'light'}
-          onClick={() => setTheme('light')}
-        ><IconSun /><span>{t('light')}</span></button>
-        <button
-          className={'cmx-switch-opt' + (theme === 'dark' ? ' active' : '')}
-          aria-pressed={theme === 'dark'}
-          onClick={() => setTheme('dark')}
-        ><IconMoon /><span>{t('dark')}</span></button>
-      </div>
+      {/* Theme toggle — shows the current state only; flips on change */}
+      <button
+        className="cmx-toggle"
+        onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+        aria-label={theme === 'light' ? t('dark') : t('light')}
+        title={theme === 'light' ? t('dark') : t('light')}
+      >
+        <span className="cmx-toggle-face" key={theme}>
+          {theme === 'light' ? <IconSun /> : <IconMoon />}
+        </span>
+      </button>
 
-      {/* Language switch (عربي | EN) — fixed positions, sliding thumb */}
-      <div className="cmx-switch" role="group" aria-label="عربي / English">
-        <span className="cmx-switch-thumb" data-pos={lang === 'ar' ? '0' : '1'} aria-hidden="true" />
-        <button
-          className={'cmx-switch-opt' + (lang === 'ar' ? ' active' : '')}
-          aria-pressed={lang === 'ar'}
-          onClick={() => setLang('ar')}
-        >عربي</button>
-        <button
-          className={'cmx-switch-opt' + (lang === 'en' ? ' active' : '')}
-          aria-pressed={lang === 'en'}
-          onClick={() => setLang('en')}
-        >EN</button>
-      </div>
+      {/* Language toggle — shows the current language only; flips on change */}
+      <button
+        className="cmx-toggle"
+        onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
+        aria-label={lang === 'ar' ? 'English' : 'عربي'}
+        title={lang === 'ar' ? 'English' : 'عربي'}
+      >
+        <span className="cmx-toggle-face" key={lang}>{lang === 'ar' ? 'عربي' : 'EN'}</span>
+      </button>
 
       {/* Centered between the profile cluster and the logo */}
       <div className="cmx-nav-center">
