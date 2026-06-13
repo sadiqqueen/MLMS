@@ -6,7 +6,32 @@ import MemoNavbar from '../components/memo/MemoNavbar';
 import MemoPrint from '../components/memo/MemoPrint';
 import { useMemoToasts, MemoToasts, MemoModal } from '../components/memo/MemoUi';
 import { buildAttachmentPreviews } from '../components/memo/attachmentPreviews';
+import Sk from '../components/Skeleton';
 import './ConsultantMemo.css';
+
+// Skeleton grid — shows the card structure while the memos load.
+function MemoGridSkeleton() {
+  return (
+    <div className="cmx-grid">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <article className="cmx-card cmx-card-skel" key={i}>
+          <div className="cmx-card-top">
+            <Sk w="60%" h={17} />
+            <Sk w={54} h={22} r={8} />
+          </div>
+          <Sk w="45%" h={12} />
+          <Sk w="72%" h={11} />
+          <Sk w="100%" h={32} r={6} style={{ marginTop: 4 }} />
+          <div className="cmx-card-actions">
+            <Sk w={108} h={30} r={8} />
+            <Sk w={34} h={30} r={8} />
+            <Sk w={34} h={30} r={8} />
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
 
 const IconPencil = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -179,7 +204,7 @@ function MemoAllView() {
           </div>
 
           {loading ? (
-            <p className="cmx-empty">{t('loading')}</p>
+            <MemoGridSkeleton />
           ) : shown.length === 0 ? (
             <p className="cmx-empty">{chip === 'saved' ? t('emptySaved') : t('emptyDraft')}</p>
           ) : (

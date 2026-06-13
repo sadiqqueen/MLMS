@@ -869,8 +869,9 @@
 .cmx-usercard-row dt { color: var(--cmx-muted); flex: none; }
 .cmx-usercard-row dd { margin: 0; color: var(--cmx-text); overflow-wrap: anywhere; text-align: end; }
 
-/* initiative card */
-.cmx-card {
+/* initiative (board) card — scoped to .cmx-board so it doesn't bleed onto the
+   all-memos grid cards which also use .cmx-card */
+.cmx-board .cmx-card {
   background: var(--cmx-surface);
   border: 1px solid var(--cmx-border);
   border-radius: 12px;
@@ -879,9 +880,9 @@
   cursor: pointer;
   transition: box-shadow 0.15s, border-color 0.15s, transform 0.05s;
 }
-.cmx-card:hover { border-color: var(--cmx-accent); box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
-.cmx-card:active { transform: scale(0.997); }
-.cmx-card:focus-visible { outline: 2px solid var(--cmx-accent); outline-offset: 2px; }
+.cmx-board .cmx-card:hover { border-color: var(--cmx-accent); box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
+.cmx-board .cmx-card:active { transform: scale(0.997); }
+.cmx-board .cmx-card:focus-visible { outline: 2px solid var(--cmx-accent); outline-offset: 2px; }
 .cmx-card-name { font-size: 15px; font-weight: 600; margin: 0 0 6px; color: var(--cmx-text); }
 .cmx-card-source { font-size: 12.5px; color: var(--cmx-muted); margin: 0 0 8px; }
 .cmx-card-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
