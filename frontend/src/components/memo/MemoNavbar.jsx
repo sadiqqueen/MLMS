@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../api/axios';
 import ProfileDropdown from '../ProfileDropdown';
 import { useMemoPrefs } from './MemoPrefs';
 import { useInitiativeAccess } from './useInitiativeAccess';
@@ -53,10 +54,21 @@ export default function MemoNavbar({ onNewMemo, guardNavigation }) {
   const { allowed: canInitiatives } = useInitiativeAccess();
   const [showProfile, setShowProfile] = useState(false);
   const [showUserCard, setShowUserCard] = useState(false);
+  const [cardUser, setCardUser] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const onAllView = location.pathname.startsWith('/consultant-memo/all');
+  const onNewMemoView = location.pathname === '/consultant-memo';
   const onInitiatives = location.pathname.startsWith('/initiatives');
+
+  // Load full profile (city / id / specialty / …) when the card opens —
+  // the same data the main Profile page shows for every role.
+  useEffect(() => {
+    if (!showUserCard || cardUser) return;
+    api.get('/api/auth/me')
+      .then(res => setCardUser(res.data?.data || res.data))
+      .catch(() => {});
+  }, [showUserCard, cardUser]);
 
   const guarded = fn => () => {
     if (guardNavigation && !guardNavigation()) return;
@@ -64,11 +76,16 @@ export default function MemoNavbar({ onNewMemo, guardNavigation }) {
   };
 
   const L = {
-    profile: lang === 'en' ? 'Profile' : 'الملف الشخصي',
-    email:   lang === 'en' ? 'Email' : 'البريد الإلكتروني',
-    phone:   lang === 'en' ? 'Phone' : 'الهاتف',
-    role:    lang === 'en' ? 'Role' : 'الصلاحية',
-    close:   lang === 'en' ? 'Close' : 'إغلاق',
+    profile:   lang === 'en' ? 'Profile' : 'الملف الشخصي',
+    fullName:  lang === 'en' ? 'Full name' : 'الاسم الكامل',
+    email:     lang === 'en' ? 'Email' : 'البريد الإلكتروني',
+    phone:     lang === 'en' ? 'Phone' : 'الهاتف',
+    idNumber:  lang === 'en' ? 'ID number' : 'الرقم التعريفي',
+    city:      lang === 'en' ? 'City' : 'المدينة',
+    hospital:  lang === 'en' ? 'Hospital' : 'المستشفى',
+    specialty: lang === 'en' ? 'Specialty' : 'التخصص',
+    role:      lang === 'en' ? 'Role' : 'الصلاحية',
+    close:     lang === 'en' ? 'Close' : 'إغلاق',
   };
 
   return (
@@ -103,22 +120,31 @@ export default function MemoNavbar({ onNewMemo, guardNavigation }) {
 
       <span className="cmx-vdiv" aria-hidden="true" />
 
-      <button
-        className="cmx-btn cmx-btn-ghost"
-        onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-      >
-        {theme === 'light' ? <IconMoon /> : <IconSun />}
-        <span>{theme === 'light' ? t('dark') : t('light')}</span>
-      </button>
-
-      <div className="cmx-langs" role="group" aria-label="عربي / English">
+      {/* Theme switch (Light | Dark) — fixed positions, sliding thumb */}
+      <div className="cmx-switch" role="group" aria-label="theme">
+        <span className="cmx-switch-thumb" data-pos={theme === 'light' ? '0' : '1'} aria-hidden="true" />
         <button
-          className={'cmx-lang' + (lang === 'ar' ? ' active' : '')}
+          className={'cmx-switch-opt' + (theme === 'light' ? ' active' : '')}
+          aria-pressed={theme === 'light'}
+          onClick={() => setTheme('light')}
+        ><IconSun /><span>{t('light')}</span></button>
+        <button
+          className={'cmx-switch-opt' + (theme === 'dark' ? ' active' : '')}
+          aria-pressed={theme === 'dark'}
+          onClick={() => setTheme('dark')}
+        ><IconMoon /><span>{t('dark')}</span></button>
+      </div>
+
+      {/* Language switch (عربي | EN) — fixed positions, sliding thumb */}
+      <div className="cmx-switch" role="group" aria-label="عربي / English">
+        <span className="cmx-switch-thumb" data-pos={lang === 'ar' ? '0' : '1'} aria-hidden="true" />
+        <button
+          className={'cmx-switch-opt' + (lang === 'ar' ? ' active' : '')}
           aria-pressed={lang === 'ar'}
           onClick={() => setLang('ar')}
         >عربي</button>
         <button
-          className={'cmx-lang' + (lang === 'en' ? ' active' : '')}
+          className={'cmx-switch-opt' + (lang === 'en' ? ' active' : '')}
           aria-pressed={lang === 'en'}
           onClick={() => setLang('en')}
         >EN</button>
@@ -151,7 +177,11 @@ export default function MemoNavbar({ onNewMemo, guardNavigation }) {
           <span>{t('allMemos')}</span>
         </button>
 
-        <button className="cmx-btn cmx-btn-ghost" onClick={onNewMemo}>
+        <button
+          className={'cmx-btn cmx-btn-ghost' + (onNewMemoView ? ' cmx-btn-active' : '')}
+          aria-current={onNewMemoView ? 'page' : undefined}
+          onClick={onNewMemo}
+        >
           <IconPlus />
           <span>{t('newMemo')}</span>
         </button>
@@ -176,30 +206,42 @@ export default function MemoNavbar({ onNewMemo, guardNavigation }) {
             {L.close}
           </button>
         </div>
-        <div className="cmx-usercard">
-          <div className="cmx-usercard-top">
-            {user?.photoUrl
-              ? <img src={user.photoUrl} alt="" className="cmx-usercard-avatar" />
-              : <span className="cmx-usercard-avatar cmx-usercard-initials">{user?.initials}</span>}
-            <div className="cmx-usercard-id">
-              <div className="cmx-usercard-name">{user?.name}</div>
-              <div className="cmx-usercard-role">{roleLabel(user?.role)}</div>
-            </div>
-          </div>
-          <dl className="cmx-usercard-rows">
-            <div className="cmx-usercard-row">
-              <dt>{L.email}</dt><dd>{user?.email || '—'}</dd>
-            </div>
-            {user?.phone && (
-              <div className="cmx-usercard-row">
-                <dt>{L.phone}</dt><dd>{user.phone}</dd>
+        {(() => {
+          const cu = cardUser || user || {};
+          const photo = cu.photoUrl || user?.photoUrl;
+          const hospitalName = cu.hospitalId?.name || cu.hospital?.name || '';
+          const specialtyName = cu.specialtyId?.name || cu.specialty || '';
+          const rows = [
+            [L.fullName, cu.name],
+            [L.email, cu.email],
+            [L.phone, cu.phone],
+            [L.idNumber, cu.studentId],
+            ...(hospitalName ? [[L.hospital, hospitalName]] : []),
+            [L.city, cu.city || cu.hospital?.city],
+            ...(specialtyName ? [[L.specialty, specialtyName]] : []),
+            [L.role, roleLabel(cu.role)],
+          ];
+          return (
+            <div className="cmx-usercard">
+              <div className="cmx-usercard-top">
+                {photo
+                  ? <img src={photo} alt="" className="cmx-usercard-avatar" />
+                  : <span className="cmx-usercard-avatar cmx-usercard-initials">{cu.initials || user?.initials}</span>}
+                <div className="cmx-usercard-id">
+                  <div className="cmx-usercard-name">{cu.name}</div>
+                  <div className="cmx-usercard-role">{roleLabel(cu.role)}</div>
+                </div>
               </div>
-            )}
-            <div className="cmx-usercard-row">
-              <dt>{L.role}</dt><dd>{roleLabel(user?.role)}</dd>
+              <dl className="cmx-usercard-rows">
+                {rows.map(([label, value]) => (
+                  <div className="cmx-usercard-row" key={label}>
+                    <dt>{label}</dt><dd>{value || '—'}</dd>
+                  </div>
+                ))}
+              </dl>
             </div>
-          </dl>
-        </div>
+          );
+        })()}
       </MemoModal>
     )}
     </>

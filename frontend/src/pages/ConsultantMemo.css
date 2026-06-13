@@ -804,6 +804,56 @@
 .cmx-col-search { margin-bottom: 10px; }
 .cmx .cmx-col-search input.cmx-combo-input { min-height: 38px; font-size: 14px; padding: 8px 12px; }
 
+/* sliding switch — language (عربي|EN) and theme (Light|Dark). Fixed option
+   order (direction:ltr), animated accent thumb; works in light + dark. */
+.cmx-switch {
+  position: relative;
+  display: inline-flex;
+  direction: ltr;
+  align-items: stretch;
+  background: var(--cmx-surface-2);
+  border: 1px solid var(--cmx-border);
+  border-radius: 999px;
+  padding: 3px;
+  height: 44px;
+  flex: none;
+}
+.cmx-switch-thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / 2);
+  border-radius: 999px;
+  background: var(--cmx-accent);
+  transition: transform 0.28s ease;
+  z-index: 0;
+  pointer-events: none;
+}
+.cmx-switch-thumb[data-pos="1"] { transform: translateX(100%); }
+.cmx-switch-opt {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0;
+  min-width: 58px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: none;
+  background: none;
+  color: var(--cmx-text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 999px;
+  white-space: nowrap;
+  transition: color 0.25s ease, transform 0.15s ease;
+}
+.cmx-switch-opt.active { color: #fff; }
+.cmx-switch-opt:hover { transform: scale(1.06); }
+
 /* profile user card (panel shown from the navbar profile menu) */
 .cmx-usercard { display: flex; flex-direction: column; gap: 14px; }
 .cmx-usercard-top { display: flex; align-items: center; gap: 14px; }
@@ -1031,7 +1081,7 @@
   background: var(--cmx-accent);
   transform: scaleX(0);
   transform-origin: left center;
-  transition: transform 0.7s ease;
+  transition: transform 0.3s ease;
   z-index: 0;
   pointer-events: none;
 }
