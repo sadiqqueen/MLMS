@@ -7,6 +7,35 @@ export const STAGES_ORDER = ['under_study', 'foundational', 'final'];
 
 export const LEVELS = ['primary', 'subspecialty'];
 
+// "أخرى" sentinel — picking it reveals a free-text field for a custom source.
+export const SOURCE_OTHER = 'أخرى';
+
+// Fixed list of scientific councils offered as the initiative "source"
+// (searchable combobox). أخرى is pinned last by CouncilSelect.
+export const SOURCE_OPTIONS = [
+  'المجلس العلمي للجراحة',
+  'المجلس العلمي للأمراض الباطنة',
+  'المجلس العلمي للولادة وأمراض النساء',
+  'المجلس العلمي لطب الأطفال',
+  'المجلس العلمي لطب الأسرة',
+  'المجلس العلمي لطب المجتمع',
+  'المجلس العلمي للطب النفسي',
+  'المجلس العلمي للتخدير والعناية المركزة',
+  'المجلس العلمي للأمراض الجلدية والتناسلية',
+  'المجلس العلمي لطب العيون وجراحتها',
+  'المجلس العلمي للأذن والأنف والحنجرة والرأس والعنق وجراحتها',
+  'المجلس العلمي لجراحة الفم والوجه والفكين',
+  'المجلس العلمي لطب الطوارئ',
+  'المجلس العلمي للأشعة والتصوير الطبي',
+  'المجلس العلمي لجراحة العظام',
+  'المجلس العلمي لجراحة المسالك البولية',
+  'المجلس العلمي لعلم الأمراض',
+  'المجلس العلمي للتمريض والقبالة',
+  'المجلس العلمي للجراحة العصبية',
+  'المجلس العلمي للأورام',
+  SOURCE_OTHER,
+];
+
 // Which checkpoint keys belong to each stage (mirrors the backend
 // utils/initiativeCheckpoints — keep in sync).
 export const STAGE_CHECKPOINTS = {

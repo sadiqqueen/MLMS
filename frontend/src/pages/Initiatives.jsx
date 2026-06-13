@@ -5,8 +5,10 @@ import { MemoPrefsProvider, useMemoPrefs, fmtDate } from '../components/memo/Mem
 import MemoNavbar from '../components/memo/MemoNavbar';
 import { useMemoToasts, MemoToasts, MemoModal, AutoTextarea } from '../components/memo/MemoUi';
 import { useInitiativeAccess } from '../components/memo/useInitiativeAccess';
+import CouncilSelect from '../components/memo/CouncilSelect';
 import {
   INIT_STRINGS, STAGES_ORDER, LEVELS, STAGE_CHECKPOINTS,
+  SOURCE_OPTIONS, SOURCE_OTHER,
   stageLabel, levelLabel, checkpointLabel,
 } from '../components/memo/initiativeStrings';
 import './ConsultantMemo.css';
@@ -49,6 +51,44 @@ function stageProgress(initiative) {
   const cps = initiative.checkpoints || {};
   const done = keys.filter(k => cps[k]?.status === 'done').length;
   return { done, total: keys.length };
+}
+
+// Searchable source combobox (fixed scientific-council list). Picking أخرى
+// reveals a free-text field for a custom source. `value` is the source string.
+const SOURCE_SELECT_OPTIONS = SOURCE_OPTIONS.map((name, i) => ({ _id: 'src-' + i, name }));
+
+function SourceField({ id, value, onChange, required = false }) {
+  const { lang } = useMemoPrefs();
+  const [other, setOther] = useState(value !== '' && !SOURCE_OPTIONS.includes(value));
+
+  const handleSelect = (opt) => {
+    if (opt.name === SOURCE_OTHER) { setOther(true); onChange(''); }
+    else { setOther(false); onChange(opt.name); }
+  };
+
+  return (
+    <>
+      <CouncilSelect
+        id={id}
+        options={SOURCE_SELECT_OPTIONS}
+        required={required}
+        value={other ? SOURCE_OTHER : (value || '')}
+        onSelect={handleSelect}
+      />
+      {other && (
+        <input
+          className="cmx-input-lg"
+          type="text"
+          dir="rtl"
+          lang="ar"
+          style={{ marginTop: 8 }}
+          placeholder={lang === 'en' ? 'Specify the source…' : 'حدد المصدر…'}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+        />
+      )}
+    </>
+  );
 }
 
 // ── Board (Kanban) ──────────────────────────────────────────────────────────
@@ -173,7 +213,7 @@ function CreateModal({ ti, onClose, onCreate }) {
         <div className="cmx-row2" style={{ marginTop: 12 }}>
           <div className="cmx-field">
             <label htmlFor="cmx-new-source">{ti('source')}</label>
-            <input id="cmx-new-source" type="text" value={source} onChange={e => setSource(e.target.value)} />
+            <SourceField id="cmx-new-source" value={source} onChange={setSource} />
           </div>
           <div className="cmx-field">
             <label htmlFor="cmx-new-level">{ti('level')}</label>
@@ -293,7 +333,7 @@ function Detail({ initiative, ti, lang, onBack, onPatchBasic, onMove, onCheckpoi
           </div>
           <div className="cmx-field">
             <label htmlFor="cmx-d-source">{ti('source')}</label>
-            <input id="cmx-d-source" type="text" value={source} onChange={e => setSource(e.target.value)} />
+            <SourceField key={initiative._id} id="cmx-d-source" value={source} onChange={setSource} />
           </div>
         </div>
         <div className="cmx-row2" style={{ marginTop: 12 }}>
