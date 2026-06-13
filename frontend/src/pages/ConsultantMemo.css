@@ -178,6 +178,8 @@
   cursor: pointer;
   border-radius: 50%;
   flex: none;
+  /* nudge the logo inward (to the right) from the edge */
+  transform: translateX(16px);
 }
 .cmx[dir="ltr"] .cmx-logo-wrap { margin-inline-start: 0; margin-inline-end: auto; }
 .cmx-logo {
@@ -753,8 +755,10 @@
 .cmx[data-theme="dark"] .cmx-level-chip { color: var(--cmx-text); }
 .cmx-count-chip { background: var(--cmx-surface-2); color: var(--cmx-muted); }
 
-/* toolbar above the board */
-.cmx-board-toolbar { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+/* toolbar above the board — Add initiative on the LEFT, Deleted on the RIGHT
+   in both languages (row-reverse cancels the RTL mirroring) */
+.cmx-board-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
+.cmx[dir="rtl"] .cmx-board-toolbar { flex-direction: row-reverse; }
 .cmx-board-empty, .cmx-col-empty {
   color: var(--cmx-muted);
   font-size: 14px;
@@ -943,6 +947,7 @@
 .cmx-deleted-info { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-width: 0; }
 .cmx-deleted-name { font-weight: 600; overflow-wrap: anywhere; }
 .cmx-deleted-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+.cmx-deleted-actions { display: flex; gap: 8px; flex: none; flex-wrap: wrap; justify-content: flex-end; }
 
 @media (max-width: 760px) {
   .cmx-board { grid-template-columns: 1fr; }
@@ -950,4 +955,58 @@
 @media (max-width: 640px) {
   .cmx-step-label { flex-basis: 100%; }
   .cmx-step-note { flex-basis: 100%; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Navbar button styling — uniform size, hover-grow + green (accent)
+   underline, slow green fill on press; non-selected buttons are white in
+   light / black in dark. Scoped to .cmx-nav so board/detail buttons keep
+   their own styling.
+   ══════════════════════════════════════════════════════════════════════ */
+.cmx-nav .cmx-btn {
+  position: relative;
+  min-height: 54px;
+  justify-content: center;
+  transition: transform 0.15s ease, background-color 0.45s ease,
+              color 0.3s ease, border-color 0.3s ease;
+}
+/* equal-size action buttons (Initiatives / All memos / New memo) */
+.cmx-nav-center .cmx-btn { width: 168px; }
+
+/* non-selected (ghost, not the active page) → white in light, black in dark */
+.cmx-nav .cmx-btn-ghost:not(.cmx-btn-active) {
+  background: #fff;
+  color: var(--cmx-text);
+  border-color: var(--cmx-border);
+}
+.cmx[data-theme="dark"] .cmx-nav .cmx-btn-ghost:not(.cmx-btn-active) {
+  background: #000;
+  color: var(--cmx-text);
+}
+
+/* green underline that grows on hover */
+.cmx-nav .cmx-btn::after {
+  content: '';
+  position: absolute;
+  inset-inline: 14px;
+  bottom: 6px;
+  height: 2px;
+  background: var(--cmx-accent);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.22s ease;
+  pointer-events: none;
+}
+.cmx-nav .cmx-btn:hover { transform: scale(1.06); }
+.cmx-nav .cmx-btn:hover::after { transform: scaleX(1); }
+
+/* press → the accent (green) fills in slowly */
+.cmx-nav .cmx-btn:active {
+  background-color: var(--cmx-accent);
+  color: #fff;
+  border-color: var(--cmx-accent);
+}
+
+@media (max-width: 640px) {
+  .cmx-nav-center .cmx-btn { width: auto; min-width: 132px; }
 }

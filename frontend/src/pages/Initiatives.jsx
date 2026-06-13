@@ -197,7 +197,8 @@ function Board({ items, ti, lang, onOpen, onMove, onAdd, onShowDeleted }) {
 }
 
 // ── Deleted (archive) view ──────────────────────────────────────────────────
-function DeletedView({ items, loading, ti, lang, onBack, onRestore }) {
+function DeletedView({ items, loading, ti, lang, onBack, onRestore, onPurge }) {
+  const [confirmTarget, setConfirmTarget] = useState(null);
   return (
     <div className="cmx-detail">
       <div className="cmx-detail-head">
@@ -223,12 +224,37 @@ function DeletedView({ items, loading, ti, lang, onBack, onRestore }) {
                   <span className="cmx-chip">{stageLabel(it.stage, lang)}</span>
                 </span>
               </span>
-              <button className="cmx-btn cmx-btn-outline cmx-btn-sm" onClick={() => onRestore(it._id)}>
-                <IconRestore /> <span>{ti('restore')}</span>
-              </button>
+              <span className="cmx-deleted-actions">
+                <button className="cmx-btn cmx-btn-outline cmx-btn-sm" onClick={() => onRestore(it._id)}>
+                  <IconRestore /> <span>{ti('restore')}</span>
+                </button>
+                <button className="cmx-btn cmx-btn-danger cmx-btn-sm" onClick={() => setConfirmTarget(it)}>
+                  <IconTrash /> <span>{ti('deleteForever')}</span>
+                </button>
+              </span>
             </div>
           ))}
         </div>
+      )}
+
+      {confirmTarget && (
+        <MemoModal onClose={() => setConfirmTarget(null)} labelledBy="cmx-purge-title">
+          <div className="cmx-modal-head">
+            <h3 id="cmx-purge-title">{ti('purgeConfirmTitle')}</h3>
+          </div>
+          <p style={{ margin: '6px 0 16px', color: 'var(--cmx-muted)' }}>
+            {ti('purgeConfirmBody')}
+          </p>
+          <div className="cmx-actions">
+            <button
+              className="cmx-btn cmx-btn-danger"
+              onClick={() => { const id = confirmTarget._id; setConfirmTarget(null); onPurge(id); }}
+            >
+              {ti('purgeYes')}
+            </button>
+            <button className="cmx-btn cmx-btn-outline" onClick={() => setConfirmTarget(null)}>{ti('cancel')}</button>
+          </div>
+        </MemoModal>
       )}
     </div>
   );
@@ -643,6 +669,15 @@ function InitiativesApp() {
       showToast(err.response?.data?.message || ti('actionError'), 'error');
     }
   };
+  const handlePurge = async (id) => {
+    try {
+      await api.delete(`/api/initiatives/${id}/permanent`);
+      setDeletedItems(prev => prev.filter(x => x._id !== id));
+      showToast(ti('purgedToast'));
+    } catch (err) {
+      showToast(err.response?.data?.message || ti('actionError'), 'error');
+    }
+  };
 
   const openDetail = (id) => { setSelectedId(id); };
   const backToBoard = () => {
@@ -686,6 +721,7 @@ function InitiativesApp() {
               lang={lang}
               onBack={() => setShowDeleted(false)}
               onRestore={handleRestore}
+              onPurge={handlePurge}
             />
           ) : (
             <Board

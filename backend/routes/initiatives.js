@@ -208,4 +208,23 @@ router.delete('/:id', auditLog('initiative_delete', 'Initiative'), async (req, r
   }
 });
 
+// ── DELETE /:id/permanent — hard delete (archived items only) ──────────────
+// Server-side enforcement of the two-stage flow: only an already soft-deleted
+// (archived) initiative can be permanently removed.
+router.delete('/:id/permanent', auditLog('initiative_purge', 'Initiative'), async (req, res) => {
+  try {
+    if (!validId(req.params.id)) return notFound(res);
+    const doc = await Initiative.findById(req.params.id);
+    if (!doc) return notFound(res);
+    if (!doc.deletedAt) {
+      return res.status(409).json({ message: 'Only archived initiatives can be permanently deleted.' });
+    }
+    res.locals.targetId = doc._id;
+    await doc.deleteOne();
+    res.json({ success: true, message: 'Initiative permanently deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
