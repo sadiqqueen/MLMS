@@ -132,7 +132,7 @@ export default function MemoNavbar({ onNewMemo, guardNavigation }) {
           <span>{t('allMemos')}</span>
         </button>
 
-        <button className="cmx-btn cmx-btn-primary" onClick={onNewMemo}>
+        <button className="cmx-btn cmx-btn-ghost" onClick={onNewMemo}>
           <IconPlus />
           <span>{t('newMemo')}</span>
         </button>

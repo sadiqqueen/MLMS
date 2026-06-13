@@ -800,6 +800,10 @@
 /* final = the same teal/green as .cmx-bar */
 .cmx-col-head-2 { background: var(--cmx-accent); color: #fff; }
 
+/* per-stage search combobox */
+.cmx-col-search { margin-bottom: 10px; }
+.cmx .cmx-col-search input.cmx-combo-input { min-height: 38px; font-size: 14px; padding: 8px 12px; }
+
 /* initiative card */
 .cmx-card {
   background: var(--cmx-surface);

@@ -145,6 +145,19 @@ function Board({ items, ti, lang, onOpen, onMove, onAdd, onShowDeleted }) {
                   <span className="cmx-chip cmx-count-chip">{colItems.length}</span>
                 </header>
 
+                {/* per-stage search → pick an initiative to jump straight to it */}
+                {colItems.length > 0 && (
+                  <div className="cmx-col-search">
+                    <CouncilSelect
+                      id={'cmx-col-search-' + stage}
+                      options={colItems.map(it => ({ _id: it._id, name: it.name }))}
+                      value=""
+                      placeholder={ti('searchStage')}
+                      onSelect={(opt) => onOpen(opt._id)}
+                    />
+                  </div>
+                )}
+
                 {colItems.length === 0 && <p className="cmx-col-empty">{ti('columnEmpty')}</p>}
 
                 {colItems.map(it => {
