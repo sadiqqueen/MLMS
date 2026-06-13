@@ -5,6 +5,10 @@ import ProfileDropdown from '../ProfileDropdown';
 import { useMemoPrefs } from './MemoPrefs';
 import { useInitiativeAccess } from './useInitiativeAccess';
 import { INIT_STRINGS } from './initiativeStrings';
+import { MemoModal } from './MemoUi';
+
+const roleLabel = (role) =>
+  role === 'asg1' ? 'ASG.1' : role === 'asg2' ? 'ASG.2' : (role || '').toUpperCase();
 
 const IconMoon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -48,6 +52,7 @@ export default function MemoNavbar({ onNewMemo, guardNavigation }) {
   const { theme, setTheme, lang, setLang, t } = useMemoPrefs();
   const { allowed: canInitiatives } = useInitiativeAccess();
   const [showProfile, setShowProfile] = useState(false);
+  const [showUserCard, setShowUserCard] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const onAllView = location.pathname.startsWith('/consultant-memo/all');
@@ -58,7 +63,16 @@ export default function MemoNavbar({ onNewMemo, guardNavigation }) {
     fn();
   };
 
+  const L = {
+    profile: lang === 'en' ? 'Profile' : 'الملف الشخصي',
+    email:   lang === 'en' ? 'Email' : 'البريد الإلكتروني',
+    phone:   lang === 'en' ? 'Phone' : 'الهاتف',
+    role:    lang === 'en' ? 'Role' : 'الصلاحية',
+    close:   lang === 'en' ? 'Close' : 'إغلاق',
+  };
+
   return (
+    <>
     <nav className="cmx-nav" aria-label={t('navAria')}>
       {/* DIO profile (start of the RTL row = right corner) */}
       <div className="cmx-profile-wrap">
@@ -79,7 +93,12 @@ export default function MemoNavbar({ onNewMemo, guardNavigation }) {
           </span>
           <IconChevron />
         </button>
-        {showProfile && <ProfileDropdown onClose={() => setShowProfile(false)} />}
+        {showProfile && (
+          <ProfileDropdown
+            onClose={() => setShowProfile(false)}
+            onProfile={() => setShowUserCard(true)}
+          />
+        )}
       </div>
 
       <span className="cmx-vdiv" aria-hidden="true" />
@@ -148,5 +167,41 @@ export default function MemoNavbar({ onNewMemo, guardNavigation }) {
         <img src="/arab-board-logo.png" alt={t('lh1')} className="cmx-logo" />
       </button>
     </nav>
+
+    {showUserCard && (
+      <MemoModal onClose={() => setShowUserCard(false)} labelledBy="cmx-usercard-title">
+        <div className="cmx-modal-head">
+          <h3 id="cmx-usercard-title">{L.profile}</h3>
+          <button className="cmx-btn cmx-btn-outline cmx-btn-sm" onClick={() => setShowUserCard(false)}>
+            {L.close}
+          </button>
+        </div>
+        <div className="cmx-usercard">
+          <div className="cmx-usercard-top">
+            {user?.photoUrl
+              ? <img src={user.photoUrl} alt="" className="cmx-usercard-avatar" />
+              : <span className="cmx-usercard-avatar cmx-usercard-initials">{user?.initials}</span>}
+            <div className="cmx-usercard-id">
+              <div className="cmx-usercard-name">{user?.name}</div>
+              <div className="cmx-usercard-role">{roleLabel(user?.role)}</div>
+            </div>
+          </div>
+          <dl className="cmx-usercard-rows">
+            <div className="cmx-usercard-row">
+              <dt>{L.email}</dt><dd>{user?.email || '—'}</dd>
+            </div>
+            {user?.phone && (
+              <div className="cmx-usercard-row">
+                <dt>{L.phone}</dt><dd>{user.phone}</dd>
+              </div>
+            )}
+            <div className="cmx-usercard-row">
+              <dt>{L.role}</dt><dd>{roleLabel(user?.role)}</dd>
+            </div>
+          </dl>
+        </div>
+      </MemoModal>
+    )}
+    </>
   );
 }

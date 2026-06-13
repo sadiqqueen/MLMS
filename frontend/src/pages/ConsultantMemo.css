@@ -804,6 +804,37 @@
 .cmx-col-search { margin-bottom: 10px; }
 .cmx .cmx-col-search input.cmx-combo-input { min-height: 38px; font-size: 14px; padding: 8px 12px; }
 
+/* profile user card (panel shown from the navbar profile menu) */
+.cmx-usercard { display: flex; flex-direction: column; gap: 14px; }
+.cmx-usercard-top { display: flex; align-items: center; gap: 14px; }
+.cmx-usercard-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--cmx-accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  object-fit: cover;
+  flex: none;
+}
+.cmx-usercard-name { font-size: 18px; font-weight: 700; color: var(--cmx-text); }
+.cmx-usercard-role { font-size: 13px; color: var(--cmx-muted); margin-top: 2px; }
+.cmx-usercard-rows { margin: 0; display: flex; flex-direction: column; }
+.cmx-usercard-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 0;
+  border-top: 1px solid var(--cmx-border-soft);
+  font-size: 14px;
+}
+.cmx-usercard-row dt { color: var(--cmx-muted); flex: none; }
+.cmx-usercard-row dd { margin: 0; color: var(--cmx-text); overflow-wrap: anywhere; text-align: end; }
+
 /* initiative card */
 .cmx-card {
   background: var(--cmx-surface);
@@ -969,11 +1000,14 @@
    ══════════════════════════════════════════════════════════════════════ */
 .cmx-nav .cmx-btn {
   position: relative;
+  overflow: hidden;            /* clip the fill to the rounded button */
   min-height: 54px;
   justify-content: center;
-  transition: transform 0.15s ease, background-color 0.45s ease,
-              color 0.3s ease, border-color 0.3s ease;
+  z-index: 0;
+  transition: transform 0.15s ease, color 0.5s ease, border-color 0.3s ease;
 }
+/* keep the icon + label above the fill layer */
+.cmx-nav .cmx-btn > * { position: relative; z-index: 2; }
 /* equal-size action buttons (Initiatives / All memos / New memo) */
 .cmx-nav-center .cmx-btn { width: 168px; }
 
@@ -988,6 +1022,23 @@
   color: var(--cmx-text);
 }
 
+/* press → the accent (green) sweeps across the button slowly (a real fill,
+   growing from the start edge — right in RTL, left in LTR) */
+.cmx-nav .cmx-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--cmx-accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.7s ease;
+  z-index: 0;
+  pointer-events: none;
+}
+.cmx[dir="rtl"] .cmx-nav .cmx-btn::before { transform-origin: right center; }
+.cmx-nav .cmx-btn:active::before { transform: scaleX(1); }
+.cmx-nav .cmx-btn:active { color: #fff; }
+
 /* green underline that grows on hover */
 .cmx-nav .cmx-btn::after {
   content: '';
@@ -999,17 +1050,11 @@
   transform: scaleX(0);
   transform-origin: center;
   transition: transform 0.22s ease;
+  z-index: 3;
   pointer-events: none;
 }
 .cmx-nav .cmx-btn:hover { transform: scale(1.06); }
 .cmx-nav .cmx-btn:hover::after { transform: scaleX(1); }
-
-/* press → the accent (green) fills in slowly */
-.cmx-nav .cmx-btn:active {
-  background-color: var(--cmx-accent);
-  color: #fff;
-  border-color: var(--cmx-accent);
-}
 
 @media (max-width: 640px) {
   .cmx-nav-center .cmx-btn { width: auto; min-width: 132px; }

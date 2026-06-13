@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-export default function ProfileDropdown({ onClose }) {
+export default function ProfileDropdown({ onClose, onProfile }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const ref = useRef(null);
@@ -35,7 +35,10 @@ export default function ProfileDropdown({ onClose }) {
 
       <div className="pd-divider" />
 
-      <button className="pd-item" onClick={() => { navigate('/profile'); onClose(); }}>
+      <button
+        className="pd-item"
+        onClick={() => { if (onProfile) onProfile(); else navigate('/profile'); onClose(); }}
+      >
         Profile
       </button>
 
