@@ -792,6 +792,15 @@
 /* final = the same teal/green as .cmx-bar */
 .cmx-col-head-2 { background: var(--cmx-accent); color: #fff; }
 
+/* skeleton loading — reuse the shared <Sk> but theme its shimmer with the
+   cmx tokens so it adapts to light/dark (the shimmer keyframes are global) */
+.cmx .skeleton {
+  background: linear-gradient(90deg, var(--cmx-surface-2) 25%, var(--cmx-border-soft) 50%, var(--cmx-surface-2) 75%);
+  background-size: 200% 100%;
+}
+.cmx-card-skel { pointer-events: none; }
+.cmx-card-skel:hover { border-color: var(--cmx-border); box-shadow: none; transform: none; }
+
 /* per-stage search combobox */
 .cmx-col-search { margin-bottom: 10px; }
 .cmx .cmx-col-search input.cmx-combo-input { min-height: 38px; font-size: 14px; padding: 8px 12px; }

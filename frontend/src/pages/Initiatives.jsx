@@ -6,6 +6,7 @@ import MemoNavbar from '../components/memo/MemoNavbar';
 import { useMemoToasts, MemoToasts, MemoModal, AutoTextarea } from '../components/memo/MemoUi';
 import { useInitiativeAccess } from '../components/memo/useInitiativeAccess';
 import CouncilSelect from '../components/memo/CouncilSelect';
+import Sk from '../components/Skeleton';
 import {
   INIT_STRINGS, STAGES_ORDER, LEVELS, STAGE_CHECKPOINTS,
   SOURCE_OPTIONS, SOURCE_OTHER,
@@ -205,6 +206,39 @@ function Board({ items, ti, lang, onOpen, onMove, onAdd, onShowDeleted }) {
           })}
         </div>
       )}
+    </>
+  );
+}
+
+// ── Board skeleton (structure shown while the data loads) ────────────────────
+function BoardSkeleton({ lang }) {
+  return (
+    <>
+      <div className="cmx-board-toolbar">
+        <Sk w={150} h={40} r={8} />
+        <Sk w={120} h={40} r={8} />
+      </div>
+      <div className="cmx-board">
+        {STAGES_ORDER.map((stage, sIdx) => (
+          <section className={'cmx-col cmx-col-' + sIdx} key={stage}>
+            <header className={'cmx-col-head cmx-col-head-' + sIdx}>
+              <span>{stageLabel(stage, lang)}</span>
+              <span className="cmx-chip cmx-count-chip"><Sk w={12} h={12} r={3} /></span>
+            </header>
+            <div className="cmx-col-search"><Sk w="100%" h={38} r={8} /></div>
+            {[0, 1].map(i => (
+              <div className="cmx-card cmx-card-skel" key={i}>
+                <Sk w="70%" h={15} style={{ marginBottom: 10 }} />
+                <Sk w="50%" h={12} style={{ marginBottom: 14 }} />
+                <div className="cmx-card-row">
+                  <Sk w={54} h={20} r={8} />
+                  <Sk w={40} h={20} r={8} />
+                </div>
+              </div>
+            ))}
+          </section>
+        ))}
+      </div>
     </>
   );
 }
@@ -712,7 +746,7 @@ function InitiativesApp() {
           <h1 className="cmx-title">{ti('pageTitle')}</h1>
 
           {loading ? (
-            <p className="cmx-board-empty">{ti('boardLoading')}</p>
+            <BoardSkeleton lang={lang} />
           ) : selected ? (
             <Detail
               initiative={selected}
