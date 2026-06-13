@@ -39,7 +39,9 @@ function cleanAttachmentFiles(input) {
 // ── GET / — list (optional ?stage=) ───────────────────────────────────────
 router.get('/', async (req, res) => {
   try {
-    const filter = { deletedAt: null };
+    const filter = {};
+    // ?deleted=true returns the archive (soft-deleted); otherwise active only.
+    filter.deletedAt = req.query.deleted === 'true' ? { $ne: null } : null;
     if (req.query.stage !== undefined) {
       if (!isValidStage(req.query.stage)) return res.status(400).json({ message: 'Invalid stage' });
       filter.stage = req.query.stage;
@@ -158,6 +160,8 @@ router.patch('/:id/checkpoint', async (req, res) => {
       : (existing.date ?? null);
     // Auto-stamp the date when a checkpoint is marked done without one.
     if (nextStatus === 'done' && !nextDate) nextDate = new Date();
+    // Reverting to in-progress clears the completion date (unless one was sent).
+    if (nextStatus === 'pending' && date === undefined) nextDate = null;
 
     doc.checkpoints.set(key, {
       status: nextStatus,
@@ -165,6 +169,22 @@ router.patch('/:id/checkpoint', async (req, res) => {
       note:   note !== undefined ? String(note) : (existing.note || ''),
     });
     await doc.save();
+    res.json(doc);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// ── PATCH /:id/restore — un-delete an archived initiative ──────────────────
+router.patch('/:id/restore', auditLog('initiative_restore', 'Initiative'), async (req, res) => {
+  try {
+    if (!validId(req.params.id)) return notFound(res);
+    const doc = await Initiative.findOneAndUpdate(
+      { _id: req.params.id, deletedAt: { $ne: null } },
+      { deletedAt: null },
+      { new: true }
+    );
+    if (!doc) return notFound(res);
     res.json(doc);
   } catch (err) {
     res.status(400).json({ message: err.message });

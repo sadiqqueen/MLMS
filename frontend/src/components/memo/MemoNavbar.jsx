@@ -111,12 +111,15 @@ export default function MemoNavbar({ onNewMemo, guardNavigation }) {
             allowlisted (ASG) accounts. Backend 403 is the real guard. */}
         {canInitiatives && (
           <button
-            className={'cmx-btn cmx-btn-ghost' + (onInitiatives ? ' cmx-btn-active' : '')}
+            className={'cmx-btn cmx-btn-ghost cmx-btn-initiatives' + (onInitiatives ? ' cmx-btn-active' : '')}
             aria-current={onInitiatives ? 'page' : undefined}
             onClick={guarded(() => navigate('/initiatives'))}
           >
             <IconBoard />
-            <span>{INIT_STRINGS[lang]?.navLabel ?? INIT_STRINGS.ar.navLabel}</span>
+            <span className="cmx-nav-twoline">
+              <span>{(INIT_STRINGS[lang] ?? INIT_STRINGS.ar).navTitleL1}</span>
+              <span>{(INIT_STRINGS[lang] ?? INIT_STRINGS.ar).navTitleL2}</span>
+            </span>
           </button>
         )}
 

@@ -30,8 +30,18 @@ const IconTrash = () => (
   </svg>
 );
 const IconBack = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg className="cmx-flip-rtl" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+  </svg>
+);
+const IconRestore = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+  </svg>
+);
+const IconArchive = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
   </svg>
 );
 const IconCheck = () => (
@@ -92,7 +102,7 @@ function SourceField({ id, value, onChange, required = false }) {
 }
 
 // ── Board (Kanban) ──────────────────────────────────────────────────────────
-function Board({ items, ti, lang, onOpen, onMove, onAdd }) {
+function Board({ items, ti, lang, onOpen, onMove, onAdd, onShowDeleted }) {
   const [dragId, setDragId] = useState(null);
   const [overStage, setOverStage] = useState(null);
 
@@ -110,6 +120,9 @@ function Board({ items, ti, lang, onOpen, onMove, onAdd }) {
       <div className="cmx-board-toolbar">
         <button className="cmx-btn cmx-btn-primary" onClick={onAdd}>
           <IconPlus /> <span>{ti('addInitiative')}</span>
+        </button>
+        <button className="cmx-btn cmx-btn-outline" onClick={onShowDeleted}>
+          <IconArchive /> <span>{ti('deletedTab')}</span>
         </button>
       </div>
 
@@ -180,6 +193,44 @@ function Board({ items, ti, lang, onOpen, onMove, onAdd }) {
         </div>
       )}
     </>
+  );
+}
+
+// ── Deleted (archive) view ──────────────────────────────────────────────────
+function DeletedView({ items, loading, ti, lang, onBack, onRestore }) {
+  return (
+    <div className="cmx-detail">
+      <div className="cmx-detail-head">
+        <button className="cmx-btn cmx-btn-outline cmx-btn-sm" onClick={onBack}>
+          <IconBack /> <span>{ti('back')}</span>
+        </button>
+        <strong className="cmx-detail-title">{ti('deletedTitle')}</strong>
+        <span className="cmx-detail-chips" />
+      </div>
+
+      {loading ? (
+        <p className="cmx-board-empty">{ti('boardLoading')}</p>
+      ) : items.length === 0 ? (
+        <p className="cmx-board-empty">{ti('deletedEmpty')}</p>
+      ) : (
+        <div className="cmx-deleted-list">
+          {items.map(it => (
+            <div className="cmx-file-row cmx-deleted-row" key={it._id}>
+              <span className="cmx-deleted-info">
+                <span className="cmx-deleted-name">{it.name}</span>
+                <span className="cmx-deleted-meta">
+                  <span className="cmx-chip cmx-level-chip">{levelLabel(it.level, lang)}</span>
+                  <span className="cmx-chip">{stageLabel(it.stage, lang)}</span>
+                </span>
+              </span>
+              <button className="cmx-btn cmx-btn-outline cmx-btn-sm" onClick={() => onRestore(it._id)}>
+                <IconRestore /> <span>{ti('restore')}</span>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -469,6 +520,9 @@ function InitiativesApp() {
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [deletedItems, setDeletedItems] = useState([]);
+  const [deletedLoading, setDeletedLoading] = useState(false);
   const detailDirtyRef = useRef(false);
 
   const ti = useCallback(key => INIT_STRINGS[lang]?.[key] ?? INIT_STRINGS.ar[key] ?? key, [lang]);
@@ -566,6 +620,30 @@ function InitiativesApp() {
     }
   };
 
+  // deleted archive
+  const openDeleted = async () => {
+    setShowDeleted(true);
+    setDeletedLoading(true);
+    try {
+      const res = await api.get('/api/initiatives?deleted=true');
+      setDeletedItems(res.data);
+    } catch {
+      showToast(ti('loadError'), 'error');
+    } finally {
+      setDeletedLoading(false);
+    }
+  };
+  const handleRestore = async (id) => {
+    try {
+      const res = await api.patch(`/api/initiatives/${id}/restore`);
+      setDeletedItems(prev => prev.filter(x => x._id !== id));
+      upsert(res.data);
+      showToast(ti('restoredToast'));
+    } catch (err) {
+      showToast(err.response?.data?.message || ti('actionError'), 'error');
+    }
+  };
+
   const openDetail = (id) => { setSelectedId(id); };
   const backToBoard = () => {
     if (!guardNavigation()) return;
@@ -600,6 +678,15 @@ function InitiativesApp() {
               onDelete={() => handleDelete(selected._id)}
               onDirtyChange={(d) => { detailDirtyRef.current = d; }}
             />
+          ) : showDeleted ? (
+            <DeletedView
+              items={deletedItems}
+              loading={deletedLoading}
+              ti={ti}
+              lang={lang}
+              onBack={() => setShowDeleted(false)}
+              onRestore={handleRestore}
+            />
           ) : (
             <Board
               items={items}
@@ -608,6 +695,7 @@ function InitiativesApp() {
               onOpen={openDetail}
               onMove={handleMove}
               onAdd={() => setShowCreate(true)}
+              onShowDeleted={openDeleted}
             />
           )}
         </main>

@@ -62,8 +62,9 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 18px;
+  gap: 12px;
+  padding: 14px 22px;
+  min-height: 72px;
   background: var(--cmx-surface);
   border-bottom: 2px solid var(--cmx-accent);
   flex-wrap: wrap;
@@ -180,8 +181,8 @@
 }
 .cmx[dir="ltr"] .cmx-logo-wrap { margin-inline-start: 0; margin-inline-end: auto; }
 .cmx-logo {
-  width: 46px;
-  height: 46px;
+  width: 62px;
+  height: 62px;
   border-radius: 50%;
   object-fit: contain;
   background: #fff;
@@ -787,11 +788,13 @@
   font-size: 14px;
   font-weight: 700;
 }
-/* three stage tones from the existing palette */
-.cmx-col-head-0 { background: var(--cmx-amber-bg); color: var(--cmx-amber); }
-.cmx-col-head-1 { background: var(--cmx-accent-tint); color: var(--cmx-accent-solid); }
-.cmx[data-theme="dark"] .cmx-col-head-1 { color: var(--cmx-text); }
-.cmx-col-head-2 { background: var(--cmx-green-bg); color: var(--cmx-green); }
+/* three stage tones: under_study = red, foundational = yellow, final = green
+   (final green matches the --cmx-green used by the rest of the labels) */
+.cmx-col-head-0 { background: rgba(222, 0, 28, 0.12); color: var(--cmx-red); }
+.cmx[data-theme="dark"] .cmx-col-head-0 { background: rgba(255, 77, 92, 0.16); }
+.cmx-col-head-1 { background: var(--cmx-amber-bg); color: var(--cmx-amber); }
+/* final = the same teal/green as .cmx-bar */
+.cmx-col-head-2 { background: var(--cmx-accent); color: #fff; }
 
 /* initiative card */
 .cmx-card {
@@ -839,11 +842,13 @@
   flex-wrap: wrap;
   margin-bottom: 14px;
 }
-.cmx-detail-title { font-size: 18px; font-weight: 700; flex: 1 1 auto; }
+.cmx-detail-title { font-size: 18px; font-weight: 700; flex: 1 1 auto; text-align: center; }
 .cmx-detail-chips { display: flex; gap: 6px; }
-.cmx-stage-chip-0 { background: var(--cmx-amber-bg); color: var(--cmx-amber); }
-.cmx-stage-chip-1 { background: var(--cmx-accent); color: #fff; }
-.cmx-stage-chip-2 { background: var(--cmx-green-bg); color: var(--cmx-green); }
+/* stage chips match the board columns: red / yellow / green */
+.cmx-stage-chip-0 { background: rgba(222, 0, 28, 0.12); color: var(--cmx-red); }
+.cmx[data-theme="dark"] .cmx-stage-chip-0 { background: rgba(255, 77, 92, 0.16); }
+.cmx-stage-chip-1 { background: var(--cmx-amber-bg); color: var(--cmx-amber); }
+.cmx-stage-chip-2 { background: var(--cmx-accent); color: #fff; }
 
 .cmx-stepper {
   display: flex;
@@ -918,6 +923,26 @@
 }
 
 .cmx-detail-delete { margin-inline-start: auto; }
+
+/* back-button arrow points the natural direction per language */
+.cmx[dir="rtl"] .cmx-flip-rtl { transform: scaleX(-1); }
+
+/* two-line full-title nav button (مبادرات استحداث / برامج تدريبية) */
+.cmx-btn-initiatives { white-space: normal; align-items: center; }
+.cmx-nav-twoline {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.2;
+  text-align: center;
+}
+
+/* deleted (archive) list */
+.cmx-deleted-list { display: flex; flex-direction: column; gap: 8px; }
+.cmx-deleted-row { justify-content: space-between; gap: 10px; }
+.cmx-deleted-info { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-width: 0; }
+.cmx-deleted-name { font-weight: 600; overflow-wrap: anywhere; }
+.cmx-deleted-meta { display: flex; gap: 6px; flex-wrap: wrap; }
 
 @media (max-width: 760px) {
   .cmx-board { grid-template-columns: 1fr; }
