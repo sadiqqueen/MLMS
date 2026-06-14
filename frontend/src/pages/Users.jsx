@@ -331,7 +331,9 @@ function PasswordModal({ userId, onClose, showToast }) {
       await api.put(`/api/users/${userId}/password`, { newPassword: pw });
       showToast('Password updated');
       onClose();
-    } catch { showToast('Failed to update password', 'error'); }
+    } catch (err) {
+      showToast(err?.response?.data?.message || 'Failed to update password', 'error');
+    }
     finally  { setSaving(false); }
   }
 

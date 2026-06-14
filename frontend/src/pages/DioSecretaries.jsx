@@ -74,7 +74,7 @@ function SecretaryModal({ secretary, hospitals, specialties, onClose, onSaved })
     if (!form.name.trim())             e.name       = true;
     if (!isEdit && !form.email.trim()) e.email      = true;
     if (!isEdit && !form.password)     e.password   = true;
-    if (!isEdit && form.password && form.password.length < 8) e.password = true;
+    if (!isEdit && form.password && form.password.length < 6) e.password = true;
     if (!form.phone.trim())            e.phone      = true;
     if (!form.hospitalId)              e.hospitalId = true;
     return e;
@@ -130,7 +130,7 @@ function SecretaryModal({ secretary, hospitals, specialties, onClose, onSaved })
             )}
             {!isEdit && (
               <div className="admin-field">
-                <label>Password * (min 8 chars)</label>
+                <label>Password * (min 6 chars)</label>
                 <input className={errors.password ? 'invalid' : ''} type="password" value={form.password}
                   onChange={e => set('password', e.target.value)} placeholder="••••••••" autoComplete="new-password" />
               </div>

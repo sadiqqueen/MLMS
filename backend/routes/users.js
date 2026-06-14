@@ -225,8 +225,8 @@ router.put('/:id', auth, upload.single('photo'), async (req, res) => {
 router.put('/:id/password', auth, allowRoles(...PASSWORD_RESET_ROLES), async (req, res) => {
   try {
     const { newPassword } = req.body;
-    if (!newPassword || newPassword.length < 8)
-      return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    if (!newPassword || newPassword.length < 6)
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
 
     const target = await User.findById(req.params.id);
     if (!target || target.isActive === false) return res.status(404).json({ message: 'User not found' });

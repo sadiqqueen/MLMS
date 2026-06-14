@@ -208,14 +208,8 @@ router.put('/change-password', auth, denyPresidentMutations, async (req, res) =>
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword)
       return res.status(400).json({ message: 'All fields are required.' });
-    if (newPassword.length < 8)
-      return res.status(400).json({ message: 'New password must be at least 8 characters.' });
-    if (!/[A-Z]/.test(newPassword))
-      return res.status(400).json({ message: 'Password must contain an uppercase letter.' });
-    if (!/[0-9]/.test(newPassword))
-      return res.status(400).json({ message: 'Password must contain a number.' });
-    if (!/[^A-Za-z0-9]/.test(newPassword))
-      return res.status(400).json({ message: 'Password must contain a symbol.' });
+    if (newPassword.length < 6)
+      return res.status(400).json({ message: 'New password must be at least 6 characters.' });
 
     const user = await User.findById(req.user._id);
     const match = await user.comparePassword(currentPassword);

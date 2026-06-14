@@ -284,8 +284,8 @@ async function createManagedUser(req, res, role) {
   if (missing.length) {
     return res.status(400).json({ success: false, message: `Missing required field(s): ${missing.join(', ')}` });
   }
-  if (!req.body.password || String(req.body.password).length < 8) {
-    return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+  if (!req.body.password || String(req.body.password).length < 6) {
+    return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
   }
   if (!(await validateUserReferences(role, data, res))) return null;
   data.password = req.body.password;

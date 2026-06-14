@@ -143,8 +143,8 @@ export default function Profile() {
       setPwError('New password and confirm password do not match.');
       return;
     }
-    if (pwForm.next.length < 8) {
-      setPwError('New password must be at least 8 characters.');
+    if (pwForm.next.length < 6) {
+      setPwError('New password must be at least 6 characters.');
       return;
     }
     setPwBusy(true);

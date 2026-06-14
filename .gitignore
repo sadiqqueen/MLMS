@@ -12,6 +12,19 @@ backend/.env.*
 frontend/.env
 frontend/.env.*
 
+# Keys, certificates and other credentials
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+id_rsa
+id_rsa.*
+*.keystore
+secrets.json
+*.secrets.json
+
 # Generated builds and caches
 dist/
 frontend/dist/
