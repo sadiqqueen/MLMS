@@ -4,29 +4,10 @@ import Navbar       from '../components/Navbar';
 import Toast        from '../components/Toast';
 import api          from '../api/axios';
 import Sk           from '../components/Skeleton';
+import { EVAL_FORMS, FORM_TYPES, getForm, SCORE_SCALE } from '../data/evalForms';
 
-const API_BASE    = '';
-const MONTHLY_CAP = 5;
+const MONTHLY_CAP = FORM_TYPES.length; // one of each form per trainee per month
 const MONTH_LABEL = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
-const EVAL_TYPES = ['Mini-CEX', 'DOPS', 'CbD', 'MSF', 'Other'];
-
-const EVAL_PDF_TYPES = [
-  { field: 'evaluationPdf1', label: 'Eval Form 1' },
-  { field: 'evaluationPdf2', label: 'Eval Form 2' },
-  { field: 'evaluationPdf3', label: 'Eval Form 3' },
-  { field: 'evaluationPdf4', label: 'Eval Form 4' },
-  { field: 'evaluationPdf5', label: 'Eval Form 5' },
-];
-
-const RATINGS = [
-  { key: 'na',    label: 'N/A',            color: '#b2bec3', bg: '#f0f2f3' },
-  { key: 'below', label: 'Below Standard', color: '#FF4757', bg: '#fef0f0' },
-  { key: 'meets', label: 'Meets Standard', color: '#f39c12', bg: '#fff8e1' },
-  { key: 'above', label: 'Above Standard', color: '#00B894', bg: '#e8fdf3' },
-];
-
-const EMPTY_FORM = { evalType: '', rating: '', notes: '' };
 
 const LABEL_STYLE = {
   display:'block', fontSize:12, fontWeight:600, color:'#4B5563',
@@ -60,11 +41,15 @@ function evalTraineeId(ev) {
   return (ev?.traineeId?._id || ev?.student?._id || ev?.traineeId || ev?.student)?.toString();
 }
 
+function evalType(ev) {
+  return ev?.evaluationType || ev?.type || '';
+}
+
 function Avatar({ user, size = 32 }) {
   if (user?.photoUrl)
     return (
       <img
-        src={`${API_BASE}${user.photoUrl}`} alt=""
+        src={user.photoUrl} alt=""
         style={{ width:size, height:size, borderRadius:'50%', objectFit:'cover', flexShrink:0 }}
       />
     );
@@ -79,35 +64,293 @@ function Avatar({ user, size = 32 }) {
   );
 }
 
-function EvalModal({ item, evals, specialty, onClose, onSubmitted, onFinalized, isReadOnly }) {
-  const { trainee = {}, dist = {} } = item || {};
-  const traineeEvals = safeArr(evals).filter(ev => {
-    return evalTraineeId(ev) === trainee?._id?.toString();
-  });
-  const thisMonthCount = traineeEvals.filter(ev => isThisMonth(ev?.date || ev?.createdAt)).length;
-  const atCap          = thisMonthCount >= MONTHLY_CAP;
+/* ─────────────────────────────────────────────────────────────
+   Structured WPBA form (Mini-CEX / CbD / DOPS)
+   ───────────────────────────────────────────────────────────── */
+function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submitting, error }) {
+  const [header,     setHeader]     = useState({});
+  const [domains,    setDomains]    = useState({});
+  const [times,      setTimes]      = useState({});
+  const [feedback,   setFeedback]   = useState({});
+  const [overall,    setOverall]    = useState('');
+  const [supervision,setSupervision]= useState('');
+  const [localErr,   setLocalErr]   = useState('');
 
-  const availablePdfs = specialty && typeof specialty === 'object'
-    ? EVAL_PDF_TYPES.filter(t => !!specialty[t.field])
-    : [];
+  function rateDomain(key, value) {
+    setDomains(p => ({ ...p, [key]: p[key] === value ? undefined : value }));
+  }
 
-  const [form,       setForm      ] = useState(EMPTY_FORM);
-  const [submitting, setSubmitting] = useState(false);
-  const [finalizing, setFinalizing] = useState(null);
-  const [error,      setError     ] = useState('');
-
-  useEffect(() => {
-    const h = e => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [onClose]);
-
-  async function submitEval(e) {
+  function handleSubmit(e) {
     e.preventDefault();
-    if (!form.evalType || !form.rating) {
-      setError('Please select evaluation type and rating.');
+    // Every domain must have a rating (N/A is allowed).
+    const missing = form.domains.filter(d => domains[d.key] === undefined || domains[d.key] === '');
+    if (missing.length) {
+      setLocalErr(`Please rate all ${form.domains.length} competency domains.`);
       return;
     }
+    if (!overall) {
+      setLocalErr(`Please select the ${form.overall.label.toLowerCase()}.`);
+      return;
+    }
+    setLocalErr('');
+
+    // Numeric scores only (excludes N/A) for the average score.
+    const scores = {};
+    form.domains.forEach(d => {
+      const v = domains[d.key];
+      if (v !== 'na' && v !== undefined && v !== '') scores[d.key] = Number(v);
+    });
+
+    const comments = form.feedback
+      .map(f => feedback[f.key] ? `${f.label}: ${feedback[f.key]}` : '')
+      .filter(Boolean)
+      .join('\n');
+
+    onSubmit({
+      evaluationType: form.type,
+      scores,
+      grade: overall,
+      comments,
+      formData: { header, domains, times, supervisionLevel: supervision, globalRating: overall, feedback },
+    });
+  }
+
+  const fieldBox = {
+    width:'100%', padding:'8px 10px', border:'1.5px solid #E8E9EF', borderRadius:8,
+    fontSize:13, color:'#1B1464', background:'#fff', fontFamily:'inherit'
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      {/* Auto-filled identity row */}
+      <div style={{
+        display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10,
+        background:'#F5F6FA', borderRadius:10, padding:'12px 14px', marginBottom:18
+      }}>
+        {[
+          ['Trainee', trainee?.name || '—'],
+          ['Assessor', assessorName || '—'],
+          ['Date', fmtDate(new Date())],
+        ].map(([k, v]) => (
+          <div key={k}>
+            <div style={{ fontSize:10, fontWeight:700, color:'#8B8FA8', textTransform:'uppercase', letterSpacing:'.05em' }}>{k}</div>
+            <div style={{ fontSize:13, fontWeight:600, color:'#1B1464', marginTop:2 }}>{v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Header fields */}
+      <SectionTitle>Case Details</SectionTitle>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, marginBottom:20 }}>
+        {form.header.map(f => (
+          <div key={f.key}>
+            <label style={LABEL_STYLE}>{f.label}</label>
+            {f.type === 'select' ? (
+              <select
+                value={header[f.key] || ''}
+                onChange={e => setHeader(p => ({ ...p, [f.key]: e.target.value }))}
+                style={fieldBox}
+              >
+                <option value="">Select…</option>
+                {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={header[f.key] || ''}
+                onChange={e => setHeader(p => ({ ...p, [f.key]: e.target.value }))}
+                style={fieldBox}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Competency domains */}
+      <SectionTitle>Competencies — rate each (N/A · 1–5)</SectionTitle>
+      <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:20 }}>
+        {form.domains.map(d => (
+          <div key={d.key} style={{ border:'1px solid #E8E9EF', borderRadius:10, padding:'10px 12px' }}>
+            <div style={{ fontSize:13, fontWeight:600, color:'#1B1464' }}>{d.label}</div>
+            {d.hint && <div style={{ fontSize:11, color:'#8B8FA8', marginTop:2 }}>{d.hint}</div>}
+            <div style={{ display:'flex', gap:6, marginTop:8, flexWrap:'wrap' }}>
+              {SCORE_SCALE.map(s => {
+                const active = String(domains[d.key]) === String(s.value);
+                return (
+                  <button
+                    key={s.value} type="button"
+                    title={s.label}
+                    onClick={() => rateDomain(d.key, s.value)}
+                    style={{
+                      minWidth:38, padding:'6px 10px', borderRadius:7, fontSize:12, fontWeight:700,
+                      cursor:'pointer', transition:'all .12s',
+                      border: active ? `2px solid ${s.color}` : '1.5px solid #E8E9EF',
+                      background: active ? s.bg : '#fff',
+                      color: active ? s.color : '#6B7280',
+                    }}
+                  >
+                    {s.short}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* DOPS supervision level */}
+      {form.supervision && (
+        <>
+          <SectionTitle>{form.supervision.label}</SectionTitle>
+          <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:20 }}>
+            {form.supervision.options.map(o => {
+              const active = supervision === o;
+              return (
+                <button
+                  key={o} type="button"
+                  onClick={() => setSupervision(active ? '' : o)}
+                  style={{
+                    textAlign:'left', padding:'9px 12px', borderRadius:8, fontSize:12.5, fontWeight:500,
+                    cursor:'pointer', transition:'all .12s',
+                    border: active ? '2px solid #0E9F6E' : '1.5px solid #E8E9EF',
+                    background: active ? '#eafaf1' : '#fff',
+                    color: active ? '#0E6B4A' : '#4B5563',
+                  }}
+                >
+                  {o}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Times */}
+      <div style={{ display:'flex', gap:12, marginBottom:20 }}>
+        {form.times.map(t => (
+          <div key={t.key} style={{ flex:1 }}>
+            <label style={LABEL_STYLE}>{t.label}</label>
+            <input
+              type="number" min="0"
+              value={times[t.key] || ''}
+              onChange={e => setTimes(p => ({ ...p, [t.key]: e.target.value }))}
+              style={fieldBox}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Overall rating */}
+      <SectionTitle>{form.overall.label}</SectionTitle>
+      <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:20 }}>
+        {form.overall.options.map(o => {
+          const active = overall === o;
+          return (
+            <button
+              key={o} type="button"
+              onClick={() => setOverall(active ? '' : o)}
+              style={{
+                padding:'8px 14px', borderRadius:8, fontSize:12.5, fontWeight:600,
+                cursor:'pointer', transition:'all .12s',
+                border: active ? `2px solid ${form.accent}` : '1.5px solid #E8E9EF',
+                background: active ? `${form.accent}14` : '#fff',
+                color: active ? form.accent : '#4B5563',
+              }}
+            >
+              {o}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Feedback */}
+      <SectionTitle>Feedback</SectionTitle>
+      <div style={{ display:'flex', flexDirection:'column', gap:14, marginBottom:18 }}>
+        {form.feedback.map(f => (
+          <div key={f.key}>
+            <label style={LABEL_STYLE}>{f.label}</label>
+            <textarea
+              value={feedback[f.key] || ''}
+              onChange={e => setFeedback(p => ({ ...p, [f.key]: e.target.value }))}
+              style={{ ...fieldBox, minHeight:60, resize:'vertical' }}
+            />
+          </div>
+        ))}
+      </div>
+
+      {(localErr || error) && (
+        <div style={{
+          background:'#FEE2E2', borderRadius:8, padding:'9px 13px',
+          fontSize:13, color:'#DC2626', marginBottom:14
+        }}>
+          {localErr || error}
+        </div>
+      )}
+
+      <div style={{
+        display:'flex', gap:10, justifyContent:'flex-end',
+        position:'sticky', bottom:0, background:'#fff', paddingTop:12, paddingBottom:2,
+        borderTop:'1px solid #F0F1F5'
+      }}>
+        <button
+          type="button" onClick={onCancel}
+          style={{
+            padding:'9px 20px', borderRadius:8, background:'#F5F6FA',
+            color:'#4B5563', border:'none', fontWeight:500, fontSize:13, cursor:'pointer'
+          }}
+        >
+          Back
+        </button>
+        <button
+          type="submit" disabled={submitting}
+          style={{
+            padding:'9px 22px', borderRadius:8, background:'#FF6B35',
+            color:'#fff', border:'none', fontWeight:600, fontSize:13,
+            cursor:'pointer', boxShadow:'0 2px 8px rgba(255,107,53,.35)',
+            opacity: submitting ? 0.7 : 1
+          }}
+        >
+          {submitting ? 'Submitting…' : `Submit ${form.title}`}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function SectionTitle({ children }) {
+  return (
+    <div style={{
+      fontSize:12, fontWeight:700, color:'#8B8FA8',
+      textTransform:'uppercase', letterSpacing:'.05em', marginBottom:12
+    }}>
+      {children}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Evaluation modal — monthly checklist + form entry
+   ───────────────────────────────────────────────────────────── */
+function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalized, isReadOnly }) {
+  const { trainee = {}, dist = {} } = item || {};
+  const traineeEvals = safeArr(evals).filter(ev => evalTraineeId(ev) === trainee?._id?.toString());
+  const monthEvals   = traineeEvals.filter(ev => isThisMonth(ev?.date || ev?.createdAt));
+  const doneTypes    = new Set(monthEvals.map(evalType));
+
+  const [activeType, setActiveType] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [finalizing, setFinalizing] = useState(null);
+  const [error,      setError]      = useState('');
+
+  const activeForm = activeType ? getForm(activeType) : null;
+
+  useEffect(() => {
+    const h = e => { if (e.key === 'Escape') { activeType ? setActiveType(null) : onClose(); } };
+    document.addEventListener('keydown', h);
+    return () => document.removeEventListener('keydown', h);
+  }, [onClose, activeType]);
+
+  async function submitEval(payload) {
     setError('');
     setSubmitting(true);
     try {
@@ -116,16 +359,13 @@ function EvalModal({ item, evals, specialty, onClose, onSubmitted, onFinalized, 
         student:        trainee._id,
         distributionId: dist._id,
         rotation:       dist._id,
-        evaluationType: form.evalType,
-        type:           form.evalType,
-        scores:         { overall: form.rating },
-        notes:          form.notes,
+        type:           payload.evaluationType,
         date:           new Date().toISOString(),
+        ...payload,
       });
       const newEval = res.data?.data || res.data;
       if (newEval && typeof newEval === 'object') onSubmitted(newEval);
-      setForm(EMPTY_FORM);
-      setError('');
+      setActiveType(null);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to submit evaluation.');
     } finally {
@@ -157,9 +397,9 @@ function EvalModal({ item, evals, specialty, onClose, onSubmitted, onFinalized, 
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div style={{
-        background:'#fff', borderRadius:16, width:'100%', maxWidth:620,
+        background:'#fff', borderRadius:16, width:'100%', maxWidth:680,
         boxShadow:'0 20px 60px rgba(0,0,0,.2)',
-        maxHeight:'90vh', overflowY:'auto',
+        maxHeight:'92vh', overflowY:'auto',
         animation:'modalIn .22s ease'
       }}>
         {/* Header */}
@@ -173,7 +413,8 @@ function EvalModal({ item, evals, specialty, onClose, onSubmitted, onFinalized, 
             <div>
               <div style={{ fontSize:16, fontWeight:700, color:'#1B1464' }}>{trainee.name || '—'}</div>
               <div style={{ fontSize:12, color:'#8B8FA8' }}>
-                {trainee.studentId ? `ID: ${trainee.studentId}` : ''} · Evaluations
+                {trainee.studentId ? `ID: ${trainee.studentId} · ` : ''}
+                {activeForm ? activeForm.fullName : `Monthly evaluations · ${MONTH_LABEL}`}
               </div>
             </div>
           </div>
@@ -189,267 +430,166 @@ function EvalModal({ item, evals, specialty, onClose, onSubmitted, onFinalized, 
 
         <div style={{ padding:'20px 24px' }}>
 
-          {/* Evaluation template downloads */}
-          {availablePdfs.length > 0 && (
-            <div style={{ marginBottom:20 }}>
-              <div style={{
-                fontSize:12, fontWeight:700, color:'#8B8FA8',
-                textTransform:'uppercase', letterSpacing:'.05em', marginBottom:10
-              }}>
-                Evaluation Templates
-              </div>
-              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                {availablePdfs.map(t => (
-                  <a
-                    key={t.field}
-                    href={specialty[t.field]}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{
-                      padding:'6px 12px', borderRadius:7, fontSize:12, fontWeight:600,
-                      background:'#E6F1FB', color:'#185FA5', textDecoration:'none',
-                      display:'flex', alignItems:'center', gap:4,
-                      border:'1px solid #BFDBFE'
-                    }}
-                  >
-                    ↓ {t.label}
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Monthly progress */}
-          <div style={{
-            display:'flex', alignItems:'center', justifyContent:'space-between',
-            background:'#F5F6FA', borderRadius:10, padding:'10px 14px', marginBottom:20
-          }}>
-            <div style={{ fontSize:13, color:'#4B5563', fontWeight:500 }}>
-              {MONTH_LABEL} evaluations
-            </div>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          {/* ── FORM ENTRY ── */}
+          {activeForm && !isReadOnly ? (
+            <StructuredForm
+              form={activeForm}
+              trainee={trainee}
+              assessorName={assessorName}
+              onCancel={() => { setActiveType(null); setError(''); }}
+              onSubmit={submitEval}
+              submitting={submitting}
+              error={error}
+            />
+          ) : (
+          <>
+            {/* Monthly checklist */}
+            <div style={{
+              display:'flex', alignItems:'center', justifyContent:'space-between',
+              background:'#F5F6FA', borderRadius:10, padding:'10px 14px', marginBottom:16
+            }}>
+              <div style={{ fontSize:13, color:'#4B5563', fontWeight:500 }}>{MONTH_LABEL} progress</div>
               <div style={{
                 fontSize:13, fontWeight:700,
-                color: atCap ? '#DC2626' : '#059669'
+                color: doneTypes.size >= MONTHLY_CAP ? '#059669' : '#D97706'
               }}>
-                {thisMonthCount} / {MONTHLY_CAP}
+                {doneTypes.size} / {MONTHLY_CAP} forms
               </div>
-              {atCap && (
-                <span style={{
-                  fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20,
-                  background:'#FEE2E2', color:'#991B1B'
-                }}>Cap reached</span>
-              )}
             </div>
-          </div>
 
-          {/* Existing evaluations */}
-          {traineeEvals.length > 0 && (
-            <div style={{ marginBottom:24 }}>
-              <div style={{
-                fontSize:12, fontWeight:700, color:'#8B8FA8',
-                textTransform:'uppercase', letterSpacing:'.05em', marginBottom:10
-              }}>
-                Submitted Evaluations ({traineeEvals.length})
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                {traineeEvals.map(ev => {
-                  const ratingKey = ev?.scores?.overall || ev?.grade || '';
-                  const ratingObj = RATINGS.find(r => r.key === ratingKey);
-                  const noteText = safeText(ev?.notes || ev?.comments);
-                  const label = safeText(ev?.evaluationType || ev?.type || ev?.evalType || 'Evaluation');
-                  return (
-                    <div
-                      key={ev?._id || `${evalTraineeId(ev) || 'eval'}-${ev?.createdAt || ev?.date || 'row'}`}
-                      style={{
-                        border:'1px solid #E8E9EF', borderRadius:10, padding:'12px 14px',
-                        display:'flex', alignItems:'center', gap:12,
-                        background: ev?.isFinalized ? '#F0FDF4' : '#fff'
-                      }}
-                    >
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
-                          <span style={{
-                            fontSize:12, fontWeight:600, padding:'2px 8px', borderRadius:20,
-                            background:'#DBEAFE', color:'#1E40AF'
-                          }}>
-                            {label || 'Evaluation'}
-                          </span>
-                          {ratingObj && (
-                            <span style={{
-                              fontSize:11, padding:'2px 8px', borderRadius:20,
-                              background:ratingObj.bg, color:ratingObj.color, fontWeight:600
-                            }}>
-                              {ratingObj.label}
-                            </span>
-                          )}
-                          {ev?.isFinalized && (
-                            <span style={{
-                              fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20,
-                              background:'#D1FAE5', color:'#065F46'
-                            }}>Sent to grades</span>
-                          )}
-                        </div>
-                        <div style={{ fontSize:12, color:'#8B8FA8' }}>
-                          {fmtDate(ev?.date || ev?.createdAt)}
-                          {noteText ? ` · ${noteText.slice(0, 60)}${noteText.length > 60 ? '…' : ''}` : ''}
-                        </div>
-                      </div>
-                      {!isReadOnly && !ev?.isFinalized && (
-                        <button
-                          onClick={() => handleFinalize(ev?._id)}
-                          disabled={finalizing === ev?._id || !ev?._id}
-                          style={{
-                            padding:'6px 14px', borderRadius:8,
-                            background:'#1B1464', color:'#fff',
-                            border:'none', fontSize:12, fontWeight:600,
-                            cursor:'pointer', flexShrink:0,
-                            opacity: finalizing === ev?._id ? 0.7 : 1
-                          }}
-                        >
-                          {finalizing === ev?._id ? 'Sending…' : 'Finalize'}
-                        </button>
-                      )}
+            <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:20 }}>
+              {EVAL_FORMS.map(f => {
+                const done = doneTypes.has(f.type);
+                return (
+                  <div
+                    key={f.type}
+                    style={{
+                      border:`1px solid ${done ? '#BBE9D2' : '#E8E9EF'}`,
+                      background: done ? '#F0FDF4' : '#fff',
+                      borderRadius:12, padding:'14px 16px',
+                      display:'flex', alignItems:'center', gap:14
+                    }}
+                  >
+                    <div style={{
+                      width:42, height:42, borderRadius:10, flexShrink:0,
+                      background:`${f.accent}14`, color:f.accent,
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      fontSize:13, fontWeight:800
+                    }}>
+                      {f.title}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {traineeEvals.length === 0 && (
-            <div style={{
-              textAlign:'center', padding:'24px 0', color:'#8B8FA8',
-              marginBottom:20
-            }}>
-              <div style={{ fontSize:28, marginBottom:8 }}>📋</div>
-              <div style={{ fontSize:14, fontWeight:500 }}>No evaluations yet for this trainee</div>
-            </div>
-          )}
-
-          {/* Add evaluation form */}
-          {!isReadOnly && !atCap && (
-            <form onSubmit={submitEval}>
-              <div style={{
-                borderTop:'1px solid #E8E9EF', paddingTop:20,
-                fontSize:12, fontWeight:700, color:'#8B8FA8',
-                textTransform:'uppercase', letterSpacing:'.05em', marginBottom:14
-              }}>
-                New Evaluation
-              </div>
-
-              <div style={{ marginBottom:16 }}>
-                <label style={LABEL_STYLE}>Evaluation Type</label>
-                <select
-                  value={form.evalType}
-                  onChange={e => setForm(p => ({ ...p, evalType: e.target.value }))}
-                  style={{
-                    width:'100%', padding:'9px 12px',
-                    border:'1.5px solid #E8E9EF', borderRadius:8,
-                    fontSize:13, color:'#1B1464', background:'#fff',
-                    fontFamily:'inherit'
-                  }}
-                >
-                  <option value="">Select type…</option>
-                  {EVAL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-
-              <div style={{ marginBottom:16 }}>
-                <label style={LABEL_STYLE}>Rating</label>
-                <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                  {RATINGS.map(r => {
-                    const active = form.rating === r.key;
-                    return (
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:14, fontWeight:700, color:'#1B1464' }}>{f.fullName}</div>
+                      <div style={{ fontSize:12, color:'#8B8FA8' }}>{f.domains.length} competency domains</div>
+                    </div>
+                    {done ? (
+                      <span style={{
+                        fontSize:11, fontWeight:700, padding:'5px 12px', borderRadius:20,
+                        background:'#D1FAE5', color:'#065F46'
+                      }}>✓ Done this month</span>
+                    ) : isReadOnly ? (
+                      <span style={{ fontSize:12, color:'#8B8FA8' }}>Not submitted</span>
+                    ) : (
                       <button
-                        key={r.key} type="button"
-                        onClick={() => setForm(p => ({ ...p, rating: active ? '' : r.key }))}
+                        onClick={() => { setActiveType(f.type); setError(''); }}
                         style={{
-                          padding:'8px 14px', borderRadius:8, fontSize:12, fontWeight:600,
-                          border: active ? `2px solid ${r.color}` : '1.5px solid #E8E9EF',
-                          background: active ? r.bg : '#fff',
-                          color: active ? r.color : '#4B5563',
-                          cursor:'pointer', transition:'all .15s'
+                          padding:'8px 18px', borderRadius:8, background:f.accent,
+                          color:'#fff', border:'none', fontWeight:600, fontSize:12,
+                          cursor:'pointer', flexShrink:0
                         }}
                       >
-                        {r.label}
+                        Start
                       </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Submitted evaluations */}
+            {traineeEvals.length > 0 ? (
+              <div>
+                <SectionTitle>Submitted Evaluations ({traineeEvals.length})</SectionTitle>
+                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                  {traineeEvals.map(ev => {
+                    const noteText = safeText(ev?.comments || ev?.notes);
+                    const label    = evalType(ev) || 'Evaluation';
+                    const overall  = ev?.grade || ev?.formData?.globalRating || ev?.scores?.overall || '';
+                    return (
+                      <div
+                        key={ev?._id || `${evalTraineeId(ev)}-${ev?.createdAt || 'row'}`}
+                        style={{
+                          border:'1px solid #E8E9EF', borderRadius:10, padding:'12px 14px',
+                          display:'flex', alignItems:'center', gap:12,
+                          background: ev?.isFinalized ? '#F0FDF4' : '#fff'
+                        }}
+                      >
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3, flexWrap:'wrap' }}>
+                            <span style={{
+                              fontSize:12, fontWeight:700, padding:'2px 8px', borderRadius:20,
+                              background:'#DBEAFE', color:'#1E40AF'
+                            }}>{label}</span>
+                            {overall && (
+                              <span style={{
+                                fontSize:11, padding:'2px 8px', borderRadius:20,
+                                background:'#FEF3C7', color:'#92400E', fontWeight:600
+                              }}>{overall}</span>
+                            )}
+                            {ev?.totalScore != null && (
+                              <span style={{
+                                fontSize:11, padding:'2px 8px', borderRadius:20,
+                                background:'#E6F1FB', color:'#185FA5', fontWeight:700
+                              }}>avg {Math.round(ev.totalScore * 10) / 10}</span>
+                            )}
+                            {ev?.isFinalized && (
+                              <span style={{
+                                fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20,
+                                background:'#D1FAE5', color:'#065F46'
+                              }}>Sent to grades</span>
+                            )}
+                          </div>
+                          <div style={{ fontSize:12, color:'#8B8FA8' }}>
+                            {fmtDate(ev?.date || ev?.createdAt)}
+                            {noteText ? ` · ${noteText.replace(/\n/g, ' · ').slice(0, 60)}${noteText.length > 60 ? '…' : ''}` : ''}
+                          </div>
+                        </div>
+                        {!isReadOnly && !ev?.isFinalized && (
+                          <button
+                            onClick={() => handleFinalize(ev?._id)}
+                            disabled={finalizing === ev?._id || !ev?._id}
+                            style={{
+                              padding:'6px 14px', borderRadius:8,
+                              background:'#1B1464', color:'#fff',
+                              border:'none', fontSize:12, fontWeight:600,
+                              cursor:'pointer', flexShrink:0,
+                              opacity: finalizing === ev?._id ? 0.7 : 1
+                            }}
+                          >
+                            {finalizing === ev?._id ? 'Sending…' : 'Finalize'}
+                          </button>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
               </div>
-
-              <div style={{ marginBottom:16 }}>
-                <label style={LABEL_STYLE}>Notes (optional)</label>
-                <textarea
-                  value={form.notes}
-                  onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
-                  placeholder="Observations, feedback for the trainee…"
-                  style={{
-                    width:'100%', minHeight:80, padding:'9px 12px',
-                    border:'1.5px solid #E8E9EF', borderRadius:8,
-                    fontSize:13, color:'#1B1464', resize:'vertical', fontFamily:'inherit'
-                  }}
-                />
+            ) : (
+              <div style={{ textAlign:'center', padding:'20px 0', color:'#8B8FA8' }}>
+                <div style={{ fontSize:28, marginBottom:8 }}>📋</div>
+                <div style={{ fontSize:14, fontWeight:500 }}>No evaluations yet for this trainee</div>
               </div>
+            )}
 
-              {error && (
-                <div style={{
-                  background:'#FEE2E2', borderRadius:8, padding:'9px 13px',
-                  fontSize:13, color:'#DC2626', marginBottom:14
-                }}>
-                  {error}
-                </div>
-              )}
-
-              <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
-                <button
-                  type="button" onClick={onClose}
-                  style={{
-                    padding:'9px 20px', borderRadius:8, background:'#F5F6FA',
-                    color:'#4B5563', border:'none', fontWeight:500, fontSize:13, cursor:'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit" disabled={submitting}
-                  style={{
-                    padding:'9px 22px', borderRadius:8, background:'#FF6B35',
-                    color:'#fff', border:'none', fontWeight:600, fontSize:13,
-                    cursor:'pointer', boxShadow:'0 2px 8px rgba(255,107,53,.35)',
-                    opacity: submitting ? 0.7 : 1
-                  }}
-                >
-                  {submitting ? 'Submitting…' : 'Submit Evaluation'}
-                </button>
+            {error && (
+              <div style={{
+                background:'#FEE2E2', borderRadius:8, padding:'9px 13px',
+                fontSize:13, color:'#DC2626', marginTop:14
+              }}>
+                {error}
               </div>
-            </form>
-          )}
-
-          {!isReadOnly && atCap && (
-            <div style={{
-              background:'#FEF3C7', border:'1px solid #FCD34D', borderRadius:10,
-              padding:'14px 16px', display:'flex', alignItems:'center', gap:10
-            }}>
-              <div style={{ fontSize:20 }}>⚠️</div>
-              <div style={{ fontSize:13, color:'#92400E', fontWeight:500 }}>
-                Monthly evaluation cap ({MONTHLY_CAP}) reached for {MONTH_LABEL}.
-                New evaluations can be added next month.
-              </div>
-            </div>
-          )}
-
-          {isReadOnly && (
-            <div style={{ display:'flex', justifyContent:'flex-end', paddingTop:10 }}>
-              <button
-                onClick={onClose}
-                style={{
-                  padding:'9px 20px', borderRadius:8, background:'#FF6B35',
-                  color:'#fff', border:'none', fontWeight:500, fontSize:13, cursor:'pointer'
-                }}
-              >Close</button>
-            </div>
+            )}
+          </>
           )}
         </div>
       </div>
@@ -461,7 +601,6 @@ export default function SupervisorEvaluations() {
   const { user: me }   = useAuth();
   const [evals,      setEvals     ] = useState([]);
   const [trainees,   setTrainees  ] = useState([]);
-  const [specialty,  setSpecialty ] = useState(null);
   const [loading,    setLoading   ] = useState(true);
   const [search,     setSearch    ] = useState('');
   const [selected,   setSelected  ] = useState(null);
@@ -476,22 +615,12 @@ export default function SupervisorEvaluations() {
   }
 
   useEffect(() => {
-    const mySpecialtyId = me?.specialtyId?._id || me?.specialtyId;
-
     Promise.all([
       api.get('/api/supervisor/evaluations'),
       api.get('/api/supervisor/trainees'),
-      mySpecialtyId ? api.get('/api/specialties') : Promise.resolve(null),
-    ]).then(([evalRes, traineeRes, specRes]) => {
+    ]).then(([evalRes, traineeRes]) => {
       setEvals(safeArr(evalRes.data?.data || evalRes.data));
       setTrainees(safeArr(traineeRes.data?.data || traineeRes.data));
-      if (specRes && mySpecialtyId) {
-        const all = safeArr(specRes.data?.data || specRes.data);
-        const found = all.find(s =>
-          (s._id?.toString() === mySpecialtyId?.toString())
-        );
-        setSpecialty(found || null);
-      }
     }).catch(() => showToast('Failed to load data', 'error'))
       .finally(() => setLoading(false));
   }, [me]);
@@ -517,8 +646,13 @@ export default function SupervisorEvaluations() {
     return safeArr(evals).filter(ev => evalTraineeId(ev) === tid).length;
   }
 
-  function monthlyCountFor(tid) {
-    return safeArr(evals).filter(ev => evalTraineeId(ev) === tid && isThisMonth(ev?.date || ev?.createdAt)).length;
+  function monthlyTypesFor(tid) {
+    const set = new Set(
+      safeArr(evals)
+        .filter(ev => evalTraineeId(ev) === tid && isThisMonth(ev?.date || ev?.createdAt))
+        .map(evalType)
+    );
+    return set.size;
   }
 
   function handleSubmitted(newEval) {
@@ -531,10 +665,7 @@ export default function SupervisorEvaluations() {
     setEvals(prev => safeArr(prev).map(ev => (
       ev?._id === evalId
         ? {
-            ...ev,
-            ...finalized,
-            _id: ev._id,
-            isFinalized: true,
+            ...ev, ...finalized, _id: ev._id, isFinalized: true,
             sentToTraineeAt: finalized.sentToTraineeAt || ev.sentToTraineeAt || new Date().toISOString(),
             status: finalized.status || ev.status || 'completed',
           }
@@ -633,8 +764,8 @@ export default function SupervisorEvaluations() {
           {filtered.map(({ dist, trainee }) => {
             const tid        = trainee._id?.toString();
             const count      = evalCountFor(tid);
-            const monthCount = monthlyCountFor(tid);
-            const atCap      = monthCount >= MONTHLY_CAP;
+            const monthTypes = monthlyTypesFor(tid);
+            const complete   = monthTypes >= MONTHLY_CAP;
 
             return (
               <div
@@ -653,15 +784,15 @@ export default function SupervisorEvaluations() {
                   </div>
                   <div style={{ fontSize:12, color:'#8B8FA8' }}>
                     {trainee.studentId ? `ID: ${trainee.studentId} · ` : ''}
-                    {count} evaluation{count !== 1 ? 's' : ''} total · {monthCount}/{MONTHLY_CAP} this month
+                    {count} evaluation{count !== 1 ? 's' : ''} total · {monthTypes}/{MONTHLY_CAP} forms this month
                   </div>
                 </div>
 
-                {atCap && !isReadOnly && (
+                {complete && !isReadOnly && (
                   <span style={{
                     fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20,
-                    background:'#FEF3C7', color:'#92400E'
-                  }}>Cap reached</span>
+                    background:'#D1FAE5', color:'#065F46'
+                  }}>All forms done</span>
                 )}
 
                 <button
@@ -673,7 +804,7 @@ export default function SupervisorEvaluations() {
                     boxShadow:'0 2px 6px rgba(255,107,53,.3)'
                   }}
                 >
-                  {isReadOnly ? 'View' : (atCap ? 'View' : 'Evaluate')}
+                  {isReadOnly ? 'View' : (complete ? 'View' : 'Evaluate')}
                 </button>
               </div>
             );
@@ -684,7 +815,7 @@ export default function SupervisorEvaluations() {
           <EvalModal
             item={selected}
             evals={evals}
-            specialty={specialty}
+            assessorName={me?.name}
             onClose={() => setSelected(null)}
             onSubmitted={handleSubmitted}
             onFinalized={handleFinalized}

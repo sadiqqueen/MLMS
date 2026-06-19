@@ -320,8 +320,17 @@ router.post('/evaluations',
   auditLog('create_evaluation', 'Evaluation'),
   async (req, res) => {
     try {
-      const { traineeId, distributionId, scores, comments, grade, specialty, hospitalId, notes } = req.body;
+      const { traineeId, distributionId, scores, comments, grade, specialty, hospitalId, notes, formData } = req.body;
       const evaluationType = req.body.evaluationType || req.body.type || '';
+
+      // Only the three workplace-based assessment forms are accepted.
+      const ALLOWED_FORMS = ['Mini-CEX', 'CBD', 'DOPS'];
+      if (!ALLOWED_FORMS.includes(evaluationType)) {
+        return res.status(400).json({
+          success: false,
+          message: `evaluationType must be one of: ${ALLOWED_FORMS.join(', ')}`
+        });
+      }
 
       const targetTrainee = traineeId || req.body.student;
       if (!targetTrainee) return res.status(400).json({ message: 'traineeId is required' });
@@ -329,18 +338,23 @@ router.post('/evaluations',
         return res.status(403).json({ success: false, message: 'Access denied: trainee is not assigned to this supervisor' });
       }
 
+      // Each form type may be completed at most once per trainee per month.
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      const monthCount = await Evaluation.countDocuments({
+      const sameTypeThisMonth = await Evaluation.countDocuments({
         $and: [
           { $or: [{ traineeId: targetTrainee }, { student: targetTrainee }] },
           { $or: [{ supervisorId: req.user._id }, { doctor: req.user._id }] },
+          { evaluationType },
           { createdAt: { $gte: monthStart, $lt: monthEnd } }
         ]
       });
-      if (monthCount >= 5) {
-        return res.status(400).json({ success: false, message: 'Monthly evaluation limit (5) reached for this trainee' });
+      if (sameTypeThisMonth >= 1) {
+        return res.status(400).json({
+          success: false,
+          message: `A ${evaluationType} evaluation has already been submitted for this trainee this month.`
+        });
       }
 
       // Calculate totalScore from scores object
@@ -362,6 +376,7 @@ router.post('/evaluations',
         notes:          notes || comments || '',
         comments:       comments || notes || '',
         scores:         scores   || {},
+        formData:       formData || {},
         totalScore,
         grade:          grade    || '',
         isFinalized:    false,

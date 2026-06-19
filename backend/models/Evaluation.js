@@ -26,6 +26,9 @@ const evaluationSchema = new mongoose.Schema(
 
     // V2 NEW FIELDS
     scores:          { type: mongoose.Schema.Types.Mixed, default: {} },
+    // Structured WPBA form contents (header, overall rating, supervision level,
+    // feedback, times) for the CBD / DOPS / Mini-CEX forms.
+    formData:        { type: mongoose.Schema.Types.Mixed, default: {} },
     totalScore:      { type: Number, index: true },
     comments:        { type: String, default: '' },
     isFinalized:     { type: Boolean, default: false },

@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import api    from '../api/axios';
 import Navbar from '../components/Navbar';
 import Sk     from '../components/Skeleton';
+import { getForm, scoreMeta } from '../data/evalForms';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -47,6 +48,119 @@ function gradeLabel(report) {
 
 const RATING_LABEL = { na:'N/A', below:'Below Standard', meets:'Meets Standard', above:'Above Standard' };
 const RATING_COLOR = { na:'#b2bec3', below:'#FF4757', meets:'#f39c12', above:'#00B894' };
+
+// One supervisor evaluation (Mini-CEX / CbD / DOPS) — expandable to show the
+// per-competency scores and structured feedback captured by the supervisor.
+function EvalCard({ ev }) {
+  const [open, setOpen] = useState(false);
+
+  const supName  = ev.supervisorId?.name || ev.doctor?.name || 'Supervisor';
+  const type     = ev.evaluationType || ev.type || '';
+  const form     = getForm(type);
+  const fd       = ev.formData || {};
+  const overall  = ev.grade || fd.globalRating || RATING_LABEL[ev.scores?.overall] || '';
+  const accent   = form?.accent || '#185FA5';
+
+  const domainRows = form
+    ? form.domains
+        .map(d => ({ label: d.label, value: fd.domains?.[d.key] }))
+        .filter(r => r.value !== undefined && r.value !== null && r.value !== '')
+    : [];
+
+  const feedbackRows = form
+    ? form.feedback.map(f => ({ label: f.label, text: fd.feedback?.[f.key] })).filter(r => r.text)
+    : [];
+
+  const hasDetail = domainRows.length > 0 || feedbackRows.length > 0 || fd.supervisionLevel;
+
+  return (
+    <div style={{
+      border:'1px solid #E8E9EF', borderRadius:10, padding:'14px 16px',
+      background: ev.isFinalized ? '#F0FDF4' : '#fff',
+      borderLeft:`4px solid ${accent}`
+    }}>
+      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+        <div>
+          <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+            {type && (
+              <span style={{ fontSize:11, background:`${accent}14`, color:accent, borderRadius:5, padding:'2px 8px', fontWeight:800, textTransform:'uppercase' }}>
+                {form?.title || type}
+              </span>
+            )}
+            {overall && <span style={{ fontSize:13, fontWeight:600, color:accent }}>{overall}</span>}
+          </div>
+          <div style={{ fontSize:12, color:'#8B8FA8', marginTop:4 }}>
+            By {supName} · {fmt(ev.sentToTraineeAt || ev.createdAt)}
+          </div>
+          {ev.hospital?.name && (
+            <div style={{ fontSize:12, color:'#8B8FA8' }}>🏥 {ev.hospital.name}</div>
+          )}
+        </div>
+        {ev.totalScore !== undefined && ev.totalScore !== null && (
+          <div style={{ textAlign:'right' }}>
+            <div style={{ fontSize:22, fontWeight:700, color:'#1B1464', lineHeight:1 }}>
+              {Math.round(ev.totalScore * 10) / 10}
+            </div>
+            <div style={{ fontSize:11, color:'#8B8FA8' }}>avg / 5</div>
+          </div>
+        )}
+      </div>
+
+      {hasDetail && open && (
+        <div style={{ marginTop:12, borderTop:'1px solid #EDEFF3', paddingTop:12 }}>
+          {fd.supervisionLevel && (
+            <div style={{ fontSize:12.5, color:'#4B5563', marginBottom:10 }}>
+              <strong>Supervision level:</strong> {fd.supervisionLevel}
+            </div>
+          )}
+          {domainRows.length > 0 && (
+            <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:feedbackRows.length ? 12 : 0 }}>
+              {domainRows.map(r => {
+                const m = scoreMeta(r.value);
+                return (
+                  <div key={r.label} style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <span style={{
+                      width:26, height:22, flexShrink:0, borderRadius:6, fontSize:11, fontWeight:800,
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      background:m?.bg || '#f0f2f3', color:m?.color || '#6B7280'
+                    }}>
+                      {m?.short || r.value}
+                    </span>
+                    <span style={{ fontSize:12.5, color:'#4B5563' }}>{r.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {feedbackRows.map(r => (
+            <div key={r.label} style={{ marginBottom:8 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#8B8FA8', textTransform:'uppercase', letterSpacing:'.04em' }}>{r.label}</div>
+              <div style={{ fontSize:13, color:'#4B5563', lineHeight:1.5 }}>{r.text}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!hasDetail && (ev.comments || ev.notes) && (
+        <div style={{ fontSize:13, color:'#4B5563', marginTop:8, padding:'8px 10px', background:'#F5F6FA', borderRadius:7, lineHeight:1.6, whiteSpace:'pre-line' }}>
+          {ev.comments || ev.notes}
+        </div>
+      )}
+
+      {hasDetail && (
+        <button
+          onClick={() => setOpen(o => !o)}
+          style={{
+            marginTop:10, padding:0, background:'none', border:'none',
+            color:accent, fontSize:12, fontWeight:600, cursor:'pointer'
+          }}
+        >
+          {open ? 'Hide details ▲' : 'View full assessment ▼'}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function Grades() {
   const { user }      = useAuth();
@@ -175,53 +289,7 @@ export default function Grades() {
               <span className="badge badge-blue" style={{ marginLeft:8 }}>{evalList.length}</span>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              {evalList.map(ev => {
-                const supName = ev.supervisorId?.name || ev.doctor?.name || 'Supervisor';
-                const rating  = ev.grade || ev.scores?.overall || '';
-                const rColor  = RATING_COLOR[rating] || '#185FA5';
-                const rLabel  = RATING_LABEL[rating] || rating;
-                return (
-                  <div key={ev._id} style={{
-                    border:'1px solid #E8E9EF', borderRadius:10, padding:'14px 16px',
-                    background: ev.isFinalized ? '#F0FDF4' : '#fff',
-                    borderLeft:`4px solid ${rColor}`
-                  }}>
-                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
-                      <div>
-                        <div style={{ fontSize:13, fontWeight:600, color:rColor }}>
-                          {rLabel || 'Evaluation'}
-                        </div>
-                        <div style={{ fontSize:12, color:'#8B8FA8', marginTop:3 }}>
-                          By {supName} · {fmt(ev.sentToTraineeAt || ev.createdAt)}
-                        </div>
-                        {ev.hospital?.name && (
-                          <div style={{ fontSize:12, color:'#8B8FA8' }}>🏥 {ev.hospital.name}</div>
-                        )}
-                      </div>
-                      {ev.totalScore !== undefined && ev.totalScore !== null && (
-                        <div style={{ textAlign:'right' }}>
-                          <div style={{ fontSize:22, fontWeight:700, color:'#1B1464', lineHeight:1 }}>
-                            {Math.round(ev.totalScore * 10) / 10}
-                          </div>
-                          <div style={{ fontSize:11, color:'#8B8FA8' }}>score</div>
-                        </div>
-                      )}
-                    </div>
-                    {(ev.comments || ev.notes) && (
-                      <div style={{ fontSize:13, color:'#4B5563', marginTop:8, padding:'8px 10px', background:'#F5F6FA', borderRadius:7, lineHeight:1.6 }}>
-                        {ev.comments || ev.notes}
-                      </div>
-                    )}
-                    {ev.evaluationType && (
-                      <div style={{ marginTop:8 }}>
-                        <span style={{ fontSize:10, background:'#E6F1FB', color:'#185FA5', borderRadius:4, padding:'1px 7px', fontWeight:700, textTransform:'uppercase' }}>
-                          {ev.evaluationType}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {evalList.map(ev => <EvalCard key={ev._id} ev={ev} />)}
             </div>
           </div>
         )}
