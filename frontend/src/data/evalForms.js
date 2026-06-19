@@ -5,16 +5,20 @@
 // calendar month. The definitions here drive both the supervisor entry screen
 // (SupervisorEvaluations) and the trainee results display (Grades).
 
-// The 1–5 + N/A rating scale shared by every competency domain.
+// The N/A + 6-stage rating scale shared by every competency domain.
 // `value` is what gets stored; numeric values feed the average score.
+// Scale: N/A, -2, 0, 4, 7, 10.
 export const SCORE_SCALE = [
-  { value: 'na', label: 'N/A',   short: 'N/A', color: '#b2bec3', bg: '#f0f2f3' },
-  { value: 1,    label: '1 · Unsatisfactory',       short: '1', color: '#FF4757', bg: '#fef0f0' },
-  { value: 2,    label: '2 · Needs Improvement',    short: '2', color: '#FF7F50', bg: '#fff3ee' },
-  { value: 3,    label: '3 · Meets Expectations',   short: '3', color: '#f39c12', bg: '#fff8e1' },
-  { value: 4,    label: '4 · Exceeds Expectations', short: '4', color: '#27ae60', bg: '#eafaf1' },
-  { value: 5,    label: '5 · Exceptional',          short: '5', color: '#00B894', bg: '#e8fdf3' },
+  { value: 'na', label: 'N/A',                       short: 'N/A', color: '#b2bec3', bg: '#f0f2f3' },
+  { value: -2,   label: '-2 · Unsatisfactory',       short: '-2',  color: '#FF4757', bg: '#fef0f0' },
+  { value: 0,    label: '0 · Needs Improvement',     short: '0',   color: '#FF7F50', bg: '#fff3ee' },
+  { value: 4,    label: '4 · Meets Expectations',    short: '4',   color: '#f39c12', bg: '#fff8e1' },
+  { value: 7,    label: '7 · Exceeds Expectations',  short: '7',   color: '#27ae60', bg: '#eafaf1' },
+  { value: 10,   label: '10 · Exceptional',          short: '10',  color: '#00B894', bg: '#e8fdf3' },
 ];
+
+// Highest attainable per-domain score, used for printed grade output.
+export const MAX_SCORE = 10;
 
 export function scoreMeta(value) {
   return SCORE_SCALE.find(s => String(s.value) === String(value)) || null;

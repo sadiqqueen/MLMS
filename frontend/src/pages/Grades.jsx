@@ -9,6 +9,7 @@ import api    from '../api/axios';
 import Navbar from '../components/Navbar';
 import Sk     from '../components/Skeleton';
 import { getForm, scoreMeta } from '../data/evalForms';
+import { printEvaluation } from '../utils/printEvaluation';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -51,7 +52,7 @@ const RATING_COLOR = { na:'#b2bec3', below:'#FF4757', meets:'#f39c12', above:'#0
 
 // One supervisor evaluation (Mini-CEX / CbD / DOPS) — expandable to show the
 // per-competency scores and structured feedback captured by the supervisor.
-function EvalCard({ ev }) {
+function EvalCard({ ev, traineeName }) {
   const [open, setOpen] = useState(false);
 
   const supName  = ev.supervisorId?.name || ev.doctor?.name || 'Supervisor';
@@ -101,7 +102,7 @@ function EvalCard({ ev }) {
             <div style={{ fontSize:22, fontWeight:700, color:'#1B1464', lineHeight:1 }}>
               {Math.round(ev.totalScore * 10) / 10}
             </div>
-            <div style={{ fontSize:11, color:'#8B8FA8' }}>avg / 5</div>
+            <div style={{ fontSize:11, color:'#8B8FA8' }}>avg / 10</div>
           </div>
         )}
       </div>
@@ -147,17 +148,29 @@ function EvalCard({ ev }) {
         </div>
       )}
 
-      {hasDetail && (
+      <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:16 }}>
+        {hasDetail && (
+          <button
+            onClick={() => setOpen(o => !o)}
+            style={{
+              padding:0, background:'none', border:'none',
+              color:accent, fontSize:12, fontWeight:600, cursor:'pointer'
+            }}
+          >
+            {open ? 'Hide details ▲' : 'View full assessment ▼'}
+          </button>
+        )}
         <button
-          onClick={() => setOpen(o => !o)}
+          onClick={() => printEvaluation(ev, { traineeName })}
+          title="Print evaluation form"
           style={{
-            marginTop:10, padding:0, background:'none', border:'none',
-            color:accent, fontSize:12, fontWeight:600, cursor:'pointer'
+            padding:0, background:'none', border:'none',
+            color:'#4B5563', fontSize:12, fontWeight:600, cursor:'pointer'
           }}
         >
-          {open ? 'Hide details ▲' : 'View full assessment ▼'}
+          🖨 Print
         </button>
-      )}
+      </div>
     </div>
   );
 }
@@ -289,7 +302,7 @@ export default function Grades() {
               <span className="badge badge-blue" style={{ marginLeft:8 }}>{evalList.length}</span>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              {evalList.map(ev => <EvalCard key={ev._id} ev={ev} />)}
+              {evalList.map(ev => <EvalCard key={ev._id} ev={ev} traineeName={user?.name} />)}
             </div>
           </div>
         )}

@@ -5,6 +5,7 @@ import Toast        from '../components/Toast';
 import api          from '../api/axios';
 import Sk           from '../components/Skeleton';
 import { EVAL_FORMS, FORM_TYPES, getForm, SCORE_SCALE } from '../data/evalForms';
+import { printEvaluation } from '../utils/printEvaluation';
 
 const MONTHLY_CAP = FORM_TYPES.length; // one of each form per trainee per month
 const MONTH_LABEL = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -12,6 +13,10 @@ const MONTH_LABEL = new Date().toLocaleDateString('en-US', { month: 'long', year
 const LABEL_STYLE = {
   display:'block', fontSize:12, fontWeight:600, color:'#4B5563',
   marginBottom:6, textTransform:'uppercase', letterSpacing:'0.04em'
+};
+
+const gridCell = {
+  border:'1px solid #C7CDD6', padding:'7px 8px', textAlign:'center', verticalAlign:'middle'
 };
 
 function isThisMonth(dateStr) {
@@ -115,6 +120,21 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
     });
   }
 
+  // All domains rated and an overall rating chosen → ready to print/submit.
+  const isComplete = form.domains.every(d => domains[d.key] !== undefined && domains[d.key] !== '') && !!overall;
+
+  function handlePrint() {
+    printEvaluation(
+      {
+        evaluationType: form.type,
+        grade: overall,
+        date: new Date(),
+        formData: { header, domains, times, supervisionLevel: supervision, globalRating: overall, feedback },
+      },
+      { traineeName: trainee?.name, assessorName }
+    );
+  }
+
   const fieldBox = {
     width:'100%', padding:'8px 10px', border:'1.5px solid #E8E9EF', borderRadius:8,
     fontSize:13, color:'#1B1464', background:'#fff', fontFamily:'inherit'
@@ -166,36 +186,53 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
         ))}
       </div>
 
-      {/* Competency domains */}
-      <SectionTitle>Competencies — rate each (N/A · 1–5)</SectionTitle>
-      <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:20 }}>
-        {form.domains.map(d => (
-          <div key={d.key} style={{ border:'1px solid #E8E9EF', borderRadius:10, padding:'10px 12px' }}>
-            <div style={{ fontSize:13, fontWeight:600, color:'#1B1464' }}>{d.label}</div>
-            {d.hint && <div style={{ fontSize:11, color:'#8B8FA8', marginTop:2 }}>{d.hint}</div>}
-            <div style={{ display:'flex', gap:6, marginTop:8, flexWrap:'wrap' }}>
-              {SCORE_SCALE.map(s => {
-                const active = String(domains[d.key]) === String(s.value);
-                return (
-                  <button
-                    key={s.value} type="button"
-                    title={s.label}
-                    onClick={() => rateDomain(d.key, s.value)}
-                    style={{
-                      minWidth:38, padding:'6px 10px', borderRadius:7, fontSize:12, fontWeight:700,
-                      cursor:'pointer', transition:'all .12s',
-                      border: active ? `2px solid ${s.color}` : '1.5px solid #E8E9EF',
-                      background: active ? s.bg : '#fff',
-                      color: active ? s.color : '#6B7280',
-                    }}
-                  >
-                    {s.short}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+      {/* Competency domains — docx-style rating grid */}
+      <SectionTitle>Competency Ratings</SectionTitle>
+      <div style={{ overflowX:'auto', marginBottom:8 }}>
+        <table style={{ borderCollapse:'collapse', width:'100%', fontSize:12 }}>
+          <thead>
+            <tr>
+              <th style={{ ...gridCell, background:'#1A3A5C', color:'#fff', textAlign:'left', minWidth:180 }}>
+                Competency / Domain
+              </th>
+              {SCORE_SCALE.map(s => (
+                <th key={s.value} style={{ ...gridCell, background:'#1A3A5C', color:'#fff', width:46 }}>
+                  {s.short}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {form.domains.map(d => (
+              <tr key={d.key}>
+                <td style={{ ...gridCell, textAlign:'left' }}>
+                  <div style={{ fontWeight:600, color:'#1B1464' }}>{d.label}</div>
+                  {d.hint && <div style={{ fontSize:10.5, color:'#8B8FA8', marginTop:2 }}>{d.hint}</div>}
+                </td>
+                {SCORE_SCALE.map(s => {
+                  const active = String(domains[d.key]) === String(s.value);
+                  return (
+                    <td
+                      key={s.value}
+                      onClick={() => rateDomain(d.key, s.value)}
+                      title={s.label}
+                      style={{
+                        ...gridCell, cursor:'pointer', fontSize:16, fontWeight:700,
+                        background: active ? s.bg : '#fff',
+                        color: active ? s.color : '#C4C9D4',
+                      }}
+                    >
+                      {active ? '☑' : '☐'}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ fontSize:10.5, color:'#8B8FA8', marginBottom:20 }}>
+        Scale: {SCORE_SCALE.map(s => s.label).join('  ·  ')}
       </div>
 
       {/* DOPS supervision level */}
@@ -300,6 +337,19 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
           }}
         >
           Back
+        </button>
+        <button
+          type="button" onClick={handlePrint} disabled={!isComplete}
+          title={isComplete ? 'Print this evaluation form' : 'Complete all ratings to print'}
+          style={{
+            padding:'9px 18px', borderRadius:8, background:'#fff',
+            color: isComplete ? '#1B1464' : '#B6BACB',
+            border:`1.5px solid ${isComplete ? '#1B1464' : '#E8E9EF'}`,
+            fontWeight:600, fontSize:13,
+            cursor: isComplete ? 'pointer' : 'not-allowed'
+          }}
+        >
+          🖨 Print
         </button>
         <button
           type="submit" disabled={submitting}
@@ -554,6 +604,18 @@ function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalize
                             {noteText ? ` · ${noteText.replace(/\n/g, ' · ').slice(0, 60)}${noteText.length > 60 ? '…' : ''}` : ''}
                           </div>
                         </div>
+                        <button
+                          onClick={() => printEvaluation(ev, { traineeName: trainee?.name, assessorName })}
+                          title="Print evaluation form"
+                          style={{
+                            padding:'6px 12px', borderRadius:8,
+                            background:'#fff', color:'#1B1464',
+                            border:'1.5px solid #E8E9EF', fontSize:12, fontWeight:600,
+                            cursor:'pointer', flexShrink:0
+                          }}
+                        >
+                          🖨 Print
+                        </button>
                         {!isReadOnly && !ev?.isFinalized && (
                           <button
                             onClick={() => handleFinalize(ev?._id)}
