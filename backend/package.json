@@ -6,11 +6,9 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "seed": "node seed.js",
     "seed:specialties": "node seeds/specialties.seed.js",
     "seed:superadmin": "node seeds/superadmin.seed.js",
     "seed:all": "npm run seed:specialties && npm run seed:superadmin",
-    "seed:demo": "node seeds/demo_full.seed.js",
     "migrate:legacy-roles": "node migrations/migrateLegacyRoles.js",
     "security-events": "node scripts/showSecurityEvents.js"
   },
