@@ -404,18 +404,37 @@ function ConfirmReactivate({ name, onConfirm, onCancel }) {
 }
 
 // ── Confirm Permanent Delete (strong) ──────────────────────────────────────
-function ConfirmPermanentDelete({ name, onConfirm, onCancel }) {
+function ConfirmPermanentDelete({ user, supervisors = [], onConfirm, onCancel }) {
+  const [reassignTo, setReassignTo] = useState('');
+  const isSupervisor = user?.role === 'supervisor';
   return (
     <div className="confirm-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
       <div className="confirm-box" style={{ borderTop: '4px solid #B91C1C' }}>
         <h3 style={{ color: '#991B1B' }}>Permanently Delete User</h3>
         <p>
-          This will <strong>permanently remove</strong> <strong>{name}</strong> and cannot be undone.
+          This will <strong>permanently remove</strong> <strong>{user?.name}</strong> and cannot be undone.
         </p>
+        {isSupervisor && (
+          <div style={{ margin: '14px 0', textAlign: 'left' }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+              Move this supervisor&apos;s trainees to:
+            </label>
+            <select
+              value={reassignTo}
+              onChange={e => setReassignTo(e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 14 }}
+            >
+              <option value="">— Don&apos;t move (delete their rotations) —</option>
+              {supervisors.map(s => (
+                <option key={s._id} value={s._id}>{s.name}{s.email ? ` — ${s.email}` : ''}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="confirm-btns">
           <button className="btn-outline" onClick={onCancel}>Cancel</button>
           <button
-            onClick={onConfirm}
+            onClick={() => onConfirm(reassignTo || null)}
             style={{ background: '#B91C1C', color: '#fff', border: 'none', fontWeight: 600, padding: '8px 16px', borderRadius: 8, cursor: 'pointer' }}
           >
             Delete permanently
@@ -529,11 +548,11 @@ export default function Users() {
     finally  { setReactUser(null); }
   }
 
-  async function confirmPermanentDelete() {
+  async function confirmPermanentDelete(reassignTo) {
     try {
-      await api.delete(`/api/admin/users/${purgeUser._id}/permanent`);
+      await api.delete(`/api/admin/users/${purgeUser._id}/permanent`, reassignTo ? { data: { reassignTo } } : undefined);
       setUsers(prev => prev.filter(u => u._id !== purgeUser._id));
-      showToast('User permanently deleted');
+      showToast(reassignTo ? 'User deleted, trainees reassigned' : 'User permanently deleted');
     } catch (err) {
       const msg = err.response?.data?.message || 'Permanent delete failed';
       const blockers = err.response?.data?.blockers;
@@ -807,7 +826,8 @@ export default function Users() {
       )}
       {purgeUser && (
         <ConfirmPermanentDelete
-          name={purgeUser.name}
+          user={purgeUser}
+          supervisors={users.filter(u => u.role === 'supervisor' && u.isActive !== false && u._id !== purgeUser._id)}
           onConfirm={confirmPermanentDelete}
           onCancel={() => setPurgeUser(null)}
         />

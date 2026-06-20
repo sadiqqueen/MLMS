@@ -217,37 +217,79 @@ router.delete('/users/:id/permanent',
         if (count <= 1) return res.status(409).json({ message: 'Cannot delete the last super_admin' });
       }
 
-      // Cascade policy (product decision): permanently deleting a user also removes
-      // their SCHEDULING data — rotations and distributions ("durations") — plus
-      // notifications, but PRESERVES academic/medical records (evaluations, reports,
-      // certificates, consultant memos) as historical tombstones. Org-structure
-      // references are detached so no dangling user id is left behind.
+      // Cascade policy: deleting a user removes their scheduling data (rotations +
+      // distributions/"durations") and notifications, and PRESERVES academic records
+      // (evaluations, reports, certificates, memos). Optionally, a replacement
+      // supervisor (reassignTo) can take over this user's trainees instead of those
+      // rotations being lost. Org-structure refs are replaced/detached so nothing dangles.
       const userId = req.params.id;
+      const { reassignTo } = req.body || {};
 
-      const [delRotations, delDistributions, delNotif] = await Promise.all([
-        Rotation.deleteMany({ $or: [
-          { traineeId: userId }, { supervisorId: userId }, { student: userId }, { doctor: userId }
-        ] }),
-        Distribution.deleteMany({ $or: [
-          { traineeId: userId }, { supervisorId: userId }, { createdBy: userId },
-          { student: userId }, { doctor: userId }
-        ] }),
-        Notification.deleteMany({ user: userId })
-      ]);
+      let reassignedRotations = 0;
+      let reassignedDistributions = 0;
+      let deletedRotations = 0;
+      let deletedDistributions = 0;
 
-      // Detach from org-structure references (hospital roster/leadership, specialty secretary).
+      if (reassignTo) {
+        const newSup = await User.findById(reassignTo);
+        if (!newSup || newSup.isActive === false || String(newSup._id) === String(userId)) {
+          return res.status(400).json({ message: 'Invalid replacement supervisor selected' });
+        }
+        // Move this user's supervised rotations/distributions to the replacement (keep trainee records).
+        const [r1, r2, d1, d2] = await Promise.all([
+          Rotation.updateMany({ supervisorId: userId },     { $set: { supervisorId: reassignTo } }),
+          Rotation.updateMany({ doctor: userId },           { $set: { doctor: reassignTo } }),
+          Distribution.updateMany({ supervisorId: userId }, { $set: { supervisorId: reassignTo } }),
+          Distribution.updateMany({ doctor: userId },       { $set: { doctor: reassignTo } })
+        ]);
+        reassignedRotations = (r1.modifiedCount || 0) + (r2.modifiedCount || 0);
+        reassignedDistributions = (d1.modifiedCount || 0) + (d2.modifiedCount || 0);
+        // Delete only records the user owned as a trainee (none for a supervisor).
+        const [dr, dd] = await Promise.all([
+          Rotation.deleteMany({ $or: [{ traineeId: userId }, { student: userId }] }),
+          Distribution.deleteMany({ $or: [{ traineeId: userId }, { student: userId }] })
+        ]);
+        deletedRotations = dr.deletedCount;
+        deletedDistributions = dd.deletedCount;
+        // Replace this user in hospital rosters / assigned-doctor with the replacement.
+        await Promise.all([
+          Hospital.updateMany({ supervisors: userId },    { $set: { 'supervisors.$': reassignTo } }),
+          Hospital.updateMany({ assignedDoctor: userId }, { $set: { assignedDoctor: reassignTo } })
+        ]);
+      } else {
+        // No replacement chosen: delete this user's rotations + distributions outright.
+        const [dr, dd] = await Promise.all([
+          Rotation.deleteMany({ $or: [
+            { traineeId: userId }, { supervisorId: userId }, { student: userId }, { doctor: userId }
+          ] }),
+          Distribution.deleteMany({ $or: [
+            { traineeId: userId }, { supervisorId: userId }, { createdBy: userId },
+            { student: userId }, { doctor: userId }
+          ] })
+        ]);
+        deletedRotations = dr.deletedCount;
+        deletedDistributions = dd.deletedCount;
+        // Detach this user from hospital supervisor slots.
+        await Promise.all([
+          Hospital.updateMany({ supervisors: userId },    { $pull: { supervisors: userId } }),
+          Hospital.updateMany({ assignedDoctor: userId }, { $set:  { assignedDoctor: null } })
+        ]);
+      }
+
+      // Always: remove notifications and detach leadership / specialty-secretary references.
+      const delNotif = await Notification.deleteMany({ user: userId });
       await Promise.all([
-        Hospital.updateMany({ supervisors: userId },     { $pull: { supervisors: userId } }),
-        Hospital.updateMany({ assignedDoctor: userId },  { $set:  { assignedDoctor: null } }),
-        Hospital.updateMany({ dioId: userId },           { $set:  { dioId: null } }),
-        Hospital.updateMany({ presidentId: userId },     { $set:  { presidentId: null } }),
-        Hospital.updateMany({ programDirector: userId }, { $set:  { programDirector: null } }),
-        Specialty.updateMany({ secretaryId: userId },    { $set:  { secretaryId: null } })
+        Hospital.updateMany({ dioId: userId },           { $set: { dioId: null } }),
+        Hospital.updateMany({ presidentId: userId },     { $set: { presidentId: null } }),
+        Hospital.updateMany({ programDirector: userId }, { $set: { programDirector: null } }),
+        Specialty.updateMany({ secretaryId: userId },    { $set: { secretaryId: null } })
       ]);
 
       const deletedCounts = {
-        rotations: delRotations.deletedCount,
-        distributions: delDistributions.deletedCount,
+        rotations: deletedRotations,
+        distributions: deletedDistributions,
+        reassignedRotations,
+        reassignedDistributions,
         notifications: delNotif.deletedCount
       };
 
