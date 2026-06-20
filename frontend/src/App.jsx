@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { PrefsProvider } from './context/PrefsContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import Reports from './pages/Reports';
@@ -75,6 +76,7 @@ function RootRedirect() {
 export default function App() {
   return (
     <AuthProvider>
+      <PrefsProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<RootRedirect />} />
@@ -299,6 +301,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+      </PrefsProvider>
     </AuthProvider>
   );
 }

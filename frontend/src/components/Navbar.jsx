@@ -1,35 +1,40 @@
 import { useState, useEffect, useCallback } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { usePrefs } from '../context/PrefsContext';
+import { IconSun, IconMoon } from './icons';
 import api from '../api/axios';
 import NotificationPanel from './NotificationPanel';
 import ProfileDropdown from './ProfileDropdown';
 import { APP_NAV_LABEL } from './memo/MemoPrefs';
 
+// Each link carries a stable `key` so the visible label resolves through the
+// shared dictionary as t("nav.<role>.<key>"). Routes/paths stay unchanged.
+// ASG.1 / ASG.2 keep a dynamic consultant-memo label (no key → handled below).
 const ROLE_LINKS = {
   super_admin: [
-    { to: '/admin/dashboard',    label: 'Dashboard'    },
-    { to: '/admin/users',        label: 'Users'        },
-    { to: '/admin/hospitals',    label: 'Hospitals'    },
-    { to: '/admin/specialties',  label: 'Specialties'  },
-    { to: '/admin/certificates', label: 'Certificates' },
-    { to: '/admin/audit-log',    label: 'Audit Log'    },
+    { to: '/admin/dashboard',    key: 'dashboard',    label: 'Dashboard'    },
+    { to: '/admin/users',        key: 'users',        label: 'Users'        },
+    { to: '/admin/hospitals',    key: 'hospitals',    label: 'Hospitals'    },
+    { to: '/admin/specialties',  key: 'specialties',  label: 'Specialties'  },
+    { to: '/admin/certificates', key: 'certificates', label: 'Certificates' },
+    { to: '/admin/audit-log',    key: 'audit_log',    label: 'Audit Log'    },
   ],
   secretary: [
-    { to: '/secretary/trainees',          label: 'Trainees'         },
-    { to: '/secretary/supervisors',       label: 'Supervisors'      },
-    { to: '/secretary/program-directors', label: 'Program Directors'},
-    { to: '/secretary/hospitals',         label: 'Hospitals'        },
+    { to: '/secretary/trainees',          key: 'trainees',          label: 'Trainees'         },
+    { to: '/secretary/supervisors',       key: 'supervisors',       label: 'Supervisors'      },
+    { to: '/secretary/program-directors', key: 'program_directors', label: 'Program Directors'},
+    { to: '/secretary/hospitals',         key: 'hospitals',         label: 'Hospitals'        },
   ],
   dio: [
-    { to: '/dio/dashboard',         label: 'Dashboard'     },
-    { to: '/dio/trainees',          label: 'Trainees'      },
-    { to: '/dio/supervisors',       label: 'Supervisors'   },
-    { to: '/dio/program-directors', label: 'Prog.Directors'},
-    { to: '/dio/secretaries',       label: 'Secretaries'   },
-    { to: '/dio/distributions',     label: 'Sup.Dist.'    },
-    { to: '/dio/rotations',         label: 'Rotations'    },
-    { to: '/dio/certificates',      label: 'Certificates'  },
+    { to: '/dio/dashboard',         key: 'dashboard',         label: 'Dashboard'     },
+    { to: '/dio/trainees',          key: 'trainees',          label: 'Trainees'      },
+    { to: '/dio/supervisors',       key: 'supervisors',       label: 'Supervisors'   },
+    { to: '/dio/program-directors', key: 'program_directors', label: 'Prog.Directors'},
+    { to: '/dio/secretaries',       key: 'secretaries',       label: 'Secretaries'   },
+    { to: '/dio/distributions',     key: 'distributions',     label: 'Sup.Dist.'    },
+    { to: '/dio/rotations',         key: 'rotations',         label: 'Rotations'    },
+    { to: '/dio/certificates',      key: 'certificates',      label: 'Certificates'  },
   ],
   // ASG.1 / ASG.2 — consultant-memo is their only function
   asg1: [
@@ -39,28 +44,44 @@ const ROLE_LINKS = {
     { to: '/consultant-memo', label: 'مذكرة الاستشاري' },
   ],
   supervisor: [
-    { to: '/supervisor/trainees',    label: 'My Trainees' },
-    { to: '/supervisor/reports',     label: 'Reports'     },
-    { to: '/supervisor/evaluations', label: 'Evaluations' },
+    { to: '/supervisor/trainees',    key: 'trainees',    label: 'My Trainees' },
+    { to: '/supervisor/reports',     key: 'reports',     label: 'Reports'     },
+    { to: '/supervisor/evaluations', key: 'evaluations', label: 'Evaluations' },
   ],
   trainee: [
-    { to: '/timeline', label: 'Timeline' },
-    { to: '/reports',  label: 'Reports'  },
-    { to: '/grades',   label: 'Grades'   },
+    { to: '/timeline', key: 'timeline', label: 'Timeline' },
+    { to: '/reports',  key: 'reports',  label: 'Reports'  },
+    { to: '/grades',   key: 'grades',   label: 'Grades'   },
   ],
   president: [
-    { to: '/president/trainees',          label: 'Trainees'        },
-    { to: '/president/supervisors',       label: 'Supervisors'     },
-    { to: '/president/program-directors', label: 'Prog.Directors'  },
-    { to: '/president/dios',             label: 'DIOs'            },
-    { to: '/president/secretaries',       label: 'Secretaries'     },
-    { to: '/president/hospitals',         label: 'Hospitals'       },
+    { to: '/president/trainees',          key: 'trainees',          label: 'Trainees'        },
+    { to: '/president/supervisors',       key: 'supervisors',       label: 'Supervisors'     },
+    { to: '/president/program-directors', key: 'program_directors', label: 'Prog.Directors'  },
+    { to: '/president/dios',             key: 'dios',              label: 'DIOs'            },
+    { to: '/president/secretaries',       key: 'secretaries',       label: 'Secretaries'     },
+    { to: '/president/hospitals',         key: 'hospitals',         label: 'Hospitals'       },
   ],
   program_director: [
-    { to: '/program-director/trainees',    label: 'Trainees'   },
-    { to: '/program-director/supervisors', label: 'Supervisors'},
-    { to: '/program-director/reports',     label: 'Reports'    },
+    { to: '/program-director/trainees',    key: 'trainees',    label: 'Trainees'   },
+    { to: '/program-director/supervisors', key: 'supervisors', label: 'Supervisors'},
+    { to: '/program-director/reports',     key: 'reports',     label: 'Reports'    },
   ],
+};
+
+// Mirrors .bell-btn sizing so theme/lang toggles sit flush with bell + avatar.
+// Inherits navbar text color (currentColor) on both the white and navy navbars.
+const toggleBtnStyle = {
+  background: 'none',
+  border: 'none',
+  width: 34,
+  height: 34,
+  borderRadius: 8,
+  color: 'inherit',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  padding: 0,
 };
 
 const ROLE_HOME = {
@@ -77,6 +98,7 @@ const ROLE_HOME = {
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme, lang, toggleLang, t } = usePrefs();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -97,7 +119,12 @@ export default function Navbar() {
       window.removeEventListener('storage', sync);
     };
   }, []);
-  const linkLabel = l => l.to === '/consultant-memo' ? APP_NAV_LABEL[memoLang] : l.label;
+  // Consultant-memo keeps its own dynamic label (synced via cm-lang-changed);
+  // every other link resolves through the shared dictionary by its stable key.
+  const linkLabel = l =>
+    l.to === '/consultant-memo'
+      ? APP_NAV_LABEL[memoLang]
+      : (user && l.key ? t(`nav.${user.role}.${l.key}`) : l.label);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -165,8 +192,30 @@ export default function Navbar() {
         &#9776;
       </button>
 
-      {/* BELL + AVATAR */}
+      {/* TOGGLES + BELL + AVATAR */}
       <div className="nav-right">
+        <button
+          type="button"
+          className="nav-toggle-btn"
+          style={toggleBtnStyle}
+          onClick={toggleTheme}
+          aria-label={t(theme === 'dark' ? 'nav.toggle.theme.light' : 'nav.toggle.theme.dark')}
+          title={t(theme === 'dark' ? 'nav.toggle.theme.light' : 'nav.toggle.theme.dark')}
+        >
+          {theme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
+        </button>
+
+        <button
+          type="button"
+          className="nav-toggle-btn nav-toggle-lang"
+          style={{ ...toggleBtnStyle, fontSize: 12, fontWeight: 600 }}
+          onClick={toggleLang}
+          aria-label={t(lang === 'ar' ? 'nav.toggle.lang.en' : 'nav.toggle.lang.ar')}
+          title={t(lang === 'ar' ? 'nav.toggle.lang.en' : 'nav.toggle.lang.ar')}
+        >
+          {lang === 'ar' ? 'EN' : 'عربى'}
+        </button>
+
         <div className="bell-wrap">
           <button className="bell-btn" onClick={toggleNotif}>
             <span className="bell">&#128276;</span>

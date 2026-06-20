@@ -1,8 +1,13 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { usePrefs, fmtDate, fmtDateTime } from '../../context/PrefsContext';
 
-// Theme + language preferences for the Consultant Memo feature ONLY.
-// Persisted in localStorage; the main app Navbar listens for
-// 'cm-lang-changed' to flip its own "مذكرة الاستشاري" label.
+// Theme + language preferences for the Consultant Memo feature.
+// NOTE: state now lives in the GLOBAL PrefsContext. This module is a thin
+// compatibility shim so existing memo pages keep importing the same names
+// (MemoPrefsProvider / useMemoPrefs / fmtDate / fmtDateTime). The Navbar
+// still listens for 'cm-lang-changed' to flip its "مذكرة الاستشاري" label.
+
+// Re-exported from PrefsContext so there is a single source of truth.
+export { fmtDate, fmtDateTime };
 
 export const STRINGS = {
   ar: {
@@ -106,43 +111,14 @@ export const STRINGS = {
 
 export const APP_NAV_LABEL = { ar: 'مذكرة الاستشاري', en: 'Consultant Memo' };
 
-const MemoPrefsContext = createContext(null);
-
+// Inert pass-through: the real provider is the global <PrefsProvider> in App.jsx.
+// Kept so memo pages can still wrap with <MemoPrefsProvider> without remounting state.
 export function MemoPrefsProvider({ children }) {
-  const [theme, setTheme] = useState(() => localStorage.getItem('cm-theme') === 'dark' ? 'dark' : 'light');
-  const [lang, setLang]   = useState(() => localStorage.getItem('cm-lang') === 'en' ? 'en' : 'ar');
-
-  useEffect(() => { localStorage.setItem('cm-theme', theme); }, [theme]);
-  useEffect(() => {
-    localStorage.setItem('cm-lang', lang);
-    window.dispatchEvent(new CustomEvent('cm-lang-changed', { detail: lang }));
-  }, [lang]);
-
-  const t = useCallback(key => STRINGS[lang][key] ?? STRINGS.ar[key] ?? key, [lang]);
-
-  return (
-    <MemoPrefsContext.Provider value={{ theme, setTheme, lang, setLang, t, dir: lang === 'ar' ? 'rtl' : 'ltr' }}>
-      {children}
-    </MemoPrefsContext.Provider>
-  );
+  return children;
 }
 
-export const useMemoPrefs = () => useContext(MemoPrefsContext);
-
-// Shared date·time formatter (all-memos cards)
-export function fmtDateTime(value, lang) {
-  if (!value) return '—';
-  const d = new Date(value);
-  if (isNaN(d)) return '—';
-  const date = d.toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
-  const time = d.toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
-  return `${date} · ${time}`;
-}
-
-// Date-only formatter (form date rows, preview, and print)
-export function fmtDate(value, lang) {
-  if (!value) return '—';
-  const d = new Date(value);
-  if (isNaN(d)) return '—';
-  return d.toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
+// Delegates to the global prefs. Returns the same shape memo pages expect.
+export function useMemoPrefs() {
+  const { theme, setTheme, lang, setLang, t, dir } = usePrefs();
+  return { theme, setTheme, lang, setLang, t, dir };
 }
