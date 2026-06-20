@@ -13,12 +13,10 @@ const IconEdit = () => (
     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
   </svg>
 );
-const IconDelete = () => (
+const IconBan = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6"/>
-    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-    <path d="M10 11v6M14 11v6"/>
-    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
   </svg>
 );
 
@@ -26,11 +24,11 @@ function ConfirmDelete({ name, onConfirm, onCancel }) {
   return (
     <div className="confirm-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
       <div className="confirm-box">
-        <h3>Delete Program Director</h3>
-        <p>Are you sure you want to delete <strong>{name}</strong>?</p>
+        <h3>Deactivate Program Director</h3>
+        <p>Deactivate <strong>{name}</strong>? The account will no longer be able to sign in.</p>
         <div className="confirm-btns">
           <button className="btn-outline" onClick={onCancel}>Cancel</button>
-          <button className="btn-red" onClick={onConfirm}>Delete</button>
+          <button className="btn-red" onClick={onConfirm}>Deactivate</button>
         </div>
       </div>
     </div>
@@ -174,8 +172,8 @@ export default function SecretaryProgramDirectors() {
     try {
       await api.delete(`/api/users/${delPD._id}`);
       setPds(prev => prev.filter(p => p._id !== delPD._id));
-      showToast('Program Director removed');
-    } catch { showToast('Delete failed', 'error'); }
+      showToast('Program Director deactivated');
+    } catch { showToast('Deactivate failed', 'error'); }
     finally  { setDelPD(null); }
   }
 
@@ -277,7 +275,7 @@ export default function SecretaryProgramDirectors() {
                           <IconEdit />
                         </button>
                         <button className="btn-action delete" onClick={() => setDelPD(p)}>
-                          <IconDelete />
+                          <IconBan />
                         </button>
                       </div>
                     </td>
@@ -309,7 +307,7 @@ export default function SecretaryProgramDirectors() {
                   <div className="management-card-sub">{p.department || 'No department'} - {p.phone || 'No phone'}</div>
                   <div className="management-card-actions">
                     <button className="btn-action edit" title="Edit" aria-label={`Edit ${p.name}`} onClick={() => { setEditPD(p); setShowModal(true); }}><IconEdit /></button>
-                    <button className="btn-action delete" title="Delete" aria-label={`Delete ${p.name}`} onClick={() => setDelPD(p)}><IconDelete /></button>
+                    <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${p.name}`} onClick={() => setDelPD(p)}><IconBan /></button>
                   </div>
                 </div>
               ))}

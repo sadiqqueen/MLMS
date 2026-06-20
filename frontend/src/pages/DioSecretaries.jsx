@@ -20,13 +20,6 @@ const IconBan = () => (
     <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
   </svg>
 );
-const IconUserCheck = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-    <circle cx="8.5" cy="7" r="4"/>
-    <polyline points="17 11 19 13 23 9"/>
-  </svg>
-);
 
 function ConfirmModal({ title, message, confirmLabel, confirmClass, onConfirm, onCancel }) {
   useEffect(() => {
@@ -188,7 +181,6 @@ export default function DioSecretaries() {
   const [showModal,    setShowModal   ] = useState(false);
   const [editItem,     setEditItem    ] = useState(null);
   const [confirmDeact, setConfirmDeact] = useState(null);
-  const [confirmReact, setConfirmReact] = useState(null);
   const [toasts,       setToasts      ] = useState([]);
 
   function showToast(message, type = 'success') {
@@ -237,15 +229,6 @@ export default function DioSecretaries() {
       showToast(`${confirmDeact.name} deactivated`);
     } catch (err) { showToast(err.response?.data?.message || 'Deactivate failed', 'error'); }
     finally { setConfirmDeact(null); }
-  }
-
-  async function handleReactivate() {
-    try {
-      const res = await api.patch(`/api/dio/secretaries/${confirmReact._id}/reactivate`);
-      setSecretaries(prev => prev.map(s => s._id === confirmReact._id ? { ...s, ...(res.data?.data || res.data) } : s));
-      showToast(`${confirmReact.name} reactivated`);
-    } catch (err) { showToast(err.response?.data?.message || 'Reactivate failed', 'error'); }
-    finally { setConfirmReact(null); }
   }
 
   if (loading) return (
@@ -344,18 +327,13 @@ export default function DioSecretaries() {
                             onClick={() => { setEditItem(s); setShowModal(true); }}>
                             <IconPencil />
                           </button>
-                          {active
-                            ? <button className="btn-action delete"
-                                title="Deactivate" aria-label={`Deactivate ${s.name}`}
-                                onClick={() => setConfirmDeact(s)}>
-                                <IconBan />
-                              </button>
-                            : <button className="btn-action reactivate"
-                                title="Reactivate" aria-label={`Reactivate ${s.name}`}
-                                onClick={() => setConfirmReact(s)}>
-                                <IconUserCheck />
-                              </button>
-                          }
+                          {active && (
+                            <button className="btn-action delete"
+                              title="Deactivate" aria-label={`Deactivate ${s.name}`}
+                              onClick={() => setConfirmDeact(s)}>
+                              <IconBan />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -376,7 +354,7 @@ export default function DioSecretaries() {
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>{s.photoUrl ? <img src={`${API_BASE}${s.photoUrl}`} alt="" className="cell-photo" /> : <div className="cell-initials">{s.initials || s.name?.[0] || '?'}</div>}<div><div className="management-card-title">{s.name}</div><div className="management-card-sub">{s.email}</div></div></div>
                     <div className="management-card-meta"><span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background: specName === '-' ? '#F3F4F6' : '#EEEDFE', color: specName === '-' ? '#6B7280' : '#3C3489' }}>{specName}</span><span style={{ fontSize:11, fontWeight:600, padding:'3px 8px', borderRadius:20, background: active ? '#D1FAE5' : '#FEE2E2', color: active ? '#065F46' : '#991B1B' }}>{active ? 'Active' : 'Inactive'}</span></div>
                     <div className="management-card-sub">{hospital}</div>
-                    <div className="management-card-actions"><button className="btn-action edit" title="Edit" aria-label={`Edit ${s.name}`} onClick={() => { setEditItem(s); setShowModal(true); }}><IconPencil /></button>{active ? <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${s.name}`} onClick={() => setConfirmDeact(s)}><IconBan /></button> : <button className="btn-action reactivate" title="Reactivate" aria-label={`Reactivate ${s.name}`} onClick={() => setConfirmReact(s)}><IconUserCheck /></button>}</div>
+                    <div className="management-card-actions"><button className="btn-action edit" title="Edit" aria-label={`Edit ${s.name}`} onClick={() => { setEditItem(s); setShowModal(true); }}><IconPencil /></button>{active && <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${s.name}`} onClick={() => setConfirmDeact(s)}><IconBan /></button>}</div>
                   </div>
                 );
               })}
@@ -397,12 +375,6 @@ export default function DioSecretaries() {
           <ConfirmModal title="Deactivate Secretary"
             message={`Deactivate ${confirmDeact.name}?`}
             confirmLabel="Deactivate" onConfirm={handleDeactivate} onCancel={() => setConfirmDeact(null)} />
-        )}
-        {confirmReact && (
-          <ConfirmModal title="Reactivate Secretary"
-            message={`Restore access for ${confirmReact.name}?`}
-            confirmLabel="Reactivate" confirmClass="btn-purple"
-            onConfirm={handleReactivate} onCancel={() => setConfirmReact(null)} />
         )}
         <Toast toasts={toasts} />
       </main>

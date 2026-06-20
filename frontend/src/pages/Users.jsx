@@ -80,6 +80,18 @@ const IconUnlock = () => (
     <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
   </svg>
 );
+const IconBan = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+  </svg>
+);
+const IconUserCheck = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+    <circle cx="8.5" cy="7" r="4"/>
+    <polyline points="17 11 19 13 23 9"/>
+  </svg>
+);
 
 // ── User Modal ─────────────────────────────────────────────────────────────
 function UserModal({ editUser, hospitals, supervisors, specialties, onSave, onClose, saving }) {
@@ -375,6 +387,45 @@ function ConfirmDelete({ name, onConfirm, onCancel }) {
   );
 }
 
+// ── Confirm Reactivate ─────────────────────────────────────────────────────
+function ConfirmReactivate({ name, onConfirm, onCancel }) {
+  return (
+    <div className="confirm-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
+      <div className="confirm-box">
+        <h3>Reactivate User</h3>
+        <p>Restore access for <strong>{name}</strong>? The account will be active again.</p>
+        <div className="confirm-btns">
+          <button className="btn-outline" onClick={onCancel}>Cancel</button>
+          <button className="btn-purple"  onClick={onConfirm}>Reactivate</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Confirm Permanent Delete (strong) ──────────────────────────────────────
+function ConfirmPermanentDelete({ name, onConfirm, onCancel }) {
+  return (
+    <div className="confirm-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
+      <div className="confirm-box" style={{ borderTop: '4px solid #B91C1C' }}>
+        <h3 style={{ color: '#991B1B' }}>Permanently Delete User</h3>
+        <p>
+          This will <strong>permanently remove</strong> <strong>{name}</strong> and cannot be undone.
+        </p>
+        <div className="confirm-btns">
+          <button className="btn-outline" onClick={onCancel}>Cancel</button>
+          <button
+            onClick={onConfirm}
+            style={{ background: '#B91C1C', color: '#fff', border: 'none', fontWeight: 600, padding: '8px 16px', borderRadius: 8, cursor: 'pointer' }}
+          >
+            Delete permanently
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Users Page ────────────────────────────────────────────────────────
 export default function Users() {
   const { user: me } = useAuth();
@@ -396,6 +447,8 @@ export default function Users() {
   const [showPass,    setShowPass   ] = useState(false);
   const [passUserId,  setPassUserId ] = useState(null);
   const [deleteUser,  setDeleteUser ] = useState(null);
+  const [reactUser,   setReactUser  ] = useState(null);
+  const [purgeUser,   setPurgeUser  ] = useState(null);
 
   function showToast(message, type = 'success') {
     const id = Date.now();
@@ -460,10 +513,34 @@ export default function Users() {
   async function confirmDelete() {
     try {
       await api.delete(`/api/users/${deleteUser._id}`);
-      setUsers(prev => prev.filter(u => u._id !== deleteUser._id));
+      setUsers(prev => prev.map(u => u._id === deleteUser._id ? { ...u, isActive: false, deletedAt: new Date() } : u));
       showToast('User deactivated');
-    } catch { showToast('Deactivate failed', 'error'); }
+    } catch (err) { showToast(err.response?.data?.message || 'Deactivate failed', 'error'); }
     finally  { setDeleteUser(null); }
+  }
+
+  async function confirmReactivate() {
+    try {
+      const res = await api.patch(`/api/admin/users/${reactUser._id}/reactivate`);
+      const updated = res.data?.data || res.data;
+      setUsers(prev => prev.map(u => u._id === reactUser._id ? { ...u, ...updated } : u));
+      showToast('User reactivated');
+    } catch (err) { showToast(err.response?.data?.message || 'Reactivate failed', 'error'); }
+    finally  { setReactUser(null); }
+  }
+
+  async function confirmPermanentDelete() {
+    try {
+      await api.delete(`/api/admin/users/${purgeUser._id}/permanent`);
+      setUsers(prev => prev.filter(u => u._id !== purgeUser._id));
+      showToast('User permanently deleted');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Permanent delete failed';
+      const blockers = err.response?.data?.blockers;
+      const detail = blockers ? `${msg} (${Object.entries(blockers).map(([k, v]) => `${k}: ${v}`).join(', ')})` : msg;
+      showToast(detail, 'error');
+    }
+    finally  { setPurgeUser(null); }
   }
 
   function PhotoCell({ u }) {
@@ -563,15 +640,18 @@ export default function Users() {
                 <thead>
                   <tr>
                     <th>#</th><th>Name</th><th>Email</th><th>Photo</th>
-                    <th>Role</th><th>Phone</th><th>Actions</th>
+                    <th>Role</th><th>Phone</th><th>Status</th><th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {currentItems.length === 0 && (
-                    <tr><td colSpan={7} className="admin-empty">No users found</td></tr>
+                    <tr><td colSpan={8} className="admin-empty">No users found</td></tr>
                   )}
-                  {currentItems.map((u, i) => (
-                    <tr key={u._id}>
+                  {currentItems.map((u, i) => {
+                    const active = u.isActive !== false;
+                    const isSelf = u._id === me?._id;
+                    return (
+                    <tr key={u._id} style={{ opacity: active ? 1 : 0.65 }}>
                       <td style={{ color: '#aaa' }}>{(page - 1) * rows + i + 1}</td>
                       <td><strong>{u.name}</strong></td>
                       <td style={{ color: '#666' }}>{u.email}</td>
@@ -583,19 +663,40 @@ export default function Users() {
                       </td>
                       <td>{u.phone || '—'}</td>
                       <td>
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20,
+                          background: active ? '#D1FAE5' : '#FEE2E2',
+                          color:      active ? '#065F46' : '#991B1B' }}>
+                          {active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td>
                         <div className="action-btns">
                           <button className="btn-action edit"     title="Edit"            aria-label={`Edit ${u.name}`} onClick={() => { setEditUser(u); setShowModal(true); }}><IconEdit /></button>
                           <button className="btn-action password" title="Change password" aria-label={`Change password for ${u.name}`} onClick={() => { setPassUserId(u._id); setShowPass(true); }}><IconPassword /></button>
                           <button className="btn-action lock"     title={u.locked ? 'Unlock' : 'Lock'} aria-label={`${u.locked ? 'Unlock' : 'Lock'} ${u.name}`} onClick={() => handleLock(u)}>
                             {u.locked ? <IconUnlock /> : <IconLock />}
                           </button>
-                          {u._id !== me?._id && (
-                            <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${u.name}`} onClick={() => setDeleteUser(u)}><IconDelete /></button>
+                          {!isSelf && active && (
+                            <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${u.name}`} onClick={() => setDeleteUser(u)}><IconBan /></button>
+                          )}
+                          {!isSelf && !active && (
+                            <button className="btn-action reactivate" title="Reactivate" aria-label={`Reactivate ${u.name}`} onClick={() => setReactUser(u)}><IconUserCheck /></button>
+                          )}
+                          {!isSelf && (
+                            <button
+                              className="btn-action delete"
+                              title={active ? 'Deactivate first' : 'Delete permanently'}
+                              aria-label={`Permanently delete ${u.name}`}
+                              disabled={active}
+                              onClick={() => setPurgeUser(u)}
+                              style={{ background: active ? undefined : '#B91C1C', color: active ? undefined : '#fff', opacity: active ? 0.4 : 1, cursor: active ? 'not-allowed' : 'pointer' }}
+                            ><IconDelete /></button>
                           )}
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -607,8 +708,10 @@ export default function Users() {
               {currentItems.length === 0 && <div className="admin-empty">No users found</div>}
               {currentItems.map(u => {
                 const src = photoSrc(u.photoUrl);
+                const active = u.isActive !== false;
+                const isSelf = u._id === me?._id;
                 return (
-                  <div className="user-card" key={u._id}>
+                  <div className="user-card" key={u._id} style={{ opacity: active ? 1 : 0.65 }}>
                     {src
                       ? <img src={src} alt="" className="user-card-photo" />
                       : <div className="user-card-initials">{u.initials || u.name?.[0] || '?'}</div>
@@ -616,14 +719,34 @@ export default function Users() {
                     <div className="user-card-name">{u.name}</div>
                     <span className={ROLE_BADGE[u.role] || 'badge-role'}>{u.role ? roleLabel(u.role) : ''}</span>
                     <div className="user-card-sub">{u.city || '—'}</div>
+                    <div style={{ margin: '4px 0' }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20,
+                        background: active ? '#D1FAE5' : '#FEE2E2',
+                        color:      active ? '#065F46' : '#991B1B' }}>
+                        {active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
                     <div className="user-card-actions">
                       <button className="btn-action edit" title="Edit" aria-label={`Edit ${u.name}`} onClick={() => { setEditUser(u); setShowModal(true); }}><IconEdit /></button>
                       <button className="btn-action password" title="Change password" aria-label={`Change password for ${u.name}`} onClick={() => { setPassUserId(u._id); setShowPass(true); }}><IconPassword /></button>
                       <button className="btn-action lock" title={u.locked ? 'Unlock' : 'Lock'} aria-label={`${u.locked ? 'Unlock' : 'Lock'} ${u.name}`} onClick={() => handleLock(u)}>
                         {u.locked ? <IconUnlock /> : <IconLock />}
                       </button>
-                      {u._id !== me?._id && (
-                        <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${u.name}`} onClick={() => setDeleteUser(u)}><IconDelete /></button>
+                      {!isSelf && active && (
+                        <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${u.name}`} onClick={() => setDeleteUser(u)}><IconBan /></button>
+                      )}
+                      {!isSelf && !active && (
+                        <button className="btn-action reactivate" title="Reactivate" aria-label={`Reactivate ${u.name}`} onClick={() => setReactUser(u)}><IconUserCheck /></button>
+                      )}
+                      {!isSelf && (
+                        <button
+                          className="btn-action delete"
+                          title={active ? 'Deactivate first' : 'Delete permanently'}
+                          aria-label={`Permanently delete ${u.name}`}
+                          disabled={active}
+                          onClick={() => setPurgeUser(u)}
+                          style={{ background: active ? undefined : '#B91C1C', color: active ? undefined : '#fff', opacity: active ? 0.4 : 1, cursor: active ? 'not-allowed' : 'pointer' }}
+                        ><IconDelete /></button>
                       )}
                     </div>
                   </div>
@@ -673,6 +796,20 @@ export default function Users() {
           name={deleteUser.name}
           onConfirm={confirmDelete}
           onCancel={() => setDeleteUser(null)}
+        />
+      )}
+      {reactUser && (
+        <ConfirmReactivate
+          name={reactUser.name}
+          onConfirm={confirmReactivate}
+          onCancel={() => setReactUser(null)}
+        />
+      )}
+      {purgeUser && (
+        <ConfirmPermanentDelete
+          name={purgeUser.name}
+          onConfirm={confirmPermanentDelete}
+          onCancel={() => setPurgeUser(null)}
         />
       )}
 

@@ -6,6 +6,7 @@ const path           = require('path');
 const fs             = require('fs');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
+const auditLog       = require('../middleware/auditLogger');
 
 // Ensure photos upload folder exists
 const photosDir = path.join(__dirname, '../uploads/photos');
@@ -262,12 +263,16 @@ router.put('/:id/lock', auth, allowRoles(...WRITE_STAFF), async (req, res) => {
 });
 
 // DELETE /api/users/:id
-router.delete('/:id', auth, allowRoles(...WRITE_STAFF), async (req, res) => {
+router.delete('/:id', auth, allowRoles(...WRITE_STAFF), auditLog('deactivate_user', 'User'), async (req, res) => {
   try {
+    if (req.params.id === (req.user._id || req.user.id).toString()) {
+      return res.status(403).json({ message: 'You cannot deactivate your own account' });
+    }
+
     const target = await User.findById(req.params.id);
     if (!target || target.isActive === false) return res.status(404).json({ message: 'User not found' });
-    if (!hasHigherRole(req.user.role, target.role)) {
-      return res.status(403).json({ message: 'Insufficient permission to delete this user' });
+    if (target.role === 'super_admin' && req.user.role !== 'super_admin') {
+      return res.status(403).json({ message: 'Only a super_admin can deactivate a super_admin' });
     }
 
     const user = await User.findByIdAndUpdate(
@@ -276,6 +281,7 @@ router.delete('/:id', auth, allowRoles(...WRITE_STAFF), async (req, res) => {
       { new: true }
     ).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });
+    res.locals.targetId = req.params.id;
     res.json({ message: 'User deactivated', user });
   } catch (err) {
     res.status(500).json({ message: err.message });

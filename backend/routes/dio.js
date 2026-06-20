@@ -341,6 +341,9 @@ function registerManagedUserRoutes(routeName, role) {
   router.delete(`/${routeName}/:id`, auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
     try {
       if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid user id' });
+      if (req.params.id === (req.user._id || req.user.id).toString()) {
+        return res.status(403).json({ success: false, message: 'You cannot deactivate your own account' });
+      }
       const existing = await User.findById(req.params.id).select('role isActive');
       if (!existing || existing.role !== role || existing.isActive === false) {
         return res.status(404).json({ success: false, message: 'User not found' });
@@ -357,7 +360,7 @@ function registerManagedUserRoutes(routeName, role) {
     }
   });
 
-  router.patch(`/${routeName}/:id/reactivate`, auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+  router.patch(`/${routeName}/:id/reactivate`, auth, allowRoles('super_admin'), async (req, res) => {
     try {
       if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid user id' });
       const existing = await User.findById(req.params.id).select('role');

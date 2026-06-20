@@ -15,6 +15,10 @@ const Rotation       = require('../models/Rotation');
 const Certificate    = require('../models/Certificate');
 const AuditLog       = require('../models/AuditLog');
 const Specialty      = require('../models/Specialty');
+const Evaluation     = require('../models/Evaluation');
+const Report         = require('../models/Report');
+const ConsultantMemo = require('../models/ConsultantMemo');
+const Notification   = require('../models/Notification');
 
 const ADMIN = ['super_admin'];
 const USER_CREATE_FIELDS = ['name', 'email', 'password', 'role', 'phone', 'gender',
@@ -142,9 +146,23 @@ router.delete('/users/:id',
   auditLog('deactivate_user', 'User'),
   async (req, res) => {
     try {
+      const target = await User.findById(req.params.id);
+      if (!target) return res.status(404).json({ message: 'User not found' });
+
+      const callerId = String(req.user._id || req.user.id);
+      if (String(target._id) === callerId) {
+        return res.status(403).json({ message: 'You cannot deactivate your own account' });
+      }
+      if (target.role === 'super_admin') {
+        const activeSupers = await User.countDocuments({ role: 'super_admin', isActive: { $ne: false } });
+        if (activeSupers <= 1) {
+          return res.status(409).json({ message: 'Cannot deactivate the last super_admin' });
+        }
+      }
+
       const user = await User.findByIdAndUpdate(
         req.params.id,
-        { isActive: false },
+        { isActive: false, deletedAt: new Date() },
         { new: true }
       ).select('-password');
       if (!user) return res.status(404).json({ message: 'User not found' });
@@ -164,11 +182,122 @@ router.patch('/users/:id/reactivate',
     try {
       const user = await User.findByIdAndUpdate(
         req.params.id,
-        { isActive: true, loginAttempts: 0, lockUntil: null },
+        { isActive: true, deletedAt: null, loginAttempts: 0, lockUntil: null },
         { new: true }
       ).select('-password');
       if (!user) return res.status(404).json({ message: 'User not found' });
       res.json({ success: true, data: user });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+// DELETE /api/admin/users/:id/permanent — hard delete (super_admin ONLY)
+// The ONLY place in the codebase allowed to permanently remove a User.
+router.delete('/users/:id/permanent',
+  auth,
+  allowRoles(...ADMIN),
+  async (req, res) => {
+    try {
+      const target = await User.findById(req.params.id);
+      if (!target) return res.status(404).json({ message: 'User not found' });
+
+      if (target.isActive !== false) {
+        return res.status(409).json({ message: 'Account must be deactivated before permanent deletion' });
+      }
+
+      const callerId = String(req.user._id || req.user.id);
+      if (String(target._id) === callerId) {
+        return res.status(403).json({ message: 'You cannot delete your own account' });
+      }
+
+      if (target.role === 'super_admin') {
+        const count = await User.countDocuments({ role: 'super_admin' });
+        if (count <= 1) return res.status(409).json({ message: 'Cannot delete the last super_admin' });
+      }
+
+      // Block-if-referenced cascade check across all collections that ref this user.
+      const userId = req.params.id;
+      const [
+        evaluations,
+        reports,
+        certificates,
+        rotations,
+        distributions,
+        consultantMemos,
+        hospitals,
+        specialties
+      ] = await Promise.all([
+        Evaluation.countDocuments({ $or: [
+          { student: userId }, { doctor: userId }, { traineeId: userId },
+          { supervisorId: userId }, { evaluatorId: userId }, { createdBy: userId }
+        ] }),
+        Report.countDocuments({ $or: [
+          { student: userId }, { gradedBy: userId }, { reviewedBy: userId },
+          { 'gradeHistory.gradedBy': userId }, { 'gradeHistory.changedBy': userId }
+        ] }),
+        Certificate.countDocuments({ $or: [
+          { student: userId }, { doctor: userId }, { supervisor: userId },
+          { issuedBy: userId }, { traineeId: userId }
+        ] }),
+        Rotation.countDocuments({ $or: [
+          { traineeId: userId }, { supervisorId: userId }, { student: userId }, { doctor: userId }
+        ] }),
+        Distribution.countDocuments({ $or: [
+          { traineeId: userId }, { supervisorId: userId }, { createdBy: userId },
+          { student: userId }, { doctor: userId }
+        ] }),
+        ConsultantMemo.countDocuments({ $or: [ { createdBy: userId } ] }),
+        Hospital.countDocuments({ $or: [
+          { assignedDoctor: userId }, { dioId: userId }, { presidentId: userId },
+          { programDirector: userId }, { supervisors: userId }
+        ] }),
+        Specialty.countDocuments({ $or: [ { secretaryId: userId } ] })
+      ]);
+
+      const counts = {
+        Evaluation: evaluations,
+        Report: reports,
+        Certificate: certificates,
+        Rotation: rotations,
+        Distribution: distributions,
+        ConsultantMemo: consultantMemos,
+        Hospital: hospitals,
+        Specialty: specialties
+      };
+      const blockers = {};
+      Object.keys(counts).forEach(k => { if (counts[k] > 0) blockers[k] = counts[k]; });
+      if (Object.keys(blockers).length > 0) {
+        return res.status(409).json({
+          message: 'User is referenced by existing records and cannot be permanently deleted.',
+          blockers
+        });
+      }
+
+      const delNotif = await Notification.deleteMany({ user: req.params.id });
+
+      // Snapshot BEFORE deletion so the audit record survives the hard delete.
+      await AuditLog.create({
+        userId: req.user._id,
+        action: 'hard_delete_user',
+        targetId: req.params.id,
+        targetModel: 'User',
+        metadata: {
+          name: target.name,
+          email: target.email,
+          role: target.role,
+          deletedNotifications: delNotif.deletedCount
+        }
+      });
+
+      await User.findByIdAndDelete(req.params.id);
+
+      res.json({
+        success: true,
+        message: 'User permanently deleted',
+        data: { _id: req.params.id, deletedCounts: { notifications: delNotif.deletedCount } }
+      });
     } catch (err) {
       res.status(500).json({ message: err.message });
     }

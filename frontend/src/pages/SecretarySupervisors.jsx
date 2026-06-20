@@ -20,12 +20,10 @@ const IconEdit = () => (
     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
   </svg>
 );
-const IconDelete = () => (
+const IconBan = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6"/>
-    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-    <path d="M10 11v6M14 11v6"/>
-    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
   </svg>
 );
 
@@ -33,11 +31,11 @@ function ConfirmDelete({ name, onConfirm, onCancel }) {
   return (
     <div className="confirm-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
       <div className="confirm-box">
-        <h3>Delete Supervisor</h3>
-        <p>Are you sure you want to delete <strong>{name}</strong>?</p>
+        <h3>Deactivate Supervisor</h3>
+        <p>Deactivate <strong>{name}</strong>? The account will no longer be able to sign in.</p>
         <div className="confirm-btns">
           <button className="btn-outline" onClick={onCancel}>Cancel</button>
-          <button className="btn-red" onClick={onConfirm}>Delete</button>
+          <button className="btn-red" onClick={onConfirm}>Deactivate</button>
         </div>
       </div>
     </div>
@@ -203,8 +201,8 @@ export default function SecretarySupervisors() {
     try {
       await api.delete(`/api/users/${delSupervisor._id}`);
       setSupervisors(prev => prev.filter(s => s._id !== delSupervisor._id));
-      showToast('Supervisor removed');
-    } catch { showToast('Delete failed', 'error'); }
+      showToast('Supervisor deactivated');
+    } catch { showToast('Deactivate failed', 'error'); }
     finally  { setDelSupervisor(null); }
   }
 
@@ -314,7 +312,7 @@ export default function SecretarySupervisors() {
                           <IconEdit />
                         </button>
                         <button className="btn-action delete" onClick={() => setDelSupervisor(s)}>
-                          <IconDelete />
+                          <IconBan />
                         </button>
                       </div>
                     </td>
@@ -347,7 +345,7 @@ export default function SecretarySupervisors() {
                   <div className="management-card-sub">{s.department || 'No department'} - {s.phone || 'No phone'}</div>
                   <div className="management-card-actions">
                     <button className="btn-action edit" title="Edit" aria-label={`Edit ${s.name}`} onClick={() => { setEditSupervisor(s); setShowModal(true); }}><IconEdit /></button>
-                    <button className="btn-action delete" title="Delete" aria-label={`Delete ${s.name}`} onClick={() => setDelSupervisor(s)}><IconDelete /></button>
+                    <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${s.name}`} onClick={() => setDelSupervisor(s)}><IconBan /></button>
                   </div>
                 </div>
               ))}

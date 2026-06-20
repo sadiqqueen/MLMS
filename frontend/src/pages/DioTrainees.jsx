@@ -26,13 +26,6 @@ const IconBan = () => (
     <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
   </svg>
 );
-const IconUserCheck = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-    <circle cx="8.5" cy="7" r="4"/>
-    <polyline points="17 11 19 13 23 9"/>
-  </svg>
-);
 
 // ── helpers ───────────────────────────────────────────────────────────────
 function getSpecialty(t) {
@@ -252,7 +245,6 @@ export default function DioTrainees() {
   const [showModal,     setShowModal    ] = useState(false);
   const [editTrainee,   setEditTrainee  ] = useState(null);
   const [confirmDeact,  setConfirmDeact ] = useState(null);   // user obj
-  const [confirmReact,  setConfirmReact ] = useState(null);   // user obj
   const [toasts,        setToasts       ] = useState([]);
 
   function showToast(message, type = 'success') {
@@ -326,19 +318,6 @@ export default function DioTrainees() {
       showToast(err.response?.data?.message || 'Deactivate failed', 'error');
     } finally {
       setConfirmDeact(null);
-    }
-  }
-
-  async function handleReactivate() {
-    try {
-      const res = await api.patch(`/api/dio/trainees/${confirmReact._id}/reactivate`);
-      const updated = res.data?.data || res.data;
-      setTrainees(prev => prev.map(t => t._id === confirmReact._id ? { ...t, ...updated } : t));
-      showToast(`${confirmReact.name} reactivated`);
-    } catch (err) {
-      showToast(err.response?.data?.message || 'Reactivate failed', 'error');
-    } finally {
-      setConfirmReact(null);
     }
   }
 
@@ -460,18 +439,13 @@ export default function DioTrainees() {
                             onClick={() => openEdit(t)}>
                             <IconPencil />
                           </button>
-                          {active
-                            ? <button className="btn-action delete"
-                                title="Deactivate" aria-label={`Deactivate ${t.name}`}
-                                onClick={() => setConfirmDeact(t)}>
-                                <IconBan />
-                              </button>
-                            : <button className="btn-action reactivate"
-                                title="Reactivate" aria-label={`Reactivate ${t.name}`}
-                                onClick={() => setConfirmReact(t)}>
-                                <IconUserCheck />
-                              </button>
-                          }
+                          {active && (
+                            <button className="btn-action delete"
+                              title="Deactivate" aria-label={`Deactivate ${t.name}`}
+                              onClick={() => setConfirmDeact(t)}>
+                              <IconBan />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -510,10 +484,7 @@ export default function DioTrainees() {
                     <div className="management-card-actions">
                       <button className="btn-action view" title="View details" aria-label={`View details for ${t.name}`} onClick={() => navigate(`/dio/trainees/${t._id}`)}><IconEye /></button>
                       <button className="btn-action edit" title="Edit" aria-label={`Edit ${t.name}`} onClick={() => openEdit(t)}><IconPencil /></button>
-                      {active
-                        ? <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${t.name}`} onClick={() => setConfirmDeact(t)}><IconBan /></button>
-                        : <button className="btn-action reactivate" title="Reactivate" aria-label={`Reactivate ${t.name}`} onClick={() => setConfirmReact(t)}><IconUserCheck /></button>
-                      }
+                      {active && <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${t.name}`} onClick={() => setConfirmDeact(t)}><IconBan /></button>}
                     </div>
                   </div>
                 );
@@ -540,17 +511,6 @@ export default function DioTrainees() {
             confirmLabel="Deactivate"
             onConfirm={handleDeactivate}
             onCancel={() => setConfirmDeact(null)}
-          />
-        )}
-
-        {confirmReact && (
-          <ConfirmModal
-            title="Reactivate Trainee"
-            message={`Reactivate ${confirmReact.name} and restore their portal access?`}
-            confirmLabel="Reactivate"
-            confirmClass="btn-purple"
-            onConfirm={handleReactivate}
-            onCancel={() => setConfirmReact(null)}
           />
         )}
 
