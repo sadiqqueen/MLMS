@@ -68,22 +68,6 @@ const ROLE_LINKS = {
   ],
 };
 
-// Mirrors .bell-btn sizing so theme/lang toggles sit flush with bell + avatar.
-// Inherits navbar text color (currentColor) on both the white and navy navbars.
-const toggleBtnStyle = {
-  background: 'none',
-  border: 'none',
-  width: 34,
-  height: 34,
-  borderRadius: 8,
-  color: 'inherit',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  cursor: 'pointer',
-  padding: 0,
-};
-
 const ROLE_HOME = {
   super_admin:      '/admin/dashboard',
   secretary:        '/secretary/trainees',
@@ -159,7 +143,9 @@ export default function Navbar() {
   const links = user ? (ROLE_LINKS[user.role] || []) : [];
 
   return (
-    <nav className={navbarClass}>
+    // dir="ltr" keeps the navbar layout fixed in both languages — only its text
+    // translates; the logo, links, toggles, bell and avatar never switch sides.
+    <nav className={navbarClass} dir="ltr">
 
       {/* LOGO — MTMS logo temporarily removed; the area still navigates home */}
       <div
@@ -197,7 +183,6 @@ export default function Navbar() {
         <button
           type="button"
           className="nav-toggle-btn"
-          style={toggleBtnStyle}
           onClick={toggleTheme}
           aria-label={t(theme === 'dark' ? 'nav.toggle.theme.light' : 'nav.toggle.theme.dark')}
           title={t(theme === 'dark' ? 'nav.toggle.theme.light' : 'nav.toggle.theme.dark')}
@@ -208,7 +193,6 @@ export default function Navbar() {
         <button
           type="button"
           className="nav-toggle-btn nav-toggle-lang"
-          style={{ ...toggleBtnStyle, fontSize: 12, fontWeight: 600 }}
           onClick={toggleLang}
           aria-label={t(lang === 'ar' ? 'nav.toggle.lang.en' : 'nav.toggle.lang.ar')}
           title={t(lang === 'ar' ? 'nav.toggle.lang.en' : 'nav.toggle.lang.ar')}

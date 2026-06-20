@@ -141,8 +141,9 @@ a      { text-decoration: none; }
 .nav-right { display: flex; align-items: center; gap: 10px; }
 
 .bell-wrap { position: relative; }
-.bell-btn  { background: none; border: none; width: 34px; height: 34px; border-radius: 8px; color: rgba(255,255,255,0.8); font-size: 17px; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
-.bell-btn:hover { background: rgba(255,255,255,0.1); }
+.bell-btn, .nav-toggle-btn  { background: none; border: none; width: 34px; height: 34px; border-radius: 8px; color: rgba(255,255,255,0.8); font-size: 17px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.15s; }
+.bell-btn:hover, .nav-toggle-btn:hover { background: rgba(255,255,255,0.1); }
+.nav-toggle-lang { font-size: 13px; font-weight: 600; }
 .bell-badge { position: absolute; top: -2px; inset-inline-end: -2px; background: #e74c3c; color: white; font-size: 10px; font-weight: 600; min-width: 17px; height: 17px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0 4px; border: 2px solid var(--brand-primary); }
 
 .avatar-wrap { position: relative; }
@@ -234,8 +235,8 @@ a      { text-decoration: none; }
   font-size: 17px;
 }
 
-.topnav-white .bell-btn { color: var(--text-muted); }
-.topnav-white .bell-btn:hover { color: var(--brand-secondary); }
+.topnav-white .bell-btn, .topnav-white .nav-toggle-btn { color: var(--text-muted); }
+.topnav-white .bell-btn:hover, .topnav-white .nav-toggle-btn:hover { color: var(--brand-secondary); }
 .topnav-white .hamburger-btn span { background: var(--brand-secondary); }
 
 /* ── PORTAL NAVBAR (navy, light logo) ─────────────────────────────────────
@@ -1728,10 +1729,9 @@ html[dir="rtl"] { }
 .flip-rtl { }
 html[dir="rtl"] .flip-rtl { transform: scaleX(-1); }
 
-/* Shared chrome: mirror remaining left/right anchors that weren't converted
-   inline (kept as overrides where a direct logical swap could shift layout). */
-html[dir="rtl"] .nav-links { left: auto; right: 50%; transform: translateX(50%); }
-html[dir="rtl"] .mobile-menu { left: auto; right: 0; }
+/* The portal navbar keeps a FIXED ltr layout in both languages (dir="ltr" on
+   the <nav>): only its text translates, its controls never switch sides.
+   Page-content directional overrides remain below. */
 html[dir="rtl"] .pd-item,
 html[dir="rtl"] .hospital-header,
 html[dir="rtl"] .grade-table th,
