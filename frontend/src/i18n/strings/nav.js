@@ -40,7 +40,7 @@ const nav = {
 
     // trainee
     'nav.trainee.timeline':              'الجدول الزمني',
-    'nav.trainee.reports':               'التقارير',
+    'nav.trainee.reports':               'تقاريري',
     'nav.trainee.grades':                'الدرجات',
 
     // president
@@ -94,7 +94,7 @@ const nav = {
 
     // trainee
     'nav.trainee.timeline':              'Timeline',
-    'nav.trainee.reports':               'Reports',
+    'nav.trainee.reports':               'My Reports',
     'nav.trainee.grades':                'Grades',
 
     // president

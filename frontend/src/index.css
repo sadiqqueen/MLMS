@@ -141,9 +141,17 @@ a      { text-decoration: none; }
 .nav-right { display: flex; align-items: center; gap: 10px; }
 
 .bell-wrap { position: relative; }
-.bell-btn, .nav-toggle-btn  { background: none; border: none; width: 34px; height: 34px; border-radius: 8px; color: rgba(255,255,255,0.8); font-size: 17px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.15s; }
-.bell-btn:hover, .nav-toggle-btn:hover { background: rgba(255,255,255,0.1); }
-.nav-toggle-lang { font-size: 13px; font-weight: 600; }
+.bell-btn  { background: none; border: none; width: 34px; height: 34px; border-radius: 8px; color: rgba(255,255,255,0.8); font-size: 17px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.15s; }
+.bell-btn:hover { background: rgba(255,255,255,0.1); }
+
+/* Theme + language toggles styled to match the navbar menu links (.nav-link). */
+.nav-toggle-btn {
+  background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer;
+  color: rgba(255,255,255,0.75); font-family: inherit; font-size: 15px; font-weight: 500;
+  padding: 7px 14px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.nav-toggle-btn:hover { background: rgba(255,255,255,0.1); color: #fff; border-bottom: 2px solid #fe9a16; }
 .bell-badge { position: absolute; top: -2px; inset-inline-end: -2px; background: #e74c3c; color: white; font-size: 10px; font-weight: 600; min-width: 17px; height: 17px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0 4px; border: 2px solid var(--brand-primary); }
 
 .avatar-wrap { position: relative; }
