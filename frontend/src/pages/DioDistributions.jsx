@@ -17,31 +17,13 @@ import SearchableSelect from '../components/SearchableSelect';
 import ViewToggle       from '../components/ViewToggle';
 import api  from '../api/axios';
 import Sk   from '../components/Skeleton';
+import { IconPencil, IconBan, IconUserCheck } from '../components/icons';
 
 const STATUS_OPTS  = ['active', 'inactive'];
 const STATUS_STYLE = {
   active:   { bg:'#D1FAE5', color:'#065F46' },
   inactive: { bg:'#FEE2E2', color:'#991B1B' },
 };
-
-const IconPencil = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-  </svg>
-);
-const IconBan = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
-  </svg>
-);
-const IconUserCheck = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-    <circle cx="8.5" cy="7" r="4"/>
-    <polyline points="17 11 19 13 23 9"/>
-  </svg>
-);
 
 function safeArr(v) { return Array.isArray(v) ? v : []; }
 function getId(v)   { return v?._id || v || ''; }

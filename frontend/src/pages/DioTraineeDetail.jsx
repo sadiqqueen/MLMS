@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar';
 import Toast from '../components/Toast';
 import api from '../api/axios';
 import Sk from '../components/Skeleton';
+import { IconPencil, IconPlus, IconPrinter, IconBack } from '../components/icons';
 
 const API_BASE = '';
 const REPORT_TYPES = ['weekly', 'monthly', 'final'];
@@ -363,7 +364,7 @@ function EvaluationsTable({ evaluations, onAdd }) {
     <section className="admin-card">
       <div className="admin-card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12 }}>
         <div className="admin-card-title">Evaluations</div>
-        <button className="btn-purple" onClick={onAdd}>+ Add Evaluation</button>
+        <button className="btn-purple" style={{ display:'inline-flex', alignItems:'center', gap:6 }} onClick={onAdd}><IconPlus size={15} /> Add Evaluation</button>
       </div>
       <div className="admin-table-wrap">
         <table className="admin-table">
@@ -439,12 +440,12 @@ function CertificatesTable({ certificates }) {
                     {!revoked && certificate?._id && (
                       <button
                         className="btn-action edit"
-                        style={{ fontSize:11, background:'#FEF3C7', color:'#92400E', width:'auto', padding:'0 10px' }}
+                        style={{ fontSize:11, background:'#FEF3C7', color:'#92400E', width:'auto', padding:'0 10px', display:'inline-flex', alignItems:'center', gap:5 }}
                         title="Print Certificate"
                         aria-label="Print Certificate"
                         onClick={() => navigate(`/dio/certificates/${certificate._id}/print`)}
                       >
-                        Print Certificate
+                        <IconPrinter size={13} /> Print Certificate
                       </button>
                     )}
                   </td>
@@ -472,7 +473,8 @@ function RotationTimeline({ rotations, traineeId, navigate }) {
       <div className="admin-card-header">
         <div className="admin-card-title">Rotation Timeline</div>
         <button className="btn-action edit" title="Add rotation"
-          onClick={() => navigate('/dio/rotations')}>+ Add Rotation</button>
+          style={{ display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
+          onClick={() => navigate('/dio/rotations')}><IconPlus size={15} /> Add Rotation</button>
       </div>
       <div className="admin-empty">No rotations found for this trainee.</div>
     </section>
@@ -489,10 +491,10 @@ function RotationTimeline({ rotations, traineeId, navigate }) {
     <section className="admin-card" style={{ marginBottom:16 }}>
       <div className="admin-card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <div className="admin-card-title">Rotation Timeline</div>
-        <button className="btn-action edit" style={{ fontSize:12, width:'auto', padding:'0 12px', height:36 }}
+        <button className="btn-action edit" style={{ fontSize:12, width:'auto', padding:'0 12px', height:36, display:'inline-flex', alignItems:'center', gap:6 }}
           title="Add rotation for this trainee"
           onClick={() => navigate('/dio/rotations')}>
-          + Add Rotation
+          <IconPlus size={15} /> Add Rotation
         </button>
       </div>
 
@@ -539,10 +541,7 @@ function RotationTimeline({ rotations, traineeId, navigate }) {
                           <button className="btn-action edit"
                             title="Edit rotation" aria-label="Edit rotation"
                             onClick={() => navigate('/dio/rotations')}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                            </svg>
+                            <IconPencil />
                           </button>
                         )}
                       </div>
@@ -638,7 +637,7 @@ export default function DioTraineeDetail() {
     <>
       <Navbar />
       <main className="admin-main">
-        <button className="btn-outline" onClick={() => navigate('/dio/trainees')} style={{ marginBottom:16 }}>Back</button>
+        <button className="btn-outline" onClick={() => navigate('/dio/trainees')} style={{ marginBottom:16, display:'inline-flex', alignItems:'center', gap:6 }}><IconBack size={15} /> Back</button>
         <div style={{ background:'#FEE2E2', color:'#DC2626', borderRadius:12, padding:18 }}>{error}</div>
       </main>
     </>
@@ -659,7 +658,7 @@ export default function DioTraineeDetail() {
         {/* Header row */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap', marginBottom:18 }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <button className="btn-outline" onClick={() => navigate('/dio/trainees')}>← Back</button>
+            <button className="btn-outline" style={{ display:'inline-flex', alignItems:'center', gap:6 }} onClick={() => navigate('/dio/trainees')}><IconBack size={15} /> Back</button>
             <div>
               <div style={{ fontSize:22, fontWeight:900, color:'#1B1464' }}>{trainee.name || 'Trainee'}</div>
               <div style={{ fontSize:13, color:'#8B8FA8' }}>{trainee.studentId || '-'} · {trainee.email || '-'}</div>
@@ -678,26 +677,27 @@ export default function DioTraineeDetail() {
             Quick Actions:
           </div>
           <button className="btn-action edit"
+            style={{ display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
             onClick={() => navigate('/dio/trainees', { state: { editId: trainee._id } })}>
-            ✏ Edit Trainee
+            <IconPencil size={15} /> Edit Trainee
           </button>
           <button className="btn-action edit"
-            style={{ background:'#EFF6FF', color:'#1D4ED8' }}
+            style={{ background:'#EFF6FF', color:'#1D4ED8', display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
             onClick={() => navigate('/dio/distributions?new=1')}>
-            ＋ Create Distribution
+            <IconPlus size={15} /> Create Distribution
           </button>
           <button className="btn-action edit"
-            style={{ background:'#F0FDF4', color:'#065F46' }}
+            style={{ background:'#F0FDF4', color:'#065F46', display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
             onClick={() => navigate('/dio/rotations?new=1')}>
-            ＋ Create Rotation
+            <IconPlus size={15} /> Create Rotation
           </button>
           {certificates.length > 0 && !certificates[0]?.revokedAt && (
             <button className="btn-action edit"
-              style={{ background:'#FEF3C7', color:'#92400E', width:'auto', padding:'0 12px' }}
+              style={{ background:'#FEF3C7', color:'#92400E', width:'auto', padding:'0 12px', display:'inline-flex', alignItems:'center', gap:6 }}
               title="Print Certificate"
               aria-label="Print latest certificate"
               onClick={() => navigate(`/dio/certificates/${certificates[0]._id}/print`)}>
-              Print Latest Certificate
+              <IconPrinter size={15} /> Print Latest Certificate
             </button>
           )}
         </div>
