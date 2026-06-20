@@ -44,9 +44,12 @@
   2. `target.isActive === false` — else **409** `{ message: 'Account must be deactivated before permanent deletion' }`
   3. target is not the caller — else **403** `{ message: 'You cannot delete your own account' }`
   4. if `target.role === 'super_admin'` and total super_admins ≤ 1 — else **409** `{ message: 'Cannot delete the last super_admin' }`
-  5. **block-if-referenced**: if referenced by Evaluation / Report / Certificate / Rotation / Distribution / ConsultantMemo / Hospital / Specialty — **409** `{ message: 'User is referenced by existing records and cannot be permanently deleted.', blockers: { <collection>: <count>, ... } }`
-- On success: delete the user's Notifications, write `hard_delete_user` audit with `{name,email,role}` snapshot BEFORE deletion, then `User.findByIdAndDelete`.
-- Response 200: `{ success:true, message:'User permanently deleted', data:{ _id, deletedCounts:{ notifications:<n> } } }`
+- Cascade on success (no block-if-referenced):
+  - **Delete** the user's Rotations, Distributions ("durations"), and Notifications.
+  - **Detach** the user from Hospital (`supervisors[]`/`assignedDoctor`/`dioId`/`presidentId`/`programDirector`) and Specialty (`secretaryId`).
+  - **Preserve** Evaluations, Reports, Certificates, ConsultantMemos (these historical records may reference a now-deleted user).
+  - Write `hard_delete_user` audit with `{name,email,role,deletedCounts}` snapshot BEFORE `User.findByIdAndDelete`.
+- Response 200: `{ success:true, message:'User permanently deleted', data:{ _id, deletedCounts:{ rotations, distributions, notifications } } }`
 
 ## Notes
 - No `User` model change (`isActive`,`deletedAt` already exist). Auth already 403s deactivated users at login/refresh/every request.

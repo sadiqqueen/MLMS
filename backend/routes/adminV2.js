@@ -217,65 +217,39 @@ router.delete('/users/:id/permanent',
         if (count <= 1) return res.status(409).json({ message: 'Cannot delete the last super_admin' });
       }
 
-      // Block-if-referenced cascade check across all collections that ref this user.
+      // Cascade policy (product decision): permanently deleting a user also removes
+      // their SCHEDULING data — rotations and distributions ("durations") — plus
+      // notifications, but PRESERVES academic/medical records (evaluations, reports,
+      // certificates, consultant memos) as historical tombstones. Org-structure
+      // references are detached so no dangling user id is left behind.
       const userId = req.params.id;
-      const [
-        evaluations,
-        reports,
-        certificates,
-        rotations,
-        distributions,
-        consultantMemos,
-        hospitals,
-        specialties
-      ] = await Promise.all([
-        Evaluation.countDocuments({ $or: [
-          { student: userId }, { doctor: userId }, { traineeId: userId },
-          { supervisorId: userId }, { evaluatorId: userId }, { createdBy: userId }
-        ] }),
-        Report.countDocuments({ $or: [
-          { student: userId }, { gradedBy: userId }, { reviewedBy: userId },
-          { 'gradeHistory.gradedBy': userId }, { 'gradeHistory.changedBy': userId }
-        ] }),
-        Certificate.countDocuments({ $or: [
-          { student: userId }, { doctor: userId }, { supervisor: userId },
-          { issuedBy: userId }, { traineeId: userId }
-        ] }),
-        Rotation.countDocuments({ $or: [
+
+      const [delRotations, delDistributions, delNotif] = await Promise.all([
+        Rotation.deleteMany({ $or: [
           { traineeId: userId }, { supervisorId: userId }, { student: userId }, { doctor: userId }
         ] }),
-        Distribution.countDocuments({ $or: [
+        Distribution.deleteMany({ $or: [
           { traineeId: userId }, { supervisorId: userId }, { createdBy: userId },
           { student: userId }, { doctor: userId }
         ] }),
-        ConsultantMemo.countDocuments({ $or: [ { createdBy: userId } ] }),
-        Hospital.countDocuments({ $or: [
-          { assignedDoctor: userId }, { dioId: userId }, { presidentId: userId },
-          { programDirector: userId }, { supervisors: userId }
-        ] }),
-        Specialty.countDocuments({ $or: [ { secretaryId: userId } ] })
+        Notification.deleteMany({ user: userId })
       ]);
 
-      const counts = {
-        Evaluation: evaluations,
-        Report: reports,
-        Certificate: certificates,
-        Rotation: rotations,
-        Distribution: distributions,
-        ConsultantMemo: consultantMemos,
-        Hospital: hospitals,
-        Specialty: specialties
-      };
-      const blockers = {};
-      Object.keys(counts).forEach(k => { if (counts[k] > 0) blockers[k] = counts[k]; });
-      if (Object.keys(blockers).length > 0) {
-        return res.status(409).json({
-          message: 'User is referenced by existing records and cannot be permanently deleted.',
-          blockers
-        });
-      }
+      // Detach from org-structure references (hospital roster/leadership, specialty secretary).
+      await Promise.all([
+        Hospital.updateMany({ supervisors: userId },     { $pull: { supervisors: userId } }),
+        Hospital.updateMany({ assignedDoctor: userId },  { $set:  { assignedDoctor: null } }),
+        Hospital.updateMany({ dioId: userId },           { $set:  { dioId: null } }),
+        Hospital.updateMany({ presidentId: userId },     { $set:  { presidentId: null } }),
+        Hospital.updateMany({ programDirector: userId }, { $set:  { programDirector: null } }),
+        Specialty.updateMany({ secretaryId: userId },    { $set:  { secretaryId: null } })
+      ]);
 
-      const delNotif = await Notification.deleteMany({ user: req.params.id });
+      const deletedCounts = {
+        rotations: delRotations.deletedCount,
+        distributions: delDistributions.deletedCount,
+        notifications: delNotif.deletedCount
+      };
 
       // Snapshot BEFORE deletion so the audit record survives the hard delete.
       await AuditLog.create({
@@ -287,7 +261,7 @@ router.delete('/users/:id/permanent',
           name: target.name,
           email: target.email,
           role: target.role,
-          deletedNotifications: delNotif.deletedCount
+          deletedCounts
         }
       });
 
@@ -296,7 +270,7 @@ router.delete('/users/:id/permanent',
       res.json({
         success: true,
         message: 'User permanently deleted',
-        data: { _id: req.params.id, deletedCounts: { notifications: delNotif.deletedCount } }
+        data: { _id: req.params.id, deletedCounts }
       });
     } catch (err) {
       res.status(500).json({ message: err.message });
