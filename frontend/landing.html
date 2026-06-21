@@ -1109,6 +1109,7 @@
       <div class="nav-links">
         <a href="#home"     class="active" data-en="Home"            data-ar="الرئيسية">Home</a>
         <a href="#tracks"   data-en="Training Track"  data-ar="مسار التدريب">Training Track</a>
+        <a href="#evaluation-forms" data-en="Evaluation Forms" data-ar="نماذج التقييم">Evaluation Forms</a>
         <a href="#vision"   data-en="About Us"         data-ar="عن المركز">About Us</a>
         <a href="#contact"  data-en="Contact"          data-ar="تواصل معنا">Contact</a>
       </div>
@@ -1133,6 +1134,7 @@
     <div class="nav-mobile" id="mobile-menu">
       <a href="#home"    onclick="closeMenu()" data-en="Home"           data-ar="الرئيسية">Home</a>
       <a href="#tracks"  onclick="closeMenu()" data-en="Training Track"  data-ar="مسار التدريب">Training Track</a>
+      <a href="#evaluation-forms" onclick="closeMenu()" data-en="Evaluation Forms" data-ar="نماذج التقييم">Evaluation Forms</a>
       <a href="#vision"  onclick="closeMenu()" data-en="About Us"        data-ar="عن المركز">About Us</a>
       <a href="#contact" onclick="closeMenu()" data-en="Contact"         data-ar="تواصل معنا">Contact</a>
       <a href="#" onclick="event.preventDefault();closeMenu();openLoginPanel()">
@@ -1239,6 +1241,54 @@
           <a href="#" onclick="event.preventDefault();openLoginPanel()">
             <button class="btn-track" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
           </a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════
+       EVALUATION FORMS
+  ════════════════════════════════════════════════════════════ -->
+  <section id="evaluation-forms">
+    <div class="section-inner">
+      <div class="section-header-center fade-up">
+        <div class="section-tag" data-en="Documents" data-ar="المستندات">Documents</div>
+        <h2 class="section-title" data-en="Evaluation Forms" data-ar="نماذج التقييم">Evaluation Forms</h2>
+        <p class="section-sub"
+           data-en="View or download the official evaluation forms."
+           data-ar="اعرض أو نزّل نماذج التقييم الرسمية.">
+          View or download the official evaluation forms.
+        </p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;max-width:1000px;margin:0 auto;">
+
+        <div class="track-card fade-up" style="text-align:center;align-items:center;">
+          <div style="font-size:44px;margin-bottom:8px;">📄</div>
+          <div class="track-title" data-en="Initiatives — Basic Stage" data-ar="المبادرات — مرحلة أساسية">المبادرات — مرحلة أساسية</div>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px;">
+            <button class="btn-track" type="button" onclick="openDocx('form-1.docx')" data-en="View" data-ar="عرض">View</button>
+            <a href="/evaluation-forms/form-1.docx" download style="text-decoration:none;"><button class="btn-track" type="button" style="background:transparent;color:inherit;border:1.5px solid rgba(0,0,0,0.15);" data-en="Download" data-ar="تنزيل">Download</button></a>
+          </div>
+        </div>
+
+        <div class="track-card fade-up" style="text-align:center;align-items:center;">
+          <div style="font-size:44px;margin-bottom:8px;">📄</div>
+          <div class="track-title" data-en="Concept Under Study" data-ar="تصور قيد الدراسة">تصور قيد الدراسة</div>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px;">
+            <button class="btn-track" type="button" onclick="openDocx('form-2.docx')" data-en="View" data-ar="عرض">View</button>
+            <a href="/evaluation-forms/form-2.docx" download style="text-decoration:none;"><button class="btn-track" type="button" style="background:transparent;color:inherit;border:1.5px solid rgba(0,0,0,0.15);" data-en="Download" data-ar="تنزيل">Download</button></a>
+          </div>
+        </div>
+
+        <div class="track-card fade-up" style="text-align:center;align-items:center;">
+          <div style="font-size:44px;margin-bottom:8px;">📄</div>
+          <div class="track-title" data-en="Initiatives — Final Stage" data-ar="مبادرات مرحلة نهائية">مبادرات مرحلة نهائية</div>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px;">
+            <button class="btn-track" type="button" onclick="openDocx('form-3.docx')" data-en="View" data-ar="عرض">View</button>
+            <a href="/evaluation-forms/form-3.docx" download style="text-decoration:none;"><button class="btn-track" type="button" style="background:transparent;color:inherit;border:1.5px solid rgba(0,0,0,0.15);" data-en="Download" data-ar="تنزيل">Download</button></a>
+          </div>
         </div>
 
       </div>
@@ -1959,12 +2009,17 @@
     function closeMenu() {
       document.getElementById('mobile-menu').classList.remove('open');
     }
+    // Open a Word .docx (evaluation form) in the Microsoft Office online viewer.
+    function openDocx(filename) {
+      var url = window.location.origin + '/evaluation-forms/' + filename;
+      window.open('https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(url), '_blank', 'noopener');
+    }
 
     // ── ACTIVE NAV LINK ON SCROLL ────────────────────────────────────────────
     const sections   = document.querySelectorAll('section[id], div.stats-bar');
     const navLinks   = document.querySelectorAll('.nav-links a');
 
-    const sectionIds = ['home', 'tracks', 'features', 'vision', 'contact'];
+    const sectionIds = ['home', 'tracks', 'evaluation-forms', 'features', 'vision', 'contact'];
 
     window.addEventListener('scroll', () => {
       let current = '';
