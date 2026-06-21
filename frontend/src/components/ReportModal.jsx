@@ -252,8 +252,8 @@ export default function ReportModal({ report, student, onClose }) {
         {/* ── REPORT DOCUMENT — embedded file (PDF / image) ── */}
         {report.fileUrl && (
           <>
-            <div className="modal-divider" />
-            <div className="modal-section">
+            <div className="modal-divider no-print" />
+            <div className="modal-section no-print">
               <div className="modal-section-title">Report Document</div>
               <iframe
                 src={`${API_BASE}${report.fileUrl}`}
