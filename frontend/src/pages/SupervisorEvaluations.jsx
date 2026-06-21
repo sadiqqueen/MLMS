@@ -611,14 +611,14 @@ function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalize
             {/* Monthly checklist */}
             <div style={{
               display:'flex', alignItems:'center', justifyContent:'space-between',
-              background:'#F5F6FA', borderRadius:10, padding:'10px 14px', marginBottom:16
+              background:'var(--surface-2)', borderRadius:10, padding:'10px 14px', marginBottom:16
             }}>
-              <div style={{ fontSize:13, color:'#4B5563', fontWeight:500 }}>{MONTH_LABEL} progress</div>
+              <div style={{ fontSize:13, color:'var(--text-2)', fontWeight:500 }}>{MONTH_LABEL} {t('monthProgress')}</div>
               <div style={{
                 fontSize:13, fontWeight:700,
-                color: doneTypes.size >= MONTHLY_CAP ? '#059669' : '#D97706'
+                color: doneTypes.size >= MONTHLY_CAP ? 'var(--success)' : 'var(--warning)'
               }}>
-                {doneTypes.size} / {MONTHLY_CAP} forms
+                {doneTypes.size} / {MONTHLY_CAP} {t('forms')}
               </div>
             </div>
 
@@ -629,8 +629,8 @@ function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalize
                   <div
                     key={f.type}
                     style={{
-                      border:`1px solid ${done ? '#BBE9D2' : '#E8E9EF'}`,
-                      background: done ? '#F0FDF4' : '#fff',
+                      border:`1px solid ${done ? 'var(--success)' : 'var(--border)'}`,
+                      background: done ? 'var(--success-bg)' : 'var(--surface)',
                       borderRadius:12, padding:'14px 16px',
                       display:'flex', alignItems:'center', gap:14
                     }}
@@ -644,16 +644,17 @@ function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalize
                       {f.title}
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:14, fontWeight:700, color:'#1B1464' }}>{f.fullName}</div>
-                      <div style={{ fontSize:12, color:'#8B8FA8' }}>{f.domains.length} competency domains</div>
+                      <div style={{ fontSize:14, fontWeight:700, color:'var(--text)' }}>{f.fullName}</div>
+                      <div style={{ fontSize:12, color:'var(--text-muted)' }}>{f.domains.length} {t('competencyDomains')}</div>
                     </div>
                     {done ? (
-                      <span style={{
-                        fontSize:11, fontWeight:700, padding:'5px 12px', borderRadius:20,
-                        background:'#D1FAE5', color:'#065F46'
-                      }}>✓ Done this month</span>
+                      <span className="status-ic status-ic-green" title={t('doneThisMonth')}>
+                        <IconCheck size={15} />
+                      </span>
                     ) : isReadOnly ? (
-                      <span style={{ fontSize:12, color:'#8B8FA8' }}>Not submitted</span>
+                      <span className="status-ic status-ic-amber" title={t('notSubmitted')}>
+                        <IconClock size={15} />
+                      </span>
                     ) : (
                       <button
                         onClick={() => { setActiveType(f.type); setError(''); }}
@@ -663,7 +664,7 @@ function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalize
                           cursor:'pointer', flexShrink:0
                         }}
                       >
-                        Start
+                        {t('start')}
                       </button>
                     )}
                   </div>
@@ -674,62 +675,61 @@ function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalize
             {/* Submitted evaluations */}
             {traineeEvals.length > 0 ? (
               <div>
-                <SectionTitle>Submitted Evaluations ({traineeEvals.length})</SectionTitle>
+                <SectionTitle>{t('submittedEvaluations')} ({traineeEvals.length})</SectionTitle>
                 <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                   {traineeEvals.map(ev => {
                     const noteText = safeText(ev?.comments || ev?.notes);
-                    const label    = evalType(ev) || 'Evaluation';
+                    const label    = evalType(ev) || t('evaluation');
                     const overall  = ev?.grade || ev?.formData?.globalRating || ev?.scores?.overall || '';
                     return (
                       <div
                         key={ev?._id || `${evalTraineeId(ev)}-${ev?.createdAt || 'row'}`}
                         style={{
-                          border:'1px solid #E8E9EF', borderRadius:10, padding:'12px 14px',
+                          border:'1px solid var(--border)', borderRadius:10, padding:'12px 14px',
                           display:'flex', alignItems:'center', gap:12,
-                          background: ev?.isFinalized ? '#F0FDF4' : '#fff'
+                          background: ev?.isFinalized ? 'var(--success-bg)' : 'var(--surface)'
                         }}
                       >
                         <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3, flexWrap:'wrap' }}>
                             <span style={{
                               fontSize:12, fontWeight:700, padding:'2px 8px', borderRadius:20,
-                              background:'#DBEAFE', color:'#1E40AF'
+                              background:'var(--info-bg)', color:'var(--info-fg)'
                             }}>{label}</span>
                             {overall && (
                               <span style={{
                                 fontSize:11, padding:'2px 8px', borderRadius:20,
-                                background:'#FEF3C7', color:'#92400E', fontWeight:600
+                                background:'var(--warning-bg)', color:'var(--warning-fg)', fontWeight:600
                               }}>{overall}</span>
                             )}
                             {ev?.totalScore != null && (
                               <span style={{
                                 fontSize:11, padding:'2px 8px', borderRadius:20,
-                                background:'#E6F1FB', color:'#185FA5', fontWeight:700
+                                background:'var(--info-bg)', color:'var(--link)', fontWeight:700
                               }}>avg {Math.round(ev.totalScore * 10) / 10}</span>
                             )}
                             {ev?.isFinalized && (
-                              <span style={{
-                                fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20,
-                                background:'#D1FAE5', color:'#065F46'
-                              }}>Sent to grades</span>
+                              <span className="status-ic status-ic-green" title={t('sentToGrades')}>
+                                <IconCheck size={15} />
+                              </span>
                             )}
                           </div>
-                          <div style={{ fontSize:12, color:'#8B8FA8' }}>
+                          <div style={{ fontSize:12, color:'var(--text-muted)' }}>
                             {fmtDate(ev?.date || ev?.createdAt)}
                             {noteText ? ` · ${noteText.replace(/\n/g, ' · ').slice(0, 60)}${noteText.length > 60 ? '…' : ''}` : ''}
                           </div>
                         </div>
                         <button
                           onClick={() => printEvaluation(ev, { traineeName: trainee?.name, assessorName })}
-                          title="Print evaluation form"
+                          title={t('printTitle')}
                           style={{
                             padding:'6px 12px', borderRadius:8,
-                            background:'#fff', color:'#1B1464',
-                            border:'1.5px solid #E8E9EF', fontSize:12, fontWeight:600,
+                            background:'var(--surface)', color:'var(--text)',
+                            border:'1.5px solid var(--border)', fontSize:12, fontWeight:600,
                             cursor:'pointer', flexShrink:0
                           }}
                         >
-                          🖨 Print
+                          🖨 {t('print')}
                         </button>
                         {!isReadOnly && !ev?.isFinalized && (
                           <button
@@ -737,13 +737,13 @@ function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalize
                             disabled={finalizing === ev?._id || !ev?._id}
                             style={{
                               padding:'6px 14px', borderRadius:8,
-                              background:'#1B1464', color:'#fff',
+                              background:'var(--brand-secondary)', color:'#fff',
                               border:'none', fontSize:12, fontWeight:600,
                               cursor:'pointer', flexShrink:0,
                               opacity: finalizing === ev?._id ? 0.7 : 1
                             }}
                           >
-                            {finalizing === ev?._id ? 'Sending…' : 'Finalize'}
+                            {finalizing === ev?._id ? t('sending') : t('finalize')}
                           </button>
                         )}
                       </div>
@@ -752,16 +752,16 @@ function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalize
                 </div>
               </div>
             ) : (
-              <div style={{ textAlign:'center', padding:'20px 0', color:'#8B8FA8' }}>
+              <div style={{ textAlign:'center', padding:'20px 0', color:'var(--text-muted)' }}>
                 <div style={{ fontSize:28, marginBottom:8 }}>📋</div>
-                <div style={{ fontSize:14, fontWeight:500 }}>No evaluations yet for this trainee</div>
+                <div style={{ fontSize:14, fontWeight:500 }}>{t('noEvalsYet')}</div>
               </div>
             )}
 
             {error && (
               <div style={{
-                background:'#FEE2E2', borderRadius:8, padding:'9px 13px',
-                fontSize:13, color:'#DC2626', marginTop:14
+                background:'var(--danger-bg)', borderRadius:8, padding:'9px 13px',
+                fontSize:13, color:'var(--danger-fg)', marginTop:14
               }}>
                 {error}
               </div>
@@ -776,6 +776,8 @@ function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalize
 
 export default function SupervisorEvaluations() {
   const { user: me }   = useAuth();
+  const { lang, dir }  = usePrefs();
+  const t = k => STRINGS[lang]?.[k] ?? STRINGS.ar[k] ?? k;
   const [evals,      setEvals     ] = useState([]);
   const [trainees,   setTrainees  ] = useState([]);
   const [loading,    setLoading   ] = useState(true);
@@ -798,7 +800,7 @@ export default function SupervisorEvaluations() {
     ]).then(([evalRes, traineeRes]) => {
       setEvals(safeArr(evalRes.data?.data || evalRes.data));
       setTrainees(safeArr(traineeRes.data?.data || traineeRes.data));
-    }).catch(() => showToast('Failed to load data', 'error'))
+    }).catch(() => showToast(t('loadFailed'), 'error'))
       .finally(() => setLoading(false));
   }, [me]);
 
@@ -835,7 +837,7 @@ export default function SupervisorEvaluations() {
   function handleSubmitted(newEval) {
     if (!newEval || typeof newEval !== 'object') return;
     setEvals(prev => [newEval, ...safeArr(prev)]);
-    showToast('Evaluation submitted successfully');
+    showToast(t('submitSuccess'));
   }
 
   function handleFinalized(evalId, finalized = {}) {
@@ -848,7 +850,7 @@ export default function SupervisorEvaluations() {
           }
         : ev
     )));
-    showToast("Evaluation sent to trainee's grades page");
+    showToast(t('sentToGradesToast'));
   }
 
   const evalList       = safeArr(evals);
@@ -859,10 +861,10 @@ export default function SupervisorEvaluations() {
   if (loading) return (
     <>
       <Navbar />
-      <main className="admin-main">
+      <main className="admin-main" dir={dir}>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:20 }}>
           {[0,1,2].map(i => (
-            <div key={i} style={{ background:'#fff', border:'1px solid #E8E9EF', borderRadius:12, padding:'16px 20px', display:'flex', alignItems:'center', gap:14 }}>
+            <div key={i} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 20px', display:'flex', alignItems:'center', gap:14 }}>
               <Sk w={46} h={46} r={10} />
               <Sk w={110} h={14} />
             </div>
@@ -871,7 +873,7 @@ export default function SupervisorEvaluations() {
         <div style={{ marginBottom:16 }}><Sk h={40} r={8} /></div>
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           {[...Array(6)].map((_,i) => (
-            <div key={i} style={{ background:'#fff', border:'1px solid #E8E9EF', borderRadius:12, padding:'16px 20px', display:'flex', alignItems:'center', gap:14 }}>
+            <div key={i} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 20px', display:'flex', alignItems:'center', gap:14 }}>
               <Sk w={44} h={44} r="50%" />
               <div style={{ flex:1 }}>
                 <Sk w={160} h={14} style={{ marginBottom:8 }} />
@@ -889,17 +891,17 @@ export default function SupervisorEvaluations() {
   return (
     <>
       <Navbar />
-      <main className="admin-main">
+      <main className="admin-main" dir={dir}>
 
         {/* Stat Cards */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:20 }}>
           {[
-            { label:'Total Evaluations', count:totalEvals,     color:'#185FA5', bg:'#E6F1FB' },
-            { label:'This Month',        count:thisMonthTotal, color:'#D97706', bg:'#FEF3C7' },
-            { label:'Finalized',         count:finalizedCount, color:'#059669', bg:'#D1FAE5' },
+            { label:t('statTotal'),     count:totalEvals,     color:'var(--info-fg)',    bg:'var(--info-bg)' },
+            { label:t('statThisMonth'), count:thisMonthTotal, color:'var(--warning-fg)', bg:'var(--warning-bg)' },
+            { label:t('statFinalized'), count:finalizedCount, color:'var(--success-fg)', bg:'var(--success-bg)' },
           ].map(c => (
             <div key={c.label} style={{
-              background:'#fff', border:'1px solid #E8E9EF', borderRadius:12,
+              background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12,
               padding:'16px 20px', display:'flex', alignItems:'center', gap:14
             }}>
               <div style={{
@@ -909,7 +911,7 @@ export default function SupervisorEvaluations() {
               }}>
                 {c.count}
               </div>
-              <div style={{ fontSize:13, color:'#4B5563', fontWeight:500 }}>{c.label}</div>
+              <div style={{ fontSize:13, color:'var(--text-2)', fontWeight:500 }}>{c.label}</div>
             </div>
           ))}
         </div>
@@ -919,7 +921,7 @@ export default function SupervisorEvaluations() {
           <input
             className="admin-search"
             style={{ width:'100%', height:40, maxWidth:'100%' }}
-            placeholder="Search by trainee name or ID…"
+            placeholder={t('searchPlaceholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -927,12 +929,12 @@ export default function SupervisorEvaluations() {
 
         {/* Empty state */}
         {filtered.length === 0 && (
-          <div style={{ textAlign:'center', padding:56, color:'#8B8FA8' }}>
+          <div style={{ textAlign:'center', padding:56, color:'var(--text-muted)' }}>
             <div style={{ fontSize:40, marginBottom:12 }}>📋</div>
-            <div style={{ fontSize:16, fontWeight:600, color:'#4B5563', marginBottom:6 }}>
-              {traineeList.length === 0 ? 'No trainees assigned yet' : 'No trainees match your search'}
+            <div style={{ fontSize:16, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>
+              {traineeList.length === 0 ? t('emptyNoTrainees') : t('emptyNoMatch')}
             </div>
-            <div style={{ fontSize:13 }}>Trainees are assigned to you by the secretary.</div>
+            <div style={{ fontSize:13 }}>{t('emptyHint')}</div>
           </div>
         )}
 
@@ -944,11 +946,13 @@ export default function SupervisorEvaluations() {
             const monthTypes = monthlyTypesFor(tid);
             const complete   = monthTypes >= MONTHLY_CAP;
 
+            const isView = isReadOnly || complete; // read-only or fully complete → view-only
+
             return (
               <div
                 key={tid}
                 style={{
-                  background:'#fff', border:'1px solid #E8E9EF', borderRadius:12,
+                  background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12,
                   padding:'16px 20px', display:'flex', alignItems:'center', gap:14,
                   boxShadow:'0 1px 3px rgba(0,0,0,.05)'
                 }}
@@ -956,33 +960,49 @@ export default function SupervisorEvaluations() {
                 <Avatar user={trainee} size={44} />
 
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:15, fontWeight:700, color:'#1B1464', marginBottom:2 }}>
+                  <div style={{ fontSize:15, fontWeight:700, color:'var(--text)', marginBottom:2 }}>
                     {trainee.name || '—'}
                   </div>
-                  <div style={{ fontSize:12, color:'#8B8FA8' }}>
-                    {trainee.studentId ? `ID: ${trainee.studentId} · ` : ''}
-                    {count} evaluation{count !== 1 ? 's' : ''} total · {monthTypes}/{MONTHLY_CAP} forms this month
+                  <div style={{ fontSize:12, color:'var(--text-muted)' }}>
+                    {trainee.studentId ? `${t('idLabel')}: ${trainee.studentId} · ` : ''}
+                    {count} {t('evaluationsTotal')} · {monthTypes}/{MONTHLY_CAP} {t('formsThisMonth')}
                   </div>
                 </div>
 
                 {complete && !isReadOnly && (
                   <span style={{
                     fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20,
-                    background:'#D1FAE5', color:'#065F46'
-                  }}>All forms done</span>
+                    background:'var(--success-bg)', color:'var(--success-fg)'
+                  }}>{t('allFormsDone')}</span>
                 )}
 
-                <button
-                  onClick={() => setSelected({ dist, trainee })}
-                  style={{
-                    padding:'8px 18px', borderRadius:8, background:'#FF6B35',
-                    color:'#fff', border:'none', fontWeight:500, fontSize:12,
-                    cursor:'pointer', flexShrink:0,
-                    boxShadow:'0 2px 6px rgba(255,107,53,.3)'
-                  }}
-                >
-                  {isReadOnly ? 'View' : (complete ? 'View' : 'Evaluate')}
-                </button>
+                {isView ? (
+                  <button
+                    onClick={() => setSelected({ dist, trainee })}
+                    title={t('view')}
+                    aria-label={t('view')}
+                    style={{
+                      width:36, height:36, borderRadius:8, background:'var(--surface)',
+                      color:'var(--text-2)', border:'1.5px solid var(--border)',
+                      display:'inline-flex', alignItems:'center', justifyContent:'center',
+                      cursor:'pointer', flexShrink:0
+                    }}
+                  >
+                    <IconEye size={16} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setSelected({ dist, trainee })}
+                    style={{
+                      padding:'8px 18px', borderRadius:8, background:'var(--accent)',
+                      color:'#fff', border:'none', fontWeight:500, fontSize:12,
+                      cursor:'pointer', flexShrink:0,
+                      boxShadow:'0 2px 6px rgba(255,107,53,.3)'
+                    }}
+                  >
+                    {t('evaluation')}
+                  </button>
+                )}
               </div>
             );
           })}
@@ -997,6 +1017,7 @@ export default function SupervisorEvaluations() {
             onSubmitted={handleSubmitted}
             onFinalized={handleFinalized}
             isReadOnly={isReadOnly}
+            t={t}
           />
         )}
 

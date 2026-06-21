@@ -245,7 +245,7 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
   return (
     <div
       style={{
-        position:'fixed', inset:0, background:'rgba(0,0,0,.5)',
+        position:'fixed', inset:0, background:'var(--overlay)',
         zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center',
         padding:20, overflowY:'auto'
       }}
@@ -558,17 +558,17 @@ export default function SupervisorReports() {
         const filtered = (Array.isArray(list) ? list : []).filter(rep => rep.type !== 'final');
         setReports(filtered);
       })
-      .catch(() => showToast('Failed to load reports', 'error'))
+      .catch(() => showToast(t('loadFailed'), 'error'))
       .finally(() => setLoading(false));
   }, []);
 
   function handleAssessmentSaved(updated) {
     if (!updated?._id) {
-      showToast('Assessment saved, but the response was incomplete. Please refresh to verify.', 'error');
+      showToast(t('savedIncomplete'), 'error');
       return;
     }
     setReports(prev => prev.map(r => r._id === updated._id ? updated : r));
-    showToast('Assessment submitted successfully');
+    showToast(t('submitSuccess'));
   }
 
   const pendingCount = reports.filter(r => r.status === 'pending').length;
@@ -590,23 +590,23 @@ export default function SupervisorReports() {
   if (loading) return (
     <>
       <Navbar />
-      <main className="admin-main">
+      <main className="admin-main" dir={dir}>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:20 }}>
           {[0,1].map(i => (
-            <div key={i} style={{ background:'#fff', border:'1px solid #E8E9EF', borderRadius:12, padding:'16px 20px', display:'flex', alignItems:'center', gap:14 }}>
+            <div key={i} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 20px', display:'flex', alignItems:'center', gap:14 }}>
               <Sk w={46} h={46} r={10} />
               <Sk w={120} h={14} />
             </div>
           ))}
         </div>
-        <div style={{ background:'#fff', border:'1px solid #E8E9EF', borderRadius:12, overflow:'hidden' }}>
-          <div style={{ padding:'14px 20px', borderBottom:'1px solid #E8E9EF' }}>
+        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, overflow:'hidden' }}>
+          <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border)' }}>
             <Sk h={36} r={8} />
           </div>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <tbody>
               {[...Array(8)].map((_,i) => (
-                <tr key={i} style={{ borderBottom:'1px solid #F5F6FA' }}>
+                <tr key={i} style={{ borderBottom:'1px solid var(--border-soft)' }}>
                   <td style={{ padding:'13px 16px' }}><div style={{ display:'flex', alignItems:'center', gap:8 }}><Sk w={36} h={36} r="50%" /><Sk w={120} h={13} /></div></td>
                   <td style={{ padding:'13px 16px' }}><Sk w={140} h={13} /></td>
                   <td style={{ padding:'13px 16px' }}><Sk w={60} h={22} r={20} /></td>
@@ -625,16 +625,16 @@ export default function SupervisorReports() {
   return (
     <>
       <Navbar />
-      <main className="admin-main">
+      <main className="admin-main" dir={dir}>
 
         {/* Stat Cards */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:20 }}>
           {[
-            { label:'Pending Review', count:pendingCount, color:'#D97706', bg:'#FEF3C7' },
-            { label:'Assessed',       count:gradedCount,  color:'#059669', bg:'#D1FAE5' },
+            { label:t('pendingReview'), count:pendingCount, color:'var(--warning)', bg:'var(--warning-bg)' },
+            { label:t('assessed'),      count:gradedCount,  color:'var(--success)', bg:'var(--success-bg)' },
           ].map(c => (
             <div key={c.label} style={{
-              background:'#fff', border:'1px solid #E8E9EF', borderRadius:12,
+              background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12,
               padding:'16px 20px', display:'flex', alignItems:'center', gap:14
             }}>
               <div style={{
@@ -642,31 +642,31 @@ export default function SupervisorReports() {
                 display:'flex', alignItems:'center', justifyContent:'center',
                 fontSize:22, fontWeight:700, color:c.color, flexShrink:0
               }}>{c.count}</div>
-              <div style={{ fontSize:13, color:'#4B5563', fontWeight:500 }}>{c.label}</div>
+              <div style={{ fontSize:13, color:'var(--text-2)', fontWeight:500 }}>{c.label}</div>
             </div>
           ))}
         </div>
 
         {/* Table Card */}
-        <div style={{ background:'#fff', border:'1px solid #E8E9EF', borderRadius:12, overflow:'hidden' }}>
+        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, overflow:'hidden' }}>
 
           {/* Toolbar */}
           <div style={{
-            padding:'14px 20px', borderBottom:'1px solid #E8E9EF',
+            padding:'14px 20px', borderBottom:'1px solid var(--border)',
             display:'flex', gap:12, alignItems:'center', flexWrap:'wrap'
           }}>
             <input
               className="admin-search"
               style={{ flex:1, minWidth:200, height:36 }}
-              placeholder="Search by trainee name or report title…"
+              placeholder={t('searchPlaceholder')}
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
             <div style={{ display:'flex', gap:6 }}>
               {[
-                ['pending', `Pending (${pendingCount})`],
-                ['graded',  `Assessed (${gradedCount})`],
-                ['all',     `All (${reports.length})`],
+                ['pending', `${t('filterPending')} (${pendingCount})`],
+                ['graded',  `${t('filterAssessed')} (${gradedCount})`],
+                ['all',     `${t('filterAll')} (${reports.length})`],
               ].map(([val, label]) => (
                 <button
                   key={val}
@@ -684,27 +684,27 @@ export default function SupervisorReports() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Trainee</th>
-                  <th>Report Title</th>
-                  <th>Type</th>
-                  <th>Date</th>
-                  <th>File</th>
-                  <th>Status</th>
-                  <th>Action</th>
+                  <th>{t('colNum')}</th>
+                  <th>{t('colTrainee')}</th>
+                  <th>{t('colTitle')}</th>
+                  <th>{t('colType')}</th>
+                  <th>{t('colDate')}</th>
+                  <th>{t('colFile')}</th>
+                  <th>{t('colStatus')}</th>
+                  <th>{t('colAction')}</th>
                 </tr>
               </thead>
               <tbody>
                 {displayed.length === 0 && (
                   <tr>
-                    <td colSpan={8} style={{ textAlign:'center', padding:32, color:'#8B8FA8' }}>
-                      No reports found
+                    <td colSpan={8} style={{ textAlign:'center', padding:32, color:'var(--text-muted)' }}>
+                      {t('noReports')}
                     </td>
                   </tr>
                 )}
                 {displayed.map((r, i) => (
-                  <tr key={r._id} style={{ background: r.status==='pending' ? '#FFFEF5' : '#fff' }}>
-                    <td style={{ color:'#8B8FA8' }}>{i + 1}</td>
+                  <tr key={r._id} style={{ background: r.status==='pending' ? 'var(--surface-2)' : 'var(--surface)' }}>
+                    <td style={{ color:'var(--text-muted)' }}>{i + 1}</td>
 
                     <td>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -715,14 +715,14 @@ export default function SupervisorReports() {
                         <div>
                           <strong>{r.student?.name || '—'}</strong>
                           {r.student?.studentId && (
-                            <div style={{ fontSize:11, color:'#8B8FA8' }}>ID: {r.student.studentId}</div>
+                            <div style={{ fontSize:11, color:'var(--text-muted)' }}>{t('idLabel')}: {r.student.studentId}</div>
                           )}
                         </div>
                       </div>
                     </td>
 
                     <td style={{ maxWidth:180 }}>
-                      <div style={{ fontWeight:500, color:'#1B1464', fontSize:13 }}>{r.title}</div>
+                      <div style={{ fontWeight:500, color:'var(--text)', fontSize:13 }}>{r.title}</div>
                     </td>
 
                     <td>
@@ -736,20 +736,21 @@ export default function SupervisorReports() {
                     <td>
                       {r.fileUrl
                         ? <a href={`${API_BASE}${r.fileUrl}`} target="_blank" rel="noreferrer"
-                             style={{ color:'#185FA5', fontSize:13, fontWeight:500 }}>
-                            View ↗
+                             className="btn-action view" title={t('fileView')} aria-label={t('fileView')}
+                             style={{ display:'inline-flex' }}>
+                            <IconEye size={16} />
                           </a>
-                        : <span style={{ color:'#D1D5DB', fontSize:12 }}>None</span>
+                        : <span style={{ color:'var(--text-muted)', fontSize:12 }}>{t('fileNone')}</span>
                       }
                     </td>
 
                     <td>
                       {(r.status==='graded' || r.status==='approved') ? (
-                        <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'#D1FAE5', color:'#065F46' }}>Assessed</span>
+                        <span className="status-ic status-ic-green" title={t('statusAssessed')}><IconCheck size={15} /></span>
                       ) : r.status === 'rejected' ? (
-                        <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'#FEE2E2', color:'#991B1B' }}>Rejected</span>
+                        <span className="status-ic status-ic-red" title={t('statusRejected')}><IconXCircle size={15} /></span>
                       ) : (
-                        <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'#FEF3C7', color:'#92400E' }}>Pending</span>
+                        <span className="status-ic status-ic-amber" title={t('statusPending')}><IconClock size={15} /></span>
                       )}
                     </td>
 
@@ -760,14 +761,16 @@ export default function SupervisorReports() {
                           style={{ fontSize:12, padding:'6px 14px' }}
                           onClick={() => setAssessModal(r)}
                         >
-                          Assess
+                          {t('btnAssess')}
                         </button>
                       ) : (
                         <button
-                          className="btn-action edit"
+                          className="btn-action view"
+                          title={t('view')}
+                          aria-label={t('view')}
                           onClick={() => setAssessModal(r)}
                         >
-                          View
+                          <IconEye size={16} />
                         </button>
                       )}
                     </td>
