@@ -10,6 +10,7 @@ import Navbar from '../components/Navbar';
 import Sk     from '../components/Skeleton';
 import { getForm, scoreMeta } from '../data/evalForms';
 import { printEvaluation } from '../utils/printEvaluation';
+import { IconCheck, IconClock } from '../components/icons';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -76,41 +77,48 @@ function EvalCard({ ev, traineeName }) {
 
   return (
     <div style={{
-      border:'1px solid #E8E9EF', borderRadius:10, padding:'14px 16px',
-      background: ev.isFinalized ? '#F0FDF4' : '#fff',
+      border:'1px solid var(--border)', borderRadius:10, padding:'14px 16px',
+      background: ev.isFinalized ? 'var(--success-bg)' : 'var(--surface-2)',
       borderLeft:`4px solid ${accent}`
     }}>
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
         <div>
           <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
             {type && (
-              <span style={{ fontSize:11, background:`${accent}14`, color:accent, borderRadius:5, padding:'2px 8px', fontWeight:800, textTransform:'uppercase' }}>
+              <span style={{ fontSize:11, background:`${accent}22`, color:accent, borderRadius:5, padding:'2px 8px', fontWeight:800, textTransform:'uppercase' }}>
                 {form?.title || type}
               </span>
             )}
+            <span
+              className={ev.isFinalized ? 'status-ic status-ic-green' : 'status-ic status-ic-amber'}
+              style={{ width:24, height:24 }}
+              title={ev.isFinalized ? 'Graded' : 'Pending'}
+            >
+              {ev.isFinalized ? <IconCheck size={14} /> : <IconClock size={14} />}
+            </span>
             {overall && <span style={{ fontSize:13, fontWeight:600, color:accent }}>{overall}</span>}
           </div>
-          <div style={{ fontSize:12, color:'#8B8FA8', marginTop:4 }}>
+          <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:4 }}>
             By {supName} · {fmt(ev.sentToTraineeAt || ev.createdAt)}
           </div>
           {ev.hospital?.name && (
-            <div style={{ fontSize:12, color:'#8B8FA8' }}>🏥 {ev.hospital.name}</div>
+            <div style={{ fontSize:12, color:'var(--text-muted)' }}>🏥 {ev.hospital.name}</div>
           )}
         </div>
         {ev.totalScore !== undefined && ev.totalScore !== null && (
           <div style={{ textAlign:'right' }}>
-            <div style={{ fontSize:22, fontWeight:700, color:'#1B1464', lineHeight:1 }}>
+            <div style={{ fontSize:22, fontWeight:700, color:'var(--text)', lineHeight:1 }}>
               {Math.round(ev.totalScore * 10) / 10}
             </div>
-            <div style={{ fontSize:11, color:'#8B8FA8' }}>avg / 10</div>
+            <div style={{ fontSize:11, color:'var(--text-muted)' }}>avg / 10</div>
           </div>
         )}
       </div>
 
       {hasDetail && open && (
-        <div style={{ marginTop:12, borderTop:'1px solid #EDEFF3', paddingTop:12 }}>
+        <div style={{ marginTop:12, borderTop:'1px solid var(--border-soft)', paddingTop:12 }}>
           {fd.supervisionLevel && (
-            <div style={{ fontSize:12.5, color:'#4B5563', marginBottom:10 }}>
+            <div style={{ fontSize:12.5, color:'var(--text-2)', marginBottom:10 }}>
               <strong>Supervision level:</strong> {fd.supervisionLevel}
             </div>
           )}
@@ -123,11 +131,11 @@ function EvalCard({ ev, traineeName }) {
                     <span style={{
                       width:26, height:22, flexShrink:0, borderRadius:6, fontSize:11, fontWeight:800,
                       display:'flex', alignItems:'center', justifyContent:'center',
-                      background:m?.bg || '#f0f2f3', color:m?.color || '#6B7280'
+                      background:m?.bg || 'var(--surface-3)', color:m?.color || 'var(--text-muted)'
                     }}>
                       {m?.short || r.value}
                     </span>
-                    <span style={{ fontSize:12.5, color:'#4B5563' }}>{r.label}</span>
+                    <span style={{ fontSize:12.5, color:'var(--text-2)' }}>{r.label}</span>
                   </div>
                 );
               })}
@@ -135,15 +143,15 @@ function EvalCard({ ev, traineeName }) {
           )}
           {feedbackRows.map(r => (
             <div key={r.label} style={{ marginBottom:8 }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#8B8FA8', textTransform:'uppercase', letterSpacing:'.04em' }}>{r.label}</div>
-              <div style={{ fontSize:13, color:'#4B5563', lineHeight:1.5 }}>{r.text}</div>
+              <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.04em' }}>{r.label}</div>
+              <div style={{ fontSize:13, color:'var(--text-2)', lineHeight:1.5 }}>{r.text}</div>
             </div>
           ))}
         </div>
       )}
 
       {!hasDetail && (ev.comments || ev.notes) && (
-        <div style={{ fontSize:13, color:'#4B5563', marginTop:8, padding:'8px 10px', background:'#F5F6FA', borderRadius:7, lineHeight:1.6, whiteSpace:'pre-line' }}>
+        <div style={{ fontSize:13, color:'var(--text-2)', marginTop:8, padding:'8px 10px', background:'var(--surface-3)', borderRadius:7, lineHeight:1.6, whiteSpace:'pre-line' }}>
           {ev.comments || ev.notes}
         </div>
       )}
@@ -165,7 +173,7 @@ function EvalCard({ ev, traineeName }) {
           title="Print evaluation form"
           style={{
             padding:0, background:'none', border:'none',
-            color:'#4B5563', fontSize:12, fontWeight:600, cursor:'pointer'
+            color:'var(--text-2)', fontSize:12, fontWeight:600, cursor:'pointer'
           }}
         >
           🖨 Print
@@ -182,6 +190,8 @@ export default function Grades() {
   const [reports,     setReports    ] = useState([]);
   const [loading,     setLoading    ] = useState(true);
   const [collapsed,   setCollapsed  ] = useState({});
+  const [evalSearch,  setEvalSearch ] = useState('');
+  const [evalType,    setEvalType   ] = useState('all');
 
   useEffect(() => {
     if (!user) return;
@@ -224,6 +234,17 @@ export default function Grades() {
   const reportList = safeArr(reports);
   const evalList   = safeArr(evaluations);
   const finalList  = safeArr(finalGrades);
+
+  // Supervisor-evaluations search + type filter
+  const evalTypeOf = ev => ev.evaluationType || ev.type || 'Other';
+  const evalTypes  = [...new Set(evalList.map(evalTypeOf))];
+  const evalQuery  = evalSearch.trim().toLowerCase();
+  const filteredEvals = evalList.filter(ev => {
+    if (evalType !== 'all' && evalTypeOf(ev) !== evalType) return false;
+    if (!evalQuery) return true;
+    const hay = `${ev.supervisorId?.name || ev.doctor?.name || ''} ${evalTypeOf(ev)} ${ev.comments || ev.notes || ''} ${ev.hospital?.name || ''}`.toLowerCase();
+    return hay.includes(evalQuery);
+  });
   const graded     = reportList.filter(r => r.status === 'graded' && r.grade);
   const overallAvg = calcAvg(graded);
   const gpaDisplay = overallAvg !== null ? overallAvg.toFixed(1) : '—';
@@ -299,10 +320,27 @@ export default function Grades() {
           <div className="card">
             <div className="card-title" style={{ marginBottom:14 }}>
               Supervisor Evaluations
-              <span className="badge badge-blue" style={{ marginLeft:8 }}>{evalList.length}</span>
+              <span className="badge badge-blue" style={{ marginInlineStart:8 }}>{evalList.length}</span>
             </div>
+
+            <div className="report-search-bar">
+              <input
+                type="text"
+                className="report-search-input"
+                placeholder="Search evaluations (supervisor, type, comment)…"
+                value={evalSearch}
+                onChange={e => setEvalSearch(e.target.value)}
+              />
+              <select className="report-sort-select" value={evalType} onChange={e => setEvalType(e.target.value)}>
+                <option value="all">All types</option>
+                {evalTypes.map(t => <option key={t} value={t}>{getForm(t)?.title || t}</option>)}
+              </select>
+            </div>
+
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              {evalList.map(ev => <EvalCard key={ev._id} ev={ev} traineeName={user?.name} />)}
+              {filteredEvals.length === 0
+                ? <div className="empty-row">No evaluations match your search.</div>
+                : filteredEvals.map(ev => <EvalCard key={ev._id} ev={ev} traineeName={user?.name} />)}
             </div>
           </div>
         )}
@@ -400,7 +438,7 @@ export default function Grades() {
                         <td>{r.title}</td>
                         <td><span className="badge badge-blue">{r.type}</span></td>
                         <td>{fmt(r.date)}</td>
-                        <td><span className={r.status==='graded' ? 'badge badge-green' : 'badge badge-amber'}>{r.status==='graded' ? 'Graded' : 'Pending'}</span></td>
+                        <td><span className={r.status==='graded' ? 'status-ic status-ic-green' : 'status-ic status-ic-amber'} title={r.status==='graded' ? 'Graded' : 'Pending'} style={{ margin:'0 auto' }}>{r.status==='graded' ? <IconCheck size={15} /> : <IconClock size={15} />}</span></td>
                         <td><div className={`grade-circle${r.grade ? '' : ' grade-empty'}`} style={{ margin:'0 auto' }}>{gradeLabel(r)}</div></td>
                         <td>{r.gradedBy?.name ?? '—'}</td>
                       </tr>
