@@ -27,6 +27,7 @@ const STRINGS = {
     allFormsDone: 'اكتملت كل النماذج',
     view: 'عرض',
     evaluation: 'تقييم',
+    evaluationsBtn: 'التقييمات',
     // modal
     idLabel: 'الرقم',
     monthlyEvaluations: 'التقييمات الشهرية',
@@ -80,6 +81,7 @@ const STRINGS = {
     allFormsDone: 'All forms done',
     view: 'View',
     evaluation: 'Evaluation',
+    evaluationsBtn: 'Evaluations',
     // modal
     idLabel: 'ID',
     monthlyEvaluations: 'Monthly evaluations',
@@ -1000,7 +1002,7 @@ export default function SupervisorEvaluations() {
                       boxShadow:'0 2px 6px rgba(255,107,53,.3)'
                     }}
                   >
-                    {t('evaluation')}
+                    {t('evaluationsBtn')}
                   </button>
                 )}
               </div>

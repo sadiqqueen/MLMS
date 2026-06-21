@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { PrefsProvider } from './context/PrefsContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
+import NotFound from './pages/NotFound';
 
 import Reports from './pages/Reports';
 import Grades from './pages/Grades';
@@ -78,6 +80,7 @@ export default function App() {
     <AuthProvider>
       <PrefsProvider>
       <BrowserRouter>
+        <ErrorBoundary>
         <Routes>
           <Route path="/" element={<RootRedirect />} />
           <Route path="/verify/:code" element={<VerifyCertificate />} />
@@ -298,8 +301,9 @@ export default function App() {
             </ProtectedRoute>
           } />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
+        </ErrorBoundary>
       </BrowserRouter>
       </PrefsProvider>
     </AuthProvider>

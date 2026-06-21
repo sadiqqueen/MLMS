@@ -4,7 +4,7 @@ import { usePrefs } from '../context/PrefsContext';
 import Navbar       from '../components/Navbar';
 import api          from '../api/axios';
 import Sk           from '../components/Skeleton';
-import { IconEye, IconCheck, IconClock, IconXCircle } from '../components/icons';
+import { IconEye, IconPrinter, IconCheck, IconClock, IconXCircle } from '../components/icons';
 
 const API_BASE = '';
 
@@ -13,14 +13,19 @@ const API_BASE = '';
 const STRINGS = {
   ar: {
     statTotal:       'إجمالي المتدربين',
-    statActive:      'نشط',
+    statActive:      'المُسندون',
     statCompleted:   'مكتمل',
+    assigned:        'مُسند',
+    completed:       'مكتمل',
+    cancelled:       'ملغى',
+    upcoming:        'قادم',
     searchPlaceholder: 'ابحث بالاسم أو الرقم أو التخصص أو المستشفى…',
     emptyNone:       'لا يوجد متدربون معيّنون بعد',
     emptyNoMatch:    'لا يوجد متدربون مطابقون لبحثك',
     emptyHint:       'يتم تعيين المتدربين إليك من قبل السكرتارية.',
     trainee:         'متدرب',
     view:            'عرض',
+    print:           'طباعة',
     close:           'إغلاق',
     studentId:       'رقم المتدرب',
     phone:           'الهاتف',
@@ -43,14 +48,19 @@ const STRINGS = {
   },
   en: {
     statTotal:       'Total Assigned',
-    statActive:      'Active',
+    statActive:      'Assigned',
     statCompleted:   'Completed',
+    assigned:        'Assigned',
+    completed:       'Completed',
+    cancelled:       'Cancelled',
+    upcoming:        'Upcoming',
     searchPlaceholder: 'Search by name, ID, specialty or hospital…',
     emptyNone:       'No trainees assigned yet',
     emptyNoMatch:    'No trainees match your search',
     emptyHint:       'Trainees are assigned to you by the secretary.',
     trainee:         'Trainee',
     view:            'View',
+    print:           'Print',
     close:           'Close',
     studentId:       'Student ID',
     phone:           'Phone',
@@ -261,6 +271,41 @@ function TraineeModal({ dist, onClose, t }) {
                       {r.type || ''}{r.type && r.date ? ' · ' : ''}{fmtDate(r.date)}
                     </div>
                   </div>
+                  {r.fileUrl ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      <a
+                        href={`${API_BASE}${r.fileUrl}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={t('view')}
+                        aria-label={t('view')}
+                        style={{
+                          width: 28, height: 28, borderRadius: 7, background: 'var(--surface-2)',
+                          color: 'var(--text-2)', border: '1px solid var(--border)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          cursor: 'pointer', textDecoration: 'none'
+                        }}
+                      >
+                        <IconEye size={15} />
+                      </a>
+                      <button
+                        type="button"
+                        title={t('print')}
+                        aria-label={t('print')}
+                        onClick={() => window.open(`${API_BASE}${r.fileUrl}`, '_blank')}
+                        style={{
+                          width: 28, height: 28, borderRadius: 7, background: 'var(--surface-2)',
+                          color: 'var(--text-2)', border: '1px solid var(--border)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <IconPrinter size={15} />
+                      </button>
+                    </div>
+                  ) : (
+                    <span style={{ flexShrink: 0, fontSize: 13, color: 'var(--text-muted)' }}>—</span>
+                  )}
                 </div>
               ))
             )}
@@ -342,7 +387,10 @@ export default function SupervisorTrainees() {
       || getHospital(d).toLowerCase().includes(q);
   });
 
-  const active    = dists.filter(d => (d.status || 'active') === 'active').length;
+  const active    = dists.filter(d => {
+    const s = d.status || 'active';
+    return s === 'active' || s === 'current';
+  }).length;
   const completed = dists.filter(d => d.status === 'completed').length;
 
   if (loading) return (
@@ -483,7 +531,9 @@ export default function SupervisorTrainees() {
                     fontSize:11, fontWeight:600, padding:'2px 9px',
                     borderRadius:20, background:statusStyle.bg, color:statusStyle.color
                   }}>
-                    {status}
+                    {(status === 'active' || status === 'current')
+                      ? t('assigned')
+                      : t(status)}
                   </span>
                 </div>
 
