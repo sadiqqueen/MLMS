@@ -10,7 +10,8 @@ import Navbar from '../components/Navbar';
 import Sk     from '../components/Skeleton';
 import { getForm, scoreMeta } from '../data/evalForms';
 import { printEvaluation } from '../utils/printEvaluation';
-import { IconCheck, IconClock } from '../components/icons';
+import { IconCheck, IconClock, IconEye } from '../components/icons';
+import ReportModal from '../components/ReportModal';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -31,9 +32,9 @@ function gradeToGpa(grade) {
 }
 
 function calcAvg(reps) {
-  const g = reps.filter(r => r.grade);
+  const g = reps.filter(r => gradeToGpa(r.grade) !== null);
   if (!g.length) return null;
-  return g.reduce((s, r) => s + (gradeToGpa(r.grade) ?? 0), 0) / g.length;
+  return g.reduce((s, r) => s + gradeToGpa(r.grade), 0) / g.length;
 }
 
 function hasScore(report) {
@@ -192,6 +193,7 @@ export default function Grades() {
   const [collapsed,   setCollapsed  ] = useState({});
   const [evalSearch,  setEvalSearch ] = useState('');
   const [evalType,    setEvalType   ] = useState('all');
+  const [viewReport,  setViewReport ] = useState(null);
 
   useEffect(() => {
     if (!user) return;
@@ -245,7 +247,7 @@ export default function Grades() {
     const hay = `${ev.supervisorId?.name || ev.doctor?.name || ''} ${evalTypeOf(ev)} ${ev.comments || ev.notes || ''} ${ev.hospital?.name || ''}`.toLowerCase();
     return hay.includes(evalQuery);
   });
-  const graded     = reportList.filter(r => r.status === 'graded' && r.grade);
+  const graded     = reportList.filter(r => (r.status === 'graded' || r.status === 'approved') && r.grade);
   const overallAvg = calcAvg(graded);
   const gpaDisplay = overallAvg !== null ? overallAvg.toFixed(1) : '—';
 
@@ -350,43 +352,43 @@ export default function Grades() {
           <div className="card">
             <div className="card-title" style={{ marginBottom:14 }}>
               Final Report Grades
-              <span className="badge" style={{ marginLeft:8, background:'#FEE2E2', color:'#991B1B' }}>Program Director</span>
+              <span className="badge" style={{ marginLeft:8, background:'var(--danger-bg)', color:'var(--danger-fg)' }}>Program Director</span>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               {finalList.map(r => (
                 <div key={r._id} style={{
-                  border:'1px solid #E8E9EF', borderRadius:10, padding:'14px 16px',
-                  background:'#FFF9F0', borderLeft:'4px solid #FF6B35'
+                  border:'1px solid var(--border)', borderRadius:10, padding:'14px 16px',
+                  background:'var(--surface-2)', borderLeft:'4px solid var(--accent)'
                 }}>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
                     <div>
-                      <div style={{ fontSize:13, fontWeight:600, color:'#1B1464' }}>Final Report</div>
-                      <div style={{ fontSize:12, color:'#8B8FA8', marginTop:3 }}>
+                      <div style={{ fontSize:13, fontWeight:600, color:'var(--text)' }}>Final Report</div>
+                      <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:3 }}>
                         Graded by {r.gradedBy?.name || 'Program Director'} · {fmt(r.gradedAt)}
                       </div>
-                      {r.hospital?.name && <div style={{ fontSize:12, color:'#8B8FA8' }}>🏥 {r.hospital.name}</div>}
+                      {r.hospital?.name && <div style={{ fontSize:12, color:'var(--text-muted)' }}>🏥 {r.hospital.name}</div>}
                     </div>
                     <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6 }}>
                       {r.grade && (
-                        <div style={{ width:44, height:44, borderRadius:'50%', background:'#1B1464', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:700 }}>
+                        <div style={{ width:44, height:44, borderRadius:'50%', background:'var(--brand-secondary)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:700 }}>
                           {r.grade}
                         </div>
                       )}
                       {hasScore(r) && (
-                        <span style={{ fontSize:12, fontWeight:700, padding:'4px 10px', borderRadius:20, background:'#E6F1FB', color:'#185FA5' }}>
+                        <span style={{ fontSize:12, fontWeight:700, padding:'4px 10px', borderRadius:20, background:'var(--info-bg)', color:'var(--info-fg)' }}>
                           {r.score}/100
                         </span>
                       )}
                       {!r.grade && !hasScore(r) && (
-                        <span style={{ fontSize:12, fontWeight:700, padding:'4px 10px', borderRadius:20, background:'#F5F6FA', color:'#8B8FA8' }}>
+                        <span style={{ fontSize:12, fontWeight:700, padding:'4px 10px', borderRadius:20, background:'var(--surface-2)', color:'var(--text-muted)' }}>
                           {gradeLabel(r)}
                         </span>
                       )}
                       {r.globalRating && (
                         <span style={{
                           fontSize:11, fontWeight:600, padding:'2px 9px', borderRadius:20,
-                          background:r.globalRating==='competent' ? '#D1FAE5' : '#FEE2E2',
-                          color:     r.globalRating==='competent' ? '#065F46' : '#991B1B'
+                          background:r.globalRating==='competent' ? 'var(--success-bg)' : 'var(--danger-bg)',
+                          color:     r.globalRating==='competent' ? 'var(--success-fg)' : 'var(--danger-fg)'
                         }}>
                           {r.globalRating==='competent' ? 'Competent' : 'Not-Competent'}
                         </span>
@@ -394,7 +396,7 @@ export default function Grades() {
                     </div>
                   </div>
                   {r.assessorComments && (
-                    <div style={{ fontSize:13, color:'#4B5563', marginTop:8, padding:'8px 10px', background:'#F5F6FA', borderRadius:7, lineHeight:1.6 }}>
+                    <div style={{ fontSize:13, color:'var(--text-2)', marginTop:8, padding:'8px 10px', background:'var(--surface-2)', borderRadius:7, lineHeight:1.6 }}>
                       {r.assessorComments}
                     </div>
                   )}
@@ -430,19 +432,39 @@ export default function Grades() {
               {isOpen && (
                 <table className="grade-table">
                   <thead>
-                    <tr><th>Report</th><th>Type</th><th>Date</th><th>Status</th><th>Grade</th><th>Graded by</th></tr>
+                    <tr><th>Report</th><th>Type</th><th>Date</th><th>Status</th><th>Grade</th><th>Graded by</th><th></th></tr>
                   </thead>
                   <tbody>
-                    {reps.map(r => (
+                    {reps.map(r => {
+                      const isGraded = r.status==='graded' || r.status==='approved';
+                      return (
                       <tr key={r._id}>
                         <td>{r.title}</td>
                         <td><span className="badge badge-blue">{r.type}</span></td>
                         <td>{fmt(r.date)}</td>
-                        <td><span className={r.status==='graded' ? 'status-ic status-ic-green' : 'status-ic status-ic-amber'} title={r.status==='graded' ? 'Graded' : 'Pending'} style={{ margin:'0 auto' }}>{r.status==='graded' ? <IconCheck size={15} /> : <IconClock size={15} />}</span></td>
+                        <td><span className={isGraded ? 'status-ic status-ic-green' : 'status-ic status-ic-amber'} title={isGraded ? 'Graded' : 'Pending'} style={{ margin:'0 auto' }}>{isGraded ? <IconCheck size={15} /> : <IconClock size={15} />}</span></td>
                         <td><div className={`grade-circle${r.grade ? '' : ' grade-empty'}`} style={{ margin:'0 auto' }}>{gradeLabel(r)}</div></td>
                         <td>{r.gradedBy?.name ?? '—'}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="icon-btn"
+                            title="View report"
+                            aria-label="View report"
+                            onClick={() => setViewReport(r)}
+                            style={{
+                              display:'flex', alignItems:'center', justifyContent:'center',
+                              margin:'0 auto', width:30, height:30, padding:0,
+                              background:'none', border:'1px solid var(--border)', borderRadius:7,
+                              color:'var(--link)', cursor:'pointer'
+                            }}
+                          >
+                            <IconEye size={16} />
+                          </button>
+                        </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
@@ -452,14 +474,18 @@ export default function Grades() {
 
         {/* Empty state */}
         {reportList.length === 0 && evalList.length === 0 && finalList.length === 0 && (
-          <div style={{ textAlign:'center', padding:56, color:'#8B8FA8' }}>
+          <div style={{ textAlign:'center', padding:56, color:'var(--text-muted)' }}>
             <div style={{ fontSize:40, marginBottom:12 }}>📊</div>
-            <div style={{ fontSize:16, fontWeight:600, color:'#4B5563', marginBottom:6 }}>No grades yet</div>
+            <div style={{ fontSize:16, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>No grades yet</div>
             <div style={{ fontSize:13 }}>Grades will appear here once your supervisor assesses your reports and evaluations.</div>
           </div>
         )}
 
       </main>
+
+      {viewReport && (
+        <ReportModal report={viewReport} student={user} onClose={() => setViewReport(null)} />
+      )}
     </>
   );
 }

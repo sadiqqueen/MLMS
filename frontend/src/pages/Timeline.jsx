@@ -45,24 +45,24 @@ function normalize(item = {}) {
 
 function SpecialtyCard({ item }) {
   const muted  = item.status === 'upcoming';
-  const statusColor = item.status==='active'    ? '#059669'
-                    : item.status==='completed' ? '#1B1464'
-                    : '#D97706';
-  const statusBg    = item.status==='active'    ? '#D1FAE5'
-                    : item.status==='completed' ? '#EEEDFE'
-                    : '#FEF3C7';
+  const statusColor = item.status==='active'    ? 'var(--success)'
+                    : item.status==='completed' ? 'var(--brand-secondary)'
+                    : 'var(--warning)';
+  const statusBg    = item.status==='active'    ? 'var(--success-bg)'
+                    : item.status==='completed' ? 'var(--surface-2)'
+                    : 'var(--warning-bg)';
 
   return (
     <div style={{
-      background:'#fff',
-      border:'1px solid #E8E9EF',
+      background:'var(--surface)',
+      border:'1px solid var(--border)',
       borderRadius:12,
       padding:'18px 20px',
       opacity:muted ? 0.7 : 1,
-      boxShadow:'0 1px 3px rgba(0,0,0,.06)',
+      boxShadow:'var(--shadow)',
     }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-        <div style={{ fontSize:16, fontWeight:700, color:'#1B1464' }}>
+        <div style={{ fontSize:16, fontWeight:700, color:'var(--text)' }}>
           ⭐ {item.specialty}
         </div>
         <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:statusBg, color:statusColor }}>
@@ -71,15 +71,15 @@ function SpecialtyCard({ item }) {
       </div>
 
       <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-        <div style={{ fontSize:13, color:'#4B5563' }}>
+        <div style={{ fontSize:13, color:'var(--text-2)' }}>
           🏥 <strong>{item.hospital}</strong>
         </div>
         {item.supervisor && item.supervisor !== '—' && (
-          <div style={{ fontSize:13, color:'#4B5563' }}>
+          <div style={{ fontSize:13, color:'var(--text-2)' }}>
             👨‍⚕️ Dr. {item.supervisor.replace(/^Dr\.?\s*/i, '')}
           </div>
         )}
-        <div style={{ fontSize:12, color:'#8B8FA8' }}>
+        <div style={{ fontSize:12, color:'var(--text-muted)' }}>
           📅 {fmt(item.startDate)} — {fmt(item.endDate)}
           {item.durationWeeks ? ` · ${item.durationWeeks} weeks` : ''}
         </div>
@@ -130,7 +130,7 @@ export default function Timeline() {
           {[0,1,2].map(i => {
             const isLeft = i % 2 === 0;
             const card = (
-              <div style={{ background:'#fff', border:'1px solid #E8E9EF', borderRadius:12, padding:'18px 20px' }}>
+              <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'18px 20px' }}>
                 <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
                   <Sk w={160} h={16} /><Sk w={65} h={20} r={20} />
                 </div>
@@ -176,9 +176,9 @@ export default function Timeline() {
         </div>
 
         {items.length === 0 && (
-          <div style={{ textAlign:'center', padding:56, color:'#8B8FA8' }}>
+          <div style={{ textAlign:'center', padding:56, color:'var(--text-muted)' }}>
             <div style={{ fontSize:40, marginBottom:12 }}>📅</div>
-            <div style={{ fontSize:16, fontWeight:600, color:'#4B5563', marginBottom:6 }}>No rotations assigned yet</div>
+            <div style={{ fontSize:16, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>No rotations assigned yet</div>
             <div style={{ fontSize:13 }}>Your secretary will assign you to specialties. Check back soon.</div>
           </div>
         )}
