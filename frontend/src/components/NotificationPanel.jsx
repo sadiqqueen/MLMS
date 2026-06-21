@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { IconTrash } from './icons';
 
 // Converts a date into a human-friendly "X minutes/hours/days ago" string
 function timeAgo(dateStr) {
@@ -12,10 +13,11 @@ function timeAgo(dateStr) {
 
 // Props this component receives from Navbar:
 // - notifications: the array of notification objects
-// - onRead(id):    call when user clicks a notification (marks it read)
+// - onOpen(n):     call when user clicks a notification (marks read + navigates to its page)
 // - onReadAll():   call when user clicks "Mark all as read"
+// - onDelete(id):  call to delete a (read) notification
 // - onClose():     call when user clicks outside (closes the panel)
-export default function NotificationPanel({ notifications, onRead, onReadAll, onClose }) {
+export default function NotificationPanel({ notifications, onOpen, onReadAll, onDelete, onClose }) {
   const panelRef = useRef(null);
   // useRef gives us a reference to the actual DOM element so we can detect clicks outside it
 
@@ -48,7 +50,8 @@ export default function NotificationPanel({ notifications, onRead, onReadAll, on
           <div
             key={n._id}
             className={`notif-item${n.read ? '' : ' notif-unread'}`}
-            onClick={() => !n.read && onRead(n._id)}
+            role="button"
+            onClick={() => onOpen(n)}
           >
             <div className="notif-dot-wrap">
               {!n.read && <span className="notif-dot" />}
@@ -57,6 +60,16 @@ export default function NotificationPanel({ notifications, onRead, onReadAll, on
               <div className="notif-msg">{n.message}</div>
               <div className="notif-time">{timeAgo(n.createdAt)}</div>
             </div>
+            {n.read && (
+              <button
+                className="notif-del"
+                title="Delete notification"
+                aria-label="Delete notification"
+                onClick={e => { e.stopPropagation(); onDelete(n._id); }}
+              >
+                <IconTrash size={15} />
+              </button>
+            )}
           </div>
         ))}
       </div>

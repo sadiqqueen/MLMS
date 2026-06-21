@@ -179,17 +179,15 @@ html[data-theme="dark"] { color-scheme: dark; }
 .nav-right { display: flex; align-items: center; gap: 10px; }
 
 .bell-wrap { position: relative; }
-.bell-btn  { background: none; border: none; width: 34px; height: 34px; border-radius: 8px; color: rgba(255,255,255,0.8); font-size: 17px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.15s; }
-.bell-btn:hover { background: rgba(255,255,255,0.1); }
-
-/* Theme + language toggles styled to match the navbar menu links (.nav-link). */
-.nav-toggle-btn {
+/* Theme/language toggles + notification bell — all styled like the menu links (.nav-link). */
+.nav-toggle-btn, .bell-btn {
   background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer;
   color: rgba(255,255,255,0.75); font-family: inherit; font-size: 15px; font-weight: 500;
   padding: 7px 14px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.nav-toggle-btn:hover { background: rgba(255,255,255,0.1); color: #fff; border-bottom: 2px solid #fe9a16; }
+.nav-toggle-btn:hover, .bell-btn:hover { background: rgba(255,255,255,0.1); color: #fff; border-bottom: 2px solid #fe9a16; }
+.bell-btn { font-size: 17px; padding: 7px 12px; }
 .bell-badge { position: absolute; top: -2px; inset-inline-end: -2px; background: #e74c3c; color: white; font-size: 10px; font-weight: 600; min-width: 17px; height: 17px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0 4px; border: 2px solid var(--brand-primary); }
 
 .avatar-wrap { position: relative; }
@@ -316,6 +314,10 @@ html[data-theme="dark"] { color-scheme: dark; }
 .notif-body { flex: 1; }
 .notif-msg  { font-size: 13px; color: var(--text); line-height: 1.4; }
 .notif-time { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+.notif-item { cursor: pointer; }
+.notif-body { flex: 1; min-width: 0; }
+.notif-del  { flex-shrink: 0; align-self: center; background: none; border: none; cursor: pointer; color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; transition: background 0.12s, color 0.12s; }
+.notif-del:hover { background: var(--danger-bg); color: var(--danger); }
 
 /* ── PROFILE DROPDOWN ───────────────────────────────────────────────────── */
 .profile-dropdown { position: absolute; top: calc(100% + 8px); inset-inline-end: 0; width: 220px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px var(--shadow); z-index: 1000; overflow: hidden; }

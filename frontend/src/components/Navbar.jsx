@@ -80,6 +80,50 @@ const ROLE_HOME = {
   asg2:             '/consultant-memo',
 };
 
+// Best-effort: pick the most relevant page for a notification from its message
+// text + the user's role (notifications store no link). Falls back to home.
+function notifLink(message = '', role) {
+  const m = String(message).toLowerCase();
+  const has = re => re.test(m);
+  switch (role) {
+    case 'trainee':
+      if (has(/evaluat|assess|competent|grade|score/)) return '/grades';
+      if (has(/report/))                                return '/reports';
+      if (has(/rotation|distribut|assign|specialt|hospital/)) return '/timeline';
+      break;
+    case 'supervisor':
+      if (has(/evaluat|assess/))   return '/supervisor/evaluations';
+      if (has(/report|grade/))     return '/supervisor/reports';
+      if (has(/trainee|assign/))   return '/supervisor/trainees';
+      break;
+    case 'program_director':
+      if (has(/report|grade/))  return '/program-director/reports';
+      if (has(/supervisor/))    return '/program-director/supervisors';
+      if (has(/trainee/))       return '/program-director/trainees';
+      break;
+    case 'dio':
+      if (has(/certificat/))  return '/dio/certificates';
+      if (has(/rotation/))    return '/dio/rotations';
+      if (has(/distribut/))   return '/dio/distributions';
+      if (has(/supervisor/))  return '/dio/supervisors';
+      if (has(/trainee/))     return '/dio/trainees';
+      break;
+    case 'secretary':
+      if (has(/supervisor/))             return '/secretary/supervisors';
+      if (has(/program/))                return '/secretary/program-directors';
+      if (has(/trainee|report|assign/))  return '/secretary/trainees';
+      break;
+    case 'super_admin':
+      if (has(/certificat/))           return '/admin/certificates';
+      if (has(/user|account|locked/))  return '/admin/users';
+      if (has(/hospital/))             return '/admin/hospitals';
+      break;
+    default:
+      break;
+  }
+  return ROLE_HOME[role] || '/';
+}
+
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme, lang, toggleLang, t } = usePrefs();
@@ -135,6 +179,21 @@ export default function Navbar() {
   async function handleReadAll() {
     await api.put(`/api/notifications/read-all/${user._id}`);
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  }
+
+  // Open a notification → mark it read, close the panel, go to its page.
+  function handleOpenNotif(n) {
+    if (!n.read) handleRead(n._id);
+    setShowNotif(false);
+    const dest = notifLink(n.message, user?.role);
+    if (dest && dest !== location.pathname) navigate(dest);
+  }
+
+  async function handleDeleteNotif(id) {
+    try {
+      await api.delete(`/api/notifications/${id}`);
+      setNotifications(prev => prev.filter(n => n._id !== id));
+    } catch {}
   }
 
   function toggleNotif()   { setShowNotif(v => !v);   setShowProfile(false); setMenuOpen(false); }
@@ -210,8 +269,9 @@ export default function Navbar() {
           {showNotif && (
             <NotificationPanel
               notifications={notifications}
-              onRead={handleRead}
+              onOpen={handleOpenNotif}
               onReadAll={handleReadAll}
+              onDelete={handleDeleteNotif}
               onClose={() => setShowNotif(false)}
             />
           )}
