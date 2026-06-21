@@ -34,6 +34,50 @@ function normalizeDistributionData(data) {
   return data;
 }
 
+function getHospital(user) {
+  const hospital = user.hospitalId || user.hospital || null;
+  return hospital?._id || hospital;
+}
+
+function sameId(a, b) {
+  if (!a || !b) return false;
+  const left = a?._id || a;
+  const right = b?._id || b;
+  return left.toString() === right.toString();
+}
+
+function hospitalCondition(hospitalId) {
+  return { $or: [{ hospitalId }, { hospital: hospitalId }] };
+}
+
+function addAnd(query, condition) {
+  if (!condition) return;
+  query.$and = [...(query.$and || []), condition];
+}
+
+function belongsToHospital(doc, hospitalId) {
+  return sameId(doc?.hospitalId, hospitalId) || sameId(doc?.hospital, hospitalId);
+}
+
+function getDioHospitalOrFail(req, res) {
+  if (req.user.role !== 'dio') return null;
+  const hospitalId = getHospital(req.user);
+  if (!hospitalId) {
+    res.status(403).json({ success: false, message: 'DIO account is not assigned to a hospital' });
+    return false;
+  }
+  return hospitalId;
+}
+
+function ensureDioCanAccessDistribution(req, res, distribution) {
+  const hospitalId = getDioHospitalOrFail(req, res);
+  if (hospitalId === false) return false;
+  if (!hospitalId) return true;
+  if (belongsToHospital(distribution, hospitalId)) return true;
+  res.status(403).json({ success: false, message: 'Access denied: distribution belongs to a different hospital' });
+  return false;
+}
+
 async function audit(req, action, targetId, metadata = {}) {
   await AuditLog.create({
     userId: req.user._id,
@@ -45,8 +89,15 @@ async function audit(req, action, targetId, metadata = {}) {
   }).catch(err => console.error('[AuditLog] Failed to write distribution audit:', err.message));
 }
 
-async function validateDistributionPayload(data, res, { creating = false, existingId = null } = {}) {
+async function validateDistributionPayload(data, res, { creating = false, existingId = null, req = null } = {}) {
   normalizeDistributionData(data);
+  const dioHospitalId = req ? getDioHospitalOrFail(req, res) : null;
+  if (dioHospitalId === false) return false;
+  if (dioHospitalId && data.hospitalId && !sameId(data.hospitalId, dioHospitalId)) {
+    res.status(403).json({ success: false, message: 'DIO users can only manage their assigned hospital' });
+    return false;
+  }
+
   const required = creating ? ['supervisorId', 'hospitalId', 'specialtyId'] : [];
   const missing = required.filter(k => !data[k]);
   if (missing.length) {
@@ -72,6 +123,10 @@ async function validateDistributionPayload(data, res, { creating = false, existi
       res.status(400).json({ success: false, message: 'Supervisor not found or inactive' });
       return false;
     }
+    if (dioHospitalId && !belongsToHospital(supervisor, dioHospitalId)) {
+      res.status(403).json({ success: false, message: 'Supervisor belongs to a different hospital' });
+      return false;
+    }
   }
 
   if (data.hospitalId) {
@@ -86,6 +141,10 @@ async function validateDistributionPayload(data, res, { creating = false, existi
     const specialty = await Specialty.findOne({ _id: data.specialtyId, isActive: { $ne: false } });
     if (!specialty) {
       res.status(400).json({ success: false, message: 'Specialty not found or inactive' });
+      return false;
+    }
+    if (dioHospitalId && specialty.hospitalId && !sameId(specialty.hospitalId, dioHospitalId)) {
+      res.status(403).json({ success: false, message: 'Specialty belongs to a different hospital' });
       return false;
     }
     if (!data.specialty) data.specialty = specialty.name;
@@ -125,6 +184,9 @@ router.get('/', auth, allowRoles(...READ_ROLES), async (req, res) => {
   try {
     const query = {};
     const and = [];
+    const dioHospitalId = getDioHospitalOrFail(req, res);
+    if (dioHospitalId === false) return;
+    if (dioHospitalId) and.push(hospitalCondition(dioHospitalId));
 
     if (req.query.hospital) {
       const hospitalMatch = [{ hospital: req.query.hospital }];
@@ -164,7 +226,7 @@ router.post('/', auth, allowRoles(...WRITE_ROLES), async (req, res) => {
     const data = pick(req.body, ALLOWED);
     data.createdBy = req.user._id;
     data.status = data.status || 'active';
-    if (!(await validateDistributionPayload(data, res, { creating: true }))) return;
+    if (!(await validateDistributionPayload(data, res, { creating: true, req }))) return;
 
     const dist = await Distribution.create(data);
     await audit(req, 'create_distribution', dist._id, {
@@ -185,13 +247,14 @@ router.put('/:id', auth, allowRoles(...WRITE_ROLES), async (req, res) => {
     if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid distribution id' });
     const existing = await Distribution.findById(req.params.id);
     if (!existing) return res.status(404).json({ message: 'Distribution not found' });
+    if (!ensureDioCanAccessDistribution(req, res, existing)) return;
 
     const UPDATE_ALLOWED = ['supervisorId', 'specialtyId', 'hospitalId', 'status', 'doctor', 'hospital', 'specialty'];
     const updates = pick(req.body, UPDATE_ALLOWED);
     if (updates.status === 'active' && !updates.supervisorId && !updates.doctor) {
       updates.supervisorId = existing.supervisorId || existing.doctor;
     }
-    if (!(await validateDistributionPayload(updates, res, { existingId: req.params.id }))) return;
+    if (!(await validateDistributionPayload(updates, res, { existingId: req.params.id, req }))) return;
 
     const dist = await populateDistribution(Distribution.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true }));
     await audit(req, updates.status === 'inactive' ? 'deactivate_distribution' : 'update_distribution', dist._id, {
@@ -207,8 +270,10 @@ router.put('/:id', auth, allowRoles(...WRITE_ROLES), async (req, res) => {
 router.delete('/:id', auth, allowRoles(...WRITE_ROLES), async (req, res) => {
   try {
     if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid distribution id' });
+    const existing = await Distribution.findById(req.params.id);
+    if (!existing) return res.status(404).json({ message: 'Distribution not found' });
+    if (!ensureDioCanAccessDistribution(req, res, existing)) return;
     const dist = await Distribution.findByIdAndUpdate(req.params.id, { status: 'inactive' }, { new: true, runValidators: true });
-    if (!dist) return res.status(404).json({ message: 'Distribution not found' });
     await audit(req, 'deactivate_distribution', dist._id, { status: 'inactive' });
     res.json({ success: true, message: 'Distribution deactivated', data: dist });
   } catch (err) {
@@ -221,7 +286,8 @@ router.patch('/:id/reactivate', auth, allowRoles(...WRITE_ROLES), async (req, re
     if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid distribution id' });
     const existing = await Distribution.findById(req.params.id);
     if (!existing) return res.status(404).json({ message: 'Distribution not found' });
-    if (!(await validateDistributionPayload({ supervisorId: existing.supervisorId, status: 'active' }, res, { existingId: req.params.id }))) return;
+    if (!ensureDioCanAccessDistribution(req, res, existing)) return;
+    if (!(await validateDistributionPayload({ supervisorId: existing.supervisorId, hospitalId: existing.hospitalId || existing.hospital, status: 'active' }, res, { existingId: req.params.id, req }))) return;
 
     existing.status = 'active';
     await existing.save();

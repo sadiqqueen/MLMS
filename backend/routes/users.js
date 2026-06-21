@@ -193,7 +193,7 @@ router.post('/', auth, allowRoles(...WRITE_STAFF), upload.single('photo'), async
 });
 
 // PUT /api/users/:id — update user with optional photo
-router.put('/:id', auth, upload.single('photo'), async (req, res) => {
+async function updateUser(req, res) {
   try {
     const isSelf  = req.user._id.toString() === req.params.id;
     if (req.user.role === 'president') {
@@ -207,12 +207,12 @@ router.put('/:id', auth, upload.single('photo'), async (req, res) => {
       return res.status(403).json({ message: 'Insufficient permission to update this user' });
     }
 
-    const allowedKeys = isAdmin ? ADMIN_EDITABLE : SELF_EDITABLE;
+    const allowedKeys = isSelf ? SELF_EDITABLE : ADMIN_EDITABLE;
     const fields = {};
     allowedKeys.forEach(k => { if (req.body[k] !== undefined) fields[k] = req.body[k]; });
     if (req.file) fields.photoUrl = `/uploads/photos/${req.file.filename}`;
 
-    const user = await User.findByIdAndUpdate(req.params.id, fields, { new: true })
+    const user = await User.findByIdAndUpdate(req.params.id, fields, { new: true, runValidators: true })
       .select('-password')
       .populate('hospital', 'name city');
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -220,7 +220,10 @@ router.put('/:id', auth, upload.single('photo'), async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-});
+}
+
+router.put('/:id', auth, upload.single('photo'), updateUser);
+router.patch('/:id', auth, upload.single('photo'), updateUser);
 
 // PUT /api/users/:id/password — change password
 router.put('/:id/password', auth, allowRoles(...PASSWORD_RESET_ROLES), async (req, res) => {
@@ -271,8 +274,8 @@ router.delete('/:id', auth, allowRoles(...WRITE_STAFF), auditLog('deactivate_use
 
     const target = await User.findById(req.params.id);
     if (!target || target.isActive === false) return res.status(404).json({ message: 'User not found' });
-    if (target.role === 'super_admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ message: 'Only a super_admin can deactivate a super_admin' });
+    if (!hasHigherRole(req.user.role, target.role)) {
+      return res.status(403).json({ message: 'Insufficient permission to deactivate this user' });
     }
 
     const user = await User.findByIdAndUpdate(

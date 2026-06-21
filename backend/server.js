@@ -26,6 +26,7 @@ const helmet       = require('helmet');
 const cookieParser = require('cookie-parser');
 const { globalLimiter, writeLimiter } = require('./middleware/rateLimiter');
 const honeypot = require('./middleware/honeypot');
+const auth = require('./middleware/auth');
 
 const app = express();
 if (process.env.TRUST_PROXY === 'true') {
@@ -81,8 +82,8 @@ app.use('/uploads/consultant-memos', (req, res, next) => {
   next();
 });
 
-// Serve uploads as static files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Uploaded training/report files require an authenticated session.
+app.use('/uploads', auth, express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/evaluations', writeMethodsOnly);
 app.use('/api/reports', writeMethodsOnly);

@@ -17,6 +17,7 @@ module.exports = async (req, res, next) => {
       const user = await User.findById(decoded.id).select('-password');
       if (!user) return res.status(401).json({ message: 'User not found' });
       if (user.isActive === false) return res.status(403).json({ message: 'Account deactivated' });
+      if (user.locked === true) return res.status(423).json({ message: 'Account locked. Contact an administrator.' });
       // Check brute-force lock
       if (user.lockUntil && user.lockUntil > new Date()) {
         const mins = Math.ceil((user.lockUntil - new Date()) / 60000);
@@ -52,6 +53,7 @@ module.exports = async (req, res, next) => {
     const user = await User.findById(decoded.id).select('-password');
     if (!user) return res.status(401).json({ message: 'User not found' });
     if (user.isActive === false) return res.status(403).json({ message: 'Account deactivated' });
+    if (user.locked === true) return res.status(423).json({ message: 'Account locked. Contact an administrator.' });
 
     // Issue new access token
     const newAccessToken = jwt.sign(

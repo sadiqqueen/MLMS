@@ -73,10 +73,46 @@ async function audit(req, action, targetId, metadata = {}) {
   }).catch(err => console.error('[AuditLog] Failed to write certificate audit:', err.message));
 }
 
+function getHospital(user) {
+  const hospital = user.hospitalId || user.hospital || null;
+  return hospital?._id || hospital;
+}
+
+function sameId(a, b) {
+  if (!a || !b) return false;
+  const left = a?._id || a;
+  const right = b?._id || b;
+  return left.toString() === right.toString();
+}
+
+function scopedCertificateQuery(req, res) {
+  if (req.user.role === 'super_admin') return {};
+  const hospitalId = getHospital(req.user);
+  if (!hospitalId) {
+    res.status(403).json({ success: false, message: 'Account is not assigned to a hospital' });
+    return false;
+  }
+  return { hospital: hospitalId };
+}
+
+function ensureCertificateScope(req, res, cert) {
+  if (req.user.role === 'super_admin') return true;
+  const hospitalId = getHospital(req.user);
+  if (!hospitalId) {
+    res.status(403).json({ success: false, message: 'Account is not assigned to a hospital' });
+    return false;
+  }
+  if (sameId(cert.hospital, hospitalId)) return true;
+  res.status(403).json({ success: false, message: 'Access denied: certificate belongs to a different hospital' });
+  return false;
+}
+
 // GET /api/certificates
 router.get('/', auth, allowRoles(...CERT_READ), async (req, res) => {
   try {
-    const certs = await populate(Certificate.find().sort({ createdAt: -1 }));
+    const query = scopedCertificateQuery(req, res);
+    if (query === false) return;
+    const certs = await populate(Certificate.find(query).sort({ createdAt: -1 }));
     res.json(certs);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -91,6 +127,7 @@ router.get('/:id', auth, allowRoles(...CERT_READ), async (req, res) => {
     }
     const cert = await populate(Certificate.findById(req.params.id));
     if (!cert) return res.status(404).json({ success: false, message: 'Certificate not found' });
+    if (!ensureCertificateScope(req, res, cert)) return;
     res.json({ success: true, data: formatCertificateForPrint(req, cert) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -105,6 +142,7 @@ router.get('/:id/print', auth, allowRoles(...CERT_READ), async (req, res) => {
     }
     const cert = await populate(Certificate.findById(req.params.id));
     if (!cert) return res.status(404).json({ success: false, message: 'Certificate not found' });
+    if (!ensureCertificateScope(req, res, cert)) return;
     await audit(req, 'view_certificate_print', cert._id, { status: cert.revokedAt ? 'revoked' : 'valid' });
     res.json({ success: true, data: formatCertificateForPrint(req, cert) });
   } catch (err) {
@@ -121,6 +159,14 @@ router.post('/', auth, allowRoles(...CERT_WRITE), async (req, res) => {
     const data = {};
     ALLOWED_CREATE.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
     data.issuedBy = req.user._id;
+    if (req.user.role !== 'super_admin') {
+      const hospitalId = getHospital(req.user);
+      if (!hospitalId) return res.status(403).json({ success: false, message: 'Account is not assigned to a hospital' });
+      if (data.hospital && !sameId(data.hospital, hospitalId)) {
+        return res.status(403).json({ success: false, message: 'Cannot issue a certificate for another hospital' });
+      }
+      data.hospital = hospitalId;
+    }
 
     const cert = await Certificate.create(data);
     const populated = await populate(Certificate.findById(cert._id));
@@ -150,6 +196,7 @@ router.delete('/:id', auth, allowRoles(...CERT_WRITE), async (req, res) => {
     }
     const cert = await Certificate.findById(req.params.id);
     if (!cert) return res.status(404).json({ success: false, message: 'Certificate not found' });
+    if (!ensureCertificateScope(req, res, cert)) return;
     await cert.deleteOne();
     await audit(req, 'delete_certificate', cert._id, { student: cert.student, traineeId: cert.traineeId });
     res.json({ message: 'Deleted' });

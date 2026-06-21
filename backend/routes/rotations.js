@@ -32,6 +32,50 @@ function normalizeRotationData(data) {
   return data;
 }
 
+function getHospital(user) {
+  const hospital = user.hospitalId || user.hospital || null;
+  return hospital?._id || hospital;
+}
+
+function sameId(a, b) {
+  if (!a || !b) return false;
+  const left = a?._id || a;
+  const right = b?._id || b;
+  return left.toString() === right.toString();
+}
+
+function hospitalCondition(hospitalId) {
+  return { $or: [{ hospitalId }, { hospital: hospitalId }] };
+}
+
+function addAnd(query, condition) {
+  if (!condition) return;
+  query.$and = [...(query.$and || []), condition];
+}
+
+function belongsToHospital(doc, hospitalId) {
+  return sameId(doc?.hospitalId, hospitalId) || sameId(doc?.hospital, hospitalId);
+}
+
+function getDioHospitalOrFail(req, res) {
+  if (req.user.role !== 'dio') return null;
+  const hospitalId = getHospital(req.user);
+  if (!hospitalId) {
+    res.status(403).json({ success: false, message: 'DIO account is not assigned to a hospital' });
+    return false;
+  }
+  return hospitalId;
+}
+
+function ensureDioCanAccessRotation(req, res, rotation) {
+  const hospitalId = getDioHospitalOrFail(req, res);
+  if (hospitalId === false) return false;
+  if (!hospitalId) return true;
+  if (belongsToHospital(rotation, hospitalId)) return true;
+  res.status(403).json({ success: false, message: 'Access denied: rotation belongs to a different hospital' });
+  return false;
+}
+
 function dateOnly(d) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
@@ -61,8 +105,15 @@ async function audit(req, action, targetId, metadata = {}) {
   }).catch(err => console.error('[AuditLog] Failed to write rotation audit:', err.message));
 }
 
-async function validateRotationPayload(data, res, { creating = false, existingId = null, existing = null } = {}) {
+async function validateRotationPayload(data, res, { creating = false, existingId = null, existing = null, req = null } = {}) {
   normalizeRotationData(data);
+  const dioHospitalId = req ? getDioHospitalOrFail(req, res) : null;
+  if (dioHospitalId === false) return false;
+  if (dioHospitalId && data.hospitalId && !sameId(data.hospitalId, dioHospitalId)) {
+    res.status(403).json({ success: false, message: 'DIO users can only manage their assigned hospital' });
+    return false;
+  }
+
   const required = creating ? ['traineeId', 'hospitalId', 'startDate', 'endDate'] : [];
   const missing = required.filter(k => !data[k]);
   if (missing.length) {
@@ -119,6 +170,10 @@ async function validateRotationPayload(data, res, { creating = false, existingId
       res.status(400).json({ success: false, message: 'Trainee not found or inactive' });
       return false;
     }
+    if (dioHospitalId && !belongsToHospital(trainee, dioHospitalId)) {
+      res.status(403).json({ success: false, message: 'Trainee belongs to a different hospital' });
+      return false;
+    }
   }
 
   if (data.hospitalId) {
@@ -135,12 +190,20 @@ async function validateRotationPayload(data, res, { creating = false, existingId
       res.status(400).json({ success: false, message: 'Supervisor not found or inactive' });
       return false;
     }
+    if (dioHospitalId && !belongsToHospital(supervisor, dioHospitalId)) {
+      res.status(403).json({ success: false, message: 'Supervisor belongs to a different hospital' });
+      return false;
+    }
   }
 
   if (data.specialtyId) {
     const specialty = await Specialty.findOne({ _id: data.specialtyId, isActive: { $ne: false } });
     if (!specialty) {
       res.status(400).json({ success: false, message: 'Specialty not found or inactive' });
+      return false;
+    }
+    if (dioHospitalId && specialty.hospitalId && !sameId(specialty.hospitalId, dioHospitalId)) {
+      res.status(403).json({ success: false, message: 'Specialty belongs to a different hospital' });
       return false;
     }
   }
@@ -190,6 +253,9 @@ function populateRotation(query) {
 router.get('/', auth, allowRoles(...READ_ROLES), async (req, res) => {
   try {
     const query = {};
+    const dioHospitalId = getDioHospitalOrFail(req, res);
+    if (dioHospitalId === false) return;
+    if (dioHospitalId) addAnd(query, hospitalCondition(dioHospitalId));
     if (req.query.status) query.status = req.query.status;
     if (req.query.traineeId || req.query.student) {
       const id = req.query.traineeId || req.query.student;
@@ -217,6 +283,12 @@ router.get('/doctor/:doctorId', auth, async (req, res) => {
     const rotations = await populateRotation(Rotation.find({
       $or: [{ doctor: req.params.doctorId }, { supervisorId: req.params.doctorId }]
     })).sort({ startDate: -1 });
+    if (req.user.role === 'dio') {
+      const hospitalId = getDioHospitalOrFail(req, res);
+      if (hospitalId === false) return;
+      const outOfScope = rotations.find(rotation => !belongsToHospital(rotation, hospitalId));
+      if (outOfScope) return res.status(403).json({ success: false, message: 'Access denied: rotations belong to a different hospital' });
+    }
     res.json(rotations);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -232,6 +304,12 @@ router.get('/student/:id', auth, async (req, res) => {
     const rotations = await populateRotation(Rotation.find({
       $or: [{ traineeId: req.params.id }, { student: req.params.id }]
     })).sort({ startDate: 1 });
+    if (req.user.role === 'dio') {
+      const hospitalId = getDioHospitalOrFail(req, res);
+      if (hospitalId === false) return;
+      const outOfScope = rotations.find(rotation => !belongsToHospital(rotation, hospitalId));
+      if (outOfScope) return res.status(403).json({ success: false, message: 'Access denied: rotations belong to a different hospital' });
+    }
     res.json(rotations);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -248,6 +326,7 @@ router.get('/current/:studentId', auth, async (req, res) => {
       $or: [{ traineeId: req.params.studentId }, { student: req.params.studentId }],
       status: 'current'
     }));
+    if (rotation && !ensureDioCanAccessRotation(req, res, rotation)) return;
     res.json(rotation || null);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -260,7 +339,7 @@ router.post('/', auth, allowRoles(...WRITE_ROLES), async (req, res) => {
                             'specialtyId', 'startDate', 'endDate', 'status', 'weeklyAvg', 'monthlyAvg', 'finalGrade'];
     const data = normalizeRotationData(pick(req.body, ALLOWED_CREATE));
     if (!data.status && data.startDate && data.endDate) data.status = inferStatus(data.startDate, data.endDate);
-    if (!(await validateRotationPayload(data, res, { creating: true }))) return;
+    if (!(await validateRotationPayload(data, res, { creating: true, req }))) return;
 
     const rotation = await Rotation.create(data);
     await audit(req, 'create_rotation', rotation._id, { traineeId: rotation.traineeId, hospitalId: rotation.hospitalId, status: rotation.status });
@@ -274,8 +353,10 @@ router.post('/', auth, allowRoles(...WRITE_ROLES), async (req, res) => {
 router.delete('/:id', auth, allowRoles(...WRITE_ROLES), async (req, res) => {
   try {
     if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid rotation id' });
+    const existing = await Rotation.findById(req.params.id);
+    if (!existing) return res.status(404).json({ success: false, message: 'Rotation not found' });
+    if (!ensureDioCanAccessRotation(req, res, existing)) return;
     const rotation = await Rotation.findByIdAndUpdate(req.params.id, { status: 'cancelled' }, { new: true, runValidators: true });
-    if (!rotation) return res.status(404).json({ success: false, message: 'Rotation not found' });
     await audit(req, 'cancel_rotation', rotation._id, { status: 'cancelled' });
     const populated = await populateRotation(Rotation.findById(rotation._id));
     res.json({ success: true, message: 'Rotation cancelled', data: populated });
@@ -289,6 +370,7 @@ router.put('/:id', auth, allowRoles(...WRITE_ROLES), async (req, res) => {
     if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid rotation id' });
     const existing = await Rotation.findById(req.params.id);
     if (!existing) return res.status(404).json({ message: 'Rotation not found' });
+    if (!ensureDioCanAccessRotation(req, res, existing)) return;
 
     const UPDATE_ALLOWED = ['traineeId', 'student', 'hospitalId', 'hospital', 'supervisorId', 'doctor',
                             'specialtyId', 'startDate', 'endDate', 'status', 'weeklyAvg', 'monthlyAvg', 'finalGrade'];
@@ -296,7 +378,7 @@ router.put('/:id', auth, allowRoles(...WRITE_ROLES), async (req, res) => {
     const mergedStart = updates.startDate || existing.startDate;
     const mergedEnd = updates.endDate || existing.endDate;
     if (!updates.status && (updates.startDate || updates.endDate)) updates.status = inferStatus(mergedStart, mergedEnd);
-    if (!(await validateRotationPayload(updates, res, { existingId: req.params.id, existing }))) return;
+    if (!(await validateRotationPayload(updates, res, { existingId: req.params.id, existing, req }))) return;
 
     const rotation = await populateRotation(Rotation.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true }));
     await audit(req, updates.status === 'cancelled' ? 'cancel_rotation' : 'update_rotation', rotation._id, {

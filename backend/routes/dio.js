@@ -28,7 +28,60 @@ const DIO_ROLE_ROUTE = {
 };
 
 function getHospital(user) {
-  return user.hospitalId || user.hospital || null;
+  const hospital = user.hospitalId || user.hospital || null;
+  return hospital?._id || hospital;
+}
+
+function sameId(a, b) {
+  if (!a || !b) return false;
+  const left = a?._id || a;
+  const right = b?._id || b;
+  return left.toString() === right.toString();
+}
+
+function hospitalCondition(hospitalId) {
+  return { $or: [{ hospitalId }, { hospital: hospitalId }] };
+}
+
+function addAnd(query, condition) {
+  if (!condition) return;
+  query.$and = [...(query.$and || []), condition];
+}
+
+function belongsToHospital(doc, hospitalId) {
+  return sameId(doc?.hospitalId, hospitalId) || sameId(doc?.hospital, hospitalId);
+}
+
+function getDioHospitalOrFail(req, res) {
+  if (req.user.role !== 'dio') return null;
+  const hospitalId = getHospital(req.user);
+  if (!hospitalId) {
+    res.status(403).json({ success: false, message: 'DIO account is not assigned to a hospital' });
+    return false;
+  }
+  return hospitalId;
+}
+
+function ensureDioCanAccessHospitalDoc(req, res, doc, message = 'Access denied: record belongs to a different hospital') {
+  const hospitalId = getDioHospitalOrFail(req, res);
+  if (hospitalId === false) return false;
+  if (!hospitalId) return true;
+  if (belongsToHospital(doc, hospitalId)) return true;
+  res.status(403).json({ success: false, message });
+  return false;
+}
+
+async function ensureDioCanAccessReport(req, res, report) {
+  const hospitalId = getDioHospitalOrFail(req, res);
+  if (hospitalId === false) return false;
+  if (!hospitalId) return true;
+  if (sameId(report.hospital, hospitalId)) return true;
+  if (report.student) {
+    const trainee = await User.findById(report.student).select('hospitalId hospital');
+    if (trainee && belongsToHospital(trainee, hospitalId)) return true;
+  }
+  res.status(403).json({ success: false, message: 'Access denied: report belongs to a different hospital' });
+  return false;
 }
 
 function escapeRegex(str) {
@@ -114,7 +167,14 @@ async function writeAudit(req, action, targetModel, targetId, metadata = {}) {
   }).catch(err => console.error('[AuditLog] Failed to write DIO audit:', err.message));
 }
 
-async function validateUserReferences(role, data, res) {
+async function validateUserReferences(role, data, res, req) {
+  const dioHospitalId = req ? getDioHospitalOrFail(req, res) : null;
+  if (dioHospitalId === false) return false;
+  if (dioHospitalId && data.hospitalId && !sameId(data.hospitalId, dioHospitalId)) {
+    res.status(403).json({ success: false, message: 'DIO users can only manage their assigned hospital' });
+    return false;
+  }
+
   const invalid = validateObjectIdFields(data, ['hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'supervisor']);
   if (invalid) {
     res.status(400).json({ success: false, message: `Invalid ${invalid}` });
@@ -135,12 +195,20 @@ async function validateUserReferences(role, data, res) {
       res.status(400).json({ success: false, message: 'Specialty not found or inactive' });
       return false;
     }
+    if (dioHospitalId && specialty.hospitalId && !sameId(specialty.hospitalId, dioHospitalId)) {
+      res.status(403).json({ success: false, message: 'Specialty belongs to a different hospital' });
+      return false;
+    }
   }
 
   if (data.supervisorId) {
     const supervisor = await User.findOne({ _id: data.supervisorId, role: 'supervisor', isActive: { $ne: false } });
     if (!supervisor) {
       res.status(400).json({ success: false, message: 'Supervisor not found or inactive' });
+      return false;
+    }
+    if (dioHospitalId && !belongsToHospital(supervisor, dioHospitalId)) {
+      res.status(403).json({ success: false, message: 'Supervisor belongs to a different hospital' });
       return false;
     }
   }
@@ -168,6 +236,9 @@ function populateManagedUser(query) {
 router.get('/stats', auth, allowRoles(...DIO), async (req, res) => {
   try {
     const hospitalId = getHospital(req.user);
+    if (!hospitalId) {
+      return res.status(403).json({ success: false, message: 'DIO account is not assigned to a hospital' });
+    }
     const hospitalQuery = hospitalId
       ? { $or: [{ hospitalId }, { hospital: hospitalId }] }
       : {};
@@ -258,6 +329,9 @@ router.get('/trainees', auth, allowRoles(...DIO, 'super_admin'), async (req, res
   try {
     const { search, includeInactive } = req.query;
     const query = { role: 'trainee' };
+    const hospitalId = getDioHospitalOrFail(req, res);
+    if (hospitalId === false) return;
+    if (hospitalId) addAnd(query, hospitalCondition(hospitalId));
     if (includeInactive !== 'true') query.isActive = { $ne: false };
     if (search) {
       const rx = new RegExp(escapeRegex(search.slice(0, 100)), 'i');
@@ -287,7 +361,7 @@ async function createManagedUser(req, res, role) {
   if (!req.body.password || String(req.body.password).length < 6) {
     return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
   }
-  if (!(await validateUserReferences(role, data, res))) return null;
+  if (!(await validateUserReferences(role, data, res, req))) return null;
   data.password = req.body.password;
 
   const user = new User(data);
@@ -298,10 +372,11 @@ async function createManagedUser(req, res, role) {
 
 async function updateManagedUser(req, res, role, id) {
   if (!isValidObjectId(id)) return res.status(400).json({ success: false, message: 'Invalid user id' });
-  const existing = await User.findById(id).select('role isActive');
+  const existing = await User.findById(id).select('role isActive hospitalId hospital');
   if (!existing || existing.role !== role) {
     return res.status(404).json({ success: false, message: 'User not found' });
   }
+  if (!ensureDioCanAccessHospitalDoc(req, res, existing, 'Access denied: user belongs to a different hospital')) return null;
   if (req.body.role && req.body.role !== role) {
     return res.status(403).json({ success: false, message: 'Cannot change role through this endpoint' });
   }
@@ -309,7 +384,7 @@ async function updateManagedUser(req, res, role, id) {
   const updates = normalizeUserPayload(req.body);
   delete updates.email;
   delete updates.password;
-  if (!(await validateUserReferences(role, updates, res))) return null;
+  if (!(await validateUserReferences(role, updates, res, req))) return null;
 
   const user = await populateManagedUser(User.findByIdAndUpdate(id, updates, { new: true }));
   await writeAudit(req, `dio_update_${role}`, 'User', id, { role, fields: Object.keys(updates) });
@@ -344,10 +419,11 @@ function registerManagedUserRoutes(routeName, role) {
       if (req.params.id === (req.user._id || req.user.id).toString()) {
         return res.status(403).json({ success: false, message: 'You cannot deactivate your own account' });
       }
-      const existing = await User.findById(req.params.id).select('role isActive');
+      const existing = await User.findById(req.params.id).select('role isActive hospitalId hospital');
       if (!existing || existing.role !== role || existing.isActive === false) {
         return res.status(404).json({ success: false, message: 'User not found' });
       }
+      if (!ensureDioCanAccessHospitalDoc(req, res, existing, 'Access denied: user belongs to a different hospital')) return;
       const user = await populateManagedUser(User.findByIdAndUpdate(
         req.params.id,
         { isActive: false, deletedAt: new Date() },
@@ -404,6 +480,7 @@ router.post('/trainees/:id/evaluations',
       if (!trainee) {
         return res.status(404).json({ success: false, message: 'Trainee not found' });
       }
+      if (!ensureDioCanAccessHospitalDoc(req, res, trainee, 'Access denied: trainee belongs to a different hospital')) return;
 
       const evaluationType = req.body.evaluationType || req.body.type || '';
       const scores = req.body.scores && typeof req.body.scores === 'object' ? req.body.scores : {};
@@ -515,6 +592,7 @@ router.get('/trainees/:id/details', auth, allowRoles(...DIO, 'super_admin'), asy
     if (!trainee) {
       return res.status(404).json({ success: false, message: 'Trainee not found' });
     }
+    if (!ensureDioCanAccessHospitalDoc(req, res, trainee, 'Access denied: trainee belongs to a different hospital')) return;
 
     const hospitalId = trainee.hospitalId?._id || trainee.hospital?._id || trainee.hospitalId || trainee.hospital;
     const [currentRotation, rotations, programDirector, reports, evaluations, certificates] = await Promise.all([
@@ -622,6 +700,7 @@ router.patch('/reports/:id/grade',
 
       const report = await Report.findById(req.params.id);
       if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
+      if (!(await ensureDioCanAccessReport(req, res, report))) return;
 
       const { grade, score, feedback, comment, status, globalRating, assessmentCriteria } = req.body;
       const normalizedScore = score === undefined || score === null || score === '' ? null : Number(score);
@@ -720,6 +799,9 @@ router.patch('/reports/:id/grade',
 router.get('/supervisors', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
   try {
     const query = { role: 'supervisor' };
+    const hospitalId = getDioHospitalOrFail(req, res);
+    if (hospitalId === false) return;
+    if (hospitalId) addAnd(query, hospitalCondition(hospitalId));
     if (req.query.includeInactive !== 'true') query.isActive = { $ne: false };
 
     const supervisors = await populateManagedUser(User.find(query)).sort({ name: 1 });
@@ -734,6 +816,9 @@ router.get('/supervisors', auth, allowRoles(...DIO, 'super_admin'), async (req, 
 router.get('/program-directors', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
   try {
     const query = { role: 'program_director' };
+    const hospitalId = getDioHospitalOrFail(req, res);
+    if (hospitalId === false) return;
+    if (hospitalId) addAnd(query, hospitalCondition(hospitalId));
     if (req.query.includeInactive !== 'true') query.isActive = { $ne: false };
 
     const pds = await populateManagedUser(User.find(query)).sort({ name: 1 });
@@ -748,6 +833,9 @@ router.get('/program-directors', auth, allowRoles(...DIO, 'super_admin'), async 
 router.get('/secretaries', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
   try {
     const query = { role: 'secretary' };
+    const hospitalId = getDioHospitalOrFail(req, res);
+    if (hospitalId === false) return;
+    if (hospitalId) addAnd(query, hospitalCondition(hospitalId));
     if (req.query.includeInactive !== 'true') query.isActive = { $ne: false };
 
     const secretaries = await populateManagedUser(User.find(query)).sort({ name: 1 });
@@ -763,6 +851,9 @@ router.get('/certificates', auth, allowRoles(...DIO, 'super_admin'), async (req,
   try {
     const hospitalId = getHospital(req.user);
     const query = hospitalId ? { hospital: hospitalId } : {};
+    if (req.user.role === 'dio' && !hospitalId) {
+      return res.status(403).json({ success: false, message: 'DIO account is not assigned to a hospital' });
+    }
 
     const certs = await Certificate.find(query)
       .populate('student',   'name initials photoUrl studentId year')
@@ -787,6 +878,9 @@ router.post('/certificates',
   async (req, res) => {
     try {
       const hospitalId = getHospital(req.user);
+      if (req.user.role === 'dio' && !hospitalId) {
+        return res.status(403).json({ success: false, message: 'DIO account is not assigned to a hospital' });
+      }
       const { student, traineeId, issueDate, notes, type } = req.body;
       const targetTrainee = student || traineeId;
       const trainee = await User.findById(targetTrainee)

@@ -42,6 +42,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) return res.status(401).json({ message: 'Invalid email or password' });
     if (user.isActive === false) return res.status(403).json({ message: 'Account deactivated' });
+    if (user.locked === true) return res.status(423).json({ message: 'Account locked. Contact an administrator.' });
 
     // Check if account is locked
     if (user.isLocked()) {
@@ -120,6 +121,7 @@ router.post('/refresh', refreshLimiter, async (req, res) => {
     const user = await User.findById(decoded.id).select('-password');
     if (!user) return res.status(401).json({ message: 'User not found' });
     if (user.isActive === false) return res.status(403).json({ message: 'Account deactivated' });
+    if (user.locked === true) return res.status(423).json({ message: 'Account locked. Contact an administrator.' });
 
     const newToken = jwt.sign(
       { id: user._id, role: user.role },
