@@ -107,6 +107,24 @@ html[data-theme="dark"] { color-scheme: dark; }
 .upload-err { color: var(--danger-fg); background: var(--danger-bg); }
 .upload-ok  { color: var(--success-fg); background: var(--success-bg); }
 
+/* Reports — search bar + sort + status icon badges (theme-aware) */
+.report-search-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.report-search-input {
+  flex: 1 1 220px; height: 38px; padding: 0 14px;
+  border: 1px solid var(--border); border-radius: 9px;
+  background: var(--surface); color: var(--text); font-size: 14px; outline: none;
+}
+.report-search-input::placeholder { color: var(--text-muted); }
+.report-search-input:focus { border-color: var(--link); box-shadow: 0 0 0 2px rgba(55,138,221,0.15); }
+.report-sort-select {
+  height: 38px; padding: 0 12px; border: 1px solid var(--border); border-radius: 9px;
+  background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; outline: none;
+}
+.status-ic { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; }
+.status-ic-green { background: var(--success-bg); color: var(--success); }
+.status-ic-amber { background: var(--warning-bg); color: var(--warning); }
+.status-ic-red   { background: var(--danger-bg);  color: var(--danger); }
+
 .password-wrap { display: flex; align-items: center; position: relative; }
 .password-wrap input {
   width: 100%; height: 38px; padding: 0 60px 0 12px;

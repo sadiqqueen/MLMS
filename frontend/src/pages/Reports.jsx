@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import api    from '../api/axios';
 import Navbar from '../components/Navbar';
 import Sk     from '../components/Skeleton';
+import { IconCheck, IconClock, IconXCircle, IconUserCheck } from '../components/icons';
 
 const API_BASE = '';
 
@@ -269,6 +270,19 @@ function ReportModal({ report, student, onClose }) {
   );
 }
 
+// Report status as an icon badge: pending=clock, assessed=check,
+// competent=user-check, not-competent=x. Hover shows the label.
+function ReportStatus({ status, grade }) {
+  const graded = status === 'graded' || status === 'approved';
+  if (!graded)
+    return <span className="status-ic status-ic-amber" title="Pending review"><IconClock size={15} /></span>;
+  if (grade === 'Not-Competent')
+    return <span className="status-ic status-ic-red" title="Not Competent"><IconXCircle size={15} /></span>;
+  if (grade === 'Competent')
+    return <span className="status-ic status-ic-green" title="Competent"><IconUserCheck size={15} /></span>;
+  return <span className="status-ic status-ic-green" title="Assessed"><IconCheck size={15} /></span>;
+}
+
 // ── MAIN REPORTS PAGE ──────────────────────────────────────────────────────
 export default function Reports() {
   const { user }       = useAuth();
@@ -276,6 +290,8 @@ export default function Reports() {
   const [distribution, setDistribution] = useState(null);
   const [reports,      setReports     ] = useState([]);
   const [filter,       setFilter      ] = useState('All');
+  const [search,       setSearch      ] = useState('');
+  const [sort,         setSort        ] = useState('newest');
   const [loading,      setLoading     ] = useState(true);
   const [uploading,    setUploading   ] = useState(false);
   const [uploadType,   setUploadType  ] = useState('weekly');
@@ -372,7 +388,21 @@ export default function Reports() {
   }
 
   const reportList = safeArr(reports);
-  const filtered = reportList.filter(r => {
+  const q = search.trim().toLowerCase();
+  const matchesSearch = r =>
+    !q || (r.title || '').toLowerCase().includes(q) || (r.hospital?.name || '').toLowerCase().includes(q);
+  const applySort = arr => {
+    const a = [...arr];
+    if (sort === 'name') a.sort((x, y) => (x.title || '').localeCompare(y.title || ''));
+    else {
+      a.sort((x, y) => new Date(y.date || y.createdAt || 0) - new Date(x.date || x.createdAt || 0));
+      if (sort === 'oldest') a.reverse();
+    }
+    return a;
+  };
+  const shape = arr => applySort(arr.filter(matchesSearch));
+
+  const filtered = shape(reportList.filter(r => {
     if (filter === 'All')     return true;
     if (filter === 'Weekly')  return r.type === 'weekly';
     if (filter === 'Monthly') return r.type === 'monthly';
@@ -380,11 +410,11 @@ export default function Reports() {
     if (filter === 'Graded')  return r.status === 'graded';
     if (filter === 'Pending') return r.status === 'pending';
     return true;
-  });
+  }));
 
-  const weekly  = reportList.filter(r => r.type === 'weekly');
-  const monthly = reportList.filter(r => r.type === 'monthly');
-  const final   = reportList.filter(r => r.type === 'final');
+  const weekly  = shape(reportList.filter(r => r.type === 'weekly'));
+  const monthly = shape(reportList.filter(r => r.type === 'monthly'));
+  const final   = shape(reportList.filter(r => r.type === 'final'));
 
   if (loading) return (
     <>
@@ -528,6 +558,21 @@ export default function Reports() {
         )}
 
         {/* ── SUBMITTED REPORTS ── */}
+        <div className="report-search-bar">
+          <input
+            type="text"
+            className="report-search-input"
+            placeholder="Search reports by name…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          <select className="report-sort-select" value={sort} onChange={e => setSort(e.target.value)}>
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="name">Name (A–Z)</option>
+          </select>
+        </div>
+
         <div className="filter-tabs">
           {FILTERS.map(f => (
             <button key={f} className={`filter-tab${filter === f ? ' active' : ''}`} onClick={() => setFilter(f)}>{f}</button>
@@ -563,11 +608,9 @@ export default function Reports() {
                       <div className="report-date">{fmt(r.date)}</div>
                     </div>
                     <div className="report-right">
-                      <span className={r.status==='graded' || r.status==='approved' ? 'badge badge-green' : 'badge badge-amber'}>
-                        {r.status==='graded' || r.status==='approved' ? 'Assessed' : r.status || 'Pending'}
-                      </span>
-                      {r.grade && <div className={`grade-circle${r.grade ? '' : ' grade-empty'}`}>{r.grade}</div>}
-                      {r.fileUrl && <a href={`${API_BASE}${r.fileUrl}`} target="_blank" rel="noreferrer" style={{ fontSize:12, color:'#185FA5', fontWeight:500 }}>View ↗</a>}
+                      <ReportStatus status={r.status} grade={r.grade} />
+                      {r.grade && !['Competent','Not-Competent'].includes(r.grade) && <div className="grade-circle">{r.grade}</div>}
+                      {r.fileUrl && <a href={`${API_BASE}${r.fileUrl}`} target="_blank" rel="noreferrer" style={{ fontSize:12, color:'var(--link)', fontWeight:500 }}>View ↗</a>}
                       <span className="row-arrow">›</span>
                     </div>
                   </div>
@@ -595,10 +638,8 @@ export default function Reports() {
                 </div>
                 <div className="report-right">
                   {r.locked && <span className="lock-icon" title="Locked">🔒</span>}
-                  <span className={r.status === 'graded' ? 'badge badge-green' : 'badge badge-amber'}>
-                    {r.status === 'graded' ? 'Graded' : 'Pending'}
-                  </span>
-                  <div className={`grade-circle${r.grade ? '' : ' grade-empty'}`}>{r.grade ?? '—'}</div>
+                  <ReportStatus status={r.status} grade={r.grade} />
+                  {r.grade && !['Competent','Not-Competent'].includes(r.grade) && <div className="grade-circle">{r.grade}</div>}
                   <span className="row-arrow">›</span>
                 </div>
               </div>
