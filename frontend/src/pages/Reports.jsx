@@ -313,7 +313,6 @@ export default function Reports() {
   }, [user]);
 
   const specialty = distribution?.specialtyId;
-  const hasPdfs   = specialty && (specialty.weeklyReportPdf || specialty.monthlyReportPdf || specialty.finalReportPdf);
 
   async function handleUpload() {
     const file = uploadFile || fileRef.current?.files?.[0];
@@ -417,94 +416,63 @@ export default function Reports() {
       <Navbar />
       <main className="main">
 
-        {/* ── REPORT TEMPLATES + UPLOAD — shown when assigned to a specialty ── */}
+        {/* ── UPLOAD A REPORT — shown when assigned to a specialty ── */}
         {distribution && (
           <div className="card">
-            <div className="card-title" style={{ marginBottom:14 }}>
-              📄 Report Templates
-              {specialty?.name && <span className="badge badge-blue" style={{ marginLeft:8 }}>{specialty.name}</span>}
+            <div className="card-title" style={{ marginBottom:16 }}>
+              ⬆ Upload a Report
+              {specialty?.name && <span className="badge badge-blue" style={{ marginInlineStart:8 }}>{specialty.name}</span>}
             </div>
 
-            {hasPdfs ? (
-              <>
-                <div style={{ fontSize:13, color:'#4B5563', marginBottom:14, lineHeight:1.6 }}>
-                  Download the template for your specialty, fill it in, then upload the completed PDF below.
-                  Your rotation: <strong>{fmt(distribution.startDate)} – {fmt(distribution.endDate)}</strong>
-                  {distribution.durationWeeks ? ` · ${distribution.durationWeeks} weeks` : ''}
-                </div>
-
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:12, marginBottom:8 }}>
-                  {[
-                    { type:'weekly',  label:'Weekly Report',  pdf:specialty?.weeklyReportPdf,  color:'#2563EB', bg:'#DBEAFE' },
-                    { type:'monthly', label:'Monthly Report', pdf:specialty?.monthlyReportPdf, color:'#D97706', bg:'#FEF3C7' },
-                    { type:'final',   label:'Final Report',   pdf:specialty?.finalReportPdf,   color:'#DC2626', bg:'#FEE2E2' },
-                  ].map(({ type, label, pdf, color, bg }) => (
-                    <div key={type} style={{ border:'1px solid #E8E9EF', borderRadius:10, padding:'16px 14px', background:'#fff', display:'flex', flexDirection:'column', gap:10 }}>
-                      <div style={{ fontSize:13, fontWeight:600, color:'#1B1464' }}>{label}</div>
-                      {pdf ? (
-                        <a
-                          href={`${API_BASE}${pdf}`}
-                          download
-                          style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:7, background:bg, color, fontWeight:600, fontSize:12, textDecoration:'none' }}
-                        >
-                          ⬇ Download Template
-                        </a>
-                      ) : (
-                        <span style={{ fontSize:12, color:'#D1D5DB' }}>Template not uploaded yet</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div style={{ fontSize:13, color:'#8B8FA8', padding:'4px 0 12px' }}>
-                PDF templates for your specialty haven't been uploaded yet — you can still upload your completed report below.
+            <div style={{ display:'flex', gap:12, flexWrap:'wrap', alignItems:'flex-end' }}>
+              <div className="field" style={{ flex:'1 1 150px', marginBottom:0 }}>
+                <label>Report type</label>
+                <select value={uploadType} onChange={e => setUploadType(e.target.value)}>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="final">Final</option>
+                </select>
               </div>
-            )}
-
-            {/* Upload a completed report: pick a type, name it, choose the PDF, upload */}
-            <div style={{ borderTop:'1px solid #E8E9EF', marginTop:8, paddingTop:14 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:'#1B1464', marginBottom:12 }}>Upload a completed report</div>
-              <div style={{ display:'flex', gap:12, flexWrap:'wrap', alignItems:'flex-end' }}>
-                <div className="field" style={{ flex:'1 1 150px', margin:0 }}>
-                  <label>Report type</label>
-                  <select value={uploadType} onChange={e => setUploadType(e.target.value)}>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="final">Final</option>
-                  </select>
-                </div>
-                <div className="field" style={{ flex:'2 1 220px', margin:0 }}>
-                  <label>Report name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Week 4 Report"
-                    value={uploadName}
-                    onChange={e => setUploadName(e.target.value)}
-                  />
-                </div>
-                <div className="field" style={{ flex:'1 1 200px', margin:0 }}>
-                  <label>File (PDF)</label>
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept=".pdf,application/pdf"
-                    onChange={e => setUploadFile(e.target.files?.[0] || null)}
-                  />
-                </div>
-                <button
-                  className="btn-primary"
-                  style={{ whiteSpace:'nowrap' }}
-                  onClick={handleUpload}
-                  disabled={uploading || !uploadFile}
-                >
-                  {uploading ? 'Uploading…' : '⬆ Upload report'}
-                </button>
+              <div className="field" style={{ flex:'2 1 240px', marginBottom:0 }}>
+                <label>Report name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Week 4 Report"
+                  value={uploadName}
+                  onChange={e => setUploadName(e.target.value)}
+                />
               </div>
-
-              {error    && <div style={{ fontSize:13, color:'#DC2626', marginTop:10, padding:'8px 12px', background:'#FEE2E2', borderRadius:7 }}>{error}</div>}
-              {uploadMsg && <div style={{ fontSize:13, color:'#065F46', marginTop:10, padding:'8px 12px', background:'#D1FAE5', borderRadius:7 }}>✓ {uploadMsg}</div>}
             </div>
+
+            <div className="field" style={{ marginTop:14, marginBottom:0 }}>
+              <label>Report file (PDF · max 10MB)</label>
+              <label className="file-drop">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  style={{ display:'none' }}
+                  onChange={e => setUploadFile(e.target.files?.[0] || null)}
+                />
+                <span className="file-drop-icon">📎</span>
+                <span className="file-drop-text">
+                  {uploadFile ? uploadFile.name : 'Click to choose a PDF file'}
+                </span>
+                {uploadFile && <span className="file-drop-change">Change</span>}
+              </label>
+            </div>
+
+            <button
+              className="btn-primary"
+              style={{ marginTop:16 }}
+              onClick={handleUpload}
+              disabled={uploading || !uploadFile}
+            >
+              {uploading ? 'Uploading…' : '⬆ Upload report'}
+            </button>
+
+            {error    && <div className="upload-msg upload-err">{error}</div>}
+            {uploadMsg && <div className="upload-msg upload-ok">✓ {uploadMsg}</div>}
           </div>
         )}
 
