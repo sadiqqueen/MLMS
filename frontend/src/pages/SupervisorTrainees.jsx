@@ -5,6 +5,7 @@ import Navbar       from '../components/Navbar';
 import api          from '../api/axios';
 import Sk           from '../components/Skeleton';
 import { IconEye, IconPrinter, IconCheck, IconClock, IconXCircle } from '../components/icons';
+import { printEvaluation } from '../utils/printEvaluation';
 
 const API_BASE = '';
 
@@ -14,11 +15,14 @@ const STRINGS = {
   ar: {
     statTotal:       'إجمالي المتدربين',
     statActive:      'المُسندون',
-    statCompleted:   'مكتمل',
+    statCompleted:   'مُقيّم',
     assigned:        'مُسند',
-    completed:       'مكتمل',
+    current:         'الحالي',
+    completed:       'مُقيّم',
     cancelled:       'ملغى',
     upcoming:        'قادم',
+    assessed:        'مُقيّم',
+    filterAll:       'الكل',
     searchPlaceholder: 'ابحث بالاسم أو الرقم أو التخصص أو المستشفى…',
     emptyNone:       'لا يوجد متدربون معيّنون بعد',
     emptyNoMatch:    'لا يوجد متدربون مطابقون لبحثك',
@@ -49,11 +53,14 @@ const STRINGS = {
   en: {
     statTotal:       'Total Assigned',
     statActive:      'Assigned',
-    statCompleted:   'Completed',
+    statCompleted:   'Assessed',
     assigned:        'Assigned',
-    completed:       'Completed',
+    current:         'Current',
+    completed:       'Assessed',
     cancelled:       'Cancelled',
     upcoming:        'Upcoming',
+    assessed:        'Assessed',
+    filterAll:       'All',
     searchPlaceholder: 'Search by name, ID, specialty or hospital…',
     emptyNone:       'No trainees assigned yet',
     emptyNoMatch:    'No trainees match your search',
@@ -332,6 +339,19 @@ function TraineeModal({ dist, onClose, t }) {
                       {(ev.grade || ev.totalScore != null) ? ` · ${ev.grade || ev.totalScore}` : ''}
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    title={t('view')}
+                    aria-label={t('view')}
+                    onClick={() => printEvaluation(ev, { traineeName: trainee.name })}
+                    style={{
+                      width: 28, height: 28, borderRadius: 7, background: 'var(--surface-2)',
+                      color: 'var(--text-2)', border: '1px solid var(--border)', flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                    }}
+                  >
+                    <IconEye size={15} />
+                  </button>
                 </div>
               ))
             )}
@@ -365,6 +385,7 @@ export default function SupervisorTrainees() {
   const [dists,    setDists   ] = useState([]);
   const [loading,  setLoading ] = useState(true);
   const [search,   setSearch  ] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [selected, setSelected] = useState(null);
 
   useEffect(() => {
@@ -377,14 +398,23 @@ export default function SupervisorTrainees() {
       .finally(() => setLoading(false));
   }, []);
 
+  const statusOf = d => d.status || 'active';
   const filtered = dists.filter(d => {
     const tr = getTrainee(d);
     const q = search.toLowerCase();
-    return !q
+    const matchesSearch = !q
       || tr.name?.toLowerCase().includes(q)
       || tr.studentId?.toLowerCase().includes(q)
       || getSpecialty(d).toLowerCase().includes(q)
       || getHospital(d).toLowerCase().includes(q);
+    if (!matchesSearch) return false;
+    if (statusFilter === 'all') return true;
+    const s = statusOf(d);
+    if (statusFilter === 'assigned') return s === 'active';
+    if (statusFilter === 'current')  return s === 'current';
+    if (statusFilter === 'upcoming') return s === 'upcoming';
+    if (statusFilter === 'assessed') return s === 'completed';
+    return true;
   });
 
   const active    = dists.filter(d => {
@@ -450,7 +480,7 @@ export default function SupervisorTrainees() {
           ))}
         </div>
 
-        <div style={{ marginBottom:20 }}>
+        <div style={{ marginBottom:14 }}>
           <input
             className="admin-search"
             style={{ width:'100%', height:40, maxWidth:'100%' }}
@@ -458,6 +488,22 @@ export default function SupervisorTrainees() {
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
+        </div>
+
+        <div className="filter-tabs" style={{ marginBottom:20 }}>
+          {[
+            { key:'all',      label:t('filterAll') },
+            { key:'assigned', label:t('assigned') },
+            { key:'current',  label:t('current') },
+            { key:'upcoming', label:t('upcoming') },
+            { key:'assessed', label:t('assessed') },
+          ].map(f => (
+            <button
+              key={f.key}
+              className={`filter-tab${statusFilter === f.key ? ' active' : ''}`}
+              onClick={() => setStatusFilter(f.key)}
+            >{f.label}</button>
+          ))}
         </div>
 
         {filtered.length === 0 && (
@@ -531,8 +577,9 @@ export default function SupervisorTrainees() {
                     fontSize:11, fontWeight:600, padding:'2px 9px',
                     borderRadius:20, background:statusStyle.bg, color:statusStyle.color
                   }}>
-                    {(status === 'active' || status === 'current')
-                      ? t('assigned')
+                    {status === 'active'      ? t('assigned')
+                      : status === 'current'   ? t('current')
+                      : status === 'completed' ? t('assessed')
                       : t(status)}
                   </span>
                 </div>
