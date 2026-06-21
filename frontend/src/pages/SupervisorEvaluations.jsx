@@ -1,22 +1,136 @@
 import { useState, useEffect } from 'react';
 import { useAuth }  from '../context/AuthContext';
+import { usePrefs } from '../context/PrefsContext';
 import Navbar       from '../components/Navbar';
 import Toast        from '../components/Toast';
 import api          from '../api/axios';
 import Sk           from '../components/Skeleton';
+import { IconEye, IconCheck, IconClock, IconXCircle } from '../components/icons';
 import { EVAL_FORMS, FORM_TYPES, getForm, SCORE_SCALE } from '../data/evalForms';
 import { printEvaluation } from '../utils/printEvaluation';
+
+// ── Page-chrome translation (Arabic + English, follows the global toggle).
+// Dynamic data (names, dates, hospitals) and evalForms-driven form content
+// (domain/feedback labels, scale) are NOT translated here.
+const STRINGS = {
+  ar: {
+    key: 'العربية',
+    statTotal: 'إجمالي التقييمات',
+    statThisMonth: 'هذا الشهر',
+    statFinalized: 'تم الاعتماد',
+    searchPlaceholder: 'ابحث باسم المتدرب أو الرقم…',
+    emptyNoTrainees: 'لا يوجد متدربون معينون بعد',
+    emptyNoMatch: 'لا يوجد متدربون يطابقون بحثك',
+    emptyHint: 'يتم تعيين المتدربين لك من قبل السكرتارية.',
+    evaluationsTotal: 'تقييم إجمالي',
+    formsThisMonth: 'نماذج هذا الشهر',
+    allFormsDone: 'اكتملت كل النماذج',
+    view: 'عرض',
+    evaluation: 'تقييم',
+    // modal
+    idLabel: 'الرقم',
+    monthlyEvaluations: 'التقييمات الشهرية',
+    monthProgress: 'تقدم الشهر',
+    forms: 'نماذج',
+    competencyDomains: 'مجالات الكفاءة',
+    doneThisMonth: 'تم هذا الشهر',
+    notSubmitted: 'لم يُقدَّم',
+    start: 'بدء',
+    submittedEvaluations: 'التقييمات المُقدَّمة',
+    sentToGrades: 'أُرسل إلى الدرجات',
+    finalize: 'اعتماد',
+    sending: 'جارٍ الإرسال…',
+    noEvalsYet: 'لا توجد تقييمات بعد لهذا المتدرب',
+    print: 'طباعة',
+    printTitle: 'طباعة نموذج التقييم',
+    // structured form
+    trainee: 'المتدرب',
+    assessor: 'المُقيِّم',
+    date: 'التاريخ',
+    caseDetails: 'تفاصيل الحالة',
+    competencyRatings: 'تقييم الكفاءات',
+    scale: 'المقياس',
+    feedback: 'الملاحظات',
+    select: 'اختر…',
+    back: 'رجوع',
+    completeToPrint: 'أكمل كل التقييمات للطباعة',
+    printThisForm: 'طباعة نموذج التقييم هذا',
+    submitting: 'جارٍ الإرسال…',
+    submit: 'إرسال',
+    rateAllDomains: 'يرجى تقييم جميع مجالات الكفاءة.',
+    pleaseSelect: 'يرجى اختيار',
+    // toasts
+    loadFailed: 'فشل تحميل البيانات',
+    submitSuccess: 'تم إرسال التقييم بنجاح',
+    sentToGradesToast: 'أُرسل التقييم إلى صفحة درجات المتدرب',
+    submitFailed: 'فشل إرسال التقييم.',
+    finalizeFailed: 'فشل اعتماد التقييم.',
+  },
+  en: {
+    key: 'English',
+    statTotal: 'Total Evaluations',
+    statThisMonth: 'This Month',
+    statFinalized: 'Finalized',
+    searchPlaceholder: 'Search by trainee name or ID…',
+    emptyNoTrainees: 'No trainees assigned yet',
+    emptyNoMatch: 'No trainees match your search',
+    emptyHint: 'Trainees are assigned to you by the secretary.',
+    evaluationsTotal: 'total',
+    formsThisMonth: 'forms this month',
+    allFormsDone: 'All forms done',
+    view: 'View',
+    evaluation: 'Evaluation',
+    // modal
+    idLabel: 'ID',
+    monthlyEvaluations: 'Monthly evaluations',
+    monthProgress: 'progress',
+    forms: 'forms',
+    competencyDomains: 'competency domains',
+    doneThisMonth: 'Done this month',
+    notSubmitted: 'Not submitted',
+    start: 'Start',
+    submittedEvaluations: 'Submitted Evaluations',
+    sentToGrades: 'Sent to grades',
+    finalize: 'Finalize',
+    sending: 'Sending…',
+    noEvalsYet: 'No evaluations yet for this trainee',
+    print: 'Print',
+    printTitle: 'Print evaluation form',
+    // structured form
+    trainee: 'Trainee',
+    assessor: 'Assessor',
+    date: 'Date',
+    caseDetails: 'Case Details',
+    competencyRatings: 'Competency Ratings',
+    scale: 'Scale',
+    feedback: 'Feedback',
+    select: 'Select…',
+    back: 'Back',
+    completeToPrint: 'Complete all ratings to print',
+    printThisForm: 'Print this evaluation form',
+    submitting: 'Submitting…',
+    submit: 'Submit',
+    rateAllDomains: 'Please rate all competency domains.',
+    pleaseSelect: 'Please select the',
+    // toasts
+    loadFailed: 'Failed to load data',
+    submitSuccess: 'Evaluation submitted successfully',
+    sentToGradesToast: "Evaluation sent to trainee's grades page",
+    submitFailed: 'Failed to submit evaluation.',
+    finalizeFailed: 'Failed to finalize evaluation.',
+  },
+};
 
 const MONTHLY_CAP = FORM_TYPES.length; // one of each form per trainee per month
 const MONTH_LABEL = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
 const LABEL_STYLE = {
-  display:'block', fontSize:12, fontWeight:600, color:'#4B5563',
+  display:'block', fontSize:12, fontWeight:600, color:'var(--text-2)',
   marginBottom:6, textTransform:'uppercase', letterSpacing:'0.04em'
 };
 
 const gridCell = {
-  border:'1px solid #C7CDD6', padding:'7px 8px', textAlign:'center', verticalAlign:'middle'
+  border:'1px solid var(--border)', padding:'7px 8px', textAlign:'center', verticalAlign:'middle'
 };
 
 function isThisMonth(dateStr) {
@@ -60,8 +174,8 @@ function Avatar({ user, size = 32 }) {
     );
   return (
     <div style={{
-      width:size, height:size, borderRadius:'50%', background:'#E6F1FB',
-      color:'#185FA5', fontWeight:700, fontSize:size * 0.38,
+      width:size, height:size, borderRadius:'50%', background:'var(--info-bg)',
+      color:'var(--link)', fontWeight:700, fontSize:size * 0.38,
       display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
     }}>
       {user?.initials || user?.name?.[0] || '?'}
@@ -72,7 +186,7 @@ function Avatar({ user, size = 32 }) {
 /* ─────────────────────────────────────────────────────────────
    Structured WPBA form (Mini-CEX / CbD / DOPS)
    ───────────────────────────────────────────────────────────── */
-function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submitting, error }) {
+function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submitting, error, t }) {
   const [header,     setHeader]     = useState({});
   const [domains,    setDomains]    = useState({});
   const [times,      setTimes]      = useState({});
@@ -90,11 +204,11 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
     // Every domain must have a rating (N/A is allowed).
     const missing = form.domains.filter(d => domains[d.key] === undefined || domains[d.key] === '');
     if (missing.length) {
-      setLocalErr(`Please rate all ${form.domains.length} competency domains.`);
+      setLocalErr(t('rateAllDomains'));
       return;
     }
     if (!overall) {
-      setLocalErr(`Please select the ${form.overall.label.toLowerCase()}.`);
+      setLocalErr(`${t('pleaseSelect')} ${form.overall.label.toLowerCase()}.`);
       return;
     }
     setLocalErr('');
@@ -136,8 +250,8 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
   }
 
   const fieldBox = {
-    width:'100%', padding:'8px 10px', border:'1.5px solid #E8E9EF', borderRadius:8,
-    fontSize:13, color:'#1B1464', background:'#fff', fontFamily:'inherit'
+    width:'100%', padding:'8px 10px', border:'1.5px solid var(--border)', borderRadius:8,
+    fontSize:13, color:'var(--text)', background:'var(--surface)', fontFamily:'inherit'
   };
 
   return (
@@ -145,22 +259,22 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
       {/* Auto-filled identity row */}
       <div style={{
         display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10,
-        background:'#F5F6FA', borderRadius:10, padding:'12px 14px', marginBottom:18
+        background:'var(--surface-2)', borderRadius:10, padding:'12px 14px', marginBottom:18
       }}>
         {[
-          ['Trainee', trainee?.name || '—'],
-          ['Assessor', assessorName || '—'],
-          ['Date', fmtDate(new Date())],
+          [t('trainee'), trainee?.name || '—'],
+          [t('assessor'), assessorName || '—'],
+          [t('date'), fmtDate(new Date())],
         ].map(([k, v]) => (
           <div key={k}>
-            <div style={{ fontSize:10, fontWeight:700, color:'#8B8FA8', textTransform:'uppercase', letterSpacing:'.05em' }}>{k}</div>
-            <div style={{ fontSize:13, fontWeight:600, color:'#1B1464', marginTop:2 }}>{v}</div>
+            <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em' }}>{k}</div>
+            <div style={{ fontSize:13, fontWeight:600, color:'var(--text)', marginTop:2 }}>{v}</div>
           </div>
         ))}
       </div>
 
       {/* Header fields */}
-      <SectionTitle>Case Details</SectionTitle>
+      <SectionTitle>{t('caseDetails')}</SectionTitle>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, marginBottom:20 }}>
         {form.header.map(f => (
           <div key={f.key}>
@@ -171,7 +285,7 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
                 onChange={e => setHeader(p => ({ ...p, [f.key]: e.target.value }))}
                 style={fieldBox}
               >
-                <option value="">Select…</option>
+                <option value="">{t('select')}</option>
                 {f.options.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
             ) : (
@@ -187,16 +301,16 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
       </div>
 
       {/* Competency domains — docx-style rating grid */}
-      <SectionTitle>Competency Ratings</SectionTitle>
+      <SectionTitle>{t('competencyRatings')}</SectionTitle>
       <div style={{ overflowX:'auto', marginBottom:8 }}>
         <table style={{ borderCollapse:'collapse', width:'100%', fontSize:12 }}>
           <thead>
             <tr>
-              <th style={{ ...gridCell, background:'#1A3A5C', color:'#fff', textAlign:'left', minWidth:180 }}>
+              <th style={{ ...gridCell, background:'var(--brand-secondary)', color:'#fff', textAlign:'left', minWidth:180 }}>
                 Competency / Domain
               </th>
               {SCORE_SCALE.map(s => (
-                <th key={s.value} style={{ ...gridCell, background:'#1A3A5C', color:'#fff', width:46 }}>
+                <th key={s.value} style={{ ...gridCell, background:'var(--brand-secondary)', color:'#fff', width:46 }}>
                   {s.short}
                 </th>
               ))}
@@ -206,8 +320,8 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
             {form.domains.map(d => (
               <tr key={d.key}>
                 <td style={{ ...gridCell, textAlign:'left' }}>
-                  <div style={{ fontWeight:600, color:'#1B1464' }}>{d.label}</div>
-                  {d.hint && <div style={{ fontSize:10.5, color:'#8B8FA8', marginTop:2 }}>{d.hint}</div>}
+                  <div style={{ fontWeight:600, color:'var(--text)' }}>{d.label}</div>
+                  {d.hint && <div style={{ fontSize:10.5, color:'var(--text-muted)', marginTop:2 }}>{d.hint}</div>}
                 </td>
                 {SCORE_SCALE.map(s => {
                   const active = String(domains[d.key]) === String(s.value);
@@ -218,8 +332,8 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
                       title={s.label}
                       style={{
                         ...gridCell, cursor:'pointer', fontSize:16, fontWeight:700,
-                        background: active ? s.bg : '#fff',
-                        color: active ? s.color : '#C4C9D4',
+                        background: active ? s.bg : 'var(--surface)',
+                        color: active ? s.color : 'var(--text-muted)',
                       }}
                     >
                       {active ? '☑' : '☐'}
@@ -231,8 +345,8 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
           </tbody>
         </table>
       </div>
-      <div style={{ fontSize:10.5, color:'#8B8FA8', marginBottom:20 }}>
-        Scale: {SCORE_SCALE.map(s => s.label).join('  ·  ')}
+      <div style={{ fontSize:10.5, color:'var(--text-muted)', marginBottom:20 }}>
+        {t('scale')}: {SCORE_SCALE.map(s => s.label).join('  ·  ')}
       </div>
 
       {/* DOPS supervision level */}
@@ -249,9 +363,9 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
                   style={{
                     textAlign:'left', padding:'9px 12px', borderRadius:8, fontSize:12.5, fontWeight:500,
                     cursor:'pointer', transition:'all .12s',
-                    border: active ? '2px solid #0E9F6E' : '1.5px solid #E8E9EF',
-                    background: active ? '#eafaf1' : '#fff',
-                    color: active ? '#0E6B4A' : '#4B5563',
+                    border: active ? '2px solid var(--success)' : '1.5px solid var(--border)',
+                    background: active ? 'var(--success-bg)' : 'var(--surface)',
+                    color: active ? 'var(--success-fg)' : 'var(--text-2)',
                   }}
                 >
                   {o}
@@ -289,9 +403,9 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
               style={{
                 padding:'8px 14px', borderRadius:8, fontSize:12.5, fontWeight:600,
                 cursor:'pointer', transition:'all .12s',
-                border: active ? `2px solid ${form.accent}` : '1.5px solid #E8E9EF',
-                background: active ? `${form.accent}14` : '#fff',
-                color: active ? form.accent : '#4B5563',
+                border: active ? `2px solid ${form.accent}` : '1.5px solid var(--border)',
+                background: active ? `${form.accent}14` : 'var(--surface)',
+                color: active ? form.accent : 'var(--text-2)',
               }}
             >
               {o}
@@ -301,7 +415,7 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
       </div>
 
       {/* Feedback */}
-      <SectionTitle>Feedback</SectionTitle>
+      <SectionTitle>{t('feedback')}</SectionTitle>
       <div style={{ display:'flex', flexDirection:'column', gap:14, marginBottom:18 }}>
         {form.feedback.map(f => (
           <div key={f.key}>
@@ -317,8 +431,8 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
 
       {(localErr || error) && (
         <div style={{
-          background:'#FEE2E2', borderRadius:8, padding:'9px 13px',
-          fontSize:13, color:'#DC2626', marginBottom:14
+          background:'var(--danger-bg)', borderRadius:8, padding:'9px 13px',
+          fontSize:13, color:'var(--danger-fg)', marginBottom:14
         }}>
           {localErr || error}
         </div>
@@ -326,41 +440,41 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
 
       <div style={{
         display:'flex', gap:10, justifyContent:'flex-end',
-        position:'sticky', bottom:0, background:'#fff', paddingTop:12, paddingBottom:2,
-        borderTop:'1px solid #F0F1F5'
+        position:'sticky', bottom:0, background:'var(--surface)', paddingTop:12, paddingBottom:2,
+        borderTop:'1px solid var(--border-soft)'
       }}>
         <button
           type="button" onClick={onCancel}
           style={{
-            padding:'9px 20px', borderRadius:8, background:'#F5F6FA',
-            color:'#4B5563', border:'none', fontWeight:500, fontSize:13, cursor:'pointer'
+            padding:'9px 20px', borderRadius:8, background:'var(--surface-2)',
+            color:'var(--text-2)', border:'none', fontWeight:500, fontSize:13, cursor:'pointer'
           }}
         >
-          Back
+          {t('back')}
         </button>
         <button
           type="button" onClick={handlePrint} disabled={!isComplete}
-          title={isComplete ? 'Print this evaluation form' : 'Complete all ratings to print'}
+          title={isComplete ? t('printThisForm') : t('completeToPrint')}
           style={{
-            padding:'9px 18px', borderRadius:8, background:'#fff',
-            color: isComplete ? '#1B1464' : '#B6BACB',
-            border:`1.5px solid ${isComplete ? '#1B1464' : '#E8E9EF'}`,
+            padding:'9px 18px', borderRadius:8, background:'var(--surface)',
+            color: isComplete ? 'var(--text)' : 'var(--text-muted)',
+            border:`1.5px solid ${isComplete ? 'var(--text)' : 'var(--border)'}`,
             fontWeight:600, fontSize:13,
             cursor: isComplete ? 'pointer' : 'not-allowed'
           }}
         >
-          🖨 Print
+          🖨 {t('print')}
         </button>
         <button
           type="submit" disabled={submitting}
           style={{
-            padding:'9px 22px', borderRadius:8, background:'#FF6B35',
+            padding:'9px 22px', borderRadius:8, background:'var(--accent)',
             color:'#fff', border:'none', fontWeight:600, fontSize:13,
             cursor:'pointer', boxShadow:'0 2px 8px rgba(255,107,53,.35)',
             opacity: submitting ? 0.7 : 1
           }}
         >
-          {submitting ? 'Submitting…' : `Submit ${form.title}`}
+          {submitting ? t('submitting') : `${t('submit')} ${form.title}`}
         </button>
       </div>
     </form>
@@ -370,7 +484,7 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
 function SectionTitle({ children }) {
   return (
     <div style={{
-      fontSize:12, fontWeight:700, color:'#8B8FA8',
+      fontSize:12, fontWeight:700, color:'var(--text-muted)',
       textTransform:'uppercase', letterSpacing:'.05em', marginBottom:12
     }}>
       {children}
@@ -381,7 +495,7 @@ function SectionTitle({ children }) {
 /* ─────────────────────────────────────────────────────────────
    Evaluation modal — monthly checklist + form entry
    ───────────────────────────────────────────────────────────── */
-function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalized, isReadOnly }) {
+function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalized, isReadOnly, t }) {
   const { trainee = {}, dist = {} } = item || {};
   const traineeEvals = safeArr(evals).filter(ev => evalTraineeId(ev) === trainee?._id?.toString());
   const monthEvals   = traineeEvals.filter(ev => isThisMonth(ev?.date || ev?.createdAt));
@@ -417,7 +531,7 @@ function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalize
       if (newEval && typeof newEval === 'object') onSubmitted(newEval);
       setActiveType(null);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to submit evaluation.');
+      setError(err.response?.data?.message || t('submitFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -431,7 +545,7 @@ function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalize
       const finalized = res.data?.data || res.data || {};
       onFinalized(evalId, finalized);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to finalize evaluation.');
+      setError(err.response?.data?.message || t('finalizeFailed'));
     } finally {
       setFinalizing(null);
     }
@@ -447,7 +561,7 @@ function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalize
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div style={{
-        background:'#fff', borderRadius:16, width:'100%', maxWidth:680,
+        background:'var(--surface)', borderRadius:16, width:'100%', maxWidth:680,
         boxShadow:'0 20px 60px rgba(0,0,0,.2)',
         maxHeight:'92vh', overflowY:'auto',
         animation:'modalIn .22s ease'
@@ -455,24 +569,24 @@ function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalize
         {/* Header */}
         <div style={{
           display:'flex', alignItems:'center', justifyContent:'space-between',
-          padding:'18px 24px', borderBottom:'1px solid #E8E9EF',
-          position:'sticky', top:0, background:'#fff', zIndex:10
+          padding:'18px 24px', borderBottom:'1px solid var(--border)',
+          position:'sticky', top:0, background:'var(--surface)', zIndex:10
         }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
             <Avatar user={trainee} size={40} />
             <div>
-              <div style={{ fontSize:16, fontWeight:700, color:'#1B1464' }}>{trainee.name || '—'}</div>
-              <div style={{ fontSize:12, color:'#8B8FA8' }}>
-                {trainee.studentId ? `ID: ${trainee.studentId} · ` : ''}
-                {activeForm ? activeForm.fullName : `Monthly evaluations · ${MONTH_LABEL}`}
+              <div style={{ fontSize:16, fontWeight:700, color:'var(--text)' }}>{trainee.name || '—'}</div>
+              <div style={{ fontSize:12, color:'var(--text-muted)' }}>
+                {trainee.studentId ? `${t('idLabel')}: ${trainee.studentId} · ` : ''}
+                {activeForm ? activeForm.fullName : `${t('monthlyEvaluations')} · ${MONTH_LABEL}`}
               </div>
             </div>
           </div>
           <button
             onClick={onClose}
             style={{
-              width:30, height:30, borderRadius:'50%', background:'#F5F6FA',
-              border:'none', fontSize:18, color:'#8B8FA8', cursor:'pointer',
+              width:30, height:30, borderRadius:'50%', background:'var(--surface-2)',
+              border:'none', fontSize:18, color:'var(--text-muted)', cursor:'pointer',
               display:'flex', alignItems:'center', justifyContent:'center'
             }}
           >✕</button>
@@ -490,6 +604,7 @@ function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalize
               onSubmit={submitEval}
               submitting={submitting}
               error={error}
+              t={t}
             />
           ) : (
           <>

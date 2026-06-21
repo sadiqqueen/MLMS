@@ -1,11 +1,149 @@
 import { useState, useEffect } from 'react';
 import { useAuth }  from '../context/AuthContext';
+import { usePrefs } from '../context/PrefsContext';
 import Navbar       from '../components/Navbar';
 import Toast        from '../components/Toast';
 import api          from '../api/axios';
 import Sk           from '../components/Skeleton';
+import { IconEye, IconCheck, IconClock, IconXCircle } from '../components/icons';
 
 const API_BASE = '';
+
+// Page-chrome translations (titles, labels, headers, buttons, toasts, modal
+// section titles, field labels). Dynamic data (names, dates, hospitals) and
+// the evaluation form content are intentionally NOT translated here.
+const STRINGS = {
+  ar: {
+    pendingReview: 'بانتظار المراجعة',
+    assessed: 'تم التقييم',
+    searchPlaceholder: 'ابحث باسم المتدرب أو عنوان التقرير…',
+    filterPending: 'بانتظار',
+    filterAssessed: 'تم التقييم',
+    filterAll: 'الكل',
+    colNum: '#',
+    colTrainee: 'المتدرب',
+    colTitle: 'عنوان التقرير',
+    colType: 'النوع',
+    colDate: 'التاريخ',
+    colFile: 'الملف',
+    colStatus: 'الحالة',
+    colAction: 'الإجراء',
+    noReports: 'لا توجد تقارير',
+    idLabel: 'الرقم التعريفي',
+    fileView: 'عرض',
+    fileNone: 'لا يوجد',
+    btnAssess: 'تقييم',
+    statusAssessed: 'تم التقييم',
+    statusRejected: 'مرفوض',
+    statusPending: 'بانتظار المراجعة',
+    view: 'عرض',
+    // Modal
+    assessmentDetails: 'تفاصيل التقييم',
+    assessReport: 'تقييم التقرير',
+    traineeInformation: 'معلومات المتدرب',
+    assessorInformation: 'معلومات المُقيّم',
+    asrCriteria: 'معايير تقييم ASR',
+    globalRating: 'التقييم العام',
+    competent: '✓ كفء',
+    notCompetent: '✗ غير كفء',
+    letterGrade: 'الدرجة الحرفية (اختياري)',
+    assessmentNotes: 'ملاحظات التقييم',
+    commentsNotes: 'التعليقات / الملاحظات',
+    commentsPlaceholder: 'أدخل أي تعليقات أو ملاحظات…',
+    reviewNote: 'ملاحظة المراجعة (تظهر للمتدرب)',
+    reviewNotePlaceholder: 'ملاحظة اختيارية للمتدرب…',
+    assessmentSubmitted: 'تم إرسال التقييم',
+    statusLine: 'الحالة',
+    by: 'بواسطة',
+    reject: 'رفض',
+    approveAssess: 'اعتماد وتقييم',
+    saving: 'جارٍ الحفظ…',
+    close: 'إغلاق',
+    // Field labels
+    fName: 'الاسم',
+    fStudentId: 'الرقم التعريفي للمتدرب',
+    fDateSubmitted: 'تاريخ الإرسال',
+    fHospital: 'المستشفى',
+    fRotationPeriod: 'فترة التدوير',
+    fEmail: 'البريد الإلكتروني',
+    fPhone: 'الهاتف',
+    // Ratings labels
+    ratingNa: 'غير منطبق',
+    ratingBelow: 'دون المستوى',
+    ratingMeets: 'يحقق المستوى',
+    ratingAbove: 'فوق المستوى',
+    // Toasts
+    loadFailed: 'فشل تحميل التقارير',
+    savedIncomplete: 'تم حفظ التقييم، لكن الاستجابة غير مكتملة. يرجى التحديث للتأكد.',
+    submitSuccess: 'تم إرسال التقييم بنجاح',
+    submitFailed: 'فشل إرسال التقييم.',
+  },
+  en: {
+    pendingReview: 'Pending Review',
+    assessed: 'Assessed',
+    searchPlaceholder: 'Search by trainee name or report title…',
+    filterPending: 'Pending',
+    filterAssessed: 'Assessed',
+    filterAll: 'All',
+    colNum: '#',
+    colTrainee: 'Trainee',
+    colTitle: 'Report Title',
+    colType: 'Type',
+    colDate: 'Date',
+    colFile: 'File',
+    colStatus: 'Status',
+    colAction: 'Action',
+    noReports: 'No reports found',
+    idLabel: 'ID',
+    fileView: 'View',
+    fileNone: 'None',
+    btnAssess: 'Assess',
+    statusAssessed: 'Assessed',
+    statusRejected: 'Rejected',
+    statusPending: 'Pending review',
+    view: 'View',
+    // Modal
+    assessmentDetails: 'Assessment Details',
+    assessReport: 'Assess Report',
+    traineeInformation: 'Trainee Information',
+    assessorInformation: 'Assessor Information',
+    asrCriteria: 'ASR Assessment Criteria',
+    globalRating: 'Global Rating',
+    competent: '✓ Competent',
+    notCompetent: '✗ Not-Competent',
+    letterGrade: 'Letter Grade (optional)',
+    assessmentNotes: 'Assessment Notes',
+    commentsNotes: 'Comments / Notes',
+    commentsPlaceholder: 'Enter any comments or observations…',
+    reviewNote: 'Review Note (shown to trainee)',
+    reviewNotePlaceholder: 'Optional note for the trainee…',
+    assessmentSubmitted: 'Assessment submitted',
+    statusLine: 'Status',
+    by: 'By',
+    reject: 'Reject',
+    approveAssess: 'Approve & Assess',
+    saving: 'Saving…',
+    close: 'Close',
+    // Field labels
+    fName: 'Name',
+    fStudentId: 'Student ID',
+    fDateSubmitted: 'Date Submitted',
+    fHospital: 'Hospital',
+    fRotationPeriod: 'Rotation Period',
+    fEmail: 'Email',
+    fPhone: 'Phone',
+    // Ratings labels
+    ratingNa: 'N/A',
+    ratingBelow: 'Below Standard',
+    ratingMeets: 'Meets Standard',
+    ratingAbove: 'Above Standard',
+    // Toasts
+    loadFailed: 'Failed to load reports',
+    savedIncomplete: 'Assessment saved, but the response was incomplete. Please refresh to verify.',
+    submitSuccess: 'Assessment submitted successfully',
+    submitFailed: 'Failed to submit assessment.',
+  },
+};
 
 const ASR_CRITERIA = [
   'History Taking',
@@ -19,10 +157,10 @@ const ASR_CRITERIA = [
 ];
 
 const RATINGS = [
-  { key: 'na',    label: 'N/A',            color: '#b2bec3', bg: '#f0f2f3' },
-  { key: 'below', label: 'Below Standard', color: '#FF4757', bg: '#fef0f0' },
-  { key: 'meets', label: 'Meets Standard', color: '#f39c12', bg: '#fff8e1' },
-  { key: 'above', label: 'Above Standard', color: '#00B894', bg: '#e8fdf3' },
+  { key: 'na',    tKey: 'ratingNa',    color: '#b2bec3', bg: '#f0f2f3' },
+  { key: 'below', tKey: 'ratingBelow', color: '#FF4757', bg: '#fef0f0' },
+  { key: 'meets', tKey: 'ratingMeets', color: '#f39c12', bg: '#fff8e1' },
+  { key: 'above', tKey: 'ratingAbove', color: '#00B894', bg: '#e8fdf3' },
 ];
 
 const LETTER_GRADES = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F'];
@@ -44,9 +182,9 @@ function GradeBubbles({ selected, onChange, disabled }) {
             disabled={disabled}
             style={{
               width:40, height:40, borderRadius:'50%',
-              border: active ? '2px solid #185FA5' : '1.5px solid #d1d5db',
-              background: active ? '#185FA5' : 'white',
-              color: active ? 'white' : '#444',
+              border: active ? '2px solid var(--link)' : '1.5px solid var(--border)',
+              background: active ? 'var(--link)' : 'var(--surface)',
+              color: active ? '#fff' : 'var(--text-2)',
               fontSize:12, fontWeight:700,
               cursor: disabled ? 'default' : 'pointer',
               transition:'all 0.12s', flexShrink:0,
@@ -60,6 +198,9 @@ function GradeBubbles({ selected, onChange, disabled }) {
 }
 
 function AssessmentModal({ report, supervisor, onClose, onSaved }) {
+  const { lang } = usePrefs();
+  const t = k => STRINGS[lang]?.[k] ?? STRINGS.ar[k] ?? k;
+  const dir = lang === 'ar' ? 'rtl' : 'ltr';
   const isGraded = report.status === 'graded' || report.status === 'approved';
 
   const [criteria,     setCriteria    ] = useState(report.assessmentCriteria || {});
@@ -93,7 +234,7 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
       onSaved(res.data?.data || res.data);
       onClose();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to submit assessment.');
+      setError(err.response?.data?.message || t('submitFailed'));
       setSaving(false);
     }
   }
@@ -110,34 +251,34 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
       }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div style={{
-        background:'#fff', borderRadius:16, width:'100%', maxWidth:680,
-        boxShadow:'0 20px 60px rgba(0,0,0,.2)', maxHeight:'90vh', overflowY:'auto'
+      <div dir={dir} style={{
+        background:'var(--surface)', borderRadius:16, width:'100%', maxWidth:680,
+        boxShadow:'0 20px 60px var(--shadow)', maxHeight:'90vh', overflowY:'auto'
       }}>
         {/* Header */}
         <div style={{
           display:'flex', alignItems:'flex-start', justifyContent:'space-between',
-          padding:'20px 24px', borderBottom:'1px solid #E8E9EF',
-          position:'sticky', top:0, background:'#fff', zIndex:10
+          padding:'20px 24px', borderBottom:'1px solid var(--border)',
+          position:'sticky', top:0, background:'var(--surface)', zIndex:10
         }}>
           <div>
-            <div style={{ fontSize:17, fontWeight:700, color:'#1B1464' }}>
-              {isGraded ? 'Assessment Details' : 'Assess Report'}
+            <div style={{ fontSize:17, fontWeight:700, color:'var(--text)' }}>
+              {isGraded ? t('assessmentDetails') : t('assessReport')}
             </div>
             <div style={{ display:'flex', gap:8, marginTop:4, flexWrap:'wrap' }}>
               <span style={{
                 fontSize:11, padding:'2px 9px', borderRadius:20, fontWeight:600,
-                background: report.type==='monthly' ? '#FEF3C7' : '#DBEAFE',
-                color:      report.type==='monthly' ? '#92400E' : '#1E40AF'
+                background: report.type==='monthly' ? 'var(--warning-bg)' : 'var(--info-bg)',
+                color:      report.type==='monthly' ? 'var(--warning-fg)' : 'var(--info-fg)'
               }}>{report.type}</span>
-              <span style={{ fontSize:12, color:'#8B8FA8' }}>{report.title}</span>
+              <span style={{ fontSize:12, color:'var(--text-muted)' }}>{report.title}</span>
             </div>
           </div>
           <button
             onClick={onClose}
             style={{
-              width:30, height:30, borderRadius:'50%', background:'#F5F6FA',
-              border:'none', fontSize:18, color:'#8B8FA8', cursor:'pointer',
+              width:30, height:30, borderRadius:'50%', background:'var(--surface-2)',
+              border:'none', fontSize:18, color:'var(--text-muted)', cursor:'pointer',
               display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0
             }}
           >✕</button>
@@ -147,20 +288,20 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
 
           {/* Trainee Info */}
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#8B8FA8', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:10 }}>
-              Trainee Information
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:10 }}>
+              {t('traineeInformation')}
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px 20px' }}>
               {[
-                ['Name',            report.student?.name || '—'],
-                ['Student ID',       report.student?.studentId || '—'],
-                ['Date Submitted',  fmtDate(report.date)],
-                ['Hospital',        report.hospital?.name || '—'],
-                ['Rotation Period', rotaStr],
+                [t('fName'),          report.student?.name || '—'],
+                [t('fStudentId'),     report.student?.studentId || '—'],
+                [t('fDateSubmitted'), fmtDate(report.date)],
+                [t('fHospital'),      report.hospital?.name || '—'],
+                [t('fRotationPeriod'), rotaStr],
               ].map(([label, value]) => (
                 <div key={label}>
-                  <div style={{ fontSize:11, color:'#8B8FA8', marginBottom:2 }}>{label}</div>
-                  <div style={{ fontSize:13, color:'#1B1464', fontWeight:500 }}>{value}</div>
+                  <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:2 }}>{label}</div>
+                  <div style={{ fontSize:13, color:'var(--text)', fontWeight:500 }}>{value}</div>
                 </div>
               ))}
             </div>
@@ -168,19 +309,19 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
 
           {/* Assessor Info */}
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#8B8FA8', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:10 }}>
-              Assessor Information
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:10 }}>
+              {t('assessorInformation')}
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px 20px' }}>
               {[
-                ['Name',     supervisor?.name    || '—'],
-                ['Email',    supervisor?.email   || '—'],
-                ['Phone',    supervisor?.phone   || '—'],
-                ['Hospital', report.hospital?.name || '—'],
+                [t('fName'),     supervisor?.name    || '—'],
+                [t('fEmail'),    supervisor?.email   || '—'],
+                [t('fPhone'),    supervisor?.phone   || '—'],
+                [t('fHospital'), report.hospital?.name || '—'],
               ].map(([label, value]) => (
                 <div key={label}>
-                  <div style={{ fontSize:11, color:'#8B8FA8', marginBottom:2 }}>{label}</div>
-                  <div style={{ fontSize:13, color:'#1B1464', fontWeight:500 }}>{value}</div>
+                  <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:2 }}>{label}</div>
+                  <div style={{ fontSize:13, color:'var(--text)', fontWeight:500 }}>{value}</div>
                 </div>
               ))}
             </div>
@@ -188,14 +329,14 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
 
           {/* ASR Criteria */}
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#8B8FA8', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:12 }}>
-              ASR Assessment Criteria
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:12 }}>
+              {t('asrCriteria')}
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr', gap:6, marginBottom:6 }}>
               <div />
               {RATINGS.map(r => (
                 <div key={r.key} style={{ fontSize:10, fontWeight:600, color:r.color, textAlign:'center' }}>
-                  {r.label}
+                  {t(r.tKey)}
                 </div>
               ))}
             </div>
@@ -205,10 +346,10 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
                 style={{
                   display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr',
                   gap:6, marginBottom:4, padding:'8px 0',
-                  borderTop: idx === 0 ? 'none' : '1px solid #F5F6FA'
+                  borderTop: idx === 0 ? 'none' : '1px solid var(--border-soft)'
                 }}
               >
-                <div style={{ fontSize:13, color:'#1B1464', alignSelf:'center' }}>{name}</div>
+                <div style={{ fontSize:13, color:'var(--text)', alignSelf:'center' }}>{name}</div>
                 {RATINGS.map(r => {
                   const sel = criteria[name] === r.key;
                   return (
@@ -219,8 +360,8 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
                         onClick={() => toggleCriteria(name, r.key)}
                         style={{
                           width:28, height:28, borderRadius:'50%',
-                          border: sel ? `2px solid ${r.color}` : '1.5px solid #D1D5DB',
-                          background: sel ? r.color : '#fff',
+                          border: sel ? `2px solid ${r.color}` : '1.5px solid var(--border)',
+                          background: sel ? r.color : 'var(--surface)',
                           cursor: isGraded ? 'default' : 'pointer',
                           transition:'all 0.12s',
                           opacity: isGraded && !sel ? 0.5 : 1,
@@ -235,28 +376,28 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
 
           {/* Global Rating */}
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#8B8FA8', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:10 }}>
-              Global Rating
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:10 }}>
+              {t('globalRating')}
             </div>
             <div style={{ display:'flex', gap:12 }}>
               {['competent','not-competent'].map(val => {
                 const active = globalRating === val;
-                const color  = val === 'competent' ? '#00B894' : '#FF4757';
+                const color  = val === 'competent' ? 'var(--success)' : 'var(--danger)';
                 return (
                   <button
                     key={val} type="button" disabled={isGraded}
                     onClick={() => !isGraded && setGlobalRating(active ? '' : val)}
                     style={{
                       flex:1, padding:'12px 0', borderRadius:10,
-                      border: active ? `2px solid ${color}` : '1.5px solid #E8E9EF',
-                      background: active ? (val==='competent' ? '#E8FDF3' : '#FEF0F0') : '#fff',
-                      color: active ? color : '#4B5563',
+                      border: active ? `2px solid ${color}` : '1.5px solid var(--border)',
+                      background: active ? (val==='competent' ? 'var(--success-bg)' : 'var(--danger-bg)') : 'var(--surface)',
+                      color: active ? color : 'var(--text-2)',
                       fontWeight:700, fontSize:14,
                       cursor: isGraded ? 'default' : 'pointer',
                       transition:'all .15s'
                     }}
                   >
-                    {val === 'competent' ? '✓ Competent' : '✗ Not-Competent'}
+                    {val === 'competent' ? t('competent') : t('notCompetent')}
                   </button>
                 );
               })}
@@ -266,8 +407,8 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
           {/* Letter Grade */}
           {!isGraded && (
             <div style={{ marginBottom:20 }}>
-              <div style={{ fontSize:12, fontWeight:600, color:'#4B5563', marginBottom:8 }}>
-                Letter Grade (optional)
+              <div style={{ fontSize:12, fontWeight:600, color:'var(--text-2)', marginBottom:8 }}>
+                {t('letterGrade')}
               </div>
               <GradeBubbles
                 selected={letterGrade}
@@ -279,19 +420,19 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
 
           {/* Comments */}
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:12, fontWeight:600, color:'#4B5563', marginBottom:6 }}>
-              {isGraded ? 'Assessment Notes' : 'Comments / Notes'}
+            <div style={{ fontSize:12, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>
+              {isGraded ? t('assessmentNotes') : t('commentsNotes')}
             </div>
             <textarea
               disabled={isGraded}
               value={comments}
               onChange={e => setComments(e.target.value)}
-              placeholder="Enter any comments or observations…"
+              placeholder={t('commentsPlaceholder')}
               style={{
                 width:'100%', minHeight:90, padding:'10px 12px',
-                border:'1.5px solid #E8E9EF', borderRadius:8, fontSize:13,
-                color:'#1B1464', resize:'vertical', fontFamily:'inherit',
-                background: isGraded ? '#F5F6FA' : '#fff'
+                border:'1.5px solid var(--border)', borderRadius:8, fontSize:13,
+                color:'var(--text)', resize:'vertical', fontFamily:'inherit',
+                background: isGraded ? 'var(--surface-2)' : 'var(--surface)'
               }}
             />
           </div>
@@ -299,17 +440,18 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
           {/* Review Note */}
           {!isGraded && (
             <div style={{ marginBottom:20 }}>
-              <div style={{ fontSize:12, fontWeight:600, color:'#4B5563', marginBottom:6 }}>
-                Review Note (shown to trainee)
+              <div style={{ fontSize:12, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>
+                {t('reviewNote')}
               </div>
               <textarea
                 value={reviewNote}
                 onChange={e => setReviewNote(e.target.value)}
-                placeholder="Optional note for the trainee…"
+                placeholder={t('reviewNotePlaceholder')}
                 style={{
                   width:'100%', minHeight:70, padding:'10px 12px',
-                  border:'1.5px solid #E8E9EF', borderRadius:8, fontSize:13,
-                  color:'#1B1464', resize:'vertical', fontFamily:'inherit'
+                  border:'1.5px solid var(--border)', borderRadius:8, fontSize:13,
+                  color:'var(--text)', resize:'vertical', fontFamily:'inherit',
+                  background:'var(--surface)'
                 }}
               />
             </div>
@@ -317,8 +459,8 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
 
           {error && (
             <div style={{
-              background:'#FEE2E2', borderRadius:8, padding:'10px 14px',
-              fontSize:13, color:'#DC2626', marginBottom:16
+              background:'var(--danger-bg)', borderRadius:8, padding:'10px 14px',
+              fontSize:13, color:'var(--danger-fg)', marginBottom:16
             }}>
               {error}
             </div>
@@ -326,17 +468,17 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
 
           {isGraded && (
             <div style={{
-              background:'#E8FDF3', border:'1px solid #00B894',
+              background:'var(--success-bg)', border:'1px solid var(--success)',
               borderRadius:10, padding:'14px 16px', marginBottom:16,
               display:'flex', alignItems:'center', gap:10
             }}>
-              <div style={{ fontSize:20 }}>✓</div>
+              <div style={{ fontSize:20, color:'var(--success)' }}>✓</div>
               <div>
-                <div style={{ fontSize:13, fontWeight:600, color:'#065F46' }}>
-                  Assessment submitted
+                <div style={{ fontSize:13, fontWeight:600, color:'var(--success-fg)' }}>
+                  {t('assessmentSubmitted')}
                 </div>
-                <div style={{ fontSize:12, color:'#047857', marginTop:2 }}>
-                  Status: {report.status} · By {report.gradedBy?.name || report.reviewedBy?.name || '—'}
+                <div style={{ fontSize:12, color:'var(--success-fg)', marginTop:2 }}>
+                  {t('statusLine')}: {report.status} · {t('by')} {report.gradedBy?.name || report.reviewedBy?.name || '—'}
                 </div>
               </div>
             </div>
@@ -350,25 +492,25 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
                 onClick={() => handleSubmit('rejected')}
                 disabled={saving}
                 style={{
-                  padding:'9px 20px', borderRadius:8, background:'#DC2626',
+                  padding:'9px 20px', borderRadius:8, background:'var(--danger)',
                   color:'#fff', border:'none', fontWeight:500, fontSize:13,
                   cursor:'pointer', opacity: saving ? 0.7 : 1
                 }}
               >
-                Reject
+                {t('reject')}
               </button>
               <button
                 type="button"
                 onClick={() => handleSubmit('graded')}
                 disabled={saving}
                 style={{
-                  padding:'9px 20px', borderRadius:8, background:'#FF6B35',
+                  padding:'9px 20px', borderRadius:8, background:'var(--accent)',
                   color:'#fff', border:'none', fontWeight:500, fontSize:13,
                   cursor:'pointer', boxShadow:'0 2px 8px rgba(255,107,53,.35)',
                   opacity: saving ? 0.7 : 1
                 }}
               >
-                {saving ? 'Saving…' : 'Approve & Assess'}
+                {saving ? t('saving') : t('approveAssess')}
               </button>
             </div>
           )}
@@ -378,10 +520,10 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
               <button
                 onClick={onClose}
                 style={{
-                  padding:'9px 20px', borderRadius:8, background:'#FF6B35',
+                  padding:'9px 20px', borderRadius:8, background:'var(--accent)',
                   color:'#fff', border:'none', fontWeight:500, fontSize:13, cursor:'pointer'
                 }}
-              >Close</button>
+              >{t('close')}</button>
             </div>
           )}
         </div>
@@ -392,6 +534,9 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
 
 export default function SupervisorReports() {
   const { user: me }     = useAuth();
+  const { lang } = usePrefs();
+  const t = k => STRINGS[lang]?.[k] ?? STRINGS.ar[k] ?? k;
+  const dir = lang === 'ar' ? 'rtl' : 'ltr';
   const [reports,     setReports    ] = useState([]);
   const [loading,     setLoading    ] = useState(true);
   const [search,      setSearch     ] = useState('');

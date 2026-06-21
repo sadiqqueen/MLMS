@@ -4,6 +4,7 @@ import Navbar       from '../components/Navbar';
 import Toast        from '../components/Toast';
 import api          from '../api/axios';
 import Sk           from '../components/Skeleton';
+import { IconEye }  from '../components/icons';
 
 const API_BASE = '';
 
@@ -592,8 +593,9 @@ export default function ProgramDirectorReports() {
                     <td>
                       {r.fileUrl
                         ? <a href={`${API_BASE}${r.fileUrl}`} target="_blank" rel="noreferrer"
-                             style={{ color:'#185FA5', fontSize:13, fontWeight:500 }}>
-                            View ↗
+                             title="View" aria-label="View"
+                             style={{ color:'#185FA5', fontSize:13, fontWeight:500, display:'inline-flex', alignItems:'center' }}>
+                            <IconEye size={15} />
                           </a>
                         : <span style={{ color:'#D1D5DB', fontSize:12 }}>None</span>
                       }
@@ -628,8 +630,10 @@ export default function ProgramDirectorReports() {
                         <button
                           className="btn-action edit"
                           onClick={() => setGradeModal(r)}
+                          title="View"
+                          aria-label="View"
                         >
-                          View
+                          <IconEye size={16} />
                         </button>
                       )}
                     </td>
