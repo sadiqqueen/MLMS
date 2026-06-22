@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { usePrefs } from '../context/PrefsContext';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
 import SearchableSelect from '../components/SearchableSelect';
@@ -9,9 +10,110 @@ import { IconEdit, IconBan } from '../components/icons';
 
 const API_BASE = '';
 
-function fmtDate(d) {
+// ── Translations ────────────────────────────────────────────────────────────
+const STRINGS = {
+  ar: {
+    // tabs + actions
+    trainees: 'المتدربون', rotations: 'التدويرات',
+    addTrainee: '+ إضافة متدرب', assignRotation: '+ إسناد تدوير',
+    searchTrainees: 'ابحث بالاسم أو البريد أو الرقم الجامعي…',
+    searchRotations: 'ابحث باسم المتدرب أو المشرف…',
+    // trainees empty + card
+    noTraineesYet: 'لا يوجد متدربون بعد',
+    noTraineesMatch: 'لا يوجد متدربون مطابقون لبحثك',
+    addFirstTrainee: 'اضغط «إضافة متدرب» لإضافة أول متدرب لهذا التخصص.',
+    year: 'السنة', idTag: 'رقم',
+    // rotation filter + statuses
+    all: 'الكل', upcoming: 'قادم', current: 'حالي', completed: 'مكتمل', cancelled: 'ملغى',
+    // rotations empty + card
+    noRotationsYet: 'لم يتم إسناد تدويرات بعد',
+    noRotationsMatch: 'لا توجد تدويرات مطابقة لبحثك',
+    addFirstRotation: 'اضغط «إسناد تدوير» لإنشاء أول تدوير.',
+    hospital: 'المستشفى', supervisor: 'المشرف', dates: 'التواريخ', duration: 'المدة', weeks: 'أسابيع',
+    // confirm deactivate
+    deactivateTrainee: 'تعطيل المتدرب',
+    deactivateMsgPre: 'تعطيل ',
+    deactivateMsgPost: '؟ لن يتمكن الحساب من تسجيل الدخول بعد الآن.',
+    cancel: 'إلغاء', deactivate: 'تعطيل',
+    // trainee modal
+    editTrainee: 'تعديل متدرب', addTraineeTitle: 'إضافة متدرب',
+    fullName: 'الاسم الكامل *', fullNamePh: 'الاسم الكامل',
+    email: 'البريد الإلكتروني *',
+    password: 'كلمة المرور *', passwordPh: '6 أحرف على الأقل', passwordErr: 'مطلوب 6 أحرف على الأقل',
+    studentId: 'الرقم الجامعي', studentIdPh: 'مثال: STD-001',
+    selectYear: '— اختر السنة —',
+    specialty: 'التخصص', autoSet: '(يُحدَّد تلقائياً)', noSpecialty: 'لا يوجد تخصص معيّن لحسابك',
+    hospitalLabel: 'المستشفى', searchHospital: 'ابحث عن مستشفى...',
+    supervisorLabel: 'المشرف', searchSupervisor: 'ابحث عن مشرف...',
+    noSupsForSpec: 'لا يوجد مشرفون لتخصص',
+    phone: 'الهاتف',
+    gender: 'الجنس', select: '— اختر —', male: 'ذكر', female: 'أنثى',
+    city: 'المدينة',
+    saving: 'جارٍ الحفظ…', saveChanges: 'حفظ التغييرات',
+    // rotation modal
+    assignRotationTitle: 'إسناد تدوير',
+    trainee: 'المتدرب *', searchTrainee: 'ابحث عن متدرب...', required: 'مطلوب',
+    hospitalReq: 'المستشفى *', supervisorReq: 'المشرف *',
+    filteredBySpec: ' (مُصفّى حسب تخصص المتدرب)',
+    noSupsMatch: 'لا يوجد مشرفون مطابقون لتخصص هذا المتدرب',
+    startDate: 'تاريخ البداية *', endDate: 'تاريخ النهاية *',
+    // toasts
+    loadFailed: 'فشل تحميل البيانات',
+    traineeUpdated: 'تم تحديث المتدرب', traineeAdded: 'تمت إضافة المتدرب',
+    saveFailed: 'فشل الحفظ',
+    traineeDeactivated: 'تم تعطيل المتدرب', deactivateFailed: 'فشل التعطيل',
+    rotationAssigned: 'تم إسناد التدوير بنجاح', rotationFailed: 'فشل إسناد التدوير',
+  },
+  en: {
+    trainees: 'Trainees', rotations: 'Rotations',
+    addTrainee: '+ Add Trainee', assignRotation: '+ Assign Rotation',
+    searchTrainees: 'Search by name, email, or student ID…',
+    searchRotations: 'Search by trainee or supervisor name…',
+    noTraineesYet: 'No trainees yet',
+    noTraineesMatch: 'No trainees match your search',
+    addFirstTrainee: 'Click "+ Add Trainee" to add the first trainee to this specialty.',
+    year: 'Year', idTag: 'ID',
+    all: 'All', upcoming: 'Upcoming', current: 'Current', completed: 'Completed', cancelled: 'Cancelled',
+    noRotationsYet: 'No rotations assigned yet',
+    noRotationsMatch: 'No rotations match your search',
+    addFirstRotation: 'Click "+ Assign Rotation" to create the first rotation.',
+    hospital: 'Hospital', supervisor: 'Supervisor', dates: 'Dates', duration: 'Duration', weeks: 'weeks',
+    deactivateTrainee: 'Deactivate Trainee',
+    deactivateMsgPre: 'Deactivate ',
+    deactivateMsgPost: '? The account will no longer be able to sign in.',
+    cancel: 'Cancel', deactivate: 'Deactivate',
+    editTrainee: 'Edit Trainee', addTraineeTitle: 'Add Trainee',
+    fullName: 'Full Name *', fullNamePh: 'Full name',
+    email: 'Email *',
+    password: 'Password *', passwordPh: 'Min. 6 characters', passwordErr: 'At least 6 characters required',
+    studentId: 'Student ID', studentIdPh: 'e.g. STD-001',
+    selectYear: '— Select year —',
+    specialty: 'Specialty', autoSet: '(auto-set)', noSpecialty: 'No specialty assigned to your account',
+    hospitalLabel: 'Hospital', searchHospital: 'Search hospital...',
+    supervisorLabel: 'Supervisor', searchSupervisor: 'Search supervisor...',
+    noSupsForSpec: 'No supervisors found for',
+    phone: 'Phone',
+    gender: 'Gender', select: '— Select —', male: 'Male', female: 'Female',
+    city: 'City',
+    saving: 'Saving…', saveChanges: 'Save Changes',
+    assignRotationTitle: 'Assign Rotation',
+    trainee: 'Trainee *', searchTrainee: 'Search trainee...', required: 'Required',
+    hospitalReq: 'Hospital *', supervisorReq: 'Supervisor *',
+    filteredBySpec: ' (filtered by trainee specialty)',
+    noSupsMatch: "No supervisors match this trainee's specialty",
+    startDate: 'Start Date *', endDate: 'End Date *',
+    loadFailed: 'Failed to load data',
+    traineeUpdated: 'Trainee updated', traineeAdded: 'Trainee added',
+    saveFailed: 'Save failed',
+    traineeDeactivated: 'Trainee deactivated', deactivateFailed: 'Deactivate failed',
+    rotationAssigned: 'Rotation assigned successfully', rotationFailed: 'Failed to assign rotation',
+  },
+};
+const tr = (lang, k) => STRINGS[lang]?.[k] ?? STRINGS.ar[k] ?? k;
+
+function fmtDate(d, lang = 'en') {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(d).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function weeksBetween(startDate, endDate) {
@@ -23,14 +125,16 @@ function weeksBetween(startDate, endDate) {
 }
 
 function ConfirmDelete({ name, onConfirm, onCancel }) {
+  const { lang } = usePrefs();
+  const t = k => tr(lang, k);
   return (
     <div className="confirm-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
       <div className="confirm-box">
-        <h3>Deactivate Trainee</h3>
-        <p>Deactivate <strong>{name}</strong>? The account will no longer be able to sign in.</p>
+        <h3>{t('deactivateTrainee')}</h3>
+        <p>{t('deactivateMsgPre')}<strong>{name}</strong>{t('deactivateMsgPost')}</p>
         <div className="confirm-btns">
-          <button className="btn-outline" onClick={onCancel}>Cancel</button>
-          <button className="btn-red" onClick={onConfirm}>Deactivate</button>
+          <button className="btn-outline" onClick={onCancel}>{t('cancel')}</button>
+          <button className="btn-red" onClick={onConfirm}>{t('deactivate')}</button>
         </div>
       </div>
     </div>
@@ -38,6 +142,8 @@ function ConfirmDelete({ name, onConfirm, onCancel }) {
 }
 
 function TraineeModal({ editTrainee, hospitals, supervisors, secretarySpecialty, onSave, onClose, saving }) {
+  const { lang } = usePrefs();
+  const t = k => tr(lang, k);
   const specId   = secretarySpecialty?._id || secretarySpecialty || '';
   const specName = secretarySpecialty?.name || '';
 
@@ -96,113 +202,110 @@ function TraineeModal({ editTrainee, hospitals, supervisors, secretarySpecialty,
     <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="admin-modal admin-modal-lg">
         <div className="admin-modal-header">
-          <div className="admin-modal-title">{editTrainee ? 'Edit Trainee' : 'Add Trainee'}</div>
+          <div className="admin-modal-title">{editTrainee ? t('editTrainee') : t('addTraineeTitle')}</div>
           <button className="admin-modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="admin-modal-body">
           <div className="admin-form-grid">
 
             <div className="admin-field">
-              <label>Full Name *</label>
+              <label>{t('fullName')}</label>
               <input className={errors.name ? 'invalid' : ''} value={form.name}
-                onChange={e => set('name', e.target.value)} placeholder="Full name" />
+                onChange={e => set('name', e.target.value)} placeholder={t('fullNamePh')} />
             </div>
 
             <div className="admin-field">
-              <label>Email *</label>
+              <label>{t('email')}</label>
               <input className={errors.email ? 'invalid' : ''} type="email" value={form.email}
                 onChange={e => set('email', e.target.value)} placeholder="email@domain.com" />
             </div>
 
             {!editTrainee && (
               <div className="admin-field">
-                <label>Password *</label>
+                <label>{t('password')}</label>
                 <input className={errors.password ? 'invalid' : ''} type="password" value={form.password || ''}
-                  onChange={e => set('password', e.target.value)} placeholder="Min. 6 characters" />
-                {errors.password && <span style={{ fontSize: 11, color: '#e74c3c' }}>At least 6 characters required</span>}
+                  onChange={e => set('password', e.target.value)} placeholder={t('passwordPh')} />
+                {errors.password && <span style={{ fontSize: 11, color: 'var(--danger)' }}>{t('passwordErr')}</span>}
               </div>
             )}
 
             <div className="admin-field">
-              <label>Student ID</label>
-              <input value={form.studentId} onChange={e => set('studentId', e.target.value)} placeholder="e.g. STD-001" />
+              <label>{t('studentId')}</label>
+              <input value={form.studentId} onChange={e => set('studentId', e.target.value)} placeholder={t('studentIdPh')} />
             </div>
 
             <div className="admin-field">
-              <label>Year</label>
+              <label>{t('year')}</label>
               <select value={form.year} onChange={e => set('year', e.target.value)}>
-                <option value="">— Select year —</option>
-                {[1,2,3,4,5,6].map(y => <option key={y} value={y}>Year {y}</option>)}
+                <option value="">{t('selectYear')}</option>
+                {[1,2,3,4,5,6].map(y => <option key={y} value={y}>{t('year')} {y}</option>)}
               </select>
             </div>
 
             <div className="admin-field">
-              <label>Specialty</label>
+              <label>{t('specialty')}</label>
               {specName ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 6 }}>
-                  <span style={{
-                    fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 20,
-                    background: '#EEEDFE', color: '#1B1464'
-                  }}>{specName}</span>
-                  <span style={{ fontSize: 11, color: '#8B8FA8' }}>(auto-set)</span>
+                  <span className="specialty-tag" style={{ fontSize: 12, fontWeight: 600, padding: '5px 12px' }}>{specName}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('autoSet')}</span>
                 </div>
               ) : (
-                <span style={{ fontSize: 12, color: '#8B8FA8', paddingTop: 6, display: 'block' }}>
-                  No specialty assigned to your account
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', paddingTop: 6, display: 'block' }}>
+                  {t('noSpecialty')}
                 </span>
               )}
             </div>
 
             <div className="admin-field">
-              <label>Hospital</label>
+              <label>{t('hospitalLabel')}</label>
               <SearchableSelect
                 value={form.hospitalId}
                 onChange={value => set('hospitalId', value)}
                 options={hospitalOptions}
-                placeholder="Search hospital..."
+                placeholder={t('searchHospital')}
               />
             </div>
 
             <div className="admin-field">
-              <label>Supervisor</label>
+              <label>{t('supervisorLabel')}</label>
               <SearchableSelect
                 value={form.supervisorId}
                 onChange={value => set('supervisorId', value)}
                 options={supervisorOptions}
-                placeholder="Search supervisor..."
+                placeholder={t('searchSupervisor')}
               />
               {specName && filteredSups.length === 0 && (
-                <span style={{ fontSize: 11, color: '#8B8FA8', marginTop: 3, display: 'block' }}>
-                  No supervisors found for {specName}
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, display: 'block' }}>
+                  {t('noSupsForSpec')} {specName}
                 </span>
               )}
             </div>
 
             <div className="admin-field">
-              <label>Phone</label>
+              <label>{t('phone')}</label>
               <input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+964 xxx xxx xxxx" />
             </div>
 
             <div className="admin-field">
-              <label>Gender</label>
+              <label>{t('gender')}</label>
               <select value={form.gender} onChange={e => set('gender', e.target.value)}>
-                <option value="">— Select —</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
+                <option value="">{t('select')}</option>
+                <option value="male">{t('male')}</option>
+                <option value="female">{t('female')}</option>
               </select>
             </div>
 
             <div className="admin-field">
-              <label>City</label>
-              <input value={form.city} onChange={e => set('city', e.target.value)} placeholder="City" />
+              <label>{t('city')}</label>
+              <input value={form.city} onChange={e => set('city', e.target.value)} placeholder={t('city')} />
             </div>
 
           </div>
         </div>
         <div className="admin-modal-footer">
-          <button className="btn-red" onClick={onClose}>Cancel</button>
+          <button className="btn-red" onClick={onClose}>{t('cancel')}</button>
           <button className="btn-purple" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : editTrainee ? 'Save Changes' : 'Add Trainee'}
+            {saving ? t('saving') : editTrainee ? t('saveChanges') : t('addTraineeTitle')}
           </button>
         </div>
       </div>
@@ -211,6 +314,8 @@ function TraineeModal({ editTrainee, hospitals, supervisors, secretarySpecialty,
 }
 
 function RotationModal({ trainees, supervisors, hospitals, onSave, onClose, saving }) {
+  const { lang } = usePrefs();
+  const t = k => tr(lang, k);
   const [form, setForm] = useState({
     traineeId:     '',
     hospitalId:    '',
@@ -265,67 +370,63 @@ function RotationModal({ trainees, supervisors, hospitals, onSave, onClose, savi
     return () => document.removeEventListener('keydown', h);
   }, [onClose]);
 
+  const labelStyle = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 5 };
+
   return (
     <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="admin-modal">
         <div className="admin-modal-header">
-          <div className="admin-modal-title">Assign Rotation</div>
+          <div className="admin-modal-title">{t('assignRotationTitle')}</div>
           <button className="admin-modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="admin-modal-body">
 
           <div style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 5 }}>
-              Trainee *
-            </label>
+            <label style={labelStyle}>{t('trainee')}</label>
             <SearchableSelect
               value={form.traineeId}
               onChange={value => set('traineeId', value)}
               options={traineeOptions}
-              placeholder="Search trainee..."
+              placeholder={t('searchTrainee')}
               error={errors.traineeId}
             />
-            {errors.traineeId && <div style={{ fontSize: 11, color: '#DC2626', marginTop: 3 }}>Required</div>}
+            {errors.traineeId && <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 3 }}>{t('required')}</div>}
           </div>
 
           <div style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 5 }}>
-              Hospital *
-            </label>
+            <label style={labelStyle}>{t('hospitalReq')}</label>
             <SearchableSelect
               value={form.hospitalId}
               onChange={value => set('hospitalId', value)}
               options={hospitalOptions}
-              placeholder="Search hospital..."
+              placeholder={t('searchHospital')}
               error={errors.hospitalId}
             />
-            {errors.hospitalId && <div style={{ fontSize: 11, color: '#DC2626', marginTop: 3 }}>Required</div>}
+            {errors.hospitalId && <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 3 }}>{t('required')}</div>}
           </div>
 
           <div style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 5 }}>
-              Supervisor *{form.traineeId ? ' (filtered by trainee specialty)' : ''}
+            <label style={labelStyle}>
+              {t('supervisorReq')}{form.traineeId ? t('filteredBySpec') : ''}
             </label>
             <SearchableSelect
               value={form.supervisorId}
               onChange={value => set('supervisorId', value)}
               options={supervisorOptions}
-              placeholder="Search supervisor..."
+              placeholder={t('searchSupervisor')}
               error={errors.supervisorId}
             />
-            {errors.supervisorId && <div style={{ fontSize: 11, color: '#DC2626', marginTop: 3 }}>Required</div>}
+            {errors.supervisorId && <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 3 }}>{t('required')}</div>}
             {form.traineeId && filteredSups.length === 0 && (
-              <div style={{ fontSize: 11, color: '#8B8FA8', marginTop: 3 }}>
-                No supervisors match this trainee's specialty
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+                {t('noSupsMatch')}
               </div>
             )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 5 }}>
-                Start Date *
-              </label>
+              <label style={labelStyle}>{t('startDate')}</label>
               <input
                 type="date"
                 className={errors.startDate ? 'invalid admin-search' : 'admin-search'}
@@ -333,12 +434,10 @@ function RotationModal({ trainees, supervisors, hospitals, onSave, onClose, savi
                 value={form.startDate}
                 onChange={e => set('startDate', e.target.value)}
               />
-              {errors.startDate && <div style={{ fontSize: 11, color: '#DC2626', marginTop: 3 }}>Required</div>}
+              {errors.startDate && <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 3 }}>{t('required')}</div>}
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 5 }}>
-                End Date *
-              </label>
+              <label style={labelStyle}>{t('endDate')}</label>
               <input
                 type="date"
                 className={errors.endDate ? 'invalid admin-search' : 'admin-search'}
@@ -346,15 +445,15 @@ function RotationModal({ trainees, supervisors, hospitals, onSave, onClose, savi
                 value={form.endDate}
                 onChange={e => set('endDate', e.target.value)}
               />
-              {errors.endDate && <div style={{ fontSize: 11, color: '#DC2626', marginTop: 3 }}>Required</div>}
+              {errors.endDate && <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 3 }}>{t('required')}</div>}
             </div>
           </div>
 
         </div>
         <div className="admin-modal-footer">
-          <button className="btn-red" onClick={onClose}>Cancel</button>
+          <button className="btn-red" onClick={onClose}>{t('cancel')}</button>
           <button className="btn-purple" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Assign Rotation'}
+            {saving ? t('saving') : t('assignRotationTitle')}
           </button>
         </div>
       </div>
@@ -364,6 +463,8 @@ function RotationModal({ trainees, supervisors, hospitals, onSave, onClose, savi
 
 export default function SecretaryTrainees() {
   const { user: me }    = useAuth();
+  const { lang }        = usePrefs();
+  const t = k => tr(lang, k);
   const [trainees,      setTrainees     ] = useState([]);
   const [supervisors,   setSupervisors  ] = useState([]);
   const [hospitals,     setHospitals    ] = useState([]);
@@ -398,9 +499,9 @@ export default function SecretaryTrainees() {
       setSupervisors(  sRes.data?.data || sRes.data || []);
       setDistributions(dRes.data?.data || dRes.data || []);
       setHospitals(    hRes.data?.data || hRes.data || []);
-    }).catch(() => showToast('Failed to load data', 'error'))
+    }).catch(() => showToast(tr(lang, 'loadFailed'), 'error'))
       .finally(() => setLoading(false));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSaveTrainee(data) {
     setSaving(true);
@@ -409,17 +510,17 @@ export default function SecretaryTrainees() {
         const res = await api.patch(`/api/secretary/trainees/${editTrainee._id}`, data);
         const updated = res.data?.data || res.data;
         setTrainees(prev => prev.map(t => t._id === editTrainee._id ? updated : t));
-        showToast('Trainee updated');
+        showToast(t('traineeUpdated'));
       } else {
         const res = await api.post('/api/secretary/trainees', data);
         const created = res.data?.data || res.data;
         setTrainees(prev => [created, ...prev]);
-        showToast('Trainee added');
+        showToast(t('traineeAdded'));
       }
       setShowModal(false);
       setEditTrainee(null);
     } catch (err) {
-      showToast(err.response?.data?.message || 'Save failed', 'error');
+      showToast(err.response?.data?.message || t('saveFailed'), 'error');
     } finally {
       setSaving(false);
     }
@@ -429,8 +530,8 @@ export default function SecretaryTrainees() {
     try {
       await api.delete(`/api/users/${delTrainee._id}`);
       setTrainees(prev => prev.filter(t => t._id !== delTrainee._id));
-      showToast('Trainee deactivated');
-    } catch { showToast('Deactivate failed', 'error'); }
+      showToast(t('traineeDeactivated'));
+    } catch { showToast(t('deactivateFailed'), 'error'); }
     finally  { setDelTrainee(null); }
   }
 
@@ -441,9 +542,9 @@ export default function SecretaryTrainees() {
       const created = res.data?.data || res.data;
       setDistributions(prev => [created, ...prev]);
       setShowRotModal(false);
-      showToast('Rotation assigned successfully');
+      showToast(t('rotationAssigned'));
     } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to assign rotation', 'error');
+      showToast(err.response?.data?.message || t('rotationFailed'), 'error');
     } finally {
       setSaving(false);
     }
@@ -507,27 +608,27 @@ export default function SecretaryTrainees() {
             style={{ height: 42, padding: '0 26px', fontSize: 14, fontWeight: 600 }}
             onClick={() => setActiveTab('trainees')}
           >
-            Trainees ({trainees.length})
+            {t('trainees')} ({trainees.length})
           </button>
           <button
             className={`filter-tab${activeTab === 'rotations' ? ' active' : ''}`}
             style={{ height: 42, padding: '0 26px', fontSize: 14, fontWeight: 600 }}
             onClick={() => setActiveTab('rotations')}
           >
-            Rotations ({distributions.length})
+            {t('rotations')} ({distributions.length})
           </button>
         </div>
 
-        {/* Action button (own right-aligned row) */}
+        {/* Action button (own row, follows text direction) */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
           {activeTab === 'trainees' && (
             <button className="btn-purple" onClick={() => { setEditTrainee(null); setShowModal(true); }}>
-              + Add Trainee
+              {t('addTrainee')}
             </button>
           )}
           {activeTab === 'rotations' && (
             <button className="btn-purple" onClick={() => setShowRotModal(true)}>
-              + Assign Rotation
+              {t('assignRotation')}
             </button>
           )}
         </div>
@@ -537,7 +638,7 @@ export default function SecretaryTrainees() {
           <input
             className="admin-search"
             style={{ width: '100%', height: 38 }}
-            placeholder={activeTab === 'trainees' ? 'Search by name, email, or student ID…' : 'Search by trainee or supervisor name…'}
+            placeholder={activeTab === 'trainees' ? t('searchTrainees') : t('searchRotations')}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -550,35 +651,35 @@ export default function SecretaryTrainees() {
               <div className="admin-empty" style={{ gridColumn: '1/-1' }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>🎓</div>
                 <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)', marginBottom: 4 }}>
-                  {trainees.length === 0 ? 'No trainees yet' : 'No trainees match your search'}
+                  {trainees.length === 0 ? t('noTraineesYet') : t('noTraineesMatch')}
                 </div>
                 {trainees.length === 0 && (
-                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Click "+ Add Trainee" to add the first trainee to this specialty.</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('addFirstTrainee')}</div>
                 )}
               </div>
             )}
-            {filteredTrainees.map(t => (
-              <div className="management-card" key={t._id}>
+            {filteredTrainees.map(t2 => (
+              <div className="management-card" key={t2._id}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  {t.photoUrl
-                    ? <img src={`${API_BASE}${t.photoUrl}`} alt="" className="cell-photo" />
-                    : <div className="cell-initials">{t.initials || t.name?.[0] || '?'}</div>
+                  {t2.photoUrl
+                    ? <img src={`${API_BASE}${t2.photoUrl}`} alt="" className="cell-photo" />
+                    : <div className="cell-initials">{t2.initials || t2.name?.[0] || '?'}</div>
                   }
                   <div style={{ minWidth: 0 }}>
-                    <div className="management-card-title">{t.name}</div>
-                    <div className="management-card-sub">{t.email}</div>
+                    <div className="management-card-title">{t2.name}</div>
+                    <div className="management-card-sub">{t2.email}</div>
                   </div>
                 </div>
                 <div className="management-card-meta">
-                  <span className="specialty-tag">{t.studentId ? `ID ${t.studentId}` : (t.specialtyId?.name || '—')}</span>
-                  {t.year && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Year {t.year}</span>}
-                  {t.phone && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t.phone}</span>}
+                  <span className="specialty-tag">{t2.studentId ? `${t('idTag')} ${t2.studentId}` : (t2.specialtyId?.name || '—')}</span>
+                  {t2.year && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('year')} {t2.year}</span>}
+                  {t2.phone && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t2.phone}</span>}
                 </div>
                 <div className="management-card-actions">
-                  <button className="btn-action edit" onClick={() => { setEditTrainee(t); setShowModal(true); }}>
+                  <button className="btn-action edit" onClick={() => { setEditTrainee(t2); setShowModal(true); }}>
                     <IconEdit />
                   </button>
-                  <button className="btn-action delete" onClick={() => setDelTrainee(t)}>
+                  <button className="btn-action delete" onClick={() => setDelTrainee(t2)}>
                     <IconBan />
                   </button>
                 </div>
@@ -590,18 +691,13 @@ export default function SecretaryTrainees() {
         {/* Rotation status filter */}
         {activeTab === 'rotations' && (
           <div className="filter-tabs" style={{ marginBottom: 14 }}>
-            {[
-              { key: 'all',       label: 'All' },
-              { key: 'upcoming',  label: 'Upcoming' },
-              { key: 'current',   label: 'Current' },
-              { key: 'completed', label: 'Completed' },
-            ].map(f => (
+            {['all', 'upcoming', 'current', 'completed'].map(key => (
               <button
-                key={f.key}
-                className={`filter-tab${rotFilter === f.key ? ' active' : ''}`}
-                onClick={() => setRotFilter(f.key)}
+                key={key}
+                className={`filter-tab${rotFilter === key ? ' active' : ''}`}
+                onClick={() => setRotFilter(key)}
               >
-                {f.label}
+                {t(key)}
               </button>
             ))}
           </div>
@@ -616,10 +712,10 @@ export default function SecretaryTrainees() {
                 <div className="admin-empty" style={{ gridColumn: '1/-1' }}>
                   <div style={{ fontSize: 32, marginBottom: 8 }}>📅</div>
                   <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)', marginBottom: 4 }}>
-                    {distributions.length === 0 ? 'No rotations assigned yet' : 'No rotations match your search'}
+                    {distributions.length === 0 ? t('noRotationsYet') : t('noRotationsMatch')}
                   </div>
                   {distributions.length === 0 && (
-                    <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Click "+ Assign Rotation" to create the first rotation.</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('addFirstRotation')}</div>
                   )}
                 </div>
               )}
@@ -641,24 +737,24 @@ export default function SecretaryTrainees() {
                       <span style={{
                         fontSize: 11, fontWeight: 600, padding: '3px 9px',
                         borderRadius: 20, background: statusBg, color: statusColor, whiteSpace: 'nowrap'
-                      }}>{status}</span>
+                      }}>{t(status)}</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Hospital</span>
-                        <span style={{ color: 'var(--text-2)', textAlign: 'right' }}>{hospital.name || '—'}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>{t('hospital')}</span>
+                        <span style={{ color: 'var(--text-2)', textAlign: 'end' }}>{hospital.name || '—'}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Supervisor</span>
-                        <span style={{ color: 'var(--text-2)', textAlign: 'right' }}>{supervisor.name || '—'}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>{t('supervisor')}</span>
+                        <span style={{ color: 'var(--text-2)', textAlign: 'end' }}>{supervisor.name || '—'}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Dates</span>
-                        <span style={{ color: 'var(--text-2)', textAlign: 'right' }}>{fmtDate(d.startDate)} – {fmtDate(d.endDate)}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>{t('dates')}</span>
+                        <span style={{ color: 'var(--text-2)', textAlign: 'end' }}>{fmtDate(d.startDate, lang)} – {fmtDate(d.endDate, lang)}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Duration</span>
-                        <span style={{ color: 'var(--text-2)', textAlign: 'right' }}>{duration ? `${duration} weeks` : '—'}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>{t('duration')}</span>
+                        <span style={{ color: 'var(--text-2)', textAlign: 'end' }}>{duration ? `${duration} ${t('weeks')}` : '—'}</span>
                       </div>
                     </div>
                   </div>
