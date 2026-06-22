@@ -23,7 +23,6 @@ const ROLE_LINKS = {
   secretary: [
     { to: '/secretary/trainees',          key: 'trainees',          label: 'Trainees'         },
     { to: '/secretary/supervisors',       key: 'supervisors',       label: 'Supervisors'      },
-    { to: '/secretary/program-directors', key: 'program_directors', label: 'Program Directors'},
     { to: '/secretary/hospitals',         key: 'hospitals',         label: 'Hospitals'        },
   ],
   dio: [
@@ -110,7 +109,6 @@ function notifLink(message = '', role) {
       break;
     case 'secretary':
       if (has(/supervisor/))             return '/secretary/supervisors';
-      if (has(/program/))                return '/secretary/program-directors';
       if (has(/trainee|report|assign/))  return '/secretary/trainees';
       break;
     case 'super_admin':

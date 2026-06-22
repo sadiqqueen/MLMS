@@ -371,6 +371,7 @@ export default function SecretaryTrainees() {
   const [loading,       setLoading      ] = useState(true);
   const [search,        setSearch       ] = useState('');
   const [activeTab,     setActiveTab    ] = useState('trainees');
+  const [rotFilter,     setRotFilter    ] = useState('all');
   const [showModal,     setShowModal    ] = useState(false);
   const [showRotModal,  setShowRotModal ] = useState(false);
   const [editTrainee,   setEditTrainee  ] = useState(null);
@@ -499,34 +500,36 @@ export default function SecretaryTrainees() {
       <Navbar />
       <main className="admin-main">
 
-        {/* Tabs + Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              className={`filter-tab${activeTab === 'trainees' ? ' active' : ''}`}
-              onClick={() => setActiveTab('trainees')}
-            >
-              Trainees ({trainees.length})
+        {/* Centered toggle */}
+        <div className="filter-tabs" style={{ justifyContent: 'center', marginBottom: 14 }}>
+          <button
+            className={`filter-tab${activeTab === 'trainees' ? ' active' : ''}`}
+            style={{ height: 42, padding: '0 26px', fontSize: 14, fontWeight: 600 }}
+            onClick={() => setActiveTab('trainees')}
+          >
+            Trainees ({trainees.length})
+          </button>
+          <button
+            className={`filter-tab${activeTab === 'rotations' ? ' active' : ''}`}
+            style={{ height: 42, padding: '0 26px', fontSize: 14, fontWeight: 600 }}
+            onClick={() => setActiveTab('rotations')}
+          >
+            Rotations ({distributions.length})
+          </button>
+        </div>
+
+        {/* Action button (own right-aligned row) */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+          {activeTab === 'trainees' && (
+            <button className="btn-purple" onClick={() => { setEditTrainee(null); setShowModal(true); }}>
+              + Add Trainee
             </button>
-            <button
-              className={`filter-tab${activeTab === 'rotations' ? ' active' : ''}`}
-              onClick={() => setActiveTab('rotations')}
-            >
-              Rotations ({distributions.length})
+          )}
+          {activeTab === 'rotations' && (
+            <button className="btn-purple" onClick={() => setShowRotModal(true)}>
+              + Assign Rotation
             </button>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {activeTab === 'trainees' && (
-              <button className="btn-purple" onClick={() => { setEditTrainee(null); setShowModal(true); }}>
-                + Add Trainee
-              </button>
-            )}
-            {activeTab === 'rotations' && (
-              <button className="btn-purple" onClick={() => setShowRotModal(true)}>
-                + Assign Rotation
-              </button>
-            )}
-          </div>
+          )}
         </div>
 
         {/* Search */}
@@ -540,132 +543,130 @@ export default function SecretaryTrainees() {
           />
         </div>
 
-        {/* Trainees Table */}
+        {/* Trainees Card Grid */}
         {activeTab === 'trainees' && (
-          <div className="admin-card">
-            <div className="admin-table-wrap">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>#</th><th>Photo</th><th>Name</th><th>Email</th>
-                    <th>Student ID</th><th>Year</th><th>Phone</th><th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTrainees.length === 0 && (
-                    <tr>
-                      <td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#8B8FA8' }}>
-                        <div style={{ fontSize: 32, marginBottom: 8 }}>🎓</div>
-                        <div style={{ fontSize: 15, fontWeight: 600, color: '#4B5563', marginBottom: 4 }}>
-                          {trainees.length === 0 ? 'No trainees yet' : 'No trainees match your search'}
-                        </div>
-                        {trainees.length === 0 && (
-                          <div style={{ fontSize: 13 }}>Click "+ Add Trainee" to add the first trainee to this specialty.</div>
-                        )}
-                      </td>
-                    </tr>
-                  )}
-                  {filteredTrainees.map((t, i) => (
-                    <tr key={t._id}>
-                      <td style={{ color: '#8B8FA8' }}>{i + 1}</td>
-                      <td>
-                        {t.photoUrl
-                          ? <img src={`${API_BASE}${t.photoUrl}`} alt="" className="cell-photo" />
-                          : <div className="cell-initials">{t.initials || t.name?.[0] || '?'}</div>
-                        }
-                      </td>
-                      <td><strong>{t.name}</strong></td>
-                      <td style={{ color: '#4B5563', fontSize: 13 }}>{t.email}</td>
-                      <td style={{ color: '#4B5563', fontSize: 13 }}>{t.studentId || '—'}</td>
-                      <td style={{ color: '#4B5563', fontSize: 13 }}>{t.year ? `Year ${t.year}` : '—'}</td>
-                      <td style={{ color: '#4B5563', fontSize: 13 }}>{t.phone || '—'}</td>
-                      <td>
-                        <div className="action-btns">
-                          <button className="btn-action edit" onClick={() => { setEditTrainee(t); setShowModal(true); }}>
-                            <IconEdit />
-                          </button>
-                          <button className="btn-action delete" onClick={() => setDelTrainee(t)}>
-                            <IconBan />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="management-card-grid">
+            {filteredTrainees.length === 0 && (
+              <div className="admin-empty" style={{ gridColumn: '1/-1' }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>🎓</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)', marginBottom: 4 }}>
+                  {trainees.length === 0 ? 'No trainees yet' : 'No trainees match your search'}
+                </div>
+                {trainees.length === 0 && (
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Click "+ Add Trainee" to add the first trainee to this specialty.</div>
+                )}
+              </div>
+            )}
+            {filteredTrainees.map(t => (
+              <div className="management-card" key={t._id}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {t.photoUrl
+                    ? <img src={`${API_BASE}${t.photoUrl}`} alt="" className="cell-photo" />
+                    : <div className="cell-initials">{t.initials || t.name?.[0] || '?'}</div>
+                  }
+                  <div style={{ minWidth: 0 }}>
+                    <div className="management-card-title">{t.name}</div>
+                    <div className="management-card-sub">{t.email}</div>
+                  </div>
+                </div>
+                <div className="management-card-meta">
+                  <span className="specialty-tag">{t.studentId ? `ID ${t.studentId}` : (t.specialtyId?.name || '—')}</span>
+                  {t.year && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Year {t.year}</span>}
+                  {t.phone && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t.phone}</span>}
+                </div>
+                <div className="management-card-actions">
+                  <button className="btn-action edit" onClick={() => { setEditTrainee(t); setShowModal(true); }}>
+                    <IconEdit />
+                  </button>
+                  <button className="btn-action delete" onClick={() => setDelTrainee(t)}>
+                    <IconBan />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
-        {/* Rotations Table */}
+        {/* Rotation status filter */}
         {activeTab === 'rotations' && (
-          <div className="admin-card">
-            <div className="admin-table-wrap">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>#</th><th>Trainee</th><th>Hospital</th><th>Supervisor</th>
-                    <th>Start</th><th>End</th><th>Duration</th><th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredDists.length === 0 && (
-                    <tr>
-                      <td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#8B8FA8' }}>
-                        <div style={{ fontSize: 32, marginBottom: 8 }}>📅</div>
-                        <div style={{ fontSize: 15, fontWeight: 600, color: '#4B5563', marginBottom: 4 }}>
-                          {distributions.length === 0 ? 'No rotations assigned yet' : 'No rotations match your search'}
-                        </div>
-                        {distributions.length === 0 && (
-                          <div style={{ fontSize: 13 }}>Click "+ Assign Rotation" to create the first rotation.</div>
-                        )}
-                      </td>
-                    </tr>
-                  )}
-                  {filteredDists.map((d, i) => {
-                    const trainee    = d.traineeId    || d.student  || {};
-                    const supervisor = d.supervisorId  || d.doctor   || {};
-                    const hospital   = d.hospitalId || d.hospital || {};
-                    const status     = d.status || 'upcoming';
-                    const duration   = d.durationWeeks || weeksBetween(d.startDate, d.endDate);
-                    const statusColor = status === 'current' ? '#059669' : status === 'completed' ? '#1B1464' : status === 'cancelled' ? '#991B1B' : '#D97706';
-                    const statusBg    = status === 'current' ? '#D1FAE5' : status === 'completed' ? '#EEEDFE' : status === 'cancelled' ? '#FEE2E2' : '#FEF3C7';
-                    return (
-                      <tr key={d._id}>
-                        <td style={{ color: '#8B8FA8' }}>{i + 1}</td>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div className="cell-initials">{trainee.initials || trainee.name?.[0] || '?'}</div>
-                            <div>
-                              <strong>{trainee.name || '—'}</strong>
-                              {trainee.studentId && <div style={{ fontSize: 11, color: '#8B8FA8' }}>{trainee.studentId}</div>}
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ fontSize: 13, color: '#4B5563' }}>{hospital.name || '—'}</td>
-                        <td style={{ fontSize: 13, color: '#4B5563' }}>{supervisor.name || '—'}</td>
-                        <td style={{ fontSize: 13, color: '#4B5563' }}>{fmtDate(d.startDate)}</td>
-                        <td style={{ fontSize: 13, color: '#4B5563' }}>{fmtDate(d.endDate)}</td>
-                        <td>
-                          {duration
-                            ? <span style={{ fontWeight: 600, color: '#1B1464' }}>{duration} weeks</span>
-                            : <span style={{ color: '#D1D5DB' }}>—</span>
-                          }
-                        </td>
-                        <td>
-                          <span style={{
-                            fontSize: 11, fontWeight: 600, padding: '3px 9px',
-                            borderRadius: 20, background: statusBg, color: statusColor
-                          }}>{status}</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+          <div className="filter-tabs" style={{ marginBottom: 14 }}>
+            {[
+              { key: 'all',       label: 'All' },
+              { key: 'upcoming',  label: 'Upcoming' },
+              { key: 'current',   label: 'Current' },
+              { key: 'completed', label: 'Completed' },
+            ].map(f => (
+              <button
+                key={f.key}
+                className={`filter-tab${rotFilter === f.key ? ' active' : ''}`}
+                onClick={() => setRotFilter(f.key)}
+              >
+                {f.label}
+              </button>
+            ))}
           </div>
         )}
+
+        {/* Rotations Card Grid */}
+        {activeTab === 'rotations' && (() => {
+          const rotList = filteredDists.filter(d => rotFilter === 'all' || (d.status || 'upcoming') === rotFilter);
+          return (
+            <div className="management-card-grid">
+              {rotList.length === 0 && (
+                <div className="admin-empty" style={{ gridColumn: '1/-1' }}>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>📅</div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)', marginBottom: 4 }}>
+                    {distributions.length === 0 ? 'No rotations assigned yet' : 'No rotations match your search'}
+                  </div>
+                  {distributions.length === 0 && (
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Click "+ Assign Rotation" to create the first rotation.</div>
+                  )}
+                </div>
+              )}
+              {rotList.map(d => {
+                const trainee    = d.traineeId    || d.student  || {};
+                const supervisor = d.supervisorId  || d.doctor   || {};
+                const hospital   = d.hospitalId || d.hospital || {};
+                const status     = d.status || 'upcoming';
+                const duration   = d.durationWeeks || weeksBetween(d.startDate, d.endDate);
+                const statusColor = status === 'current' ? 'var(--success-fg)' : status === 'completed' ? 'var(--info-fg)' : status === 'cancelled' ? 'var(--danger-fg)' : 'var(--warning-fg)';
+                const statusBg    = status === 'current' ? 'var(--success-bg)' : status === 'completed' ? 'var(--info-bg)' : status === 'cancelled' ? 'var(--danger-bg)' : 'var(--warning-bg)';
+                return (
+                  <div className="management-card" key={d._id}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="management-card-title">{trainee.name || '—'}</div>
+                        {trainee.studentId && <div className="management-card-sub">{trainee.studentId}</div>}
+                      </div>
+                      <span style={{
+                        fontSize: 11, fontWeight: 600, padding: '3px 9px',
+                        borderRadius: 20, background: statusBg, color: statusColor, whiteSpace: 'nowrap'
+                      }}>{status}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Hospital</span>
+                        <span style={{ color: 'var(--text-2)', textAlign: 'right' }}>{hospital.name || '—'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Supervisor</span>
+                        <span style={{ color: 'var(--text-2)', textAlign: 'right' }}>{supervisor.name || '—'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Dates</span>
+                        <span style={{ color: 'var(--text-2)', textAlign: 'right' }}>{fmtDate(d.startDate)} – {fmtDate(d.endDate)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Duration</span>
+                        <span style={{ color: 'var(--text-2)', textAlign: 'right' }}>{duration ? `${duration} weeks` : '—'}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {showModal && (
           <TraineeModal

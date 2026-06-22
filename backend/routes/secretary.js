@@ -6,6 +6,7 @@ const auditLog       = require('../middleware/auditLogger');
 const User           = require('../models/User');
 const Hospital       = require('../models/Hospital');
 const Rotation       = require('../models/Rotation');
+const Specialty      = require('../models/Specialty');
 
 const SECRETARY = ['secretary'];
 const CREATE_USER_FIELDS = ['name', 'email', 'password', 'phone', 'gender', 'city',
@@ -29,6 +30,23 @@ function getSpecialty(user) {
 
 function getHospital(user) {
   return user.hospitalId || user.hospital || null;
+}
+
+// Resolve every hospital ID a secretary may see/edit, derived ONLY from their
+// own assigned hospital + their specialty (name match + specialty.hospitalId).
+async function getSecretaryHospitalIds(req) {
+  const ids = new Set();
+  const own = getHospital(req.user);
+  if (own) ids.add(own.toString());
+  if (req.user.specialtyId) {
+    const spec = await Specialty.findById(req.user.specialtyId).select('name hospitalId');
+    if (spec && spec.hospitalId) ids.add(spec.hospitalId.toString());
+    if (spec && spec.name) {
+      const matches = await Hospital.find({ specialties: spec.name }).select('_id');
+      matches.forEach(h => ids.add(h._id.toString()));
+    }
+  }
+  return [...ids];
 }
 
 function getSecretaryQuery(req) {
@@ -263,13 +281,14 @@ router.patch('/supervisors/:id',
 // GET /api/secretary/program-directors
 router.get('/program-directors', auth, allowRoles(...SECRETARY), async (req, res) => {
   try {
-    const hospitalId  = getHospital(req.user);
+    const ids = await getSecretaryHospitalIds(req);
 
     const query = {
       role: 'program_director',
       isActive: { $ne: false }
     };
-    if (hospitalId) query.$or = [{ hospitalId }, { hospital: hospitalId }];
+    if (ids.length) query.$or = [{ hospitalId: { $in: ids } }, { hospital: { $in: ids } }];
+    else query._id = null;
 
     const pds = await User.find(query)
       .select('-password')
@@ -321,8 +340,8 @@ router.post('/program-directors',
 // GET /api/secretary/hospitals
 router.get('/hospitals', auth, allowRoles(...SECRETARY), async (req, res) => {
   try {
-    const hospitalId = getHospital(req.user);
-    const query = hospitalId ? { _id: hospitalId } : {};
+    const ids = await getSecretaryHospitalIds(req);
+    const query = ids.length ? { _id: { $in: ids } } : { _id: null };
     const hospitals = await Hospital.find(query).sort({ name: 1 });
     res.json({ success: true, data: hospitals });
   } catch (err) {
@@ -337,9 +356,9 @@ router.patch('/hospitals/:id',
   auditLog('update_hospital', 'Hospital'),
   async (req, res) => {
     try {
-      const hospitalId = getHospital(req.user);
-      if (hospitalId && req.params.id !== hospitalId.toString()) {
-        return res.status(403).json({ success: false, message: 'Access denied: hospital belongs to another scope' });
+      const ids = await getSecretaryHospitalIds(req);
+      if (!ids.length || !ids.includes(req.params.id.toString())) {
+        return res.status(403).json({ success: false, message: 'Access denied: hospital not in your specialty scope' });
       }
 
       const updates = pick(req.body, HOSPITAL_UPDATE_FIELDS);

@@ -5,6 +5,8 @@ import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 import { IconEdit, IconBan } from '../components/icons';
+import { useAuth } from '../context/AuthContext';
+import SearchableSelect from '../components/SearchableSelect';
 
 const API_BASE = '';
 
@@ -30,8 +32,8 @@ function ConfirmDelete({ name, onConfirm, onCancel }) {
   );
 }
 
-function SupervisorModal({ editSupervisor, onSave, onClose, saving }) {
-  const empty = { name: '', email: '', password: '', phone: '', gender: '', city: '', specialty: '', department: '' };
+function SupervisorModal({ editSupervisor, onSave, onClose, saving, specialties = [], defaultSpecialty = '' }) {
+  const empty = { name: '', email: '', password: '', phone: '', gender: '', city: '', specialty: defaultSpecialty };
   const [form, setForm] = useState(editSupervisor ? {
     name:       editSupervisor.name       || '',
     email:      editSupervisor.email      || '',
@@ -39,7 +41,6 @@ function SupervisorModal({ editSupervisor, onSave, onClose, saving }) {
     gender:     editSupervisor.gender     || '',
     city:       editSupervisor.city       || '',
     specialty:  editSupervisor.specialty  || '',
-    department: editSupervisor.department || '',
   } : empty);
   const [errors, setErrors] = useState({});
 
@@ -92,7 +93,7 @@ function SupervisorModal({ editSupervisor, onSave, onClose, saving }) {
                 <label>Password *</label>
                 <input className={errors.password ? 'invalid' : ''} type="password" value={form.password}
                   onChange={e => set('password', e.target.value)} placeholder="Min. 6 characters" />
-                {errors.password && <span style={{ fontSize: 11, color: '#e74c3c' }}>At least 6 characters</span>}
+                {errors.password && <span style={{ fontSize: 11, color: 'var(--danger)' }}>At least 6 characters</span>}
               </div>
             )}
 
@@ -117,12 +118,12 @@ function SupervisorModal({ editSupervisor, onSave, onClose, saving }) {
 
             <div className="admin-field">
               <label>Specialty</label>
-              <input value={form.specialty} onChange={e => set('specialty', e.target.value)} placeholder="e.g. Surgery" />
-            </div>
-
-            <div className="admin-field">
-              <label>Department</label>
-              <input value={form.department} onChange={e => set('department', e.target.value)} placeholder="e.g. General Surgery" />
+              <SearchableSelect
+                value={form.specialty}
+                onChange={v => set('specialty', v)}
+                options={specialties.map(s => ({ value: s.name, label: s.name }))}
+                placeholder="Search specialty..."
+              />
             </div>
 
           </div>
@@ -138,14 +139,57 @@ function SupervisorModal({ editSupervisor, onSave, onClose, saving }) {
   );
 }
 
+function SupervisorInfoModal({ supervisor, onClose }) {
+  useEffect(() => {
+    const h = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', h);
+    return () => document.removeEventListener('keydown', h);
+  }, [onClose]);
+
+  const rows = [
+    ['Email',     supervisor.email || '—'],
+    ['Specialty', supervisor.specialtyId?.name || supervisor.specialty || '—'],
+    ['Phone',     supervisor.phone || '—'],
+    ['Gender',    supervisor.gender || '—'],
+    ['City',      supervisor.city || '—'],
+    ['Hospital',  supervisor.hospitalId?.name || '—'],
+  ];
+  if (supervisor.department) rows.push(['Department', supervisor.department]);
+
+  return (
+    <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="admin-modal">
+        <div className="admin-modal-header">
+          <div className="admin-modal-title">{supervisor.name}</div>
+          <button className="admin-modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="admin-modal-body">
+          {rows.map(([label, value]) => (
+            <div className="info-row" key={label}>
+              <div className="info-label">{label}</div>
+              <div className="info-value">{value}</div>
+            </div>
+          ))}
+        </div>
+        <div className="admin-modal-footer">
+          <button className="btn-purple" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SecretarySupervisors() {
+  const { user: me } = useAuth();
   const [supervisors,    setSupervisors   ] = useState([]);
+  const [specialties,    setSpecialties   ] = useState([]);
   const [loading,        setLoading       ] = useState(true);
   const [view,           setView          ] = useState('list');
   const [search,         setSearch        ] = useState('');
   const [showModal,      setShowModal     ] = useState(false);
   const [editSupervisor, setEditSupervisor] = useState(null);
   const [delSupervisor,  setDelSupervisor ] = useState(null);
+  const [viewSupervisor, setViewSupervisor] = useState(null);
   const [saving,         setSaving        ] = useState(false);
   const [toasts,         setToasts        ] = useState([]);
 
@@ -160,6 +204,9 @@ export default function SecretarySupervisors() {
       .then(r => setSupervisors(r.data?.data || r.data || []))
       .catch(() => showToast('Failed to load supervisors', 'error'))
       .finally(() => setLoading(false));
+    api.get('/api/specialties')
+      .then(r => setSpecialties(r.data?.data || r.data || []))
+      .catch(() => {});
   }, []);
 
   async function handleSave(data) {
@@ -245,7 +292,7 @@ export default function SecretarySupervisors() {
               onChange={e => setSearch(e.target.value)}
             />
             <ViewToggle value={view} onChange={setView} />
-            <span style={{ fontSize: 13, color: '#8B8FA8', flexShrink: 0 }}>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)', flexShrink: 0 }}>
               {filtered.length} supervisor{filtered.length !== 1 ? 's' : ''}
             </span>
             <button className="btn-purple" onClick={() => { setEditSupervisor(null); setShowModal(true); }}>
@@ -264,9 +311,9 @@ export default function SecretarySupervisors() {
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#8B8FA8' }}>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
                       <div style={{ fontSize: 32, marginBottom: 8 }}>👨‍⚕️</div>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: '#4B5563', marginBottom: 4 }}>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)', marginBottom: 4 }}>
                         {supervisors.length === 0 ? 'No supervisors yet' : 'No supervisors match your search'}
                       </div>
                       {supervisors.length === 0 && (
@@ -277,23 +324,25 @@ export default function SecretarySupervisors() {
                 )}
                 {filtered.map((s, i) => (
                   <tr key={s._id}>
-                    <td style={{ color: '#8B8FA8' }}>{i + 1}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
                     <td>
                       {s.photoUrl
                         ? <img src={`${API_BASE}${s.photoUrl}`} alt="" className="cell-photo" />
                         : <div className="cell-initials">{s.initials || s.name?.[0] || '?'}</div>
                       }
                     </td>
-                    <td><strong>{s.name}</strong></td>
-                    <td style={{ color: '#4B5563', fontSize: 13 }}>{s.email}</td>
                     <td>
-                      <span style={{
-                        fontSize: 11, fontWeight: 600, padding: '3px 9px',
-                        borderRadius: 20, background: '#EEEDFE', color: '#3C3489'
-                      }}>{textValue(s.specialty)}</span>
+                      <button
+                        style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 'inherit', color: 'var(--link)', cursor: 'pointer', textAlign: 'start' }}
+                        onClick={() => setViewSupervisor(s)}
+                      ><strong>{s.name}</strong></button>
                     </td>
-                    <td style={{ color: '#4B5563', fontSize: 13 }}>{s.department || '—'}</td>
-                    <td style={{ color: '#4B5563', fontSize: 13 }}>{s.phone || '—'}</td>
+                    <td style={{ color: 'var(--text-2)', fontSize: 13 }}>{s.email}</td>
+                    <td>
+                      <span className="specialty-tag">{textValue(s.specialty)}</span>
+                    </td>
+                    <td style={{ color: 'var(--text-2)', fontSize: 13 }}>{s.department || '—'}</td>
+                    <td style={{ color: 'var(--text-2)', fontSize: 13 }}>{s.phone || '—'}</td>
                     <td>
                       <div className="action-btns">
                         <button className="btn-action edit" onClick={() => { setEditSupervisor(s); setShowModal(true); }}>
@@ -325,7 +374,11 @@ export default function SecretarySupervisors() {
                       : <div className="cell-initials">{s.initials || s.name?.[0] || '?'}</div>
                     }
                     <div>
-                      <div className="management-card-title">{s.name}</div>
+                      <button
+                        className="management-card-title"
+                        style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 'inherit', color: 'var(--link)', cursor: 'pointer', textAlign: 'start' }}
+                        onClick={() => setViewSupervisor(s)}
+                      >{s.name}</button>
                       <div className="management-card-sub">{s.email}</div>
                     </div>
                   </div>
@@ -347,6 +400,15 @@ export default function SecretarySupervisors() {
             onSave={handleSave}
             onClose={() => { setShowModal(false); setEditSupervisor(null); }}
             saving={saving}
+            specialties={specialties}
+            defaultSpecialty={me?.specialtyId?.name || me?.specialty || ''}
+          />
+        )}
+
+        {viewSupervisor && (
+          <SupervisorInfoModal
+            supervisor={viewSupervisor}
+            onClose={() => setViewSupervisor(null)}
           />
         )}
 

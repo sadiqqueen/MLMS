@@ -26,7 +26,6 @@ import ProgramDirectorReports from './pages/ProgramDirectorReports';
 
 import SecretaryTrainees from './pages/SecretaryTrainees';
 import SecretarySupervisors from './pages/SecretarySupervisors';
-import SecretaryProgramDirectors from './pages/SecretaryProgramDirectors';
 import SecretaryHospitals from './pages/SecretaryHospitals';
 
 import DioDashboard from './pages/DioDashboard';
@@ -142,11 +141,6 @@ export default function App() {
           <Route path="/secretary/supervisors" element={
             <ProtectedRoute allowedRoles={['secretary']}>
               <SecretarySupervisors />
-            </ProtectedRoute>
-          } />
-          <Route path="/secretary/program-directors" element={
-            <ProtectedRoute allowedRoles={['secretary']}>
-              <SecretaryProgramDirectors />
             </ProtectedRoute>
           } />
           <Route path="/secretary/hospitals" element={

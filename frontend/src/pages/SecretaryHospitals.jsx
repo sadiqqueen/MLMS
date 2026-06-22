@@ -30,12 +30,12 @@ function initialsFor(person) {
   return person?.initials || person?.name?.slice(0, 2)?.toUpperCase() || '?';
 }
 
-function PersonList({ title, icon, people, emptyText, meta }) {
+function PersonList({ title, icon, people, emptyText, meta, kind, onSelect }) {
   return (
     <div style={{
-      border: '1px solid #E8E9EF',
+      border: '1px solid var(--border)',
       borderRadius: 12,
-      background: '#fff',
+      background: 'var(--surface)',
       overflow: 'hidden',
       minWidth: 0
     }}>
@@ -45,18 +45,18 @@ function PersonList({ title, icon, people, emptyText, meta }) {
         justifyContent: 'space-between',
         gap: 12,
         padding: '12px 14px',
-        background: '#F8F9FA',
-        borderBottom: '1px solid #E8E9EF'
+        background: 'var(--surface-2)',
+        borderBottom: '1px solid var(--border)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <span style={{ fontSize: 17 }}>{icon}</span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#1B1464' }}>{title}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--brand-secondary)' }}>{title}</span>
         </div>
         <span style={{
           fontSize: 11,
           fontWeight: 700,
-          color: '#3C3489',
-          background: '#EEEDFE',
+          color: 'var(--info-fg)',
+          background: 'var(--info-bg)',
           borderRadius: 20,
           padding: '2px 8px',
           flexShrink: 0
@@ -66,28 +66,37 @@ function PersonList({ title, icon, people, emptyText, meta }) {
       </div>
 
       {people.length === 0 ? (
-        <div style={{ padding: '18px 14px', fontSize: 13, color: '#8B8FA8', textAlign: 'center' }}>
+        <div style={{ padding: '18px 14px', fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
           {emptyText}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {people.map(person => (
-            <div
+            <button
               key={person._id}
+              type="button"
+              onClick={() => onSelect && onSelect(person)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 10,
                 padding: '11px 14px',
-                borderTop: '1px solid #F0F2F5'
+                width: '100%',
+                textAlign: 'start',
+                background: 'none',
+                border: 'none',
+                borderTop: '1px solid var(--border-soft)',
+                cursor: 'pointer'
               }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-2)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
             >
               <div style={{
                 width: 34,
                 height: 34,
                 borderRadius: '50%',
-                background: '#E6F1FB',
-                color: '#185FA5',
+                background: 'var(--info-bg)',
+                color: 'var(--info)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -101,7 +110,7 @@ function PersonList({ title, icon, people, emptyText, meta }) {
                 <div style={{
                   fontSize: 13,
                   fontWeight: 700,
-                  color: '#1B1464',
+                  color: 'var(--brand-secondary)',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap'
@@ -110,7 +119,7 @@ function PersonList({ title, icon, people, emptyText, meta }) {
                 </div>
                 <div style={{
                   fontSize: 11,
-                  color: '#8B8FA8',
+                  color: 'var(--text-muted)',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap'
@@ -118,7 +127,7 @@ function PersonList({ title, icon, people, emptyText, meta }) {
                   {meta(person)}
                 </div>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -203,6 +212,53 @@ function HospitalModal({ hospital, onSave, onClose, saving }) {
   );
 }
 
+function PersonInfoModal({ person, kind, onClose }) {
+  useEffect(() => {
+    const h = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', h);
+    return () => document.removeEventListener('keydown', h);
+  }, [onClose]);
+
+  const specialty = person.specialtyId?.name || person.specialty || '—';
+  const hospital  = person.hospitalId?.name || person.hospital?.name || '—';
+
+  const rows = [
+    ['Role', kind, true],
+    ['Email', person.email || '—', true],
+    ['Phone', person.phone],
+    ['Specialty', specialty],
+    ['Student ID', person.studentId],
+    ['Hospital', hospital],
+    ['Gender', person.gender],
+    ['City', person.city],
+  ].filter(([, value, always]) => always || (value && value !== '—'));
+
+  return (
+    <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="admin-modal">
+        <div className="admin-modal-header">
+          <div className="admin-modal-title">{person.name || 'Unnamed'}</div>
+          <button className="admin-modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="admin-modal-body">
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 14 }}>
+            {kind}
+          </div>
+          {rows.map(([label, value]) => (
+            <div className="info-row" key={label}>
+              <div className="info-label">{label}</div>
+              <div className="info-value">{value}</div>
+            </div>
+          ))}
+        </div>
+        <div className="admin-modal-footer">
+          <button className="btn-purple" style={{ marginLeft: 0 }} onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SecretaryHospitals() {
   const [hospitals,    setHospitals   ] = useState([]);
   const [supervisors,  setSupervisors ] = useState([]);
@@ -210,6 +266,7 @@ export default function SecretaryHospitals() {
   const [directors,    setDirectors   ] = useState([]);
   const [loading,      setLoading     ] = useState(true);
   const [editHospital, setEditHospital] = useState(null);
+  const [viewPerson,   setViewPerson  ] = useState(null);
   const [saving,       setSaving      ] = useState(false);
   const [toasts,       setToasts      ] = useState([]);
 
@@ -280,9 +337,9 @@ export default function SecretaryHospitals() {
     <>
       <Navbar />
       <main className="admin-main">
-        <div className="admin-card" style={{ textAlign: 'center', padding: '60px 40px', color: '#8B8FA8' }}>
+        <div className="admin-card" style={{ textAlign: 'center', padding: '60px 40px', color: 'var(--text-muted)' }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🏥</div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: '#4B5563', marginBottom: 6 }}>No hospital assigned</div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>No hospital assigned</div>
           <div style={{ fontSize: 13 }}>Contact your DIO to assign a hospital to your account.</div>
         </div>
       </main>
@@ -299,15 +356,15 @@ export default function SecretaryHospitals() {
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 18, marginBottom: 28, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                 <div style={{
-                  width: 56, height: 56, borderRadius: 14, background: '#1B1464',
+                  width: 56, height: 56, borderRadius: 14, background: 'var(--brand-secondary)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
                 }}>
                   <span style={{ fontSize: 26 }}>🏥</span>
                 </div>
                 <div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#1B1464' }}>{h.name}</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--brand-secondary)' }}>{h.name}</div>
                   {(h.city || h.governorate) && (
-                    <div style={{ fontSize: 13, color: '#8B8FA8', marginTop: 3 }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>
                       {[h.city, h.governorate].filter(Boolean).join(', ')}
                     </div>
                   )}
@@ -327,10 +384,10 @@ export default function SecretaryHospitals() {
               ].map(([label, value]) => (
                 <div key={label}>
                   <div style={{
-                    fontSize: 10, color: '#8B8FA8', fontWeight: 600,
+                    fontSize: 10, color: 'var(--text-muted)', fontWeight: 600,
                     textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4
                   }}>{label}</div>
-                  <div style={{ fontSize: 14, color: '#1B1464', fontWeight: 500 }}>{value}</div>
+                  <div style={{ fontSize: 14, color: 'var(--brand-secondary)', fontWeight: 500 }}>{value}</div>
                 </div>
               ))}
             </div>
@@ -338,7 +395,7 @@ export default function SecretaryHospitals() {
             <div style={{ marginTop: 28 }}>
               <div style={{
                 fontSize: 12,
-                color: '#8B8FA8',
+                color: 'var(--text-muted)',
                 fontWeight: 700,
                 textTransform: 'uppercase',
                 letterSpacing: '.05em',
@@ -354,23 +411,29 @@ export default function SecretaryHospitals() {
                 <PersonList
                   title="Supervisors"
                   icon="S"
+                  kind="Supervisor"
                   people={supervisors.filter(s => hospitalIdOf(s) === idOf(h))}
                   emptyText="No supervisors assigned to this hospital."
                   meta={s => [specialtyName(s), s.email || s.phone].filter(Boolean).join(' · ')}
+                  onSelect={p => setViewPerson({ person: p, kind: 'Supervisor' })}
                 />
                 <PersonList
                   title="Trainees"
                   icon="T"
+                  kind="Trainee"
                   people={trainees.filter(t => hospitalIdOf(t) === idOf(h))}
                   emptyText="No trainees assigned to this hospital."
                   meta={t => [t.studentId ? `ID: ${t.studentId}` : '', specialtyName(t), t.email].filter(Boolean).join(' · ')}
+                  onSelect={p => setViewPerson({ person: p, kind: 'Trainee' })}
                 />
                 <PersonList
                   title="Program Directors"
                   icon="PD"
+                  kind="Program Director"
                   people={directors.filter(pd => hospitalIdOf(pd) === idOf(h))}
                   emptyText="No program director assigned to this hospital."
                   meta={pd => [specialtyName(pd), pd.email || pd.phone].filter(Boolean).join(' · ')}
+                  onSelect={p => setViewPerson({ person: p, kind: 'Program Director' })}
                 />
               </div>
             </div>
@@ -383,6 +446,14 @@ export default function SecretaryHospitals() {
             onSave={handleSave}
             onClose={() => setEditHospital(null)}
             saving={saving}
+          />
+        )}
+
+        {viewPerson && (
+          <PersonInfoModal
+            person={viewPerson.person}
+            kind={viewPerson.kind}
+            onClose={() => setViewPerson(null)}
           />
         )}
 
