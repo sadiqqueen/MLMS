@@ -291,7 +291,7 @@ function CreateModal({ ti, onClose, onCreate }) {
       <form className="cmx-form" onSubmit={submit}>
         <div className="cmx-field">
           <label htmlFor="cmx-new-name">{ti('newName')} <span className="cmx-req" aria-hidden="true">*</span></label>
-          <input id="cmx-new-name" className="cmx-input-lg" type="text" required value={name} onChange={e => setName(e.target.value)} autoFocus />
+          <AutoTextarea id="cmx-new-name" className="cmx-textarea cmx-autoline" singleLine required value={name} onChange={e => setName(e.target.value)} autoFocus />
         </div>
         <div className="cmx-row2" style={{ marginTop: 12 }}>
           <div className="cmx-field">
@@ -412,7 +412,7 @@ function Detail({ initiative, ti, lang, onBack, onPatchBasic, onMove, onCheckpoi
         <div className="cmx-row2">
           <div className="cmx-field cmx-field-wide">
             <label htmlFor="cmx-d-name">{ti('name')} <span className="cmx-req" aria-hidden="true">*</span></label>
-            <input id="cmx-d-name" className="cmx-input-lg" type="text" required value={name} onChange={e => setName(e.target.value)} />
+            <AutoTextarea id="cmx-d-name" className="cmx-textarea cmx-autoline" singleLine required value={name} onChange={e => setName(e.target.value)} />
           </div>
           <div className="cmx-field">
             <label htmlFor="cmx-d-source">{ti('source')}</label>

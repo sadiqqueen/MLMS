@@ -349,7 +349,7 @@ function MemoForm() {
               <div className="cmx-row2">
                 <div className="cmx-field cmx-field-wide">
                   <label htmlFor="cmx-topic">{t('topicName')} <span className="cmx-req" aria-hidden="true">*</span></label>
-                  <input id="cmx-topic" className="cmx-input-lg" type="text" required value={form.topicName} onChange={set('topicName')} />
+                  <AutoTextarea id="cmx-topic" className="cmx-textarea cmx-autoline" singleLine required value={form.topicName} onChange={set('topicName')} />
                 </div>
                 {/* المجلس العلمي — replaces the former المصدر field */}
                 <div className="cmx-field">
@@ -367,10 +367,10 @@ function MemoForm() {
                 <div className="cmx-row2">
                   <div className="cmx-field cmx-field-wide">
                     <label htmlFor="cmx-council-new">{t('newCouncilLabel')} <span className="cmx-req" aria-hidden="true">*</span></label>
-                    <input
+                    <AutoTextarea
                       id="cmx-council-new"
-                      className="cmx-input-lg"
-                      type="text"
+                      className="cmx-textarea cmx-autoline"
+                      singleLine
                       required
                       dir="rtl"
                       lang="ar"
@@ -389,9 +389,9 @@ function MemoForm() {
               <div className="cmx-attachments">
                 {form.attachments.map((a, i) => (
                   <div className="cmx-attach-row" key={i}>
-                    <input
-                      type="text"
-                      className="cmx-input-lg"
+                    <AutoTextarea
+                      className="cmx-textarea cmx-autoline"
+                      singleLine
                       aria-label={`${t('attachment')} ${i + 1}`}
                       value={a}
                       onChange={setAttachment(i)}

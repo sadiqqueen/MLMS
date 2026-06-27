@@ -81,14 +81,36 @@ export function MemoModal({ title, onClose, children, wide = false, labelledBy }
   );
 }
 
-// Auto-growing textarea
-export function AutoTextarea({ value, onChange, rows = 4, ...rest }) {
+// Auto-growing textarea. The box always grows to fit its full content so
+// nothing is clipped. Pass `singleLine` for fields that are conceptually one
+// line (e.g. a topic name or an attachment line): they still wrap & grow, but
+// Enter is suppressed so no stray newline is stored.
+export function AutoTextarea({ value, onChange, rows = 4, singleLine = false, onKeyDown, ...rest }) {
   const ref = useRef(null);
-  useEffect(() => {
+  const fit = useCallback(() => {
     const el = ref.current;
     if (!el) return;
     el.style.height = 'auto';
     el.style.height = el.scrollHeight + 'px';
-  }, [value]);
-  return <textarea ref={ref} rows={rows} value={value} onChange={onChange} {...rest} />;
+  }, []);
+  useEffect(() => { fit(); }, [value, fit]);
+  // Re-measure when the container width changes (responsive / sidebar toggles).
+  useEffect(() => {
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, [fit]);
+  const handleKeyDown = e => {
+    if (singleLine && e.key === 'Enter') e.preventDefault();
+    onKeyDown?.(e);
+  };
+  return (
+    <textarea
+      ref={ref}
+      rows={singleLine ? 1 : rows}
+      value={value}
+      onChange={onChange}
+      onKeyDown={handleKeyDown}
+      {...rest}
+    />
+  );
 }

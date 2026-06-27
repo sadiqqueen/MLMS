@@ -294,6 +294,19 @@
 /* Larger inputs for topic name / source / attachment text rows */
 .cmx input[type="text"].cmx-input-lg { min-height: 52px; font-size: 16px; padding: 10px 14px; }
 
+/* Auto-growing single-line-style field: looks like .cmx-input-lg but is a
+   textarea that wraps and grows to show its full text (no horizontal clip). */
+.cmx textarea.cmx-autoline {
+  min-height: 52px;
+  padding: 10px 14px;
+  line-height: 1.5;
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 /* المجلس العلمي searchable combobox */
 .cmx-combo { position: relative; }
 .cmx .cmx-combo-input { padding-inline-end: 36px; width: 100%; }
@@ -333,7 +346,9 @@
 .cmx-combo-other { border-top: 1px solid var(--cmx-border-soft); margin-top: 4px; }
 
 .cmx-attachments { display: flex; flex-direction: column; gap: 8px; }
-.cmx-attach-row { display: flex; gap: 8px; align-items: center; }
+.cmx-attach-row { display: flex; gap: 8px; align-items: flex-start; }
+/* keep the trash button visually centered on the first line as the field grows */
+.cmx-attach-row > .cmx-attach-del { margin-top: 7px; }
 .cmx-attach-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .cmx-attach-add:disabled { opacity: 0.6; cursor: default; }
 .cmx-file-row {
