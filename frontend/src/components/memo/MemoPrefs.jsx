@@ -17,7 +17,7 @@ export const STRINGS = {
     allMemos: 'جميع المذكرات', newMemo: 'مذكرة جديدة',
     backToApp: 'العودة إلى لوحة التحكم',
     // page
-    pageTitle: 'مذكرة العرض على المجلس العلمي الأستشاري',
+    pageTitle: 'مذكرة العرض على المجلس العلمي الاستشاري',
     secTopic: 'بيانات الموضوع', secAttachments: 'المرفقات', secPresentation: 'العرض',
     secExec: 'اللجنة التنفيذية للمجلس العلمي الاستشاري',
     secPresRec: 'توصية معالي رئيس المجلس الاستشاري',
