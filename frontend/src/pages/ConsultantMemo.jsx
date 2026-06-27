@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
 import { MemoPrefsProvider, useMemoPrefs } from '../components/memo/MemoPrefs';
+import { useMemoLiveSync } from '../components/memo/useMemoLiveSync';
 import MemoNavbar from '../components/memo/MemoNavbar';
 import MemoPrint from '../components/memo/MemoPrint';
 import { useMemoToasts, MemoToasts, MemoModal, AutoTextarea } from '../components/memo/MemoUi';
@@ -268,6 +269,41 @@ function MemoForm() {
     setForm(f => ({ ...f, attachmentFiles: f.attachmentFiles.filter((_, idx) => idx !== i) }));
     setDirty(true);
   };
+
+  // ── Real-time collaborative editing ───────────────────────────────────
+  // Apply an edit coming from ANOTHER user to local state. `fieldId` is the
+  // stable form-state key (e.g. 'presentation') or 'att:<index>' for an
+  // attachment row — these match across all users because they come from the
+  // code, not random ids. We deliberately do NOT setDirty here: the user who
+  // typed autosaves; receivers only display the live text (last-write-wins).
+  const applyRemoteChange = useCallback((fieldId, value) => {
+    setForm(f => {
+      if (typeof fieldId !== 'string') return f;
+      if (fieldId.startsWith('att:')) {
+        const i = Number(fieldId.slice(4));
+        if (!Number.isInteger(i) || i < 0) return f;
+        const a = [...f.attachments];
+        while (a.length <= i) a.push('');   // grow if the other user added rows
+        a[i] = value;
+        return { ...f, attachments: a };
+      }
+      if (Object.prototype.hasOwnProperty.call(f, fieldId)) {
+        return { ...f, [fieldId]: value };
+      }
+      return f;
+    });
+  }, []);
+
+  // Connect to the live-sync server for THIS memo (no-op until it has an id).
+  const emitFieldChange = useMemoLiveSync(memoId, applyRemoteChange);
+
+  // onChange wrappers: update local state (via the existing setters) AND
+  // broadcast to the other editors. Only these (real user typing) emit —
+  // applyRemoteChange never does — so there is no echo loop. Dates, the
+  // council dropdown, file uploads and the Save/Print/Preview buttons keep
+  // their original handlers and are NOT synced.
+  const setSync = k => e => { set(k)(e); emitFieldChange(k, e.target.value); };
+  const setAttachmentSync = i => e => { setAttachment(i)(e); emitFieldChange('att:' + i, e.target.value); };
   async function handleFileChosen(e) {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -349,7 +385,7 @@ function MemoForm() {
               <div className="cmx-row2">
                 <div className="cmx-field cmx-field-wide">
                   <label htmlFor="cmx-topic">{t('topicName')} <span className="cmx-req" aria-hidden="true">*</span></label>
-                  <AutoTextarea id="cmx-topic" className="cmx-textarea cmx-autoline" singleLine required value={form.topicName} onChange={set('topicName')} />
+                  <AutoTextarea id="cmx-topic" className="cmx-textarea cmx-autoline" singleLine required value={form.topicName} onChange={setSync('topicName')} />
                 </div>
                 {/* المجلس العلمي — replaces the former المصدر field */}
                 <div className="cmx-field">
@@ -394,7 +430,7 @@ function MemoForm() {
                       singleLine
                       aria-label={`${t('attachment')} ${i + 1}`}
                       value={a}
-                      onChange={setAttachment(i)}
+                      onChange={setAttachmentSync(i)}
                     />
                     <button
                       type="button"
@@ -449,17 +485,17 @@ function MemoForm() {
 
             {/* العرض */}
             <TextSection id="cmx-presentation" title={t('secPresentation')} rows={10} t={t}
-              value={form.presentation} onChange={set('presentation')}
+              value={form.presentation} onChange={setSync('presentation')}
               dtId="cmx-dt-pres" dtValue={form.presentationDateTime} onDtChange={set('presentationDateTime')} />
 
             {/* اللجنة التنفيذية */}
             <TextSection id="cmx-exec" title={t('secExec')} rows={4} t={t}
-              value={form.executiveCommittee} onChange={set('executiveCommittee')}
+              value={form.executiveCommittee} onChange={setSync('executiveCommittee')}
               dtId="cmx-dt-exec" dtValue={form.executiveCommitteeDateTime} onDtChange={set('executiveCommitteeDateTime')} />
 
             {/* المجلس العلمي الاستشاري المشترك */}
             <TextSection id="cmx-joint" title={t('secJoint')} rows={4} t={t}
-              value={form.jointCouncil} onChange={set('jointCouncil')}
+              value={form.jointCouncil} onChange={setSync('jointCouncil')}
               dtId="cmx-dt-joint" dtValue={form.jointCouncilDateTime} onDtChange={set('jointCouncilDateTime')} />
 
             {/* Action bar */}

@@ -22,8 +22,10 @@ const express      = require('express');
 const mongoose     = require('mongoose');
 const cors         = require('cors');
 const path         = require('path');
+const http         = require('http');
 const helmet       = require('helmet');
 const cookieParser = require('cookie-parser');
+const { Server }   = require('socket.io');   // real-time memo collaboration
 const { globalLimiter, writeLimiter } = require('./middleware/rateLimiter');
 const honeypot = require('./middleware/honeypot');
 const auth = require('./middleware/auth');
@@ -134,6 +136,42 @@ app.use((err, req, res, next) => {
   });
 });
 
+// ── REAL-TIME: live collaborative editing for consultant memos ─────────────
+// Wrap the existing Express app in an HTTP server so Socket.io can share the
+// same port (no new port, no changes to the routes/middleware above). Each
+// open memo becomes a "room" named after its id; a field edit from one editor
+// is relayed to the OTHER editors of that same memo only.
+//
+// SECURITY NOTE: as agreed, this socket is intentionally OPEN — it is keyed
+// only by memo id and is NOT authenticated (unlike the REST routes above).
+// Anyone who can reach the server and knows a memo id can join its room and
+// see/inject live field text. If this memo content must stay private, verify
+// the JWT in the handshake before allowing join-memo / field-change.
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  // Socket.io has its own CORS handling (separate from the express cors()
+  // above); reuse the same allow-list and allow credentials.
+  cors: { origin: allowedOrigins, credentials: true },
+});
+
+io.on('connection', (socket) => {
+  // The client asks to join one memo's room (sends the memo id).
+  socket.on('join-memo', (memoId) => {
+    if (typeof memoId === 'string' && memoId) socket.join(memoId);
+  });
+
+  // A field changed on one editor → relay to everyone else editing the SAME
+  // memo. `socket.to(room)` excludes the sender, so we never echo it back to
+  // the typer and it never reaches editors viewing a different memo.
+  socket.on('field-change', (payload) => {
+    const memoId = payload && payload.memoId;
+    if (typeof memoId === 'string' && memoId) {
+      socket.to(memoId).emit('field-change', payload);
+    }
+  });
+});
+
 // ── START SERVER ──────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
@@ -142,7 +180,9 @@ if (require.main === module) {
     .connect(process.env.MONGO_URI)
     .then(() => {
       console.log('✅ MongoDB connected');
-      app.listen(PORT, () => console.log(`✅ MTMS V2 Server running on port ${PORT}`));
+      // listen on the HTTP server (which carries both Express + Socket.io),
+      // not app.listen — same PORT as before.
+      server.listen(PORT, () => console.log(`✅ MTMS V2 Server running on port ${PORT}`));
     })
     .catch(err => {
       console.error('❌ MongoDB connection failed:', err.message);
