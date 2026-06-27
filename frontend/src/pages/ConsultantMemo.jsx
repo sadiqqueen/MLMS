@@ -457,11 +457,6 @@ function MemoForm() {
               value={form.executiveCommittee} onChange={set('executiveCommittee')}
               dtId="cmx-dt-exec" dtValue={form.executiveCommitteeDateTime} onDtChange={set('executiveCommitteeDateTime')} />
 
-            {/* توصية معالي رئيس المجلس */}
-            <TextSection id="cmx-presrec" title={t('secPresRec')} rows={4} t={t}
-              value={form.presidentRecommendation} onChange={set('presidentRecommendation')}
-              dtId="cmx-dt-presrec" dtValue={form.presidentRecommendationDateTime} onDtChange={set('presidentRecommendationDateTime')} />
-
             {/* المجلس العلمي الاستشاري المشترك */}
             <TextSection id="cmx-joint" title={t('secJoint')} rows={4} t={t}
               value={form.jointCouncil} onChange={set('jointCouncil')}

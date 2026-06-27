@@ -17,7 +17,7 @@ export const STRINGS = {
     allMemos: 'جميع المذكرات', newMemo: 'مذكرة جديدة',
     backToApp: 'العودة إلى لوحة التحكم',
     // page
-    pageTitle: 'استمارة العرض على المجلس العلمي الاستشاري',
+    pageTitle: 'مذكرة العرض على المجلس العلمي الأستشاري',
     secTopic: 'بيانات الموضوع', secAttachments: 'المرفقات', secPresentation: 'العرض',
     secExec: 'اللجنة التنفيذية للمجلس العلمي الاستشاري',
     secPresRec: 'توصية معالي رئيس المجلس الاستشاري',
@@ -66,7 +66,7 @@ export const STRINGS = {
     dark: 'Dark', light: 'Light',
     allMemos: 'All memos', newMemo: 'New memo',
     backToApp: 'Back to dashboard',
-    pageTitle: 'Submission form to the Scientific Advisory Council',
+    pageTitle: 'Submission memo to the Scientific Advisory Council',
     secTopic: 'Topic details', secAttachments: 'Attachments', secPresentation: 'Presentation',
     secExec: 'Executive committee of the Scientific Advisory Council',
     secPresRec: 'Recommendation of H.E. the Council President',
