@@ -59,7 +59,6 @@ export default function MemoPrint({ memo, lang = 'ar', attachmentPreviews = [] }
     },
     { title: t('secPresentation'), dt: memo.presentationDateTime, body: textBody(memo.presentation) },
     { title: t('secExec'),         dt: memo.executiveCommitteeDateTime, body: textBody(memo.executiveCommittee) },
-    { title: t('secPresRec'),      dt: memo.presidentRecommendationDateTime, body: textBody(memo.presidentRecommendation) },
     { title: t('secJoint'),        dt: memo.jointCouncilDateTime, body: textBody(memo.jointCouncil) },
   ];
 
