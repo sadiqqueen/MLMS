@@ -520,8 +520,9 @@
 
     .tracks-grid {
       display: grid;
-      grid-template-columns: minmax(0, 520px);
+      grid-template-columns: repeat(2, minmax(0, 480px));
       justify-content: center;
+      align-items: stretch;
       gap: 24px;
     }
 
@@ -1205,18 +1206,45 @@
   <section id="tracks">
     <div class="section-inner">
       <div class="section-header-center fade-up">
-        <div class="section-tag" data-en="Advanced Training" data-ar="التدريب المتقدم">Advanced Training</div>
+        <div class="section-tag" data-en="Training Programs" data-ar="البرامج التدريبية">Training Programs</div>
         <h2 class="section-title" data-en="Training Track" data-ar="مسار التدريب">Training Track</h2>
         <p class="section-sub"
-           data-en="A focused track for residency and advanced clinical training through supervised hospital rotations, reports, evaluations, and certification."
-           data-ar="مسار مخصص للإقامة والتدريب السريري المتقدم من خلال دورات المستشفيات الخاضعة للإشراف والتقارير والتقييمات والشهادات.">
-          A focused track for residency and advanced clinical training through supervised hospital rotations, reports, evaluations, and certification.
+           data-en="Focused tracks for basic internship and advanced clinical training through supervised hospital rotations, reports, evaluations, and certification."
+           data-ar="مسارات مخصصة للتدريب الأساسي (الامتياز) والتدريب السريري المتقدم من خلال دورات المستشفيات الخاضعة للإشراف والتقارير والتقييمات والشهادات.">
+          Focused tracks for basic internship and advanced clinical training through supervised hospital rotations, reports, evaluations, and certification.
         </p>
       </div>
 
       <div class="tracks-grid">
 
-        <!-- Specialty Track — single centered card -->
+        <!-- Basic Training Track — left card -->
+        <div class="track-card fade-up">
+          <div class="track-icon">🩺</div>
+          <div class="track-tag" data-en="Basic Clinical Training" data-ar="التدريب السريري الأساسي">
+            Basic Clinical Training
+          </div>
+          <div>
+            <div class="track-title" data-en="Medical Internship Training Program" data-ar="برنامج تدريب الامتياز الطبي">
+              Medical Internship Training Program
+            </div>
+            <p class="track-desc"
+               data-en="Structured clinical training program with supervised rotations, trainee reports, evaluations, final report grading, and certification."
+               data-ar="برنامج تدريب سريري منظم يشمل دورات خاضعة للإشراف وتقارير المتدربين والتقييمات وتقييم التقرير النهائي وإصدار الشهادات.">
+              Structured clinical training program with supervised rotations, trainee reports, evaluations, final report grading, and certification.
+            </p>
+          </div>
+          <ul class="track-bullets">
+            <li data-en="Specialty program coordination"                  data-ar="تنسيق برامج التخصص">Specialty program coordination</li>
+            <li data-en="Teaching hospital rotations"                      data-ar="دورات المستشفيات التعليمية">Teaching hospital rotations</li>
+            <li data-en="Trainee reports and evaluations"                  data-ar="تقارير وتقييمات المتدربين">Trainee reports and evaluations</li>
+            <li data-en="Final report grading and certification workflow"  data-ar="تقييم التقرير النهائي ومسار إصدار الشهادات">Final report grading and certification workflow</li>
+          </ul>
+          <a href="#" onclick="event.preventDefault();openLoginPanel()">
+            <button class="btn-track" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
+          </a>
+        </div>
+
+        <!-- Specialty Track — right card -->
         <div class="track-card fade-up">
           <div class="track-icon">⭐</div>
           <div class="track-tag" data-en="Advanced Clinical Training" data-ar="التدريب السريري المتقدم">
