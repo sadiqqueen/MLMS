@@ -323,12 +323,14 @@ router.post('/evaluations',
       const { traineeId, distributionId, scores, comments, grade, specialty, hospitalId, notes, formData } = req.body;
       const evaluationType = req.body.evaluationType || req.body.type || '';
 
-      // Only the three workplace-based assessment forms are accepted.
-      const ALLOWED_FORMS = ['Mini-CEX', 'CBD', 'DOPS'];
-      if (!ALLOWED_FORMS.includes(evaluationType)) {
+      // Accepted forms: the three monthly WPBA forms, the Academic Supervisor
+      // Report, and any MSF-360 part (evaluationType 'MSF-360 · Form A'…'E').
+      const ALLOWED_FORMS = ['Mini-CEX', 'CBD', 'DOPS', 'Academic Supervisor Report', 'FITER'];
+      const isAllowedForm = ALLOWED_FORMS.includes(evaluationType) || evaluationType.startsWith('MSF-360');
+      if (!isAllowedForm) {
         return res.status(400).json({
           success: false,
-          message: `evaluationType must be one of: ${ALLOWED_FORMS.join(', ')}`
+          message: `evaluationType must be one of: ${ALLOWED_FORMS.join(', ')}, or an MSF-360 form`
         });
       }
 

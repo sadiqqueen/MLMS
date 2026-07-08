@@ -64,13 +64,13 @@ function EvalCard({ ev, traineeName }) {
   const overall  = ev.grade || fd.globalRating || RATING_LABEL[ev.scores?.overall] || '';
   const accent   = form?.accent || '#185FA5';
 
-  const domainRows = form
+  const domainRows = form?.domains
     ? form.domains
         .map(d => ({ label: d.label, value: fd.domains?.[d.key] }))
         .filter(r => r.value !== undefined && r.value !== null && r.value !== '')
     : [];
 
-  const feedbackRows = form
+  const feedbackRows = form?.feedback
     ? form.feedback.map(f => ({ label: f.label, text: fd.feedback?.[f.key] })).filter(r => r.text)
     : [];
 

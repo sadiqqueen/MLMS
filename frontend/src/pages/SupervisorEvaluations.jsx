@@ -7,7 +7,6 @@ import api          from '../api/axios';
 import Sk           from '../components/Skeleton';
 import { IconEye, IconCheck, IconClock, IconXCircle } from '../components/icons';
 import { EVAL_FORMS, FORM_TYPES, getForm, SCORE_SCALE } from '../data/evalForms';
-import useBasePath from '../hooks/useBasePath';
 import { printEvaluation } from '../utils/printEvaluation';
 
 // ── Page-chrome translation (Arabic + English, follows the global toggle).
@@ -127,15 +126,6 @@ const STRINGS = {
 const MONTHLY_CAP = FORM_TYPES.length; // one of each form per trainee per month
 const MONTH_LABEL = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-// Official downloadable evaluation-form documents (Advanced/residency track).
-// Files live in frontend/public/evaluation-forms and are also on the landing page.
-const OFFICIAL_FORMS = [
-  { file: 'MSF_360_Evaluation_Form.docx',          title: 'MSF — 360° Multi-Source Feedback' },
-  { file: 'Academic_Supervisor_Report_Form.docx',  title: 'Academic Supervisor Report' },
-];
-const officeViewUrl = file =>
-  `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(window.location.origin + '/evaluation-forms/' + file)}`;
-
 const LABEL_STYLE = {
   display:'block', fontSize:12, fontWeight:600, color:'var(--text-2)',
   marginBottom:6, textTransform:'uppercase', letterSpacing:'0.04em'
@@ -206,6 +196,17 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
   const [overall,    setOverall]    = useState('');
   const [supervision,setSupervision]= useState('');
   const [localErr,   setLocalErr]   = useState('');
+  const [partIdx,    setPartIdx]    = useState(0);
+
+  // For multi-part forms (e.g. MSF-360), `def` is the selected part merged onto
+  // the parent form; otherwise it is the form itself.
+  const def   = form.parts ? { ...form, ...form.parts[partIdx] } : form;
+  const scale = def.scale || SCORE_SCALE;
+
+  // Reset field state when switching parts so answers never bleed across A–E.
+  useEffect(() => {
+    setHeader({}); setDomains({}); setTimes({}); setFeedback({}); setOverall(''); setSupervision('');
+  }, [partIdx]);
 
   function rateDomain(key, value) {
     setDomains(p => ({ ...p, [key]: p[key] === value ? undefined : value }));
@@ -214,48 +215,50 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
   function handleSubmit(e) {
     e.preventDefault();
     // Every domain must have a rating (N/A is allowed).
-    const missing = form.domains.filter(d => domains[d.key] === undefined || domains[d.key] === '');
+    const missing = (def.domains || []).filter(d => domains[d.key] === undefined || domains[d.key] === '');
     if (missing.length) {
       setLocalErr(t('rateAllDomains'));
       return;
     }
-    if (!overall) {
-      setLocalErr(`${t('pleaseSelect')} ${form.overall.label.toLowerCase()}.`);
+    if (def.overall && !overall) {
+      setLocalErr(`${t('pleaseSelect')} ${def.overall.label.toLowerCase()}.`);
       return;
     }
     setLocalErr('');
 
     // Numeric scores only (excludes N/A) for the average score.
     const scores = {};
-    form.domains.forEach(d => {
+    (def.domains || []).forEach(d => {
       const v = domains[d.key];
       if (v !== 'na' && v !== undefined && v !== '') scores[d.key] = Number(v);
     });
 
-    const comments = form.feedback
+    const comments = (def.feedback || [])
       .map(f => feedback[f.key] ? `${f.label}: ${feedback[f.key]}` : '')
       .filter(Boolean)
       .join('\n');
 
+    const part = form.parts ? form.parts[partIdx].code : null;
     onSubmit({
-      evaluationType: form.type,
+      evaluationType: form.type + (part ? ` · Form ${part}` : ''),
       scores,
       grade: overall,
       comments,
-      formData: { header, domains, times, supervisionLevel: supervision, globalRating: overall, feedback },
+      formData: { header, domains, times, supervisionLevel: supervision, globalRating: overall, feedback, part },
     });
   }
 
   // All domains rated and an overall rating chosen → ready to print/submit.
-  const isComplete = form.domains.every(d => domains[d.key] !== undefined && domains[d.key] !== '') && !!overall;
+  const isComplete = (def.domains || []).every(d => domains[d.key] !== undefined && domains[d.key] !== '') && (!def.overall || !!overall);
 
   function handlePrint() {
+    const part = form.parts ? form.parts[partIdx].code : null;
     printEvaluation(
       {
-        evaluationType: form.type,
+        evaluationType: form.type + (part ? ` · Form ${part}` : ''),
         grade: overall,
         date: new Date(),
-        formData: { header, domains, times, supervisionLevel: supervision, globalRating: overall, feedback },
+        formData: { header, domains, times, supervisionLevel: supervision, globalRating: overall, feedback, part },
       },
       { traineeName: trainee?.name, assessorName }
     );
@@ -285,32 +288,50 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
         ))}
       </div>
 
+      {/* Part selector — MSF-360 Forms A–E */}
+      {form.parts && (
+        <>
+          <SectionTitle>Select form part</SectionTitle>
+          <select
+            value={partIdx}
+            onChange={e => setPartIdx(Number(e.target.value))}
+            style={{ ...fieldBox, marginBottom:20, fontWeight:600 }}
+          >
+            {form.parts.map((p, i) => <option key={p.code} value={i}>{p.label}</option>)}
+          </select>
+        </>
+      )}
+
       {/* Header fields */}
-      <SectionTitle>{t('caseDetails')}</SectionTitle>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, marginBottom:20 }}>
-        {form.header.map(f => (
-          <div key={f.key}>
-            <label style={LABEL_STYLE}>{f.label}</label>
-            {f.type === 'select' ? (
-              <select
-                value={header[f.key] || ''}
-                onChange={e => setHeader(p => ({ ...p, [f.key]: e.target.value }))}
-                style={fieldBox}
-              >
-                <option value="">{t('select')}</option>
-                {f.options.map(o => <option key={o} value={o}>{o}</option>)}
-              </select>
-            ) : (
-              <input
-                type="text"
-                value={header[f.key] || ''}
-                onChange={e => setHeader(p => ({ ...p, [f.key]: e.target.value }))}
-                style={fieldBox}
-              />
-            )}
+      {def.header?.length > 0 && (
+        <>
+          <SectionTitle>{t('caseDetails')}</SectionTitle>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, marginBottom:20 }}>
+            {def.header.map(f => (
+              <div key={f.key}>
+                <label style={LABEL_STYLE}>{f.label}</label>
+                {f.type === 'select' ? (
+                  <select
+                    value={header[f.key] || ''}
+                    onChange={e => setHeader(p => ({ ...p, [f.key]: e.target.value }))}
+                    style={fieldBox}
+                  >
+                    <option value="">{t('select')}</option>
+                    {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={header[f.key] || ''}
+                    onChange={e => setHeader(p => ({ ...p, [f.key]: e.target.value }))}
+                    style={fieldBox}
+                  />
+                )}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
       {/* Competency domains — docx-style rating grid */}
       <SectionTitle>{t('competencyRatings')}</SectionTitle>
@@ -321,7 +342,7 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
               <th style={{ ...gridCell, background:'var(--brand-secondary)', color:'#fff', textAlign:'left', minWidth:180 }}>
                 Competency / Domain
               </th>
-              {SCORE_SCALE.map(s => (
+              {scale.map(s => (
                 <th key={s.value} style={{ ...gridCell, background:'var(--brand-secondary)', color:'#fff', width:46 }}>
                   {s.short}
                 </th>
@@ -329,44 +350,57 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
             </tr>
           </thead>
           <tbody>
-            {form.domains.map(d => (
-              <tr key={d.key}>
-                <td style={{ ...gridCell, textAlign:'left' }}>
-                  <div style={{ fontWeight:600, color:'var(--text)' }}>{d.label}</div>
-                  {d.hint && <div style={{ fontSize:10.5, color:'var(--text-muted)', marginTop:2 }}>{d.hint}</div>}
-                </td>
-                {SCORE_SCALE.map(s => {
-                  const active = String(domains[d.key]) === String(s.value);
-                  return (
-                    <td
-                      key={s.value}
-                      onClick={() => rateDomain(d.key, s.value)}
-                      title={s.label}
-                      style={{
-                        ...gridCell, cursor:'pointer', fontSize:16, fontWeight:700,
-                        background: active ? s.bg : 'var(--surface)',
-                        color: active ? s.color : 'var(--text-muted)',
-                      }}
-                    >
-                      {active ? '☑' : '☐'}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+            {(def.domains || []).flatMap((d, i, arr) => {
+              const prev = arr[i - 1];
+              const showSection = d.section && (!prev || prev.section !== d.section);
+              const rows = [];
+              if (showSection) rows.push(
+                <tr key={d.key + '_sec'}>
+                  <td colSpan={scale.length + 1} style={{ ...gridCell, textAlign:'left', background:'var(--surface-2)', fontWeight:700, fontSize:11.5, color:'var(--text-2)' }}>
+                    {d.section}
+                  </td>
+                </tr>
+              );
+              rows.push(
+                <tr key={d.key}>
+                  <td style={{ ...gridCell, textAlign:'left' }}>
+                    <div style={{ fontWeight:600, color:'var(--text)' }}>{d.label}</div>
+                    {d.hint && <div style={{ fontSize:10.5, color:'var(--text-muted)', marginTop:2 }}>{d.hint}</div>}
+                  </td>
+                  {scale.map(s => {
+                    const active = String(domains[d.key]) === String(s.value);
+                    return (
+                      <td
+                        key={s.value}
+                        onClick={() => rateDomain(d.key, s.value)}
+                        title={s.label}
+                        style={{
+                          ...gridCell, cursor:'pointer', fontSize:16, fontWeight:700,
+                          background: active ? s.bg : 'var(--surface)',
+                          color: active ? s.color : 'var(--text-muted)',
+                        }}
+                      >
+                        {active ? '☑' : '☐'}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+              return rows;
+            })}
           </tbody>
         </table>
       </div>
       <div style={{ fontSize:10.5, color:'var(--text-muted)', marginBottom:20 }}>
-        {t('scale')}: {SCORE_SCALE.map(s => s.label).join('  ·  ')}
+        {def.scaleNote || `${t('scale')}: ${scale.map(s => s.label).join('  ·  ')}`}
       </div>
 
       {/* DOPS supervision level */}
-      {form.supervision && (
+      {def.supervision && (
         <>
-          <SectionTitle>{form.supervision.label}</SectionTitle>
+          <SectionTitle>{def.supervision.label}</SectionTitle>
           <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:20 }}>
-            {form.supervision.options.map(o => {
+            {def.supervision.options.map(o => {
               const active = supervision === o;
               return (
                 <button
@@ -389,57 +423,67 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
       )}
 
       {/* Times */}
-      <div style={{ display:'flex', gap:12, marginBottom:20 }}>
-        {form.times.map(t => (
-          <div key={t.key} style={{ flex:1 }}>
-            <label style={LABEL_STYLE}>{t.label}</label>
-            <input
-              type="number" min="0"
-              value={times[t.key] || ''}
-              onChange={e => setTimes(p => ({ ...p, [t.key]: e.target.value }))}
-              style={fieldBox}
-            />
-          </div>
-        ))}
-      </div>
+      {def.times?.length > 0 && (
+        <div style={{ display:'flex', gap:12, marginBottom:20 }}>
+          {def.times.map(t => (
+            <div key={t.key} style={{ flex:1 }}>
+              <label style={LABEL_STYLE}>{t.label}</label>
+              <input
+                type="number" min="0"
+                value={times[t.key] || ''}
+                onChange={e => setTimes(p => ({ ...p, [t.key]: e.target.value }))}
+                style={fieldBox}
+              />
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Overall rating */}
-      <SectionTitle>{form.overall.label}</SectionTitle>
-      <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:20 }}>
-        {form.overall.options.map(o => {
-          const active = overall === o;
-          return (
-            <button
-              key={o} type="button"
-              onClick={() => setOverall(active ? '' : o)}
-              style={{
-                padding:'8px 14px', borderRadius:8, fontSize:12.5, fontWeight:600,
-                cursor:'pointer', transition:'all .12s',
-                border: active ? `2px solid ${form.accent}` : '1.5px solid var(--border)',
-                background: active ? `${form.accent}14` : 'var(--surface)',
-                color: active ? form.accent : 'var(--text-2)',
-              }}
-            >
-              {o}
-            </button>
-          );
-        })}
-      </div>
+      {def.overall && (
+        <>
+          <SectionTitle>{def.overall.label}</SectionTitle>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:20 }}>
+            {def.overall.options.map(o => {
+              const active = overall === o;
+              return (
+                <button
+                  key={o} type="button"
+                  onClick={() => setOverall(active ? '' : o)}
+                  style={{
+                    padding:'8px 14px', borderRadius:8, fontSize:12.5, fontWeight:600,
+                    cursor:'pointer', transition:'all .12s',
+                    border: active ? `2px solid ${def.accent}` : '1.5px solid var(--border)',
+                    background: active ? `${def.accent}14` : 'var(--surface)',
+                    color: active ? def.accent : 'var(--text-2)',
+                  }}
+                >
+                  {o}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* Feedback */}
-      <SectionTitle>{t('feedback')}</SectionTitle>
-      <div style={{ display:'flex', flexDirection:'column', gap:14, marginBottom:18 }}>
-        {form.feedback.map(f => (
-          <div key={f.key}>
-            <label style={LABEL_STYLE}>{f.label}</label>
-            <textarea
-              value={feedback[f.key] || ''}
-              onChange={e => setFeedback(p => ({ ...p, [f.key]: e.target.value }))}
-              style={{ ...fieldBox, minHeight:60, resize:'vertical' }}
-            />
+      {def.feedback?.length > 0 && (
+        <>
+          <SectionTitle>{t('feedback')}</SectionTitle>
+          <div style={{ display:'flex', flexDirection:'column', gap:14, marginBottom:18 }}>
+            {def.feedback.map(f => (
+              <div key={f.key}>
+                <label style={LABEL_STYLE}>{f.label}</label>
+                <textarea
+                  value={feedback[f.key] || ''}
+                  onChange={e => setFeedback(p => ({ ...p, [f.key]: e.target.value }))}
+                  style={{ ...fieldBox, minHeight:60, resize:'vertical' }}
+                />
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
       {(localErr || error) && (
         <div style={{
@@ -511,7 +555,8 @@ function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalize
   const { trainee = {}, dist = {} } = item || {};
   const traineeEvals = safeArr(evals).filter(ev => evalTraineeId(ev) === trainee?._id?.toString());
   const monthEvals   = traineeEvals.filter(ev => isThisMonth(ev?.date || ev?.createdAt));
-  const doneTypes    = new Set(monthEvals.map(evalType));
+  // Track by base form type so an MSF part ('MSF-360 · Form A') marks MSF-360 done.
+  const doneTypes    = new Set(monthEvals.map(ev => String(evalType(ev) || '').split(' · ')[0]));
 
   const [activeType, setActiveType] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -657,7 +702,9 @@ function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalize
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontSize:14, fontWeight:700, color:'var(--text)' }}>{f.fullName}</div>
-                      <div style={{ fontSize:12, color:'var(--text-muted)' }}>{f.domains.length} {t('competencyDomains')}</div>
+                      <div style={{ fontSize:12, color:'var(--text-muted)' }}>
+                        {f.parts ? `${f.parts.length} forms (A–E)` : `${f.domains.length} ${t('competencyDomains')}`}
+                      </div>
                     </div>
                     {done ? (
                       <span className="status-ic status-ic-green" title={t('doneThisMonth')}>
@@ -789,7 +836,6 @@ function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalize
 export default function SupervisorEvaluations() {
   const { user: me }   = useAuth();
   const { lang, dir }  = usePrefs();
-  const basePath       = useBasePath();
   const t = k => STRINGS[lang]?.[k] ?? STRINGS.ar[k] ?? k;
   const [evals,      setEvals     ] = useState([]);
   const [trainees,   setTrainees  ] = useState([]);
@@ -928,32 +974,6 @@ export default function SupervisorEvaluations() {
             </div>
           ))}
         </div>
-
-        {/* Official reference forms — Advanced/residency track only */}
-        {basePath === '' && (
-          <div style={{
-            background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12,
-            padding:'14px 18px', marginBottom:20
-          }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-2)', marginBottom:10 }}>Official Forms</div>
-            <div style={{ display:'flex', flexWrap:'wrap', gap:12 }}>
-              {OFFICIAL_FORMS.map(f => (
-                <div key={f.file} style={{
-                  display:'flex', alignItems:'center', gap:10,
-                  border:'1px solid var(--border)', borderRadius:10, padding:'10px 12px',
-                  flex:'1 1 260px', minWidth:0
-                }}>
-                  <div style={{ fontSize:22, flexShrink:0 }}>📄</div>
-                  <div style={{ flex:1, minWidth:0, fontSize:13, fontWeight:600, color:'var(--text)' }}>{f.title}</div>
-                  <a href={officeViewUrl(f.file)} target="_blank" rel="noopener noreferrer"
-                     style={{ fontSize:12, fontWeight:700, color:'#185FA5', textDecoration:'none', flexShrink:0 }}>View</a>
-                  <a href={`/evaluation-forms/${f.file}`} download
-                     style={{ fontSize:12, fontWeight:700, color:'var(--text-2)', textDecoration:'none', flexShrink:0 }}>Download</a>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Search */}
         <div style={{ marginBottom:16 }}>
