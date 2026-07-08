@@ -7,6 +7,7 @@ import api          from '../api/axios';
 import Sk           from '../components/Skeleton';
 import { IconEye, IconCheck, IconClock, IconXCircle } from '../components/icons';
 import { EVAL_FORMS, FORM_TYPES, getForm, SCORE_SCALE } from '../data/evalForms';
+import useBasePath from '../hooks/useBasePath';
 import { printEvaluation } from '../utils/printEvaluation';
 
 // ── Page-chrome translation (Arabic + English, follows the global toggle).
@@ -125,6 +126,15 @@ const STRINGS = {
 
 const MONTHLY_CAP = FORM_TYPES.length; // one of each form per trainee per month
 const MONTH_LABEL = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+// Official downloadable evaluation-form documents (Advanced/residency track).
+// Files live in frontend/public/evaluation-forms and are also on the landing page.
+const OFFICIAL_FORMS = [
+  { file: 'MSF_360_Evaluation_Form.docx',          title: 'MSF — 360° Multi-Source Feedback' },
+  { file: 'Academic_Supervisor_Report_Form.docx',  title: 'Academic Supervisor Report' },
+];
+const officeViewUrl = file =>
+  `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(window.location.origin + '/evaluation-forms/' + file)}`;
 
 const LABEL_STYLE = {
   display:'block', fontSize:12, fontWeight:600, color:'var(--text-2)',
@@ -779,6 +789,7 @@ function EvalModal({ item, evals, assessorName, onClose, onSubmitted, onFinalize
 export default function SupervisorEvaluations() {
   const { user: me }   = useAuth();
   const { lang, dir }  = usePrefs();
+  const basePath       = useBasePath();
   const t = k => STRINGS[lang]?.[k] ?? STRINGS.ar[k] ?? k;
   const [evals,      setEvals     ] = useState([]);
   const [trainees,   setTrainees  ] = useState([]);
@@ -917,6 +928,32 @@ export default function SupervisorEvaluations() {
             </div>
           ))}
         </div>
+
+        {/* Official reference forms — Advanced/residency track only */}
+        {basePath === '' && (
+          <div style={{
+            background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12,
+            padding:'14px 18px', marginBottom:20
+          }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--text-2)', marginBottom:10 }}>Official Forms</div>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:12 }}>
+              {OFFICIAL_FORMS.map(f => (
+                <div key={f.file} style={{
+                  display:'flex', alignItems:'center', gap:10,
+                  border:'1px solid var(--border)', borderRadius:10, padding:'10px 12px',
+                  flex:'1 1 260px', minWidth:0
+                }}>
+                  <div style={{ fontSize:22, flexShrink:0 }}>📄</div>
+                  <div style={{ flex:1, minWidth:0, fontSize:13, fontWeight:600, color:'var(--text)' }}>{f.title}</div>
+                  <a href={officeViewUrl(f.file)} target="_blank" rel="noopener noreferrer"
+                     style={{ fontSize:12, fontWeight:700, color:'#185FA5', textDecoration:'none', flexShrink:0 }}>View</a>
+                  <a href={`/evaluation-forms/${f.file}`} download
+                     style={{ fontSize:12, fontWeight:700, color:'var(--text-2)', textDecoration:'none', flexShrink:0 }}>Download</a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Search */}
         <div style={{ marginBottom:16 }}>
