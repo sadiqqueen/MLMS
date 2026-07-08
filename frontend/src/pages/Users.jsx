@@ -7,8 +7,16 @@ import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 import { IconEdit, IconDelete, IconPassword, IconLock, IconUnlock, IconBan, IconUserCheck } from '../components/icons';
+import { baseRole } from '../config/roles';
 
 const ROLES = ['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president', 'asg1', 'asg2', 'super_admin'];
+
+// Roles that exist in both portals (Advanced + Basic).
+const BASIC_CAPABLE = ['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president'];
+// Combine a base role + chosen track into the actual role string to submit.
+function effectiveRole(baseR, track) {
+  return (track === 'basic' && BASIC_CAPABLE.includes(baseR)) ? 'b_' + baseR : baseR;
+}
 
 const ROLE_BADGE = {
   trainee:          'badge-role badge-student',
@@ -62,7 +70,8 @@ function UserModal({ editUser, hospitals, supervisors, specialties, onSave, onCl
     name:         editUser.name         || '',
     email:        editUser.email        || '',
     password:     '',
-    role:         editUser.role         || 'trainee',
+    role:         baseRole(editUser.role || 'trainee'),
+    track:        (editUser.role || '').startsWith('b_') ? 'basic' : 'advanced',
     phone:        editUser.phone        || '',
     gender:       editUser.gender       || '',
     city:         editUser.city         || '',
@@ -73,7 +82,7 @@ function UserModal({ editUser, hospitals, supervisors, specialties, onSave, onCl
     specialtyId:  editUser.specialtyId?._id  || editUser.specialtyId || '',
     department:   editUser.department   || '',
   } : {
-    name: '', email: '', password: '', role: 'trainee',
+    name: '', email: '', password: '', role: 'trainee', track: 'advanced',
     phone: '', gender: '', city: '',
     studentId: '', year: '', hospitalId: '', supervisorId: '', specialtyId: '', department: '',
   });
@@ -103,7 +112,10 @@ function UserModal({ editUser, hospitals, supervisors, specialties, onSave, onCl
   function handleSave() {
     if (!validate()) return;
     const fd = new FormData();
-    Object.entries(form).forEach(([k, v]) => {
+    // Combine base role + track into the real role; the server derives `track` from it.
+    const payload = { ...form, role: effectiveRole(form.role, form.track) };
+    delete payload.track;
+    Object.entries(payload).forEach(([k, v]) => {
       if (v !== '' && v !== null && v !== undefined) fd.append(k, v);
     });
     if (photo) fd.append('photo', photo);
@@ -118,12 +130,15 @@ function UserModal({ editUser, hospitals, supervisors, specialties, onSave, onCl
 
   const role = form.role;
 
+  // Only offer hospitals/specialties/supervisors from the chosen track so an
+  // account is never wired across portals. (advanced = anything not 'basic').
+  const inTrack = item => (form.track === 'basic' ? item?.track === 'basic' : item?.track !== 'basic');
   const filteredSupervisors = supervisors.filter(s =>
-    !form.specialtyId ||
-    (s.specialtyId?._id || s.specialtyId)?.toString() === form.specialtyId
+    inTrack(s) &&
+    (!form.specialtyId || (s.specialtyId?._id || s.specialtyId)?.toString() === form.specialtyId)
   );
-  const specialtyOptions = specialties.map(s => ({ value: s._id, label: s.name }));
-  const hospitalOptions = hospitals.map(h => ({ value: h._id, label: h.name }));
+  const specialtyOptions = specialties.filter(inTrack).map(s => ({ value: s._id, label: s.name }));
+  const hospitalOptions = hospitals.filter(inTrack).map(h => ({ value: h._id, label: h.name }));
   const supervisorOptions = filteredSupervisors.map(s => ({ value: s._id, label: s.name }));
 
   return (
@@ -153,10 +168,24 @@ function UserModal({ editUser, hospitals, supervisors, specialties, onSave, onCl
             </div>
 
             {/* Role */}
-            <div className="admin-field full">
+            <div className="admin-field">
               <label>User Type *</label>
               <select value={role} onChange={e => set('role', e.target.value)}>
                 {ROLES.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
+              </select>
+            </div>
+
+            {/* Training track (Advanced vs Basic portal) */}
+            <div className="admin-field">
+              <label>Training Track *</label>
+              <select
+                value={BASIC_CAPABLE.includes(role) ? form.track : 'advanced'}
+                disabled={!BASIC_CAPABLE.includes(role)}
+                onChange={e => set('track', e.target.value)}
+                title={BASIC_CAPABLE.includes(role) ? 'Which portal this account belongs to' : 'This role exists only in the Advanced portal'}
+              >
+                <option value="advanced">Advanced</option>
+                <option value="basic">Basic</option>
               </select>
             </div>
 
@@ -455,7 +484,7 @@ export default function Users() {
   }, []);
 
   const displayed = users
-    .filter(u => roleFilter === 'all' || u.role === roleFilter)
+    .filter(u => roleFilter === 'all' || baseRole(u.role) === roleFilter)
     // Track filter: basic → basic only; advanced → not-basic (incl. legacy); all → both.
     .filter(u => trackFilter === 'all' || (trackFilter === 'basic' ? u.track === 'basic' : u.track !== 'basic'))
     .filter(u => {
@@ -589,7 +618,7 @@ export default function Users() {
               All ({users.length})
             </button>
             {ROLES.map(r => {
-              const count = users.filter(u => u.role === r).length;
+              const count = users.filter(u => baseRole(u.role) === r).length;
               if (count === 0) return null;
               return (
                 <button

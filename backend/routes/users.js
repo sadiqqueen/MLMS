@@ -90,10 +90,10 @@ router.get('/', auth, allowRoles(...READ_STAFF), async (req, res) => {
 router.get('/supervisors', auth, allowRoles('super_admin', 'secretary', 'dio', 'president'), async (req, res) => {
   try {
     const supervisors = await User.find({
-      role: 'supervisor',
+      role: { $in: ['supervisor', 'b_supervisor'] },
       isActive: { $ne: false }
     })
-      .select('name email specialty specialtyId hospitalId department initials photoUrl')
+      .select('name email specialty specialtyId hospitalId department initials photoUrl track')
       .populate('specialtyId', 'name')
       .populate('hospitalId', 'name')
       .sort({ name: 1 });
