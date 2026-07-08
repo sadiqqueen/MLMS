@@ -11,7 +11,8 @@
     "check:backend": "node --check backend/server.js",
     "build:backend-check": "npm run check:backend",
     "deploy:check": "npm run build:frontend && npm run check:backend",
-    "reseed:professional": "node backend/migrations/reseedProfessionalData.js"
+    "reseed:professional": "node backend/migrations/reseedProfessionalData.js",
+    "reseed:basic-training": "node backend/migrations/reseedBasicTrainingData.js"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

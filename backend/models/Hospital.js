@@ -18,7 +18,10 @@ const hospitalSchema = new mongoose.Schema(
     supervisors:    [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     phone:          { type: String, default: '' },
     email:          { type: String, default: '' },
-    isActive:       { type: Boolean, default: true }
+    isActive:       { type: Boolean, default: true },
+
+    // Training portal this hospital belongs to (default 'advanced' incl. legacy).
+    track:          { type: String, enum: ['basic', 'advanced'], default: 'advanced', index: true }
   },
   { timestamps: true }
 );

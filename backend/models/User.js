@@ -9,12 +9,20 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
 
     // V2: updated role enum — 7 app roles + ASG.1/ASG.2 (consultant memo)
+    // + Basic-Training portal roles (b_*), which mirror their Advanced counterparts.
     role: {
       type: String,
-      enum: ['super_admin', 'secretary', 'dio', 'supervisor', 'trainee', 'president', 'program_director', 'asg1', 'asg2'],
+      enum: [
+        'super_admin', 'secretary', 'dio', 'supervisor', 'trainee', 'president', 'program_director', 'asg1', 'asg2',
+        'b_secretary', 'b_dio', 'b_supervisor', 'b_trainee', 'b_president', 'b_program_director'
+      ],
       required: true,
       index: true
     },
+
+    // Which training portal this user belongs to. Kept in sync with `role`
+    // (b_* → basic) by the hooks below; legacy users default to 'advanced'.
+    track: { type: String, enum: ['basic', 'advanced'], default: 'advanced', index: true },
 
     // Existing fields — keep all
     initials:      { type: String, default: '' },
@@ -52,6 +60,8 @@ const userSchema = new mongoose.Schema(
 
 // Hash password on save
 userSchema.pre('save', async function (next) {
+  // Keep track in sync with role: any b_* role is Basic, everything else Advanced.
+  if (this.role) this.track = this.role.startsWith('b_') ? 'basic' : 'advanced';
   if (this.name && !this.initials) {
     this.initials = this.name
       .trim()
@@ -63,6 +73,19 @@ userSchema.pre('save', async function (next) {
   }
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 12);
+  next();
+});
+
+// pre('save') does not run for update queries, so keep track in sync when a
+// role change comes through findOneAndUpdate / findByIdAndUpdate / patch.
+userSchema.pre('findOneAndUpdate', function (next) {
+  const update = this.getUpdate() || {};
+  const role = update.role || (update.$set && update.$set.role);
+  if (role) {
+    const track = String(role).startsWith('b_') ? 'basic' : 'advanced';
+    if (update.$set) update.$set.track = track;
+    else update.track = track;
+  }
   next();
 });
 

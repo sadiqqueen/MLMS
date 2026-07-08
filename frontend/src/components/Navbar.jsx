@@ -7,119 +7,57 @@ import api from '../api/axios';
 import NotificationPanel from './NotificationPanel';
 import ProfileDropdown from './ProfileDropdown';
 import { APP_NAV_LABEL } from './memo/MemoPrefs';
+import { ROLE_HOME, ROLE_LINKS, isBasicRole, baseRole, basePathForRole } from '../config/roles';
 
-// Each link carries a stable `key` so the visible label resolves through the
-// shared dictionary as t("nav.<role>.<key>"). Routes/paths stay unchanged.
-// ASG.1 / ASG.2 keep a dynamic consultant-memo label (no key → handled below).
-const ROLE_LINKS = {
-  super_admin: [
-    { to: '/admin/dashboard',    key: 'dashboard',    label: 'Dashboard'    },
-    { to: '/admin/users',        key: 'users',        label: 'Users'        },
-    { to: '/admin/hospitals',    key: 'hospitals',    label: 'Hospitals'    },
-    { to: '/admin/specialties',  key: 'specialties',  label: 'Specialties'  },
-    { to: '/admin/certificates', key: 'certificates', label: 'Certificates' },
-    { to: '/admin/audit-log',    key: 'audit_log',    label: 'Audit Log'    },
-  ],
-  secretary: [
-    { to: '/secretary/trainees',          key: 'trainees',          label: 'Trainees'         },
-    { to: '/secretary/supervisors',       key: 'supervisors',       label: 'Supervisors'      },
-    { to: '/secretary/hospitals',         key: 'hospitals',         label: 'Hospitals'        },
-  ],
-  dio: [
-    { to: '/dio/dashboard',         key: 'dashboard',         label: 'Dashboard'     },
-    { to: '/dio/trainees',          key: 'trainees',          label: 'Trainees'      },
-    { to: '/dio/supervisors',       key: 'supervisors',       label: 'Supervisors'   },
-    { to: '/dio/program-directors', key: 'program_directors', label: 'Prog.Directors'},
-    { to: '/dio/secretaries',       key: 'secretaries',       label: 'Secretaries'   },
-    { to: '/dio/distributions',     key: 'distributions',     label: 'Sup.Dist.'    },
-    { to: '/dio/rotations',         key: 'rotations',         label: 'Rotations'    },
-    { to: '/dio/certificates',      key: 'certificates',      label: 'Certificates'  },
-  ],
-  // ASG.1 / ASG.2 — consultant-memo is their only function
-  asg1: [
-    { to: '/consultant-memo', label: 'مذكرة الاستشاري' },
-  ],
-  asg2: [
-    { to: '/consultant-memo', label: 'مذكرة الاستشاري' },
-  ],
-  supervisor: [
-    { to: '/supervisor/trainees',    key: 'trainees',    label: 'My Trainees' },
-    { to: '/supervisor/reports',     key: 'reports',     label: 'Reports'     },
-    { to: '/supervisor/evaluations', key: 'evaluations', label: 'Evaluations' },
-  ],
-  trainee: [
-    { to: '/timeline', key: 'timeline', label: 'Timeline' },
-    { to: '/reports',  key: 'reports',  label: 'Reports'  },
-    { to: '/grades',   key: 'grades',   label: 'Grades'   },
-  ],
-  president: [
-    { to: '/president/trainees',          key: 'trainees',          label: 'Trainees'        },
-    { to: '/president/supervisors',       key: 'supervisors',       label: 'Supervisors'     },
-    { to: '/president/program-directors', key: 'program_directors', label: 'Prog.Directors'  },
-    { to: '/president/dios',             key: 'dios',              label: 'DIOs'            },
-    { to: '/president/secretaries',       key: 'secretaries',       label: 'Secretaries'     },
-    { to: '/president/hospitals',         key: 'hospitals',         label: 'Hospitals'       },
-  ],
-  program_director: [
-    { to: '/program-director/trainees',    key: 'trainees',    label: 'Trainees'   },
-    { to: '/program-director/supervisors', key: 'supervisors', label: 'Supervisors'},
-    { to: '/program-director/reports',     key: 'reports',     label: 'Reports'    },
-  ],
-};
-
-const ROLE_HOME = {
-  super_admin:      '/admin/dashboard',
-  secretary:        '/secretary/trainees',
-  dio:              '/dio/dashboard',
-  supervisor:       '/supervisor/trainees',
-  trainee:          '/timeline',
-  president:        '/president/trainees',
-  program_director: '/program-director/trainees',
-  asg1:             '/consultant-memo',
-  asg2:             '/consultant-memo',
-};
+// ROLE_LINKS and ROLE_HOME now live in ../config/roles (shared with App.jsx and
+// ProtectedRoute.jsx) and include the Basic-Training (b_*) roles.
 
 // Best-effort: pick the most relevant page for a notification from its message
 // text + the user's role (notifications store no link). Falls back to home.
+// Basic-track (b_*) roles resolve to the same page under their /basic prefix.
 function notifLink(message = '', role) {
   const m = String(message).toLowerCase();
   const has = re => re.test(m);
-  switch (role) {
-    case 'trainee':
-      if (has(/evaluat|assess|competent|grade|score/)) return '/grades';
-      if (has(/report/))                                return '/reports';
-      if (has(/rotation|distribut|assign|specialt|hospital/)) return '/timeline';
-      break;
-    case 'supervisor':
-      if (has(/evaluat|assess/))   return '/supervisor/evaluations';
-      if (has(/report|grade/))     return '/supervisor/reports';
-      if (has(/trainee|assign/))   return '/supervisor/trainees';
-      break;
-    case 'program_director':
-      if (has(/report|grade/))  return '/program-director/reports';
-      if (has(/supervisor/))    return '/program-director/supervisors';
-      if (has(/trainee/))       return '/program-director/trainees';
-      break;
-    case 'dio':
-      if (has(/certificat/))  return '/dio/certificates';
-      if (has(/rotation/))    return '/dio/rotations';
-      if (has(/distribut/))   return '/dio/distributions';
-      if (has(/supervisor/))  return '/dio/supervisors';
-      if (has(/trainee/))     return '/dio/trainees';
-      break;
-    case 'secretary':
-      if (has(/supervisor/))             return '/secretary/supervisors';
-      if (has(/trainee|report|assign/))  return '/secretary/trainees';
-      break;
-    case 'super_admin':
-      if (has(/certificat/))           return '/admin/certificates';
-      if (has(/user|account|locked/))  return '/admin/users';
-      if (has(/hospital/))             return '/admin/hospitals';
-      break;
-    default:
-      break;
-  }
-  return ROLE_HOME[role] || '/';
+  const advancedDest = () => {
+    switch (baseRole(role)) {
+      case 'trainee':
+        if (has(/evaluat|assess|competent|grade|score/)) return '/grades';
+        if (has(/report/))                                return '/reports';
+        if (has(/rotation|distribut|assign|specialt|hospital/)) return '/timeline';
+        break;
+      case 'supervisor':
+        if (has(/evaluat|assess/))   return '/supervisor/evaluations';
+        if (has(/report|grade/))     return '/supervisor/reports';
+        if (has(/trainee|assign/))   return '/supervisor/trainees';
+        break;
+      case 'program_director':
+        if (has(/report|grade/))  return '/program-director/reports';
+        if (has(/supervisor/))    return '/program-director/supervisors';
+        if (has(/trainee/))       return '/program-director/trainees';
+        break;
+      case 'dio':
+        if (has(/certificat/))  return '/dio/certificates';
+        if (has(/rotation/))    return '/dio/rotations';
+        if (has(/distribut/))   return '/dio/distributions';
+        if (has(/supervisor/))  return '/dio/supervisors';
+        if (has(/trainee/))     return '/dio/trainees';
+        break;
+      case 'secretary':
+        if (has(/supervisor/))             return '/secretary/supervisors';
+        if (has(/trainee|report|assign/))  return '/secretary/trainees';
+        break;
+      case 'super_admin':
+        if (has(/certificat/))           return '/admin/certificates';
+        if (has(/user|account|locked/))  return '/admin/users';
+        if (has(/hospital/))             return '/admin/hospitals';
+        break;
+      default:
+        break;
+    }
+    return null;
+  };
+  const dest = advancedDest();
+  return dest ? basePathForRole(role) + dest : (ROLE_HOME[role] || '/');
 }
 
 export default function Navbar() {
@@ -150,7 +88,7 @@ export default function Navbar() {
   const linkLabel = l =>
     l.to === '/consultant-memo'
       ? APP_NAV_LABEL[memoLang]
-      : (user && l.key ? t(`nav.${user.role}.${l.key}`) : l.label);
+      : (user && l.key ? t(`nav.${baseRole(user.role)}.${l.key}`) : l.label);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -212,6 +150,27 @@ export default function Navbar() {
         role="link"
         aria-label="Home"
       />
+
+      {/* Marks the Basic-Training portal so users know which track they're in */}
+      {isBasicRole(user?.role) && (
+        <span
+          className="nav-track-badge"
+          title="Basic Training portal"
+          style={{
+            marginInlineStart: 8,
+            padding: '2px 10px',
+            borderRadius: 20,
+            background: 'rgba(254,154,22,0.16)',
+            color: '#b45309',
+            fontSize: 11,
+            fontWeight: 700,
+            whiteSpace: 'nowrap',
+            alignSelf: 'center',
+          }}
+        >
+          Basic Training
+        </span>
+      )}
 
       {/* PAGE LINKS — desktop */}
       <div className="nav-links">

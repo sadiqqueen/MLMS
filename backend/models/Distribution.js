@@ -23,6 +23,9 @@ const distributionSchema = new mongoose.Schema(
     status:        { type: String, enum: ['active', 'inactive'], default: 'active', index: true },
     createdBy:     { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
+    // Training portal this record belongs to (default 'advanced' incl. legacy).
+    track:         { type: String, enum: ['basic', 'advanced'], default: 'advanced', index: true },
+
     // Keep legacy fields for backwards compatibility with existing data
     student:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     doctor:    { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

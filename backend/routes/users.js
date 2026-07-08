@@ -6,6 +6,7 @@ const path           = require('path');
 const fs             = require('fs');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
+const { coerceRoleToTrack } = require('../utils/track');
 const auditLog       = require('../middleware/auditLogger');
 
 // Ensure photos upload folder exists
@@ -179,6 +180,8 @@ router.post('/', auth, allowRoles(...WRITE_STAFF), upload.single('photo'), async
       return res.status(403).json({ success: false, message: `Your role cannot create a user with role: ${data.role}` });
     }
 
+    // Basic staff (req.track === 'basic') can only ever create Basic (b_*) users.
+    data.role = coerceRoleToTrack(data.role, req.track);
     const user = new User(data);
     await user.save();
 

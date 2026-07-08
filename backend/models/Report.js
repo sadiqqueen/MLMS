@@ -8,6 +8,9 @@ const reportSchema = new mongoose.Schema(
     distribution: { type: mongoose.Schema.Types.ObjectId, ref: 'Distribution', index: true },
     hospital: { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital' },
 
+    // Training portal this record belongs to (default 'advanced' incl. legacy).
+    track: { type: String, enum: ['basic', 'advanced'], default: 'advanced', index: true },
+
     title:    { type: String, required: true },         // e.g. "Week 3 Report"
     type:     { type: String, enum: ['weekly', 'monthly', 'final'], required: true, index: true },
     date:     { type: Date, required: true },

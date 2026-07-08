@@ -16,6 +16,9 @@ const certificateSchema = new mongoose.Schema(
     notes:     { type: String, default: '' },
     issuedBy:  { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
+    // Training portal this record belongs to (default 'advanced' incl. legacy).
+    track:     { type: String, enum: ['basic', 'advanced'], default: 'advanced', index: true },
+
     // V2 aliases
     traineeId:      { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     distributionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Distribution' },

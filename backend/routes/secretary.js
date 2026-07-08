@@ -2,6 +2,7 @@
 const router         = require('express').Router();
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
+const { coerceRoleToTrack } = require('../utils/track');
 const auditLog       = require('../middleware/auditLogger');
 const User           = require('../models/User');
 const Hospital       = require('../models/Hospital');
@@ -148,7 +149,7 @@ router.post('/trainees',
       if (!specialtyId) return;
       const hospitalId  = req.body.hospitalId || req.body.hospital || getHospital(req.user);
       const data = pick(req.body, CREATE_USER_FIELDS);
-      data.role = 'trainee';
+      data.role = coerceRoleToTrack('trainee', req.track);
       data.specialtyId = specialtyId;
       data.specialty = req.user.specialty || data.specialty || '';
       if (hospitalId)  { data.hospitalId = hospitalId; data.hospital = hospitalId; }
@@ -230,7 +231,7 @@ router.post('/supervisors',
       if (!specialtyId) return;
       const hospitalId  = req.body.hospitalId || req.body.hospital || getHospital(req.user);
       const data = pick(req.body, CREATE_USER_FIELDS);
-      data.role = 'supervisor';
+      data.role = coerceRoleToTrack('supervisor', req.track);
       data.specialtyId = specialtyId;
       data.specialty = req.user.specialty || data.specialty || '';
       if (hospitalId)  { data.hospitalId = hospitalId; data.hospital = hospitalId; }
@@ -314,7 +315,7 @@ router.post('/program-directors',
         return res.status(400).json({ success: false, message: 'hospitalId is required for Program Director' });
       }
       const data = pick(req.body, CREATE_USER_FIELDS);
-      data.role = 'program_director';
+      data.role = coerceRoleToTrack('program_director', req.track);
       delete data.specialtyId;
       delete data.specialty;
       if (hospitalId) { data.hospitalId = hospitalId; data.hospital = hospitalId; }

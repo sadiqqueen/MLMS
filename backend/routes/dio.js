@@ -3,6 +3,7 @@ const router         = require('express').Router();
 const mongoose       = require('mongoose');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
+const { coerceRoleToTrack } = require('../utils/track');
 const auditLog       = require('../middleware/auditLogger');
 const { v4: uuidv4 } = require('uuid');
 const User           = require('../models/User');
@@ -350,7 +351,8 @@ router.get('/trainees', auth, allowRoles(...DIO, 'super_admin'), async (req, res
 
 async function createManagedUser(req, res, role) {
   const data = normalizeUserPayload(req.body);
-  data.role = role;
+  // Basic staff (req.track === 'basic') can only ever create Basic (b_*) users.
+  data.role = coerceRoleToTrack(role, req.track);
   if (req.body.role && req.body.role !== role) {
     return res.status(403).json({ success: false, message: 'Cannot assign forbidden role through this endpoint' });
   }

@@ -9,6 +9,9 @@ const rotationSchema = new mongoose.Schema(
     supervisorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
     specialtyId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Specialty', index: true },
 
+    // Training portal this record belongs to (default 'advanced' incl. legacy).
+    track:        { type: String, enum: ['basic', 'advanced'], default: 'advanced', index: true },
+
     student:    { type: mongoose.Schema.Types.ObjectId, ref: 'User',     required: true, index: true },
     hospital:   { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital', required: true, index: true },
     doctor:     { type: mongoose.Schema.Types.ObjectId, ref: 'User' },    // legacy supervisor field

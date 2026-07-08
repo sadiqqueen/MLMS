@@ -1,6 +1,18 @@
 // backend/middleware/auth.js
 const jwt  = require('jsonwebtoken');
 const User = require('../models/User');
+const { baseRole, trackForRole } = require('../utils/track');
+
+// Attach the caller's training track and normalise their role to the base
+// (Advanced) role. Basic-portal roles (b_*) then behave exactly like their
+// Advanced counterparts in every downstream allowRoles / role check, while
+// req.track carries the real portal used for data isolation. The mutation is
+// in-memory only — req.user is never saved anywhere.
+function attachTrack(req, user) {
+  req.track = trackForRole(user.role);
+  user.role = baseRole(user.role);
+  req.user  = user;
+}
 
 module.exports = async (req, res, next) => {
   const header = req.headers.authorization;
@@ -23,7 +35,7 @@ module.exports = async (req, res, next) => {
         const mins = Math.ceil((user.lockUntil - new Date()) / 60000);
         return res.status(423).json({ message: `Account locked. Try again in ${mins} minute(s).` });
       }
-      req.user = user;
+      attachTrack(req, user);
       return next();
     } catch (err) {
       // Access token invalid/expired — decode without verification to get claimed user id
@@ -64,7 +76,7 @@ module.exports = async (req, res, next) => {
 
     // Send new access token in response header
     res.setHeader('X-New-Access-Token', newAccessToken);
-    req.user = user;
+    attachTrack(req, user);
     return next();
   } catch {
     return res.status(401).json({ message: 'Invalid or expired token' });

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import useBasePath from '../hooks/useBasePath';
 import Navbar from '../components/Navbar';
 import Toast from '../components/Toast';
 import api from '../api/axios';
@@ -407,6 +408,7 @@ function EvaluationsTable({ evaluations, onAdd }) {
 function CertificatesTable({ certificates }) {
   const rows = safeArr(certificates);
   const navigate = useNavigate();
+  const bp = useBasePath();
   return (
     <section className="admin-card">
       <div className="admin-card-header">
@@ -443,7 +445,7 @@ function CertificatesTable({ certificates }) {
                         style={{ fontSize:11, background:'#FEF3C7', color:'#92400E', width:'auto', padding:'0 10px', display:'inline-flex', alignItems:'center', gap:5 }}
                         title="Print Certificate"
                         aria-label="Print Certificate"
-                        onClick={() => navigate(`/dio/certificates/${certificate._id}/print`)}
+                        onClick={() => navigate(bp + `/dio/certificates/${certificate._id}/print`)}
                       >
                         <IconPrinter size={13} /> Print Certificate
                       </button>
@@ -474,7 +476,7 @@ function RotationTimeline({ rotations, traineeId, navigate }) {
         <div className="admin-card-title">Rotation Timeline</div>
         <button className="btn-action edit" title="Add rotation"
           style={{ display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
-          onClick={() => navigate('/dio/rotations')}><IconPlus size={15} /> Add Rotation</button>
+          onClick={() => navigate(bp + '/dio/rotations')}><IconPlus size={15} /> Add Rotation</button>
       </div>
       <div className="admin-empty">No rotations found for this trainee.</div>
     </section>
@@ -493,7 +495,7 @@ function RotationTimeline({ rotations, traineeId, navigate }) {
         <div className="admin-card-title">Rotation Timeline</div>
         <button className="btn-action edit" style={{ fontSize:12, width:'auto', padding:'0 12px', height:36, display:'inline-flex', alignItems:'center', gap:6 }}
           title="Add rotation for this trainee"
-          onClick={() => navigate('/dio/rotations')}>
+          onClick={() => navigate(bp + '/dio/rotations')}>
           <IconPlus size={15} /> Add Rotation
         </button>
       </div>
@@ -540,7 +542,7 @@ function RotationTimeline({ rotations, traineeId, navigate }) {
                         {canEdit && (
                           <button className="btn-action edit"
                             title="Edit rotation" aria-label="Edit rotation"
-                            onClick={() => navigate('/dio/rotations')}>
+                            onClick={() => navigate(bp + '/dio/rotations')}>
                             <IconPencil />
                           </button>
                         )}
@@ -560,6 +562,7 @@ function RotationTimeline({ rotations, traineeId, navigate }) {
 export default function DioTraineeDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const bp = useBasePath();
   const [data, setData] = useState(null);
   const [rotations, setRotations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -637,7 +640,7 @@ export default function DioTraineeDetail() {
     <>
       <Navbar />
       <main className="admin-main">
-        <button className="btn-outline" onClick={() => navigate('/dio/trainees')} style={{ marginBottom:16, display:'inline-flex', alignItems:'center', gap:6 }}><IconBack size={15} /> Back</button>
+        <button className="btn-outline" onClick={() => navigate(bp + '/dio/trainees')} style={{ marginBottom:16, display:'inline-flex', alignItems:'center', gap:6 }}><IconBack size={15} /> Back</button>
         <div style={{ background:'#FEE2E2', color:'#DC2626', borderRadius:12, padding:18 }}>{error}</div>
       </main>
     </>
@@ -658,7 +661,7 @@ export default function DioTraineeDetail() {
         {/* Header row */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap', marginBottom:18 }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <button className="btn-outline" style={{ display:'inline-flex', alignItems:'center', gap:6 }} onClick={() => navigate('/dio/trainees')}><IconBack size={15} /> Back</button>
+            <button className="btn-outline" style={{ display:'inline-flex', alignItems:'center', gap:6 }} onClick={() => navigate(bp + '/dio/trainees')}><IconBack size={15} /> Back</button>
             <div>
               <div style={{ fontSize:22, fontWeight:900, color:'#1B1464' }}>{trainee.name || 'Trainee'}</div>
               <div style={{ fontSize:13, color:'#8B8FA8' }}>{trainee.studentId || '-'} · {trainee.email || '-'}</div>
@@ -678,17 +681,17 @@ export default function DioTraineeDetail() {
           </div>
           <button className="btn-action edit"
             style={{ display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
-            onClick={() => navigate('/dio/trainees', { state: { editId: trainee._id } })}>
+            onClick={() => navigate(bp + '/dio/trainees', { state: { editId: trainee._id } })}>
             <IconPencil size={15} /> Edit Trainee
           </button>
           <button className="btn-action edit"
             style={{ background:'#EFF6FF', color:'#1D4ED8', display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
-            onClick={() => navigate('/dio/distributions?new=1')}>
+            onClick={() => navigate(bp + '/dio/distributions?new=1')}>
             <IconPlus size={15} /> Create Distribution
           </button>
           <button className="btn-action edit"
             style={{ background:'#F0FDF4', color:'#065F46', display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
-            onClick={() => navigate('/dio/rotations?new=1')}>
+            onClick={() => navigate(bp + '/dio/rotations?new=1')}>
             <IconPlus size={15} /> Create Rotation
           </button>
           {certificates.length > 0 && !certificates[0]?.revokedAt && (
@@ -696,7 +699,7 @@ export default function DioTraineeDetail() {
               style={{ background:'#FEF3C7', color:'#92400E', width:'auto', padding:'0 12px', display:'inline-flex', alignItems:'center', gap:6 }}
               title="Print Certificate"
               aria-label="Print latest certificate"
-              onClick={() => navigate(`/dio/certificates/${certificates[0]._id}/print`)}>
+              onClick={() => navigate(bp + `/dio/certificates/${certificates[0]._id}/print`)}>
               <IconPrinter size={15} /> Print Latest Certificate
             </button>
           )}

@@ -4,6 +4,7 @@ import { PrefsProvider } from './context/PrefsContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import NotFound from './pages/NotFound';
+import { ROLE_HOME } from './config/roles';
 
 import Reports from './pages/Reports';
 import Grades from './pages/Grades';
@@ -52,18 +53,6 @@ import PresidentHospitals from './pages/PresidentHospitals';
 import AdminSpecialties from './pages/AdminSpecialties';
 import AuditLog from './pages/AuditLog';
 import VerifyCertificate from './pages/VerifyCertificate';
-
-const ROLE_HOME = {
-  super_admin: '/admin/dashboard',
-  secretary: '/secretary/trainees',
-  dio: '/dio/dashboard',
-  supervisor: '/supervisor/trainees',
-  trainee: '/timeline',
-  president: '/president/trainees',
-  program_director: '/program-director/trainees',
-  asg1: '/consultant-memo',
-  asg2: '/consultant-memo',
-};
 
 function RootRedirect() {
   const { user, loading } = useAuth();
@@ -289,8 +278,109 @@ export default function App() {
             </ProtectedRoute>
           } />
 
+          {/* ══════════════════════════════════════════════════════════
+              BASIC TRAINING PORTAL — /basic/* mirrors the Advanced routes,
+              reusing the same page components. Backend scopes b_* users to
+              Basic-track data, so only the URL/role differ.
+          ══════════════════════════════════════════════════════════ */}
+          {/* Basic — trainee */}
+          <Route path="/basic/timeline" element={
+            <ProtectedRoute allowedRoles={['b_trainee']}><Timeline /></ProtectedRoute>
+          } />
+          <Route path="/basic/reports" element={
+            <ProtectedRoute allowedRoles={['b_trainee']}><Reports /></ProtectedRoute>
+          } />
+          <Route path="/basic/grades" element={
+            <ProtectedRoute allowedRoles={['b_trainee']}><Grades /></ProtectedRoute>
+          } />
+
+          {/* Basic — supervisor */}
+          <Route path="/basic/supervisor/trainees" element={
+            <ProtectedRoute allowedRoles={['b_supervisor']}><SupervisorTrainees /></ProtectedRoute>
+          } />
+          <Route path="/basic/supervisor/reports" element={
+            <ProtectedRoute allowedRoles={['b_supervisor']}><SupervisorReports /></ProtectedRoute>
+          } />
+          <Route path="/basic/supervisor/evaluations" element={
+            <ProtectedRoute allowedRoles={['b_supervisor']}><SupervisorEvaluations /></ProtectedRoute>
+          } />
+
+          {/* Basic — program director */}
+          <Route path="/basic/program-director/trainees" element={
+            <ProtectedRoute allowedRoles={['b_program_director']}><ProgramDirectorTrainees /></ProtectedRoute>
+          } />
+          <Route path="/basic/program-director/supervisors" element={
+            <ProtectedRoute allowedRoles={['b_program_director']}><ProgramDirectorSupervisors /></ProtectedRoute>
+          } />
+          <Route path="/basic/program-director/reports" element={
+            <ProtectedRoute allowedRoles={['b_program_director']}><ProgramDirectorReports /></ProtectedRoute>
+          } />
+
+          {/* Basic — secretary */}
+          <Route path="/basic/secretary/trainees" element={
+            <ProtectedRoute allowedRoles={['b_secretary']}><SecretaryTrainees /></ProtectedRoute>
+          } />
+          <Route path="/basic/secretary/supervisors" element={
+            <ProtectedRoute allowedRoles={['b_secretary']}><SecretarySupervisors /></ProtectedRoute>
+          } />
+          <Route path="/basic/secretary/hospitals" element={
+            <ProtectedRoute allowedRoles={['b_secretary']}><SecretaryHospitals /></ProtectedRoute>
+          } />
+
+          {/* Basic — DIO */}
+          <Route path="/basic/dio/dashboard" element={
+            <ProtectedRoute allowedRoles={['b_dio']}><DioDashboard /></ProtectedRoute>
+          } />
+          <Route path="/basic/dio/trainees" element={
+            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioTrainees /></ProtectedRoute>
+          } />
+          <Route path="/basic/dio/trainees/:id" element={
+            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioTraineeDetail /></ProtectedRoute>
+          } />
+          <Route path="/basic/dio/supervisors" element={
+            <ProtectedRoute allowedRoles={['b_dio']}><DioSupervisors /></ProtectedRoute>
+          } />
+          <Route path="/basic/dio/program-directors" element={
+            <ProtectedRoute allowedRoles={['b_dio']}><DioProgramDirectors /></ProtectedRoute>
+          } />
+          <Route path="/basic/dio/secretaries" element={
+            <ProtectedRoute allowedRoles={['b_dio']}><DioSecretaries /></ProtectedRoute>
+          } />
+          <Route path="/basic/dio/certificates" element={
+            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioCertificates /></ProtectedRoute>
+          } />
+          <Route path="/basic/dio/certificates/:id/print" element={
+            <ProtectedRoute allowedRoles={['b_dio', 'super_admin', 'b_program_director', 'b_president']}><CertificatePrint /></ProtectedRoute>
+          } />
+          <Route path="/basic/dio/distributions" element={
+            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioDistributions /></ProtectedRoute>
+          } />
+          <Route path="/basic/dio/rotations" element={
+            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioRotations /></ProtectedRoute>
+          } />
+
+          {/* Basic — president */}
+          <Route path="/basic/president/trainees" element={
+            <ProtectedRoute allowedRoles={['b_president']}><PresidentTrainees /></ProtectedRoute>
+          } />
+          <Route path="/basic/president/supervisors" element={
+            <ProtectedRoute allowedRoles={['b_president']}><PresidentSupervisors /></ProtectedRoute>
+          } />
+          <Route path="/basic/president/program-directors" element={
+            <ProtectedRoute allowedRoles={['b_president']}><PresidentProgramDirectors /></ProtectedRoute>
+          } />
+          <Route path="/basic/president/secretaries" element={
+            <ProtectedRoute allowedRoles={['b_president']}><PresidentSecretaries /></ProtectedRoute>
+          } />
+          <Route path="/basic/president/dios" element={
+            <ProtectedRoute allowedRoles={['b_president']}><PresidentDios /></ProtectedRoute>
+          } />
+          <Route path="/basic/president/hospitals" element={
+            <ProtectedRoute allowedRoles={['b_president']}><PresidentHospitals /></ProtectedRoute>
+          } />
+
           <Route path="/profile" element={
-            <ProtectedRoute allowedRoles={['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president', 'super_admin', 'b_trainee', 'b_supervisor', 'b_program_director', 'b_secretary', 'b_dio', 'b_president']}>
               <Profile />
             </ProtectedRoute>
           } />

@@ -1,6 +1,7 @@
 // frontend/src/pages/DioCertificates.jsx
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import useBasePath from '../hooks/useBasePath';
 import Navbar from '../components/Navbar';
 import Toast from '../components/Toast';
 import ViewToggle from '../components/ViewToggle';
@@ -55,6 +56,7 @@ function traineeFromCertificate(cert) {
 
 export default function DioCertificates() {
   const navigate = useNavigate();
+  const bp = useBasePath();
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('list');
@@ -334,7 +336,7 @@ export default function DioCertificates() {
                                 style={{ width: 'auto', padding: '0 10px' }}
                                 title="Print Certificate"
                                 aria-label={`Print Certificate for ${trainee?.name || 'trainee'}`}
-                                onClick={() => navigate(`/dio/certificates/${c?._id}/print`)}
+                                onClick={() => navigate(bp + `/dio/certificates/${c?._id}/print`)}
                                 disabled={!c?._id}
                               >
                                 Print Certificate
@@ -393,7 +395,7 @@ export default function DioCertificates() {
                       <div className="management-card-sub">{textValue(c?.specialty)} - {fmt(c?.issueDate || c?.issuedAt)}</div>
                       <div className="management-card-actions">
                         {!isRevoked && (
-                          <button type="button" className="btn-action edit" style={{ width: 'auto', padding: '0 10px' }} title="Print Certificate" aria-label={`Print Certificate for ${trainee?.name || 'trainee'}`} onClick={() => navigate(`/dio/certificates/${c?._id}/print`)} disabled={!c?._id}>Print Certificate</button>
+                          <button type="button" className="btn-action edit" style={{ width: 'auto', padding: '0 10px' }} title="Print Certificate" aria-label={`Print Certificate for ${trainee?.name || 'trainee'}`} onClick={() => navigate(bp + `/dio/certificates/${c?._id}/print`)} disabled={!c?._id}>Print Certificate</button>
                         )}
                         {!isRevoked && (
                           <button type="button" style={{ padding: '5px 10px', borderRadius: 6, background: '#FEF3C7', color: '#92400E', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer' }} title="Revoke" aria-label={`Revoke certificate for ${trainee?.name || 'trainee'}`} onClick={() => handleRevoke(c)} disabled={revoking === c?._id}>

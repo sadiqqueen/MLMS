@@ -14,6 +14,9 @@ const evaluationSchema = new mongoose.Schema(
     notes:          { type: String, default: '' },
     status:         { type: String, enum: ['pending', 'completed'], default: 'pending' },
 
+    // Training portal this record belongs to (default 'advanced' incl. legacy).
+    track:          { type: String, enum: ['basic', 'advanced'], default: 'advanced', index: true },
+
     // V2 aliases (point to same concepts, new names)
     traineeId:      { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     supervisorId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

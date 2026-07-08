@@ -47,15 +47,21 @@ function pick(body, allowed) {
 // GET /api/admin/stats — system-wide statistics
 router.get('/stats', auth, allowRoles(...ADMIN), async (req, res) => {
   try {
+    // Optional track filter: basic | advanced | all (default all).
+    const { track } = req.query;
+    const tf = track === 'basic' ? { track: 'basic' }
+             : track === 'advanced' ? { track: { $ne: 'basic' } }
+             : {};
+
     const [users, hospitals, specialties, activeRotations, certificates, trainees, supervisors] =
       await Promise.all([
-        User.countDocuments({ isActive: { $ne: false } }),
-        Hospital.countDocuments({ isActive: { $ne: false } }),
-        Specialty.countDocuments({ isActive: { $ne: false } }),
-        Rotation.countDocuments({ status: 'current' }),
-        Certificate.countDocuments({ revokedAt: null }),
-        User.countDocuments({ role: 'trainee',    isActive: { $ne: false } }),
-        User.countDocuments({ role: 'supervisor', isActive: { $ne: false } })
+        User.countDocuments({ isActive: { $ne: false }, ...tf }),
+        Hospital.countDocuments({ isActive: { $ne: false }, ...tf }),
+        Specialty.countDocuments({ isActive: { $ne: false }, ...tf }),
+        Rotation.countDocuments({ status: 'current', ...tf }),
+        Certificate.countDocuments({ revokedAt: null, ...tf }),
+        User.countDocuments({ role: 'trainee',    isActive: { $ne: false }, ...tf }),
+        User.countDocuments({ role: 'supervisor', isActive: { $ne: false }, ...tf })
       ]);
 
     res.json({ success: true, data: { users, hospitals, specialties, activeRotations, certificates, trainees, supervisors } });
@@ -69,11 +75,14 @@ router.get('/stats', auth, allowRoles(...ADMIN), async (req, res) => {
 // GET /api/admin/users
 router.get('/users', auth, allowRoles(...ADMIN), async (req, res) => {
   try {
-    const { role, hospital, search, page = 1, limit = 50 } = req.query;
+    const { role, hospital, search, track, page = 1, limit = 50 } = req.query;
     const pageNumber = Math.max(1, Number(page) || 1);
     const limitNumber = Math.min(Math.max(1, Number(limit) || 50), 500);
     const query = {};
     if (role) query.role = role;
+    // Track filter: basic → basic only; advanced → not-basic (incl. legacy); else all.
+    if (track === 'basic') query.track = 'basic';
+    else if (track === 'advanced') query.track = { $ne: 'basic' };
     if (hospital) query.$or = [{ hospitalId: hospital }, { hospital }];
     if (search) {
       const rx = new RegExp(escapeRegex(search.slice(0, 100)), 'i');
@@ -441,10 +450,12 @@ router.patch('/specialties/:id',
 // GET /api/admin/distributions
 router.get('/distributions', auth, allowRoles(...ADMIN), async (req, res) => {
   try {
-    const { hospital, specialty, status, page = 1, limit = 50 } = req.query;
+    const { hospital, specialty, status, track, page = 1, limit = 50 } = req.query;
     const pageNumber = Math.max(1, Number(page) || 1);
     const limitNumber = Math.min(Math.max(1, Number(limit) || 50), 500);
     const query = {};
+    if (track === 'basic') query.track = 'basic';
+    else if (track === 'advanced') query.track = { $ne: 'basic' };
     if (status)    query.status     = status;
     if (hospital)  query.$or        = [{ hospitalId: hospital }, { hospital }];
     if (specialty) query.specialtyId = specialty;
@@ -472,10 +483,12 @@ router.get('/distributions', auth, allowRoles(...ADMIN), async (req, res) => {
 // GET /api/admin/certificates
 router.get('/certificates', auth, allowRoles(...ADMIN), async (req, res) => {
   try {
-    const { revoked, page = 1, limit = 50 } = req.query;
+    const { revoked, track, page = 1, limit = 50 } = req.query;
     const pageNumber = Math.max(1, Number(page) || 1);
     const limitNumber = Math.min(Math.max(1, Number(limit) || 50), 500);
     const query = {};
+    if (track === 'basic') query.track = 'basic';
+    else if (track === 'advanced') query.track = { $ne: 'basic' };
     if (revoked === 'true')  query.revokedAt = { $ne: null };
     if (revoked === 'false') query.revokedAt = null;
 

@@ -299,7 +299,8 @@ async function deactivateOldRecords(professional) {
 async function deactivateOldUsers() {
   const oldUsers = await User.find({
     email: { $nin: Array.from(PROFESSIONAL_USER_EMAILS) },
-    isActive: { $ne: false }
+    isActive: { $ne: false },
+    track: { $ne: 'basic' } // never touch Basic-track accounts
   });
   for (const user of oldUsers) {
     user.isActive = false;
@@ -310,7 +311,7 @@ async function deactivateOldUsers() {
 
 async function deactivateOldHospitals(professionalHospitals) {
   const names = professionalHospitals.map(h => h.name);
-  const oldHospitals = await Hospital.find({ name: { $nin: names }, isActive: { $ne: false } });
+  const oldHospitals = await Hospital.find({ name: { $nin: names }, isActive: { $ne: false }, track: { $ne: 'basic' } });
   for (const hospital of oldHospitals) {
     hospital.isActive = false;
     await saveDoc(hospital, `deactivate old hospital: ${hospital.name}`);
@@ -319,7 +320,7 @@ async function deactivateOldHospitals(professionalHospitals) {
 
 async function deactivateOldSpecialties(professionalSpecialties) {
   const names = professionalSpecialties.map(s => s.name);
-  const oldSpecialties = await Specialty.find({ name: { $nin: names }, isActive: { $ne: false } });
+  const oldSpecialties = await Specialty.find({ name: { $nin: names }, isActive: { $ne: false }, track: { $ne: 'basic' } });
   for (const specialty of oldSpecialties) {
     specialty.isActive = false;
     await saveDoc(specialty, `deactivate old specialty: ${specialty.name}`);
@@ -328,7 +329,7 @@ async function deactivateOldSpecialties(professionalSpecialties) {
 
 async function deactivateOldDistributions(professionalDistributions) {
   const ids = professionalDistributions.map(d => d._id);
-  const oldDistributions = await Distribution.find({ _id: { $nin: ids }, status: 'active' });
+  const oldDistributions = await Distribution.find({ _id: { $nin: ids }, status: 'active', track: { $ne: 'basic' } });
   for (const dist of oldDistributions) {
     dist.status = 'inactive';
     await saveDoc(dist, `inactivate old distribution: ${dist._id}`);
@@ -337,7 +338,7 @@ async function deactivateOldDistributions(professionalDistributions) {
 
 async function cancelOldRotations(professionalRotations) {
   const ids = professionalRotations.map(r => r._id);
-  const oldRotations = await Rotation.find({ _id: { $nin: ids }, status: { $ne: 'cancelled' } });
+  const oldRotations = await Rotation.find({ _id: { $nin: ids }, status: { $ne: 'cancelled' }, track: { $ne: 'basic' } });
   for (const rotation of oldRotations) {
     rotation.status = 'cancelled';
     await saveDoc(rotation, `cancel old rotation: ${rotation._id}`);

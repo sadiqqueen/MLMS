@@ -20,6 +20,12 @@ const ROLE_BADGE = {
   asg1:             'badge-role badge-super_admin',
   asg2:             'badge-role badge-super_admin',
   super_admin:      'badge-role badge-super_admin',
+  b_trainee:          'badge-role badge-student',
+  b_supervisor:       'badge-role badge-doctor',
+  b_program_director: 'badge-role badge-professor',
+  b_secretary:        'badge-role badge-admin',
+  b_dio:              'badge-role badge-super_admin',
+  b_president:        'badge-role badge-super_admin',
 };
 
 const ROLE_FIELDS = {
@@ -41,6 +47,7 @@ function showField(role, field) {
 const ROLE_DISPLAY = { asg1: 'ASG.1', asg2: 'ASG.2' };
 
 function roleLabel(r) {
+  if (typeof r === 'string' && r.startsWith('b_')) return 'Basic ' + roleLabel(r.slice(2));
   return ROLE_DISPLAY[r] || r.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
@@ -406,6 +413,7 @@ export default function Users() {
   const { user: me } = useAuth();
 
   const [roleFilter,  setRoleFilter ] = useState('all');
+  const [trackFilter, setTrackFilter] = useState('all');
   const [users,       setUsers      ] = useState([]);
   const [hospitals,   setHospitals  ] = useState([]);
   const [supervisors, setSupervisors] = useState([]);
@@ -448,6 +456,8 @@ export default function Users() {
 
   const displayed = users
     .filter(u => roleFilter === 'all' || u.role === roleFilter)
+    // Track filter: basic → basic only; advanced → not-basic (incl. legacy); all → both.
+    .filter(u => trackFilter === 'all' || (trackFilter === 'basic' ? u.track === 'basic' : u.track !== 'basic'))
     .filter(u => {
       const q = search.toLowerCase();
       return !q || u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.city?.toLowerCase().includes(q);
@@ -603,6 +613,11 @@ export default function Users() {
             />
             <button className="btn-purple" onClick={() => { setEditUser(null); setShowModal(true); }}>+ Add New User</button>
             <ViewToggle value={view} onChange={setView} listValue="table" />
+            <select className="rows-select" value={trackFilter} onChange={e => { setTrackFilter(e.target.value); setPage(1); }} title="Filter by training track">
+              <option value="all">All tracks</option>
+              <option value="advanced">Advanced</option>
+              <option value="basic">Basic</option>
+            </select>
             <select className="rows-select" value={rows} onChange={e => { setRows(+e.target.value); setPage(1); }}>
               {ROWS_OPT.map(r => <option key={r} value={r}>{r} / page</option>)}
             </select>
@@ -615,12 +630,12 @@ export default function Users() {
                 <thead>
                   <tr>
                     <th>#</th><th>Name</th><th>Email</th><th>Photo</th>
-                    <th>Role</th><th>Phone</th><th>Status</th><th>Actions</th>
+                    <th>Role</th><th>Track</th><th>Phone</th><th>Status</th><th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {currentItems.length === 0 && (
-                    <tr><td colSpan={8} className="admin-empty">No users found</td></tr>
+                    <tr><td colSpan={9} className="admin-empty">No users found</td></tr>
                   )}
                   {currentItems.map((u, i) => {
                     const active = u.isActive !== false;
@@ -634,6 +649,13 @@ export default function Users() {
                       <td>
                         <span className={ROLE_BADGE[u.role] || 'badge-role'}>
                           {u.role ? roleLabel(u.role) : ''}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
+                          background: u.track === 'basic' ? 'rgba(254,154,22,0.16)' : 'rgba(12,68,124,0.10)',
+                          color:      u.track === 'basic' ? '#b45309' : '#0c447c' }}>
+                          {u.track === 'basic' ? 'Basic' : 'Advanced'}
                         </span>
                       </td>
                       <td>{u.phone || '—'}</td>

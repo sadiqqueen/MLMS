@@ -18,7 +18,10 @@ const specialtySchema = new mongoose.Schema(
     evaluationPdf3:   { type: String, default: '' },
     evaluationPdf4:   { type: String, default: '' },
     evaluationPdf5:   { type: String, default: '' },
-    isActive:         { type: Boolean, default: true }
+    isActive:         { type: Boolean, default: true },
+
+    // Training portal this specialty belongs to (default 'advanced' incl. legacy).
+    track:            { type: String, enum: ['basic', 'advanced'], default: 'advanced', index: true }
   },
   { timestamps: true }
 );

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import useBasePath from '../hooks/useBasePath';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
 import SearchableSelect from '../components/SearchableSelect';
@@ -216,6 +217,7 @@ function TraineeModal({ trainee, hospitals, specialties, onClose, onSaved }) {
 // ── Main Page ─────────────────────────────────────────────────────────────
 export default function DioTrainees() {
   const navigate = useNavigate();
+  const bp = useBasePath();
 
   const [trainees,      setTrainees     ] = useState([]);
   const [hospitals,     setHospitals    ] = useState([]);
@@ -385,7 +387,7 @@ export default function DioTrainees() {
                       <td style={{ color:'#8B8FA8' }}>{i+1}</td>
                       <td>
                         <div style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer' }}
-                          onClick={() => navigate(`/dio/trainees/${t._id}`)}>
+                          onClick={() => navigate(bp + `/dio/trainees/${t._id}`)}>
                           {t.photoUrl
                             ? <img src={`${API_BASE}${t.photoUrl}`} alt="" className="cell-photo" />
                             : <div className="cell-initials">{t.initials || t.name?.[0] || '?'}</div>
@@ -414,7 +416,7 @@ export default function DioTrainees() {
                         <div className="action-btns">
                           <button className="btn-action view"
                             title="View details" aria-label={`View details for ${t.name}`}
-                            onClick={() => navigate(`/dio/trainees/${t._id}`)}>
+                            onClick={() => navigate(bp + `/dio/trainees/${t._id}`)}>
                             <IconEye />
                           </button>
                           <button className="btn-action edit"
@@ -465,7 +467,7 @@ export default function DioTrainees() {
                     </div>
                     <div className="management-card-sub">{getHospital(t)} - {t.studentId || 'No ID'}</div>
                     <div className="management-card-actions">
-                      <button className="btn-action view" title="View details" aria-label={`View details for ${t.name}`} onClick={() => navigate(`/dio/trainees/${t._id}`)}><IconEye /></button>
+                      <button className="btn-action view" title="View details" aria-label={`View details for ${t.name}`} onClick={() => navigate(bp + `/dio/trainees/${t._id}`)}><IconEye /></button>
                       <button className="btn-action edit" title="Edit" aria-label={`Edit ${t.name}`} onClick={() => openEdit(t)}><IconPencil /></button>
                       {active && <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${t.name}`} onClick={() => setConfirmDeact(t)}><IconBan /></button>}
                     </div>
