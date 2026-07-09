@@ -1,4 +1,5 @@
 // backend/routes/supervisor.js
+const mongoose       = require('mongoose');
 const router         = require('express').Router();
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
@@ -359,6 +360,14 @@ router.post('/evaluations',
         });
       }
 
+      // The distributions list synthesizes a `direct-<traineeId>` id for
+      // trainees assigned without a real Distribution doc. Only persist a
+      // distributionId when it's an actual ObjectId; otherwise store null.
+      const safeDistributionId =
+        distributionId && mongoose.Types.ObjectId.isValid(distributionId)
+          ? distributionId
+          : null;
+
       // Calculate totalScore from scores object
       let totalScore = null;
       if (scores && typeof scores === 'object') {
@@ -371,7 +380,7 @@ router.post('/evaluations',
         traineeId:      targetTrainee,
         doctor:         req.user._id,
         supervisorId:   req.user._id,
-        distributionId: distributionId || null,
+        distributionId: safeDistributionId,
         hospital:       hospitalId     || null,
         specialty:      specialty      || '',
         evaluationType: evaluationType || '',
