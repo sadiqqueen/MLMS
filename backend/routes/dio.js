@@ -1035,11 +1035,16 @@ router.get('/hospitals/:id', auth, allowRoles(...DIO, 'super_admin'), async (req
 
     const specMap = new Map();
     const addSpec = (id, name, secretary) => {
-      const k = id ? id.toString() : (name ? `name:${String(name).toLowerCase()}` : null);
+      const nm = String(name || '').trim();
+      const k = nm ? nm.toLowerCase() : (id ? id.toString() : null); // dedup by name
       if (!k) return;
       const cur = specMap.get(k);
-      if (cur) { if (!cur.secretary && secretary) cur.secretary = secretary; }
-      else specMap.set(k, { _id: id || null, name: name || '—', secretary: secretary || null });
+      if (cur) {
+        if (!cur.secretary && secretary) cur.secretary = secretary;
+        if (!cur._id && id) cur._id = id;
+      } else {
+        specMap.set(k, { _id: id || null, name: nm || '—', secretary: secretary || null });
+      }
     };
     specialties.forEach(sp => addSpec(sp._id, sp.name, sp.secretaryId ? { _id: sp.secretaryId._id, name: sp.secretaryId.name } : null));
     secretaries.forEach(sec => { if (sec.specialtyId) addSpec(sec.specialtyId._id, sec.specialtyId.name, { _id: sec._id, name: sec.name }); });
@@ -1098,11 +1103,16 @@ router.get('/hospitals-overview', auth, allowRoles(...DIO, 'super_admin'), async
       // Union of every specialty this hospital touches, each with its secretary.
       const specMap = new Map();
       const addSpec = (id, name, secretary) => {
-        const k = id ? id.toString() : (name ? `name:${name.toLowerCase()}` : null);
+        const nm = String(name || '').trim();
+        const k = nm ? nm.toLowerCase() : (id ? id.toString() : null); // dedup by name
         if (!k) return;
         const cur = specMap.get(k);
-        if (cur) { if (!cur.secretary && secretary) cur.secretary = secretary; }
-        else specMap.set(k, { _id: id || null, name: name || '—', secretary: secretary || null });
+        if (cur) {
+          if (!cur.secretary && secretary) cur.secretary = secretary;
+          if (!cur._id && id) cur._id = id;
+        } else {
+          specMap.set(k, { _id: id || null, name: nm || '—', secretary: secretary || null });
+        }
       };
       hSpecDocs.forEach(sp => addSpec(sp._id, sp.name, sp.secretaryId ? { _id: sp.secretaryId._id, name: sp.secretaryId.name } : null));
       hSec.forEach(sec => { if (sec.specialtyId) addSpec(sec.specialtyId._id, sec.specialtyId.name, { _id: sec._id, name: sec.name }); });

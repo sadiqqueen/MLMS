@@ -180,10 +180,18 @@ export function StaffModal({ role, hospital, specialties, onClose, onSaved }) {
     finally { setSaving(false); }
   }
 
-  // Offer only this hospital's own specialties (keeps the pick in-track).
-  const specOptions = specialties
+  // Offer only this hospital's own specialties (keeps the pick in-track),
+  // de-duplicated by name so repeated specialty records show once.
+  const specOptions = [];
+  const seenSpec = new Set();
+  specialties
     .filter(sp => idOf(sp.hospitalId) === hospital._id.toString())
-    .map(sp => ({ value: sp._id, label: sp.name }));
+    .forEach(sp => {
+      const key = String(sp.name || '').trim().toLowerCase();
+      if (!key || seenSpec.has(key)) return;
+      seenSpec.add(key);
+      specOptions.push({ value: sp._id, label: sp.name });
+    });
 
   return (
     <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
