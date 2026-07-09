@@ -2,7 +2,7 @@
 const router         = require('express').Router();
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
-const { coerceRoleToTrack } = require('../utils/track');
+const { coerceRoleToTrack, trackFilter } = require('../utils/track');
 const auditLog       = require('../middleware/auditLogger');
 const User           = require('../models/User');
 const Hospital       = require('../models/Hospital');
@@ -43,7 +43,7 @@ async function getSecretaryHospitalIds(req) {
     const spec = await Specialty.findById(req.user.specialtyId).select('name hospitalId');
     if (spec && spec.hospitalId) ids.add(spec.hospitalId.toString());
     if (spec && spec.name) {
-      const matches = await Hospital.find({ specialties: spec.name }).select('_id');
+      const matches = await Hospital.find({ specialties: spec.name, ...trackFilter(req.track) }).select('_id');
       matches.forEach(h => ids.add(h._id.toString()));
     }
   }
@@ -121,7 +121,7 @@ router.get('/trainees', auth, allowRoles(...SECRETARY), async (req, res) => {
     if (!specialtyId) return;
 
     const trainees = await User.find({
-      role: 'trainee',
+      role: coerceRoleToTrack('trainee', req.track),
       specialtyId,
       isActive: { $ne: false }
     })
@@ -205,7 +205,7 @@ router.get('/supervisors', auth, allowRoles(...SECRETARY), async (req, res) => {
     if (!specialtyId) return;
 
     const supervisors = await User.find({
-      role: 'supervisor',
+      role: coerceRoleToTrack('supervisor', req.track),
       specialtyId,
       isActive: { $ne: false }
     })
@@ -285,7 +285,7 @@ router.get('/program-directors', auth, allowRoles(...SECRETARY), async (req, res
     const ids = await getSecretaryHospitalIds(req);
 
     const query = {
-      role: 'program_director',
+      role: coerceRoleToTrack('program_director', req.track),
       isActive: { $ne: false }
     };
     if (ids.length) query.$or = [{ hospitalId: { $in: ids } }, { hospital: { $in: ids } }];
@@ -426,7 +426,7 @@ router.post('/distributions',
 
       const trainee = await User.findOne({
         _id: traineeId,
-        role: 'trainee',
+        role: coerceRoleToTrack('trainee', req.track),
         ...getSecretaryQuery(req),
         isActive: { $ne: false }
       });
@@ -436,7 +436,7 @@ router.post('/distributions',
 
       const supervisor = await User.findOne({
         _id: supervisorId,
-        role: 'supervisor',
+        role: coerceRoleToTrack('supervisor', req.track),
         ...getSecretaryQuery(req),
         isActive: { $ne: false }
       });
@@ -498,7 +498,7 @@ router.patch('/distributions/:id',
       if (updates.supervisorId) {
         const supervisor = await User.findOne({
           _id: updates.supervisorId,
-          role: 'supervisor',
+          role: coerceRoleToTrack('supervisor', req.track),
           ...getSecretaryQuery(req),
           isActive: { $ne: false }
         });
