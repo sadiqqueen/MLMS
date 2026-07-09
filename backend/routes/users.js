@@ -66,14 +66,44 @@ const ROLE_RANK = {
 // ASG accounts are visible to super_admin only.
 const HIDDEN_FROM_NON_ADMIN = ['asg1', 'asg2'];
 
+// The only roles a DIO oversees. A DIO must never see (or manage) presidents,
+// other DIOs, super_admins or ASG accounts via the generic /api/users reads —
+// those broad, cross-hospital reads are otherwise unscoped. Includes the Basic
+// (b_*) mirrors so a Basic DIO sees its own track's staff.
+const DIO_MANAGED_ROLES = [
+  'trainee', 'supervisor', 'program_director', 'secretary',
+  'b_trainee', 'b_supervisor', 'b_program_director', 'b_secretary',
+];
+
+// Mongo fragment limiting results to the caller's own hospital, or null when the
+// caller has no hospital assigned (caller should then return an empty list
+// rather than leak everyone).
+function callerHospitalFilter(req) {
+  const hospitalId = req.user.hospitalId || req.user.hospital;
+  if (!hospitalId) return null;
+  return { $or: [{ hospitalId }, { hospital: hospitalId }] };
+}
+
 function hasHigherRole(actorRole, targetRole) {
   return (ROLE_RANK[actorRole] || 0) > (ROLE_RANK[targetRole] || 0);
 }
 
-// GET /api/users — all users (ASG accounts only appear for super_admin)
+// GET /api/users — all users (ASG accounts only appear for super_admin).
+// A DIO is hospital-scoped and only ever sees the roles it oversees — never
+// presidents, other DIOs, super_admins or ASG accounts, and never other
+// hospitals. Other staff keep their existing (non-ASG) visibility.
 router.get('/', auth, allowRoles(...READ_STAFF), async (req, res) => {
   try {
-    const filter = req.user.role === 'super_admin' ? {} : { role: { $nin: HIDDEN_FROM_NON_ADMIN } };
+    let filter;
+    if (req.user.role === 'super_admin') {
+      filter = {};
+    } else if (req.user.role === 'dio') {
+      const hosp = callerHospitalFilter(req);
+      if (!hosp) return res.json([]);
+      filter = { role: { $in: DIO_MANAGED_ROLES }, ...hosp };
+    } else {
+      filter = { role: { $nin: HIDDEN_FROM_NON_ADMIN } };
+    }
     const users = await User.find(filter)
       .select('-password')
       .populate('hospital', 'name city')
@@ -89,10 +119,13 @@ router.get('/', auth, allowRoles(...READ_STAFF), async (req, res) => {
 // GET /api/users/supervisors — for dropdowns
 router.get('/supervisors', auth, allowRoles('super_admin', 'secretary', 'dio', 'president'), async (req, res) => {
   try {
-    const supervisors = await User.find({
-      role: { $in: ['supervisor', 'b_supervisor'] },
-      isActive: { $ne: false }
-    })
+    const filter = { role: { $in: ['supervisor', 'b_supervisor'] }, isActive: { $ne: false } };
+    if (req.user.role === 'dio') {
+      const hosp = callerHospitalFilter(req);
+      if (!hosp) return res.json({ success: true, data: [] });
+      Object.assign(filter, hosp);
+    }
+    const supervisors = await User.find(filter)
       .select('name email specialty specialtyId hospitalId department initials photoUrl track')
       .populate('specialtyId', 'name')
       .populate('hospitalId', 'name')
@@ -106,10 +139,13 @@ router.get('/supervisors', auth, allowRoles('super_admin', 'secretary', 'dio', '
 // GET /api/users/program-directors — for dropdowns
 router.get('/program-directors', auth, allowRoles('super_admin', 'secretary', 'dio', 'president'), async (req, res) => {
   try {
-    const pds = await User.find({
-      role: 'program_director',
-      isActive: { $ne: false }
-    })
+    const filter = { role: 'program_director', isActive: { $ne: false } };
+    if (req.user.role === 'dio') {
+      const hosp = callerHospitalFilter(req);
+      if (!hosp) return res.json({ success: true, data: [] });
+      Object.assign(filter, hosp);
+    }
+    const pds = await User.find(filter)
       .select('name email specialtyId hospitalId department initials photoUrl')
       .populate('specialtyId', 'name')
       .populate('hospitalId', 'name')
@@ -123,10 +159,13 @@ router.get('/program-directors', auth, allowRoles('super_admin', 'secretary', 'd
 // GET /api/users/students — kept for backward compat (returns trainees)
 router.get('/students', auth, allowRoles('supervisor', 'program_director', 'secretary', 'dio', 'super_admin', 'president'), async (req, res) => {
   try {
-    const students = await User.find({
-      role: 'trainee',
-      isActive: { $ne: false }
-    })
+    const filter = { role: 'trainee', isActive: { $ne: false } };
+    if (req.user.role === 'dio') {
+      const hosp = callerHospitalFilter(req);
+      if (!hosp) return res.json({ success: true, data: [] });
+      Object.assign(filter, hosp);
+    }
+    const students = await User.find(filter)
       .select('name email studentId specialty specialtyId hospitalId supervisorId initials photoUrl year')
       .populate('specialtyId', 'name')
       .populate('hospitalId', 'name')
@@ -149,6 +188,18 @@ router.get('/:id', auth, async (req, res) => {
     if (!isSelf && req.user.role !== 'super_admin') {
       const target = await User.findById(req.params.id).select('role');
       if (target && HIDDEN_FROM_NON_ADMIN.includes(target.role)) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+    }
+
+    // A DIO may only view (non-self) users it oversees, within its own hospital.
+    if (!isSelf && req.user.role === 'dio') {
+      const target = await User.findById(req.params.id).select('role hospitalId hospital');
+      const hospitalId = req.user.hospitalId || req.user.hospital;
+      const managed = target && DIO_MANAGED_ROLES.includes(target.role);
+      const sameHospital = target && hospitalId &&
+        [target.hospitalId, target.hospital].some(h => h && h.toString() === hospitalId.toString());
+      if (!managed || !sameHospital) {
         return res.status(404).json({ success: false, message: 'User not found' });
       }
     }
