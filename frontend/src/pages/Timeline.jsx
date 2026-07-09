@@ -170,7 +170,7 @@ export default function Timeline() {
             <span className="progress-count">{completed} of {total} completed</span>
           </div>
           <div className="progress-track">
-            <div className="progress-fill" style={{ width:`${pct}%`, transition:'width 0.8s ease' }} />
+            <div className="progress-fill" style={{ transform:`scaleX(${Math.max(0, Math.min(1, pct / 100))})` }} />
           </div>
           <div className="progress-pct">{pct}% complete</div>
         </div>

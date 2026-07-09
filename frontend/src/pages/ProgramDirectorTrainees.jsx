@@ -268,7 +268,8 @@ export default function ProgramDirectorTrainees() {
                 background:'#fff', border:'1px solid #E8E9EF', borderRadius:12,
                 padding:'14px 16px', display:'flex', alignItems:'center', gap:12,
                 cursor:'pointer',
-                boxShadow: specFilter === s ? '0 0 0 2px #1B1464' : 'none'
+                boxShadow: specFilter === s ? '0 0 0 2px #1B1464' : 'none',
+                transition:'box-shadow .15s ease'
               }}
               onClick={() => setSpecFilter(specFilter === s ? 'All' : s)}
             >
@@ -278,7 +279,7 @@ export default function ProgramDirectorTrainees() {
                 display:'flex', alignItems:'center', justifyContent:'center',
                 fontSize:20, fontWeight:700,
                 color: specFilter === s ? '#fff' : '#1B1464',
-                flexShrink:0, transition:'all .15s'
+                flexShrink:0, transition:'background-color .15s ease, color .15s ease'
               }}>
                 {specCounts[s] || 0}
               </div>

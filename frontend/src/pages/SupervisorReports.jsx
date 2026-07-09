@@ -187,7 +187,7 @@ function GradeBubbles({ selected, onChange, disabled }) {
               color: active ? '#fff' : 'var(--text-2)',
               fontSize:12, fontWeight:700,
               cursor: disabled ? 'default' : 'pointer',
-              transition:'all 0.12s', flexShrink:0,
+              transition:'background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease', flexShrink:0,
               opacity: disabled && !active ? 0.5 : 1,
             }}
           >{g}</button>
@@ -363,7 +363,7 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
                           border: sel ? `2px solid ${r.color}` : '1.5px solid var(--border)',
                           background: sel ? r.color : 'var(--surface)',
                           cursor: isGraded ? 'default' : 'pointer',
-                          transition:'all 0.12s',
+                          transition:'background-color 0.12s ease, border-color 0.12s ease',
                           opacity: isGraded && !sel ? 0.5 : 1,
                         }}
                       />
@@ -394,7 +394,7 @@ function AssessmentModal({ report, supervisor, onClose, onSaved }) {
                       color: active ? color : 'var(--text-2)',
                       fontWeight:700, fontSize:14,
                       cursor: isGraded ? 'default' : 'pointer',
-                      transition:'all .15s'
+                      transition:'background-color .15s ease, border-color .15s ease, color .15s ease'
                     }}
                   >
                     {val === 'competent' ? t('competent') : t('notCompetent')}

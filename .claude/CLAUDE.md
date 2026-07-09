@@ -9,6 +9,7 @@ This project splits coding work by model. Follow it on every task:
 - **Frontend / UI / React / CSS / responsiveness / accessibility / forms / dashboards / UX → Claude Code + Fable 5.**
 - **Backend / Express routes / Mongoose / JWT / permissions / API security / deployment backend / server errors / production hardening → Codex + GPT-5.5.**
 - **Full-stack → split:** frontend part to Claude Code + Fable 5, backend/security/database part to Codex + GPT-5.5, then compare both outputs against one API contract before applying.
+- **Animation / motion / transitions / easing / hover & press feedback / `prefers-reduced-motion` → always apply the `web-animation-design` skill.** Any task that adds or changes CSS transitions, `@keyframes`, transforms, or motion timing must follow that skill's rules (easing by motion type, UI motion < 300ms, animate `transform`/`opacity` not layout props, paired elements share easing+duration, reduced-motion path, touch-safe hover).
 
 The Coworker is the coordinator: understand → inspect → route → review/merge → test → report. Full procedure and the exact instruction blocks to hand each agent live in the `mtms-agent-routing` skill. Supporting skills: `mtms-codebase-navigator`, `mtms-security-auditor`, `mtms-backend-debugger`, `mtms-frontend-debugger`, `mtms-deployment-vps-railway`, `mtms-testing-checklist`, `mtms-codex-claude-workflow`.
 

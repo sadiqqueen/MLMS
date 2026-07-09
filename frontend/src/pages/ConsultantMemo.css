@@ -846,10 +846,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  animation: cmx-toggle-flip 0.35s ease;
+  animation: cmx-toggle-flip 0.16s ease-out;
 }
 @keyframes cmx-toggle-flip {
-  from { transform: rotateX(-90deg); opacity: 0; }
+  from { transform: rotateX(-35deg); opacity: 0; }
   to   { transform: rotateX(0deg); opacity: 1; }
 }
 
@@ -1103,8 +1103,10 @@
   z-index: 3;
   pointer-events: none;
 }
-.cmx-nav .cmx-btn:hover { transform: scale(1.06); }
-.cmx-nav .cmx-btn:hover::after { transform: scaleX(1); }
+@media (hover: hover) and (pointer: fine) {
+  .cmx-nav .cmx-btn:hover { transform: scale(1.06); }
+  .cmx-nav .cmx-btn:hover::after { transform: scaleX(1); }
+}
 
 @media (max-width: 640px) {
   .cmx-nav-center .cmx-btn { width: auto; min-width: 132px; }

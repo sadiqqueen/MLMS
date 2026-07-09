@@ -91,7 +91,7 @@ export default function SearchableSelect({
       <span style={{
         position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
         pointerEvents: 'none', color: '#8B8FA8', fontSize: 10,
-        transition: 'transform 0.15s',
+        transition: 'transform 0.15s ease-in-out',
         display: 'inline-block',
         ...(open ? { transform: 'translateY(-50%) rotate(180deg)' } : {}),
       }}>v</span>

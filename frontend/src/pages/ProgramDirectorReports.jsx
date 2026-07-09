@@ -238,7 +238,7 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
                           border: sel ? `2px solid ${r.color}` : '1.5px solid #D1D5DB',
                           background: sel ? r.color : '#fff',
                           cursor: isGraded ? 'default' : 'pointer',
-                          transition:'all .12s',
+                          transition:'background-color .12s ease, border-color .12s ease',
                           opacity: isGraded && !sel ? 0.5 : 1
                         }}
                       />
@@ -270,7 +270,7 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
                       color: active ? color : '#4B5563',
                       fontWeight:700, fontSize:14,
                       cursor: isGraded ? 'default' : 'pointer',
-                      transition:'all .15s'
+                      transition:'background-color .15s ease, border-color .15s ease, color .15s ease'
                     }}
                   >
                     {val === 'competent' ? '✓ Competent' : '✗ Not-Competent'}
@@ -298,7 +298,7 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
                         border: active ? '2px solid #185FA5' : '1.5px solid #D1D5DB',
                         background: active ? '#185FA5' : 'white',
                         color: active ? 'white' : '#444',
-                        fontSize:12, fontWeight:700, cursor:'pointer', transition:'all .12s'
+                        fontSize:12, fontWeight:700, cursor:'pointer', transition:'background-color .12s ease, border-color .12s ease, color .12s ease'
                       }}
                     >{g}</button>
                   );

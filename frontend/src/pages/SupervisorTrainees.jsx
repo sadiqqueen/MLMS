@@ -205,7 +205,7 @@ function TraineeModal({ dist, onClose, t }) {
       style={{
         position: 'fixed', inset: 0, background: 'var(--overlay)',
         zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 20
+        padding: 20, animation: 'fadeIn 0.22s ease-out'
       }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
@@ -213,7 +213,7 @@ function TraineeModal({ dist, onClose, t }) {
         background: 'var(--surface)', borderRadius: 16, width: '100%', maxWidth: 480,
         maxHeight: '90vh', overflowY: 'auto',
         boxShadow: '0 20px 60px var(--shadow)',
-        animation: 'modalIn 0.22s ease'
+        animation: 'modalIn 0.22s ease-out'
       }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 16,

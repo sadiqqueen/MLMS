@@ -124,6 +124,7 @@ export default function AdminSpecialties() {
         </div>
 
         <button
+          className="pdf-upload-btn"
           style={{
             padding: '7px 14px', borderRadius: 7,
             background: hasPdf ? '#EEEDFE' : '#FF6B35',
@@ -131,7 +132,7 @@ export default function AdminSpecialties() {
             border: 'none', fontWeight: 600, fontSize: 12,
             cursor: isLoading ? 'default' : 'pointer',
             opacity: isLoading ? 0.7 : 1,
-            transition: 'all .15s'
+            transition: 'background-color .15s ease, color .15s ease, opacity .15s ease, transform .1s ease'
           }}
           onClick={() => triggerUpload(specialty._id, key)}
           disabled={isLoading}
