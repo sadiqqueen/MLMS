@@ -5,6 +5,8 @@
 // specialty with its secretary. The DIO can add/edit hospitals, add specialties
 // to a hospital, and add supervisors / program directors to it.
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import useBasePath from '../hooks/useBasePath';
 import Navbar from '../components/Navbar';
 import Toast from '../components/Toast';
 import SearchableSelect from '../components/SearchableSelect';
@@ -15,7 +17,7 @@ import { IconPencil, IconPlus } from '../components/icons';
 function idOf(v) { return (v?._id || v || '').toString(); }
 
 // ── Add / Edit hospital ────────────────────────────────────────────────────
-function HospitalModal({ hospital, onClose, onSaved }) {
+export function HospitalModal({ hospital, onClose, onSaved }) {
   const isEdit = !!hospital?._id;
   const [form, setForm] = useState({
     name: hospital?.name || '', city: hospital?.city || '',
@@ -84,7 +86,7 @@ function HospitalModal({ hospital, onClose, onSaved }) {
 }
 
 // ── Add specialty to a hospital ────────────────────────────────────────────
-function SpecialtyModal({ hospital, onClose, onSaved }) {
+export function SpecialtyModal({ hospital, onClose, onSaved }) {
   const [name, setName] = useState('');
   const [err, setErr] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -134,7 +136,7 @@ function SpecialtyModal({ hospital, onClose, onSaved }) {
 }
 
 // ── Add supervisor / program director to a hospital ────────────────────────
-function StaffModal({ role, hospital, specialties, onClose, onSaved }) {
+export function StaffModal({ role, hospital, specialties, onClose, onSaved }) {
   const isSup = role === 'supervisor';
   const label = isSup ? 'Supervisor' : 'Program Director';
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', department: '', specialtyId: '' });
@@ -249,14 +251,14 @@ function Section({ title, count, children }) {
 }
 function Muted({ children }) { return <div style={{ fontSize: 13, color: '#B8BBC8' }}>{children}</div>; }
 
-function HospitalCard({ h, onAction }) {
+function HospitalCard({ h, onAction, onOpen }) {
   const location = [h.city, h.governorate].filter(Boolean).join(' · ') || '—';
   return (
     <div className="admin-card" style={{ padding: 0, display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border, #E8E9EF)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, cursor: 'pointer' }} onClick={onOpen} title="Open hospital page" role="link">
           <div style={{ fontSize: 16, fontWeight: 800, color: '#1B1464' }}>🏥 {h.name}</div>
-          <div style={{ fontSize: 12, color: '#8B8FA8', marginTop: 2 }}>{location}</div>
+          <div style={{ fontSize: 12, color: '#8B8FA8', marginTop: 2 }}>{location} · <span style={{ color: '#185FA5', fontWeight: 600 }}>View page →</span></div>
         </div>
         <button className="btn-action edit" title="Edit hospital" aria-label={`Edit ${h.name}`} onClick={() => onAction('hospital', h)}>
           <IconPencil />
@@ -314,6 +316,8 @@ function HospitalCard({ h, onAction }) {
 }
 
 export default function DioHospitals() {
+  const navigate = useNavigate();
+  const bp = useBasePath();
   const [hospitals, setHospitals] = useState([]);
   const [specialties, setSpecialties] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -397,7 +401,7 @@ export default function DioHospitals() {
 
         <div key={search} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16, animation: 'fadeIn .18s ease-out' }}>
           {filtered.map(h => (
-            <HospitalCard key={h._id} h={h} onAction={handleAction} />
+            <HospitalCard key={h._id} h={h} onAction={handleAction} onOpen={() => navigate(bp + `/dio/hospitals/${h._id}`)} />
           ))}
         </div>
 

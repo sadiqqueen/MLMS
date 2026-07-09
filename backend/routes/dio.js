@@ -1005,6 +1005,65 @@ router.get('/presidents', auth, allowRoles(...DIO, 'super_admin'), async (req, r
   }
 });
 
+// GET /api/dio/hospitals/:id
+// Full detail for one hospital in the DIO's track: program director(s),
+// specialties (each with secretary), supervisors, secretaries and trainees.
+router.get('/hospitals/:id', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+  try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid hospital id' });
+    }
+    const hospital = await Hospital.findById(req.params.id);
+    if (!hospital || (req.user.role === 'dio' && (hospital.track || 'advanced') !== req.track)) {
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
+    }
+    const inHospital = { $or: [{ hospitalId: hospital._id }, { hospital: hospital._id }], isActive: { $ne: false } };
+
+    const [supervisors, pds, secretaries, trainees, specialties] = await Promise.all([
+      User.find({ role: coerceRoleToTrack('supervisor', req.track), ...inHospital })
+        .select('name email phone specialtyId hospitalId hospital initials photoUrl').populate('specialtyId', 'name'),
+      User.find({ role: coerceRoleToTrack('program_director', req.track), ...inHospital })
+        .select('name email phone department hospitalId hospital initials photoUrl'),
+      User.find({ role: coerceRoleToTrack('secretary', req.track), ...inHospital })
+        .select('name email phone specialtyId hospitalId hospital initials photoUrl').populate('specialtyId', 'name'),
+      User.find({ role: coerceRoleToTrack('trainee', req.track), ...inHospital })
+        .select('name email studentId year specialtyId supervisorId hospitalId hospital initials photoUrl')
+        .populate('specialtyId', 'name').populate('supervisorId', 'name').sort({ name: 1 }),
+      Specialty.find({ ...trackFilter(req.track), isActive: { $ne: false }, hospitalId: hospital._id })
+        .select('name hospitalId secretaryId').populate('secretaryId', 'name'),
+    ]);
+
+    const specMap = new Map();
+    const addSpec = (id, name, secretary) => {
+      const k = id ? id.toString() : (name ? `name:${String(name).toLowerCase()}` : null);
+      if (!k) return;
+      const cur = specMap.get(k);
+      if (cur) { if (!cur.secretary && secretary) cur.secretary = secretary; }
+      else specMap.set(k, { _id: id || null, name: name || '—', secretary: secretary || null });
+    };
+    specialties.forEach(sp => addSpec(sp._id, sp.name, sp.secretaryId ? { _id: sp.secretaryId._id, name: sp.secretaryId.name } : null));
+    secretaries.forEach(sec => { if (sec.specialtyId) addSpec(sec.specialtyId._id, sec.specialtyId.name, { _id: sec._id, name: sec.name }); });
+    supervisors.forEach(s => { if (s.specialtyId) addSpec(s.specialtyId._id, s.specialtyId.name, null); });
+    trainees.forEach(t => { if (t.specialtyId) addSpec(t.specialtyId._id, t.specialtyId.name, null); });
+    (hospital.specialties || []).forEach(name => addSpec(null, name, null));
+
+    res.json({
+      success: true,
+      data: {
+        _id: hospital._id, name: hospital.name, city: hospital.city, governorate: hospital.governorate,
+        address: hospital.address, phone: hospital.phone, email: hospital.email,
+        programDirectors: pds.map(p => ({ _id: p._id, name: p.name, email: p.email, phone: p.phone, department: p.department || '' })),
+        supervisors: supervisors.map(s => ({ _id: s._id, name: s.name, email: s.email, phone: s.phone, specialty: s.specialtyId?.name || '' })),
+        secretaries: secretaries.map(s => ({ _id: s._id, name: s.name, email: s.email, specialty: s.specialtyId?.name || '' })),
+        trainees: trainees.map(t => ({ _id: t._id, name: t.name, studentId: t.studentId, year: t.year, specialty: t.specialtyId?.name || '', supervisor: t.supervisorId?.name || '' })),
+        specialties: [...specMap.values()].sort((a, b) => String(a.name).localeCompare(String(b.name))),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // GET /api/dio/hospitals-overview
 // Organisational view for the DIO: every hospital in its track with the
 // program director(s), supervisors, and specialties — each specialty carrying
