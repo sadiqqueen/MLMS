@@ -350,6 +350,36 @@ router.get('/hospitals', auth, allowRoles(...SECRETARY), async (req, res) => {
   }
 });
 
+// POST /api/secretary/hospitals — a secretary may create a hospital, tagged
+// with their own specialty so it falls within their specialty scope (and no
+// other). Track follows the acting secretary's portal.
+router.post('/hospitals',
+  auth,
+  allowRoles(...SECRETARY),
+  auditLog('create_hospital', 'Hospital'),
+  async (req, res) => {
+    try {
+      const specialtyId = requireSecretarySpecialty(req, res);
+      if (!specialtyId) return;
+      const spec = await Specialty.findById(specialtyId).select('name');
+      const specName = spec?.name || req.user.specialty || '';
+
+      const data = pick(req.body, HOSPITAL_UPDATE_FIELDS);
+      if (!data.name || !String(data.name).trim()) {
+        return res.status(400).json({ success: false, message: 'Hospital name is required' });
+      }
+      data.track = req.track;
+      // Scope tag: the secretary only ever adds hospitals for their specialty.
+      data.specialties = specName ? [specName] : [];
+
+      const hospital = await Hospital.create(data);
+      res.status(201).json({ success: true, data: hospital });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+);
+
 // PATCH /api/secretary/hospitals/:id
 router.patch('/hospitals/:id',
   auth,

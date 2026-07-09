@@ -22,6 +22,18 @@ function pick(body, allowed) {
   return data;
 }
 
+// A DIO may only modify specialties in its own training track; super_admin is
+// unrestricted. Returns false (and sends 404) when the caller is blocked.
+async function ensureSpecialtyInTrack(req, res, id) {
+  if (req.user.role === 'super_admin') return true;
+  const s = await Specialty.findById(id).select('track');
+  if (!s || (s.track || 'advanced') !== req.track) {
+    res.status(404).json({ message: 'Specialty not found' });
+    return false;
+  }
+  return true;
+}
+
 const uploadsDir = path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
@@ -45,6 +57,7 @@ const upload = multer({
 
 async function uploadSpecialtyPdf(req, res, field) {
   try {
+    if (!(await ensureSpecialtyInTrack(req, res, req.params.id))) return;
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
     const fileUrl = `/uploads/${req.file.filename}`;
     const specialty = await Specialty.findByIdAndUpdate(
@@ -102,7 +115,9 @@ router.post('/',
   auditLog('create_specialty', 'Specialty'),
   async (req, res) => {
     try {
-      const specialty = await Specialty.create(pick(req.body, SPECIALTY_FIELDS));
+      const data = pick(req.body, SPECIALTY_FIELDS);
+      data.track = req.track; // specialty belongs to the creator's training track
+      const specialty = await Specialty.create(data);
       res.status(201).json({ success: true, data: specialty });
     } catch (err) {
       if (err.name === 'ValidationError') {
@@ -120,6 +135,7 @@ router.patch('/:id',
   auditLog('update_specialty', 'Specialty'),
   async (req, res) => {
     try {
+      if (!(await ensureSpecialtyInTrack(req, res, req.params.id))) return;
       const specialty = await Specialty.findByIdAndUpdate(req.params.id, pick(req.body, SPECIALTY_FIELDS), { new: true, runValidators: true })
         .populate('hospitalId',  'name city')
         .populate('secretaryId', 'name email');

@@ -136,6 +136,7 @@ function PersonList({ title, icon, people, emptyText, meta, kind, onSelect }) {
 }
 
 function HospitalModal({ hospital, onSave, onClose, saving }) {
+  const isEdit = !!hospital._id;
   const [form, setForm] = useState({
     name:        hospital.name        || '',
     city:        hospital.city        || '',
@@ -168,7 +169,7 @@ function HospitalModal({ hospital, onSave, onClose, saving }) {
     <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="admin-modal">
         <div className="admin-modal-header">
-          <div className="admin-modal-title">Edit Hospital</div>
+          <div className="admin-modal-title">{isEdit ? 'Edit Hospital' : 'Add Hospital'}</div>
           <button className="admin-modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="admin-modal-body">
@@ -204,7 +205,7 @@ function HospitalModal({ hospital, onSave, onClose, saving }) {
         <div className="admin-modal-footer">
           <button className="btn-red" onClick={onClose}>Cancel</button>
           <button className="btn-purple" style={{ marginLeft: 0 }} onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save Changes'}
+            {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Hospital'}
           </button>
         </div>
       </div>
@@ -299,13 +300,20 @@ export default function SecretaryHospitals() {
   async function handleSave(form) {
     setSaving(true);
     try {
-      const res = await api.patch(`/api/secretary/hospitals/${editHospital._id}`, form);
-      const updated = res.data?.data || res.data;
-      setHospitals(prev => prev.map(h => h._id === editHospital._id ? { ...h, ...updated } : h));
-      showToast('Hospital info updated');
+      if (editHospital._id) {
+        const res = await api.patch(`/api/secretary/hospitals/${editHospital._id}`, form);
+        const updated = res.data?.data || res.data;
+        setHospitals(prev => prev.map(h => h._id === editHospital._id ? { ...h, ...updated } : h));
+        showToast('Hospital info updated');
+      } else {
+        const res = await api.post('/api/secretary/hospitals', form);
+        const created = res.data?.data || res.data;
+        setHospitals(prev => [created, ...prev]);
+        showToast('Hospital added');
+      }
       setEditHospital(null);
     } catch (err) {
-      showToast(err.response?.data?.message || 'Update failed', 'error');
+      showToast(err.response?.data?.message || 'Save failed', 'error');
     } finally {
       setSaving(false);
     }
@@ -333,23 +341,27 @@ export default function SecretaryHospitals() {
     </>
   );
 
-  if (hospitals.length === 0) return (
-    <>
-      <Navbar />
-      <main className="admin-main">
-        <div className="admin-card" style={{ textAlign: 'center', padding: '60px 40px', color: 'var(--text-muted)' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🏥</div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>No hospital assigned</div>
-          <div style={{ fontSize: 13 }}>Contact your DIO to assign a hospital to your account.</div>
-        </div>
-      </main>
-    </>
-  );
-
   return (
     <>
       <Navbar />
       <main className="admin-main">
+
+        <div className="admin-toolbar" style={{ marginBottom: 20, justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+            {hospitals.length} hospital{hospitals.length !== 1 ? 's' : ''} in your specialty
+          </span>
+          <button className="btn-purple" style={{ marginLeft: 0 }} onClick={() => setEditHospital({})}>
+            + Add Hospital
+          </button>
+        </div>
+
+        {hospitals.length === 0 && (
+          <div className="admin-card" style={{ textAlign: 'center', padding: '60px 40px', color: 'var(--text-muted)' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🏥</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>No hospitals yet</div>
+            <div style={{ fontSize: 13 }}>Add a hospital for your specialty with the button above.</div>
+          </div>
+        )}
 
         {hospitals.map(h => (
           <div key={h._id} className="admin-card" style={{ marginBottom: 20, padding: '28px 32px' }}>

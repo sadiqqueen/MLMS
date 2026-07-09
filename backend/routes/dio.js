@@ -220,6 +220,10 @@ async function validateUserReferences(role, data, res, req) {
       res.status(400).json({ success: false, message: 'Specialty not found or inactive' });
       return false;
     }
+    if (req.user.role === 'dio' && (specialty.track || 'advanced') !== req.track) {
+      res.status(400).json({ success: false, message: 'Specialty is in a different track' });
+      return false;
+    }
   }
 
   if (data.supervisorId) {
@@ -1044,6 +1048,7 @@ router.get('/hospitals-overview', auth, allowRoles(...DIO, 'super_admin'), async
       hSpecDocs.forEach(sp => addSpec(sp._id, sp.name, sp.secretaryId ? { _id: sp.secretaryId._id, name: sp.secretaryId.name } : null));
       hSec.forEach(sec => { if (sec.specialtyId) addSpec(sec.specialtyId._id, sec.specialtyId.name, { _id: sec._id, name: sec.name }); });
       hSup.forEach(s => { if (s.specialtyId) addSpec(s.specialtyId._id, s.specialtyId.name, null); });
+      (h.specialties || []).forEach(name => addSpec(null, name, null)); // hospital's own specialty names
 
       return {
         _id: h._id,
