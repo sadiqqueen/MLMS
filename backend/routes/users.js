@@ -6,7 +6,7 @@ const path           = require('path');
 const fs             = require('fs');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
-const { coerceRoleToTrack } = require('../utils/track');
+const { coerceRoleToTrack, trackForRole, baseRole } = require('../utils/track');
 const auditLog       = require('../middleware/auditLogger');
 
 // Ensure photos upload folder exists
@@ -66,26 +66,30 @@ const ROLE_RANK = {
 // ASG accounts are visible to super_admin only.
 const HIDDEN_FROM_NON_ADMIN = ['asg1', 'asg2'];
 
-// The only roles a DIO oversees. A DIO must never see (or manage) presidents,
-// other DIOs, super_admins or ASG accounts via the generic /api/users reads —
-// those broad, cross-hospital reads are otherwise unscoped. Includes the Basic
-// (b_*) mirrors so a Basic DIO sees its own track's staff.
-const DIO_MANAGED_ROLES = [
-  'trainee', 'supervisor', 'program_director', 'secretary',
-  'b_trainee', 'b_supervisor', 'b_program_director', 'b_secretary',
-];
-
-// Mongo fragment limiting results to the caller's own hospital, or null when the
-// caller has no hospital assigned (caller should then return an empty list
-// rather than leak everyone).
-function callerHospitalFilter(req) {
-  const hospitalId = req.user.hospitalId || req.user.hospital;
-  if (!hospitalId) return null;
-  return { $or: [{ hospitalId }, { hospital: hospitalId }] };
+// A DIO oversees its whole training track (Advanced for `dio`, Basic for
+// `b_dio`). On the generic /api/users reads it sees every user in that track —
+// trainees, supervisors, program directors, secretaries and the president
+// (view-only) — but never the other track, other DIOs, super_admins or ASG.
+function dioVisibleRoles(req) {
+  return ['trainee', 'supervisor', 'program_director', 'secretary', 'president']
+    .map(r => coerceRoleToTrack(r, req.track));
 }
 
+// Compare by BASE role so Basic-track targets aren't treated as rank 0 (which
+// would let any write-staff out-rank e.g. b_president / b_dio).
 function hasHigherRole(actorRole, targetRole) {
-  return (ROLE_RANK[actorRole] || 0) > (ROLE_RANK[targetRole] || 0);
+  return (ROLE_RANK[baseRole(actorRole)] || 0) > (ROLE_RANK[baseRole(targetRole)] || 0);
+}
+
+// Non-super_admin write-staff may only act on users in their OWN track. Returns
+// true when the caller is blocked (and this fn has sent the 404 response).
+function blockCrossTrackWrite(req, res, target) {
+  if (req.user.role === 'super_admin') return false;
+  if (trackForRole(target.role) !== req.track) {
+    res.status(404).json({ message: 'User not found' });
+    return true;
+  }
+  return false;
 }
 
 // GET /api/users — all users (ASG accounts only appear for super_admin).
@@ -98,9 +102,7 @@ router.get('/', auth, allowRoles(...READ_STAFF), async (req, res) => {
     if (req.user.role === 'super_admin') {
       filter = {};
     } else if (req.user.role === 'dio') {
-      const hosp = callerHospitalFilter(req);
-      if (!hosp) return res.json([]);
-      filter = { role: { $in: DIO_MANAGED_ROLES }, ...hosp };
+      filter = { role: { $in: dioVisibleRoles(req) } };
     } else {
       filter = { role: { $nin: HIDDEN_FROM_NON_ADMIN } };
     }
@@ -121,9 +123,7 @@ router.get('/supervisors', auth, allowRoles('super_admin', 'secretary', 'dio', '
   try {
     const filter = { role: { $in: ['supervisor', 'b_supervisor'] }, isActive: { $ne: false } };
     if (req.user.role === 'dio') {
-      const hosp = callerHospitalFilter(req);
-      if (!hosp) return res.json({ success: true, data: [] });
-      Object.assign(filter, hosp);
+      filter.role = coerceRoleToTrack('supervisor', req.track); // this DIO's track only
     }
     const supervisors = await User.find(filter)
       .select('name email specialty specialtyId hospitalId department initials photoUrl track')
@@ -141,9 +141,7 @@ router.get('/program-directors', auth, allowRoles('super_admin', 'secretary', 'd
   try {
     const filter = { role: 'program_director', isActive: { $ne: false } };
     if (req.user.role === 'dio') {
-      const hosp = callerHospitalFilter(req);
-      if (!hosp) return res.json({ success: true, data: [] });
-      Object.assign(filter, hosp);
+      filter.role = coerceRoleToTrack('program_director', req.track); // this DIO's track only
     }
     const pds = await User.find(filter)
       .select('name email specialtyId hospitalId department initials photoUrl')
@@ -161,9 +159,7 @@ router.get('/students', auth, allowRoles('supervisor', 'program_director', 'secr
   try {
     const filter = { role: 'trainee', isActive: { $ne: false } };
     if (req.user.role === 'dio') {
-      const hosp = callerHospitalFilter(req);
-      if (!hosp) return res.json({ success: true, data: [] });
-      Object.assign(filter, hosp);
+      filter.role = coerceRoleToTrack('trainee', req.track); // this DIO's track only
     }
     const students = await User.find(filter)
       .select('name email studentId specialty specialtyId hospitalId supervisorId initials photoUrl year')
@@ -192,14 +188,10 @@ router.get('/:id', auth, async (req, res) => {
       }
     }
 
-    // A DIO may only view (non-self) users it oversees, within its own hospital.
+    // A DIO may only view (non-self) users within its own training track.
     if (!isSelf && req.user.role === 'dio') {
-      const target = await User.findById(req.params.id).select('role hospitalId hospital');
-      const hospitalId = req.user.hospitalId || req.user.hospital;
-      const managed = target && DIO_MANAGED_ROLES.includes(target.role);
-      const sameHospital = target && hospitalId &&
-        [target.hospitalId, target.hospital].some(h => h && h.toString() === hospitalId.toString());
-      if (!managed || !sameHospital) {
+      const target = await User.findById(req.params.id).select('role');
+      if (!target || !dioVisibleRoles(req).includes(target.role)) {
         return res.status(404).json({ success: false, message: 'User not found' });
       }
     }
@@ -257,6 +249,7 @@ async function updateUser(req, res) {
     if (!isSelf && !isAdmin) return res.status(403).json({ message: 'Access denied' });
     const target = await User.findById(req.params.id).select('role isActive');
     if (!target || target.isActive === false) return res.status(404).json({ message: 'User not found' });
+    if (!isSelf && blockCrossTrackWrite(req, res, target)) return;
     if (!isSelf && !hasHigherRole(req.user.role, target.role)) {
       return res.status(403).json({ message: 'Insufficient permission to update this user' });
     }
@@ -308,6 +301,7 @@ router.put('/:id/lock', auth, allowRoles(...WRITE_STAFF), async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
+    if (blockCrossTrackWrite(req, res, user)) return;
     if (!hasHigherRole(req.user.role, user.role)) {
       return res.status(403).json({ message: 'Insufficient permission to lock this user' });
     }
@@ -328,6 +322,7 @@ router.delete('/:id', auth, allowRoles(...WRITE_STAFF), auditLog('deactivate_use
 
     const target = await User.findById(req.params.id);
     if (!target || target.isActive === false) return res.status(404).json({ message: 'User not found' });
+    if (blockCrossTrackWrite(req, res, target)) return;
     if (!hasHigherRole(req.user.role, target.role)) {
       return res.status(403).json({ message: 'Insufficient permission to deactivate this user' });
     }

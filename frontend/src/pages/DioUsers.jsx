@@ -26,8 +26,12 @@ const ROLE_META = {
   supervisor:       { label: 'Supervisor',       api: 'supervisors',       icon: '👨‍⚕️', badge: { bg: '#DBEAFE', color: '#1E40AF' } },
   program_director: { label: 'Program Director', api: 'program-directors', icon: '⭐', badge: { bg: '#FEF3C7', color: '#92400E' } },
   secretary:        { label: 'Secretary',        api: 'secretaries',       icon: '📋', badge: { bg: '#FCE7F3', color: '#9D174D' } },
+  president:        { label: 'President',        api: 'presidents',        icon: '🏛️', badge: { bg: '#E0E7FF', color: '#3730A3' } },
 };
-const ROLE_ORDER = ['trainee', 'supervisor', 'program_director', 'secretary'];
+// Display/filter order (president is read-only — see CREATABLE_ROLES).
+const ROLE_ORDER = ['trainee', 'supervisor', 'program_director', 'secretary', 'president'];
+// Roles the DIO can add/edit/deactivate (president is view-only).
+const CREATABLE_ROLES = ['trainee', 'supervisor', 'program_director', 'secretary'];
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function textValue(value, fallback = '—') {
@@ -197,7 +201,7 @@ function UserFormModal({ user, initialRole, hospitals, specialties, onClose, onS
             <div className="admin-field" style={{ marginBottom: 14 }}>
               <label>User Type *</label>
               <select value={role} onChange={e => setRole(e.target.value)}>
-                {ROLE_ORDER.map(r => <option key={r} value={r}>{ROLE_META[r].label}</option>)}
+                {CREATABLE_ROLES.map(r => <option key={r} value={r}>{ROLE_META[r].label}</option>)}
               </select>
             </div>
           )}
@@ -320,7 +324,9 @@ export default function DioUsers() {
       const res = results[i];
       if (res.status === 'fulfilled') {
         const list = res.value.data?.data || res.value.data || [];
-        list.forEach(u => merged.push({ ...u, role: u.role || r }));
+        // Tag with the base role of the list it came from (so b_* track users
+        // still map to ROLE_META and the filters/badges by base role).
+        list.forEach(u => merged.push({ ...u, role: r }));
       } else { anyFail = true; }
     });
     const hRes = results[ROLE_ORDER.length];
@@ -440,7 +446,7 @@ export default function DioUsers() {
               {filtered.length} user{filtered.length !== 1 ? 's' : ''}
             </span>
             <button className="btn-purple"
-              onClick={() => setFormModal({ user: null, initialRole: roleFilter === 'all' ? 'trainee' : roleFilter })}>
+              onClick={() => setFormModal({ user: null, initialRole: CREATABLE_ROLES.includes(roleFilter) ? roleFilter : 'trainee' })}>
               + Add User
             </button>
           </div>
@@ -500,8 +506,10 @@ export default function DioUsers() {
                         <td>
                           <div className="action-btns">
                             <button className="btn-action view" title="View details" aria-label={`View ${u.name}`} onClick={() => setViewUser(u)}><IconEye /></button>
-                            <button className="btn-action edit" title="Edit" aria-label={`Edit ${u.name}`} onClick={() => setFormModal({ user: u })}><IconPencil /></button>
-                            {active && (
+                            {u.role !== 'president' && (
+                              <button className="btn-action edit" title="Edit" aria-label={`Edit ${u.name}`} onClick={() => setFormModal({ user: u })}><IconPencil /></button>
+                            )}
+                            {u.role !== 'president' && active && (
                               <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${u.name}`} onClick={() => setConfirmDeact(u)}><IconBan /></button>
                             )}
                           </div>
@@ -537,8 +545,8 @@ export default function DioUsers() {
                     <div className="management-card-sub">{specialtyName(u)} · {hospitalName(u)}</div>
                     <div className="management-card-actions">
                       <button className="btn-action view" title="View details" aria-label={`View ${u.name}`} onClick={() => setViewUser(u)}><IconEye /></button>
-                      <button className="btn-action edit" title="Edit" aria-label={`Edit ${u.name}`} onClick={() => setFormModal({ user: u })}><IconPencil /></button>
-                      {active && <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${u.name}`} onClick={() => setConfirmDeact(u)}><IconBan /></button>}
+                      {u.role !== 'president' && <button className="btn-action edit" title="Edit" aria-label={`Edit ${u.name}`} onClick={() => setFormModal({ user: u })}><IconPencil /></button>}
+                      {u.role !== 'president' && active && <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${u.name}`} onClick={() => setConfirmDeact(u)}><IconBan /></button>}
                     </div>
                   </div>
                 );
