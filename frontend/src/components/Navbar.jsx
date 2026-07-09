@@ -7,7 +7,7 @@ import api from '../api/axios';
 import NotificationPanel from './NotificationPanel';
 import ProfileDropdown from './ProfileDropdown';
 import { APP_NAV_LABEL } from './memo/MemoPrefs';
-import { ROLE_HOME, ROLE_LINKS, isBasicRole, baseRole, basePathForRole } from '../config/roles';
+import { ROLE_HOME, ROLE_LINKS, baseRole, basePathForRole } from '../config/roles';
 
 // ROLE_LINKS and ROLE_HOME now live in ../config/roles (shared with App.jsx and
 // ProtectedRoute.jsx) and include the Basic-Training (b_*) roles.
@@ -150,27 +150,6 @@ export default function Navbar() {
         role="link"
         aria-label="Home"
       />
-
-      {/* Marks the Basic-Training portal so users know which track they're in */}
-      {isBasicRole(user?.role) && (
-        <span
-          className="nav-track-badge"
-          title="Basic Training portal"
-          style={{
-            marginInlineStart: 8,
-            padding: '2px 10px',
-            borderRadius: 20,
-            background: 'rgba(254,154,22,0.16)',
-            color: '#b45309',
-            fontSize: 11,
-            fontWeight: 700,
-            whiteSpace: 'nowrap',
-            alignSelf: 'center',
-          }}
-        >
-          Basic Training
-        </span>
-      )}
 
       {/* PAGE LINKS — desktop */}
       <div className="nav-links">
