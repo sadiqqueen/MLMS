@@ -1001,6 +1001,68 @@ router.get('/presidents', auth, allowRoles(...DIO, 'super_admin'), async (req, r
   }
 });
 
+// GET /api/dio/hospitals-overview
+// Organisational view for the DIO: every hospital in its track with the
+// program director(s), supervisors, and specialties — each specialty carrying
+// its assigned secretary's name. Read-only.
+router.get('/hospitals-overview', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+  try {
+    const [hospitals, supervisors, pds, secretaries, specialties] = await Promise.all([
+      Hospital.find({ ...trackFilter(req.track), isActive: { $ne: false } }).sort({ name: 1 }),
+      User.find({ role: coerceRoleToTrack('supervisor', req.track), isActive: { $ne: false } })
+        .select('name email hospitalId hospital specialtyId initials photoUrl')
+        .populate('specialtyId', 'name'),
+      User.find({ role: coerceRoleToTrack('program_director', req.track), isActive: { $ne: false } })
+        .select('name email hospitalId hospital department initials photoUrl'),
+      User.find({ role: coerceRoleToTrack('secretary', req.track), isActive: { $ne: false } })
+        .select('name email hospitalId hospital specialtyId initials photoUrl')
+        .populate('specialtyId', 'name'),
+      Specialty.find({ ...trackFilter(req.track), isActive: { $ne: false } })
+        .select('name hospitalId secretaryId')
+        .populate('secretaryId', 'name'),
+    ]);
+
+    const hidOf = u => (u.hospitalId?._id || u.hospitalId || u.hospital?._id || u.hospital)?.toString();
+    const idStr = ref => (ref?._id || ref)?.toString();
+
+    const data = hospitals.map(h => {
+      const key = h._id.toString();
+      const hSup = supervisors.filter(s => hidOf(s) === key);
+      const hPd  = pds.filter(p => hidOf(p) === key);
+      const hSec = secretaries.filter(s => hidOf(s) === key);
+      const hSpecDocs = specialties.filter(sp => idStr(sp.hospitalId) === key);
+
+      // Union of every specialty this hospital touches, each with its secretary.
+      const specMap = new Map();
+      const addSpec = (id, name, secretary) => {
+        const k = id ? id.toString() : (name ? `name:${name.toLowerCase()}` : null);
+        if (!k) return;
+        const cur = specMap.get(k);
+        if (cur) { if (!cur.secretary && secretary) cur.secretary = secretary; }
+        else specMap.set(k, { _id: id || null, name: name || '—', secretary: secretary || null });
+      };
+      hSpecDocs.forEach(sp => addSpec(sp._id, sp.name, sp.secretaryId ? { _id: sp.secretaryId._id, name: sp.secretaryId.name } : null));
+      hSec.forEach(sec => { if (sec.specialtyId) addSpec(sec.specialtyId._id, sec.specialtyId.name, { _id: sec._id, name: sec.name }); });
+      hSup.forEach(s => { if (s.specialtyId) addSpec(s.specialtyId._id, s.specialtyId.name, null); });
+
+      return {
+        _id: h._id,
+        name: h.name,
+        city: h.city,
+        governorate: h.governorate,
+        programDirectors: hPd.map(p => ({ _id: p._id, name: p.name, email: p.email, department: p.department || '' })),
+        supervisors: hSup.map(s => ({ _id: s._id, name: s.name, email: s.email, specialty: s.specialtyId?.name || '' })),
+        secretaries: hSec.map(s => ({ _id: s._id, name: s.name, specialty: s.specialtyId?.name || '' })),
+        specialties: [...specMap.values()].sort((a, b) => String(a.name).localeCompare(String(b.name))),
+      };
+    });
+
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // GET /api/dio/certificates
 router.get('/certificates', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
   try {

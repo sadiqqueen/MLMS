@@ -70,6 +70,7 @@ const ADVANCED_LINKS = {
   dio: [
     { to: '/dio/dashboard',    key: 'dashboard',    label: 'Dashboard'    },
     { to: '/dio/users',        key: 'users',        label: 'Users'        },
+    { to: '/dio/hospitals',    key: 'hospitals',    label: 'Hospitals'    },
     { to: '/dio/assignments',  key: 'assignments',  label: 'Assignments'  },
     { to: '/dio/evaluations',  key: 'evaluations',  label: 'Evaluations'  },
     { to: '/dio/certificates', key: 'certificates', label: 'Certificates' },

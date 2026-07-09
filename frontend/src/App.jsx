@@ -31,6 +31,7 @@ import SecretaryHospitals from './pages/SecretaryHospitals';
 
 import DioDashboard from './pages/DioDashboard';
 import DioUsers from './pages/DioUsers';
+import DioHospitals from './pages/DioHospitals';
 import DioTrainees from './pages/DioTrainees';
 import DioTraineeDetail from './pages/DioTraineeDetail';
 import DioSupervisors from './pages/DioSupervisors';
@@ -149,6 +150,11 @@ export default function App() {
           <Route path="/dio/users" element={
             <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
               <DioUsers />
+            </ProtectedRoute>
+          } />
+          <Route path="/dio/hospitals" element={
+            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
+              <DioHospitals />
             </ProtectedRoute>
           } />
           <Route path="/dio/trainees" element={
@@ -351,6 +357,9 @@ export default function App() {
           } />
           <Route path="/basic/dio/users" element={
             <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioUsers /></ProtectedRoute>
+          } />
+          <Route path="/basic/dio/hospitals" element={
+            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioHospitals /></ProtectedRoute>
           } />
           <Route path="/basic/dio/trainees" element={
             <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioTrainees /></ProtectedRoute>

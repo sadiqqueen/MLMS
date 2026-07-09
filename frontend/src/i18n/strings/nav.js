@@ -26,6 +26,7 @@ const nav = {
     // dio
     'nav.dio.dashboard':                 'لوحة التحكم',
     'nav.dio.users':                     'المستخدمون',
+    'nav.dio.hospitals':                 'المستشفيات',
     'nav.dio.assignments':               'التوزيع والتدويرات',
     'nav.dio.evaluations':               'التقييمات',
     'nav.dio.certificates':              'الشهادات',
@@ -84,6 +85,7 @@ const nav = {
     // dio
     'nav.dio.dashboard':                 'Dashboard',
     'nav.dio.users':                     'Users',
+    'nav.dio.hospitals':                 'Hospitals',
     'nav.dio.assignments':               'Assignments',
     'nav.dio.evaluations':               'Evaluations',
     'nav.dio.certificates':              'Certificates',
