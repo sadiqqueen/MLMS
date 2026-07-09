@@ -110,6 +110,30 @@ function averageScore(scores) {
   return values.length ? values.reduce((sum, n) => sum + n, 0) / values.length : null;
 }
 
+// Structured WPBA forms shared with the supervisor flow (evalForms.js). Free-
+// form quick evaluations (from the trainee-detail screen) are NOT in this set
+// and are therefore exempt from the once-per-month cap below.
+const WPBA_FORMS = ['Mini-CEX', 'CBD', 'DOPS', 'Academic Supervisor Report', 'FITER'];
+function isWpbaForm(type) {
+  return WPBA_FORMS.includes(type) || String(type || '').startsWith('MSF-360');
+}
+// A given evaluator may file each WPBA form type at most once per subject per
+// calendar month — matched per-evaluator so DIO and supervisor caps are
+// independent (mirrors supervisor.js).
+async function wpbaAlreadyThisMonth(evaluatorId, subjectId, evaluationType) {
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return Evaluation.countDocuments({
+    $and: [
+      { $or: [{ evaluateeId: subjectId }, { traineeId: subjectId }, { student: subjectId }] },
+      { $or: [{ evaluatorId }, { doctor: evaluatorId }] },
+      { evaluationType },
+      { createdAt: { $gte: monthStart, $lt: monthEnd } },
+    ],
+  });
+}
+
 function isValidObjectId(id) {
   return mongoose.Types.ObjectId.isValid(id);
 }
@@ -498,7 +522,9 @@ router.post('/trainees/:id/evaluations',
         ? req.body.status
         : finalized ? 'completed' : 'pending';
       const evaluatorRole = req.user.role === 'super_admin' ? 'super_admin' : 'dio';
-      const hospital = req.body.hospitalId || trainee.hospitalId?._id || trainee.hospital || null;
+      // Derive hospital from the already-scoped subject; never trust a client
+      // hospitalId (would let a scoped DIO inject the record across hospitals).
+      const hospital = trainee.hospitalId?._id || trainee.hospital || null;
       const specialty = req.body.specialty || trainee.specialtyId?.name || trainee.specialty || '';
       const distributionId = req.body.distributionId || null;
       const rotationId = req.body.rotationId || req.body.rotation || null;
@@ -512,9 +538,22 @@ router.post('/trainees/:id/evaluations',
         return res.status(400).json({ success: false, message: 'Invalid hospital id' });
       }
 
+      const formData = req.body.formData && typeof req.body.formData === 'object' ? req.body.formData : {};
+
+      // Structured WPBA forms are capped at one per evaluator per trainee per
+      // month; free-form quick evaluations (no matching type) are exempt.
+      if (isWpbaForm(evaluationType)
+        && await wpbaAlreadyThisMonth(req.user._id, trainee._id, evaluationType)) {
+        return res.status(400).json({ success: false, message: `A ${evaluationType} evaluation has already been submitted for this trainee this month.` });
+      }
+
       const evaluation = await Evaluation.create({
         student:        trainee._id,
         traineeId:      trainee._id,
+        evaluateeId:    trainee._id,
+        evaluateeRole:  'trainee',
+        track:          req.track,
+        formData,
         doctor:         req.user._id,
         evaluatorId:    req.user._id,
         evaluatorRole,
@@ -570,6 +609,133 @@ router.post('/trainees/:id/evaluations',
     }
   }
 );
+
+// POST /api/dio/supervisors/:id/evaluations
+// DIO evaluates a supervisor with the same WPBA forms used for trainees.
+// Stored with evaluateeRole:'supervisor' — `student`/`evaluateeId` hold the
+// supervisor id (satisfying the required ref) and `traineeId` is left null so
+// trainee-facing queries never surface it. Finalized on create.
+router.post('/supervisors/:id/evaluations',
+  auth,
+  allowRoles(...DIO, 'super_admin'),
+  async (req, res) => {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({ success: false, message: 'Invalid supervisor id' });
+      }
+      // Match the /supervisors list endpoint's role query (literal, not
+      // track-coerced) so the same subjects the DIO can see are the ones it can
+      // evaluate on both Advanced and Basic tracks; `track` on the created row
+      // still records the acting DIO's portal.
+      const supervisor = await User.findOne({
+        _id: req.params.id,
+        role: 'supervisor',
+        isActive: { $ne: false }
+      })
+        .populate('hospitalId', 'name')
+        .populate('specialtyId', 'name');
+      if (!supervisor) {
+        return res.status(404).json({ success: false, message: 'Supervisor not found' });
+      }
+      if (!ensureDioCanAccessHospitalDoc(req, res, supervisor, 'Access denied: supervisor belongs to a different hospital')) return;
+
+      const evaluationType = req.body.evaluationType || req.body.type || '';
+      const scores = req.body.scores && typeof req.body.scores === 'object' ? req.body.scores : {};
+      const formData = req.body.formData && typeof req.body.formData === 'object' ? req.body.formData : {};
+      const totalScore = req.body.totalScore !== undefined && req.body.totalScore !== null && req.body.totalScore !== ''
+        ? Number(req.body.totalScore)
+        : averageScore(scores);
+      if (totalScore !== null && !Number.isFinite(totalScore)) {
+        return res.status(400).json({ success: false, message: 'totalScore must be a number' });
+      }
+
+      if (isWpbaForm(evaluationType)
+        && await wpbaAlreadyThisMonth(req.user._id, supervisor._id, evaluationType)) {
+        return res.status(400).json({ success: false, message: `A ${evaluationType} evaluation has already been submitted for this supervisor this month.` });
+      }
+
+      const evaluatorRole = req.user.role === 'super_admin' ? 'super_admin' : 'dio';
+      // Derive hospital from the already-scoped subject; never trust a client
+      // hospitalId (would let a scoped DIO inject the record across hospitals).
+      const hospital = supervisor.hospitalId?._id || supervisor.hospital || null;
+      const specialty = req.body.specialty || supervisor.specialtyId?.name || supervisor.specialty || '';
+
+      const evaluation = await Evaluation.create({
+        student:        supervisor._id,
+        evaluateeId:    supervisor._id,
+        evaluateeRole:  'supervisor',
+        track:          req.track,
+        doctor:         req.user._id,
+        evaluatorId:    req.user._id,
+        evaluatorRole,
+        createdBy:      req.user._id,
+        createdByRole:  evaluatorRole,
+        hospital,
+        specialty,
+        date:           req.body.date || new Date(),
+        evaluationType,
+        grade:          req.body.grade || '',
+        notes:          req.body.notes || req.body.comments || '',
+        comments:       req.body.comments || req.body.notes || '',
+        scores,
+        formData,
+        totalScore,
+        isFinalized:    true,
+        status:         'completed',
+        sentToTraineeAt: new Date()
+      });
+
+      await AuditLog.create({
+        userId: req.user._id,
+        action: 'dio_create_supervisor_evaluation',
+        targetId: evaluation._id,
+        targetModel: 'Evaluation',
+        metadata: { supervisorId: supervisor._id, evaluatorRole, evaluationType },
+        ip: req.ip || req.headers['x-forwarded-for'] || 'unknown'
+      }).catch(err => console.error('[AuditLog] Failed to write DIO supervisor evaluation:', err.message));
+
+      await Notification.create({
+        user: supervisor._id,
+        message: `You have a new evaluation submitted by ${req.user.name}`
+      }).catch(err => console.error('[Notification] Failed to write DIO supervisor evaluation notice:', err.message));
+
+      const populated = await Evaluation.findById(evaluation._id)
+        .populate('student',     'name email initials photoUrl')
+        .populate('evaluateeId', 'name email initials photoUrl')
+        .populate('doctor',      'name role initials')
+        .populate('evaluatorId', 'name role initials')
+        .populate('hospital',    'name');
+
+      res.status(201).json({ success: true, data: populated });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+);
+
+// GET /api/dio/evaluations
+// Every evaluation authored by this DIO (trainee + supervisor subjects),
+// scoped by evaluator identity. Powers the DIO evaluations page; the client
+// splits rows by evaluateeRole (a missing value is treated as 'trainee').
+router.get('/evaluations', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+  try {
+    const query = {
+      $or: [{ evaluatorId: req.user._id }, { doctor: req.user._id }, { createdBy: req.user._id }]
+    };
+    if (req.query.evaluateeRole === 'trainee' || req.query.evaluateeRole === 'supervisor') {
+      query.evaluateeRole = req.query.evaluateeRole;
+    }
+    const evaluations = await Evaluation.find(query)
+      .populate('student',     'name email initials photoUrl studentId')
+      .populate('traineeId',   'name email initials photoUrl studentId')
+      .populate('evaluateeId', 'name email initials photoUrl studentId')
+      .populate('hospital',    'name')
+      .sort({ createdAt: -1 });
+    res.json({ success: true, data: evaluations });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // GET /api/dio/trainees/:id/details
 // Full DIO trainee profile with reports and grading summary.
@@ -858,8 +1024,8 @@ router.get('/certificates', auth, allowRoles(...DIO, 'super_admin'), async (req,
     }
 
     const certs = await Certificate.find(query)
-      .populate('student',   'name initials photoUrl studentId year')
-      .populate('traineeId', 'name initials photoUrl studentId year')
+      .populate('student',   'name email initials photoUrl studentId year')
+      .populate('traineeId', 'name email initials photoUrl studentId year')
       .populate('doctor',    'name specialty initials')
       .populate('hospital',  'name city')
       .populate('issuedBy',  'name')

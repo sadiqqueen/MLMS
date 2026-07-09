@@ -122,7 +122,7 @@ export default function DioDashboard() {
     <>
       <Navbar />
       <main className="admin-main">
-        <div className="stat-cards-grid" style={{ marginBottom: 24 }}>
+        <div className="stat-cards-grid dio-stats" style={{ marginBottom: 24 }}>
           {[...Array(7)].map((_, i) => (
             <div key={i} className="stat-card">
               <Sk w={46} h={46} r={10} />
@@ -158,14 +158,7 @@ export default function DioDashboard() {
       <Navbar />
       <main className="admin-main">
 
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: '#1B1464' }}>DIO Dashboard</div>
-          <div style={{ fontSize: 13, color: '#8B8FA8', marginTop: 3 }}>
-            Hospital-wide overview · {new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}
-          </div>
-        </div>
-
-        <div className="stat-cards-grid" style={{ marginBottom: 24 }}>
+        <div className="stat-cards-grid dio-stats" style={{ marginBottom: 24 }}>
           {STAT_CARDS.map(card => (
             <div className="stat-card" key={card.key}>
               <div className="stat-icon" style={{ background: card.bg, color: card.color, fontSize: 22 }}>

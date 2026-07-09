@@ -144,9 +144,7 @@ function DistModal({ item, supervisors, specialties, hospitals, onSave, onClose,
   );
 }
 
-export default function DioDistributions() {
-  const location = useLocation();
-
+export function DistributionsPanel({ autoOpenNew = false }) {
   const [items,         setItems        ] = useState([]);
   const [supervisors,   setSupervisors  ] = useState([]);
   const [specialties,   setSpecialties  ] = useState([]);
@@ -188,10 +186,8 @@ export default function DioDistributions() {
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    if (new URLSearchParams(location.search).get('new') === '1') {
-      setEditItem(null); setShowModal(true);
-    }
-  }, [location.search]);
+    if (autoOpenNew) { setEditItem(null); setShowModal(true); }
+  }, [autoOpenNew]);
 
   const filtered = safeArr(items).filter(d => {
     const sup  = d?.supervisorId || d?.doctor || {};
@@ -239,26 +235,19 @@ export default function DioDistributions() {
   }
 
   if (loading) return (
-    <>
-      <Navbar />
-      <main className="admin-main">
-        <div className="admin-card">
-          <div className="admin-toolbar"><Sk h={36} r={8} style={{ flex:1 }} /></div>
-          <div className="admin-table-wrap"><table className="admin-table"><tbody>
-            {[...Array(6)].map((_,i) => (
-              <tr key={i}>{[20,150,120,120,80,120].map((w,j)=><td key={j}><Sk w={w} h={13}/></td>)}</tr>
-            ))}
-          </tbody></table></div>
-        </div>
-      </main>
-    </>
+    <div className="admin-card">
+      <div className="admin-toolbar"><Sk h={36} r={8} style={{ flex:1 }} /></div>
+      <div className="admin-table-wrap"><table className="admin-table"><tbody>
+        {[...Array(6)].map((_,i) => (
+          <tr key={i}>{[20,150,120,120,80,120].map((w,j)=><td key={j}><Sk w={w} h={13}/></td>)}</tr>
+        ))}
+      </tbody></table></div>
+    </div>
   );
 
   return (
     <>
-      <Navbar />
-      <main className="admin-main">
-        <div className="admin-card">
+      <div className="admin-card">
           {/* Toolbar */}
           <div className="admin-toolbar" style={{ flexWrap:'wrap', gap:8 }}>
             <input className="admin-search" style={{ flex:1, minWidth:180 }}
@@ -373,6 +362,18 @@ export default function DioDistributions() {
           />
         )}
         <Toast toasts={toasts} />
+    </>
+  );
+}
+
+export default function DioDistributions() {
+  const location = useLocation();
+  const autoOpenNew = new URLSearchParams(location.search).get('new') === '1';
+  return (
+    <>
+      <Navbar />
+      <main className="admin-main">
+        <DistributionsPanel autoOpenNew={autoOpenNew} />
       </main>
     </>
   );

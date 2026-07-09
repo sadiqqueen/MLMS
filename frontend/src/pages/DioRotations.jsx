@@ -10,6 +10,7 @@
  *   DELETE /api/rotations/:id                 — soft-cancel to status:'cancelled'
  */
 import { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
 import SearchableSelect from '../components/SearchableSelect';
@@ -201,7 +202,7 @@ function RotationModal({ item, trainees, supervisors, hospitals, specialties, on
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────
-export default function DioRotations() {
+export function RotationsPanel({ autoOpenNew = false }) {
   const [rotations,   setRotations  ] = useState([]);
   const [trainees,    setTrainees   ] = useState([]);
   const [supervisors, setSupervisors] = useState([]);
@@ -243,6 +244,10 @@ export default function DioRotations() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (autoOpenNew) { setEditItem(null); setShowModal(true); }
+  }, [autoOpenNew]);
 
   const filtered = rotations.filter(r => {
     const trainee    = traineeOf(r);
@@ -288,29 +293,22 @@ export default function DioRotations() {
   }
 
   if (loading) return (
-    <>
-      <Navbar />
-      <main className="admin-main">
-        <div className="admin-card">
-          <div className="admin-toolbar"><Sk h={36} r={8} style={{ flex:1 }} /><Sk w={130} h={36} r={8} /></div>
-          <div className="admin-table-wrap">
-            <table className="admin-table"><tbody>
-              {[...Array(8)].map((_,i) => (
-                <tr key={i}>
-                  {[20,140,110,110,100,80,80,70,80].map((w,j) => <td key={j}><Sk w={w} h={13} /></td>)}
-                </tr>
-              ))}
-            </tbody></table>
-          </div>
-        </div>
-      </main>
-    </>
+    <div className="admin-card">
+      <div className="admin-toolbar"><Sk h={36} r={8} style={{ flex:1 }} /><Sk w={130} h={36} r={8} /></div>
+      <div className="admin-table-wrap">
+        <table className="admin-table"><tbody>
+          {[...Array(8)].map((_,i) => (
+            <tr key={i}>
+              {[20,140,110,110,100,80,80,70,80].map((w,j) => <td key={j}><Sk w={w} h={13} /></td>)}
+            </tr>
+          ))}
+        </tbody></table>
+      </div>
+    </div>
   );
 
   return (
     <>
-      <Navbar />
-      <main className="admin-main">
         {/* Status filter pills */}
         <div className="filter-tabs" style={{ marginBottom:14 }}>
           {[['', 'All'], ...ROTATION_STATUSES.map(s => [s, s.charAt(0).toUpperCase() + s.slice(1)])].map(([val, label]) => {
@@ -450,6 +448,18 @@ export default function DioRotations() {
         )}
 
         <Toast toasts={toasts} />
+    </>
+  );
+}
+
+export default function DioRotations() {
+  const location = useLocation();
+  const autoOpenNew = new URLSearchParams(location.search).get('new') === '1';
+  return (
+    <>
+      <Navbar />
+      <main className="admin-main">
+        <RotationsPanel autoOpenNew={autoOpenNew} />
       </main>
     </>
   );

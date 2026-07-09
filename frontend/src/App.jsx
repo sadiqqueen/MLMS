@@ -30,6 +30,7 @@ import SecretarySupervisors from './pages/SecretarySupervisors';
 import SecretaryHospitals from './pages/SecretaryHospitals';
 
 import DioDashboard from './pages/DioDashboard';
+import DioUsers from './pages/DioUsers';
 import DioTrainees from './pages/DioTrainees';
 import DioTraineeDetail from './pages/DioTraineeDetail';
 import DioSupervisors from './pages/DioSupervisors';
@@ -38,6 +39,8 @@ import DioSecretaries from './pages/DioSecretaries';
 import DioCertificates from './pages/DioCertificates';
 import DioDistributions from './pages/DioDistributions';
 import DioRotations from './pages/DioRotations';
+import DioAssignments from './pages/DioAssignments';
+import DioEvaluations from './pages/DioEvaluations';
 import ConsultantMemo from './pages/ConsultantMemo';
 import ConsultantMemoAll from './pages/ConsultantMemoAll';
 import Initiatives from './pages/Initiatives';
@@ -143,6 +146,11 @@ export default function App() {
               <DioDashboard />
             </ProtectedRoute>
           } />
+          <Route path="/dio/users" element={
+            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
+              <DioUsers />
+            </ProtectedRoute>
+          } />
           <Route path="/dio/trainees" element={
             <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
               <DioTrainees />
@@ -186,6 +194,16 @@ export default function App() {
           <Route path="/dio/rotations" element={
             <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
               <DioRotations />
+            </ProtectedRoute>
+          } />
+          <Route path="/dio/assignments" element={
+            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
+              <DioAssignments />
+            </ProtectedRoute>
+          } />
+          <Route path="/dio/evaluations" element={
+            <ProtectedRoute allowedRoles={['dio']}>
+              <DioEvaluations />
             </ProtectedRoute>
           } />
           <Route path="/consultant-memo" element={
@@ -331,6 +349,9 @@ export default function App() {
           <Route path="/basic/dio/dashboard" element={
             <ProtectedRoute allowedRoles={['b_dio']}><DioDashboard /></ProtectedRoute>
           } />
+          <Route path="/basic/dio/users" element={
+            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioUsers /></ProtectedRoute>
+          } />
           <Route path="/basic/dio/trainees" element={
             <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioTrainees /></ProtectedRoute>
           } />
@@ -357,6 +378,12 @@ export default function App() {
           } />
           <Route path="/basic/dio/rotations" element={
             <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioRotations /></ProtectedRoute>
+          } />
+          <Route path="/basic/dio/assignments" element={
+            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioAssignments /></ProtectedRoute>
+          } />
+          <Route path="/basic/dio/evaluations" element={
+            <ProtectedRoute allowedRoles={['b_dio']}><DioEvaluations /></ProtectedRoute>
           } />
 
           {/* Basic — president */}

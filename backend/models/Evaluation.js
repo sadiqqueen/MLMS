@@ -27,6 +27,13 @@ const evaluationSchema = new mongoose.Schema(
     createdBy:      { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     createdByRole:  { type: String, default: '' },
 
+    // Who is being evaluated. Trainee evals keep `traineeId`; supervisor evals
+    // (DIO-authored) set evaluateeRole:'supervisor' with `student`/`evaluateeId`
+    // holding the supervisor's id and `traineeId` left null, so trainee-facing
+    // queries (which match on a trainee's own _id) can never surface them.
+    evaluateeId:    { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    evaluateeRole:  { type: String, enum: ['trainee', 'supervisor'], default: 'trainee' },
+
     // V2 NEW FIELDS
     scores:          { type: mongoose.Schema.Types.Mixed, default: {} },
     // Structured WPBA form contents (header, overall rating, supervision level,

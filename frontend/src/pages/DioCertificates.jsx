@@ -1,5 +1,5 @@
 // frontend/src/pages/DioCertificates.jsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useBasePath from '../hooks/useBasePath';
 import Navbar from '../components/Navbar';
@@ -7,6 +7,7 @@ import Toast from '../components/Toast';
 import ViewToggle from '../components/ViewToggle';
 import api from '../api/axios';
 import Sk from '../components/Skeleton';
+import { IconPrinter, IconBan, IconTrash } from '../components/icons';
 
 const CERT_TYPES = ['Completion', 'Training', 'Achievement', 'Attendance', 'Other'];
 
@@ -70,6 +71,12 @@ export default function DioCertificates() {
   const [deleting, setDeleting] = useState(null);
   const [toasts, setToasts] = useState([]);
   const dropdownRef = useRef(null);
+
+  // ── List filtration (separate from the issue-form trainee search above) ──
+  const [filterText, setFilterText] = useState('');   // trainee name / student ID
+  const [specialtyFilter, setSpecialtyFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // all | valid | revoked
 
   function showToast(message, type = 'success') {
     const id = Date.now();
@@ -231,6 +238,30 @@ export default function DioCertificates() {
   const revokedCount = safeArr(certificates).filter(c => c?.revokedAt).length;
   const totalCount = safeArr(certificates).length;
 
+  // Distinct specialties + types present in the data drive the filter dropdowns.
+  const specialtyOptions = useMemo(
+    () => [...new Set(safeArr(certificates).map(c => textValue(c?.specialty, '')).filter(Boolean))].sort(),
+    [certificates]
+  );
+  const typeOptions = useMemo(
+    () => [...new Set(safeArr(certificates).map(c => c?.type || 'Completion').filter(Boolean))].sort(),
+    [certificates]
+  );
+
+  const filtered = safeArr(certificates).filter(c => {
+    const trainee = traineeFromCertificate(c);
+    const q = filterText.trim().toLowerCase();
+    const matchSearch = !q
+      || (trainee?.name || '').toLowerCase().includes(q)
+      || (trainee?.studentId || '').toLowerCase().includes(q);
+    const matchSpecialty = !specialtyFilter || textValue(c?.specialty, '') === specialtyFilter;
+    const matchType = !typeFilter || (c?.type || 'Completion') === typeFilter;
+    const isRevoked = !!c?.revokedAt;
+    const matchStatus = statusFilter === 'all'
+      || (statusFilter === 'valid' ? !isRevoked : isRevoked);
+    return matchSearch && matchSpecialty && matchType && matchStatus;
+  });
+
   if (loading) {
     return (
       <>
@@ -264,11 +295,12 @@ export default function DioCertificates() {
     <>
       <Navbar />
       <main className="admin-main">
-        <div className="admin-toolbar" style={{ marginBottom: 16 }}>
-          <ViewToggle value={view} onChange={setView} />
-          <span style={{ fontSize: 13, color: '#8B8FA8', flexShrink: 0 }}>
-            {validCount} valid - {revokedCount} revoked - {totalCount} total
-          </span>
+        {/* Page header — title + counts on the left, Issue button on the right */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+          <div>
+            <div className="admin-page-title">Certificates</div>
+            <div className="admin-page-sub">{validCount} valid · {revokedCount} revoked · {totalCount} total</div>
+          </div>
           <button className="btn-purple" onClick={openIssueForm}>
             + Issue Certificate
           </button>
@@ -281,6 +313,42 @@ export default function DioCertificates() {
           </div>
         ) : (
           <div className="admin-card">
+            {/* Search + filters toolbar */}
+            <div className="admin-toolbar" style={{ flexWrap: 'wrap', gap: 8 }}>
+              <input
+                className="admin-search"
+                style={{ flex: 1, minWidth: 200 }}
+                placeholder="Search by trainee name or student ID…"
+                value={filterText}
+                onChange={e => setFilterText(e.target.value)}
+              />
+              <select className="admin-search" style={{ width: 'auto', height: 36 }}
+                value={specialtyFilter} onChange={e => setSpecialtyFilter(e.target.value)}>
+                <option value="">All Specialties</option>
+                {specialtyOptions.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <select className="admin-search" style={{ width: 'auto', height: 36 }}
+                value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+                <option value="">All Types</option>
+                {typeOptions.map(tp => <option key={tp} value={tp}>{tp}</option>)}
+              </select>
+              <div className="filter-tabs">
+                {[['all', `All (${totalCount})`], ['valid', `Valid (${validCount})`], ['revoked', `Revoked (${revokedCount})`]].map(([val, label]) => (
+                  <button key={val} type="button"
+                    className={`filter-tab${statusFilter === val ? ' active' : ''}`}
+                    onClick={() => setStatusFilter(val)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <ViewToggle value={view} onChange={setView} />
+              <span style={{ fontSize: 13, color: '#8B8FA8', flexShrink: 0 }}>
+                {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+
+            {/* Keyed wrapper → subtle crossfade when filters/view change */}
+            <div key={`${filterText}|${specialtyFilter}|${typeFilter}|${statusFilter}|${view}`} style={{ animation: 'fadeIn .18s ease-out' }}>
             {view === 'list' && (
             <div className="admin-table-wrap">
               <table className="admin-table">
@@ -297,7 +365,14 @@ export default function DioCertificates() {
                   </tr>
                 </thead>
                 <tbody>
-                  {safeArr(certificates).map((c, i) => {
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#8B8FA8' }}>
+                        No certificates match your filters.
+                      </td>
+                    </tr>
+                  )}
+                  {filtered.map((c, i) => {
                     const trainee = traineeFromCertificate(c);
                     const isRevoked = !!c?.revokedAt;
                     return (
@@ -328,41 +403,31 @@ export default function DioCertificates() {
                           </span>
                         </td>
                         <td>
-                          <div style={{ display: 'flex', gap: 6 }}>
+                          <div className="action-btns">
                             {!isRevoked && (
-                              <button
-                                type="button"
-                                className="btn-action edit"
-                                style={{ width: 'auto', padding: '0 10px' }}
+                              <button type="button" className="btn-action print"
                                 title="Print Certificate"
-                                aria-label={`Print Certificate for ${trainee?.name || 'trainee'}`}
+                                aria-label={`Print certificate for ${trainee?.name || 'trainee'}`}
                                 onClick={() => navigate(bp + `/dio/certificates/${c?._id}/print`)}
-                                disabled={!c?._id}
-                              >
-                                Print Certificate
+                                disabled={!c?._id}>
+                                <IconPrinter />
                               </button>
                             )}
                             {!isRevoked && (
-                              <button
-                                type="button"
-                                style={{ padding: '5px 10px', borderRadius: 6, background: '#FEF3C7', color: '#92400E', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                              <button type="button" className="btn-action revoke"
                                 title="Revoke"
                                 aria-label={`Revoke certificate for ${trainee?.name || 'trainee'}`}
                                 onClick={() => handleRevoke(c)}
-                                disabled={revoking === c?._id}
-                              >
-                                {revoking === c?._id ? '...' : 'Revoke'}
+                                disabled={revoking === c?._id}>
+                                <IconBan />
                               </button>
                             )}
-                            <button
-                              type="button"
-                              className="btn-action delete"
+                            <button type="button" className="btn-action delete"
                               title="Delete"
                               aria-label={`Delete certificate for ${trainee?.name || 'trainee'}`}
                               onClick={() => handleDelete(c)}
-                              disabled={deleting === c?._id}
-                            >
-                              {deleting === c?._id ? '...' : 'Delete'}
+                              disabled={deleting === c?._id}>
+                              <IconTrash />
                             </button>
                           </div>
                         </td>
@@ -375,7 +440,10 @@ export default function DioCertificates() {
             )}
             {view === 'card' && (
               <div className="management-card-grid">
-                {safeArr(certificates).map((c, i) => {
+                {filtered.length === 0 && (
+                  <div className="admin-empty" style={{ gridColumn: '1/-1' }}>No certificates match your filters.</div>
+                )}
+                {filtered.map((c, i) => {
                   const trainee = traineeFromCertificate(c);
                   const isRevoked = !!c?.revokedAt;
                   return (
@@ -395,15 +463,17 @@ export default function DioCertificates() {
                       <div className="management-card-sub">{textValue(c?.specialty)} - {fmt(c?.issueDate || c?.issuedAt)}</div>
                       <div className="management-card-actions">
                         {!isRevoked && (
-                          <button type="button" className="btn-action edit" style={{ width: 'auto', padding: '0 10px' }} title="Print Certificate" aria-label={`Print Certificate for ${trainee?.name || 'trainee'}`} onClick={() => navigate(bp + `/dio/certificates/${c?._id}/print`)} disabled={!c?._id}>Print Certificate</button>
+                          <button type="button" className="btn-action print" title="Print Certificate" aria-label={`Print certificate for ${trainee?.name || 'trainee'}`} onClick={() => navigate(bp + `/dio/certificates/${c?._id}/print`)} disabled={!c?._id}>
+                            <IconPrinter />
+                          </button>
                         )}
                         {!isRevoked && (
-                          <button type="button" style={{ padding: '5px 10px', borderRadius: 6, background: '#FEF3C7', color: '#92400E', border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer' }} title="Revoke" aria-label={`Revoke certificate for ${trainee?.name || 'trainee'}`} onClick={() => handleRevoke(c)} disabled={revoking === c?._id}>
-                            {revoking === c?._id ? '...' : 'Revoke'}
+                          <button type="button" className="btn-action revoke" title="Revoke" aria-label={`Revoke certificate for ${trainee?.name || 'trainee'}`} onClick={() => handleRevoke(c)} disabled={revoking === c?._id}>
+                            <IconBan />
                           </button>
                         )}
                         <button type="button" className="btn-action delete" title="Delete" aria-label={`Delete certificate for ${trainee?.name || 'trainee'}`} onClick={() => handleDelete(c)} disabled={deleting === c?._id}>
-                          {deleting === c?._id ? '...' : 'Delete'}
+                          <IconTrash />
                         </button>
                       </div>
                     </div>
@@ -411,6 +481,7 @@ export default function DioCertificates() {
                 })}
               </div>
             )}
+            </div>
           </div>
         )}
 

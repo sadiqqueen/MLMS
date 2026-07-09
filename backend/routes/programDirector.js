@@ -143,6 +143,10 @@ router.get('/evaluations', auth, allowRoles(...PD), async (req, res) => {
     const traineeIds = trainees.map(t => t._id);
 
     const evaluations = await Evaluation.find({
+      // Never surface supervisor-subject evaluations (DIO-authored) in this
+      // trainee-evaluations list. Legacy docs have no evaluateeRole and are
+      // kept via $ne.
+      evaluateeRole: { $ne: 'supervisor' },
       $or: [
         { traineeId: { $in: traineeIds } },
         { student:    { $in: traineeIds } },

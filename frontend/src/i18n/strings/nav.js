@@ -25,13 +25,17 @@ const nav = {
 
     // dio
     'nav.dio.dashboard':                 'لوحة التحكم',
+    'nav.dio.users':                     'المستخدمون',
+    'nav.dio.assignments':               'التوزيع والتدويرات',
+    'nav.dio.evaluations':               'التقييمات',
+    'nav.dio.certificates':              'الشهادات',
+    // legacy keys (routes kept for deep links / super_admin)
     'nav.dio.trainees':                  'المتدربون',
     'nav.dio.supervisors':               'المشرفون',
     'nav.dio.program_directors':         'مديرو البرامج',
     'nav.dio.secretaries':               'السكرتارية',
     'nav.dio.distributions':             'توزيع المشرفين',
     'nav.dio.rotations':                 'التدويرات',
-    'nav.dio.certificates':              'الشهادات',
 
     // supervisor
     'nav.supervisor.trainees':           'متدربيّ',
@@ -79,13 +83,17 @@ const nav = {
 
     // dio
     'nav.dio.dashboard':                 'Dashboard',
+    'nav.dio.users':                     'Users',
+    'nav.dio.assignments':               'Assignments',
+    'nav.dio.evaluations':               'Evaluations',
+    'nav.dio.certificates':              'Certificates',
+    // legacy keys (routes kept for deep links / super_admin)
     'nav.dio.trainees':                  'Trainees',
     'nav.dio.supervisors':               'Supervisors',
     'nav.dio.program_directors':         'Prog.Directors',
     'nav.dio.secretaries':               'Secretaries',
     'nav.dio.distributions':             'Sup.Dist.',
     'nav.dio.rotations':                 'Rotations',
-    'nav.dio.certificates':              'Certificates',
 
     // supervisor
     'nav.supervisor.trainees':           'My Trainees',

@@ -470,13 +470,14 @@ const ROT_STATUS_STYLE = {
 };
 
 function RotationTimeline({ rotations, traineeId, navigate }) {
+  const bp = useBasePath();
   if (!rotations || rotations.length === 0) return (
     <section className="admin-card" style={{ marginBottom:16 }}>
       <div className="admin-card-header">
         <div className="admin-card-title">Rotation Timeline</div>
         <button className="btn-action edit" title="Add rotation"
           style={{ display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
-          onClick={() => navigate(bp + '/dio/rotations')}><IconPlus size={15} /> Add Rotation</button>
+          onClick={() => navigate(bp + '/dio/assignments?tab=rotations&new=1')}><IconPlus size={15} /> Add Rotation</button>
       </div>
       <div className="admin-empty">No rotations found for this trainee.</div>
     </section>
@@ -495,7 +496,7 @@ function RotationTimeline({ rotations, traineeId, navigate }) {
         <div className="admin-card-title">Rotation Timeline</div>
         <button className="btn-action edit" style={{ fontSize:12, width:'auto', padding:'0 12px', height:36, display:'inline-flex', alignItems:'center', gap:6 }}
           title="Add rotation for this trainee"
-          onClick={() => navigate(bp + '/dio/rotations')}>
+          onClick={() => navigate(bp + '/dio/assignments?tab=rotations&new=1')}>
           <IconPlus size={15} /> Add Rotation
         </button>
       </div>
@@ -542,7 +543,7 @@ function RotationTimeline({ rotations, traineeId, navigate }) {
                         {canEdit && (
                           <button className="btn-action edit"
                             title="Edit rotation" aria-label="Edit rotation"
-                            onClick={() => navigate(bp + '/dio/rotations')}>
+                            onClick={() => navigate(bp + '/dio/assignments?tab=rotations')}>
                             <IconPencil />
                           </button>
                         )}
@@ -686,12 +687,12 @@ export default function DioTraineeDetail() {
           </button>
           <button className="btn-action edit"
             style={{ background:'#EFF6FF', color:'#1D4ED8', display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
-            onClick={() => navigate(bp + '/dio/distributions?new=1')}>
+            onClick={() => navigate(bp + '/dio/assignments?tab=distributions&new=1')}>
             <IconPlus size={15} /> Create Distribution
           </button>
           <button className="btn-action edit"
             style={{ background:'#F0FDF4', color:'#065F46', display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
-            onClick={() => navigate(bp + '/dio/rotations?new=1')}>
+            onClick={() => navigate(bp + '/dio/assignments?tab=rotations&new=1')}>
             <IconPlus size={15} /> Create Rotation
           </button>
           {certificates.length > 0 && !certificates[0]?.revokedAt && (
