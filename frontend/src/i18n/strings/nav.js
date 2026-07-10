@@ -59,6 +59,7 @@ const nav = {
     // program_director
     'nav.program_director.trainees':     'المتدربون',
     'nav.program_director.supervisors':  'المشرفون',
+    'nav.program_director.evaluations':  'التقييمات',
     'nav.program_director.reports':      'التقارير',
 
     // toggle aria-labels
@@ -118,6 +119,7 @@ const nav = {
     // program_director
     'nav.program_director.trainees':     'Trainees',
     'nav.program_director.supervisors':  'Supervisors',
+    'nav.program_director.evaluations':  'Evaluations',
     'nav.program_director.reports':      'Reports',
 
     // toggle aria-labels

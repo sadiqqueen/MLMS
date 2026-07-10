@@ -1,15 +1,18 @@
 // backend/routes/programDirector.js
 const router         = require('express').Router();
+const mongoose       = require('mongoose');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const auditLog       = require('../middleware/auditLogger');
 const { coerceRoleToTrack } = require('../utils/track');
 const { specialtyIdsForName, specialtyUserMatch } = require('../utils/pdScope');
+const { averageScore, isWpbaForm, wpbaAlreadyThisMonth } = require('../utils/evalScoring');
 const User           = require('../models/User');
 const Rotation       = require('../models/Rotation');
 const Report         = require('../models/Report');
 const Evaluation     = require('../models/Evaluation');
 const Notification   = require('../models/Notification');
+const AuditLog       = require('../models/AuditLog');
 
 const PD = ['program_director'];
 
@@ -138,36 +141,25 @@ router.get('/reports', auth, allowRoles(...PD), async (req, res) => {
 });
 
 // GET /api/program-director/evaluations
-// All trainee evaluations for this program director's specialty.
+// Every evaluation authored by this program director (trainee + supervisor
+// subjects), scoped by evaluator identity — mirrors GET /api/dio/evaluations.
+// The client splits rows by evaluateeRole (a missing value is treated as
+// 'trainee'). Author-scoping is inherently specialty-safe: a PD can only create
+// evaluations for subjects in its own specialty (enforced on create below).
 router.get('/evaluations', auth, allowRoles(...PD), async (req, res) => {
   try {
-    const info = await requirePdSpecialty(req, res);
-    if (!info) return;
-
-    const trainees = await User.find({
-      role: coerceRoleToTrack('trainee', req.track),
-      isActive: { $ne: false },
-      ...specialtyUserMatch(info)
-    }).select('_id');
-    const traineeIds = trainees.map(t => t._id);
-
-    const evaluations = await Evaluation.find({
-      // Never surface supervisor-subject evaluations (DIO-authored) in this
-      // trainee-evaluations list. Legacy docs have no evaluateeRole and are
-      // kept via $ne.
-      evaluateeRole: { $ne: 'supervisor' },
-      $or: [
-        { traineeId: { $in: traineeIds } },
-        { student:    { $in: traineeIds } }
-      ]
-    })
-      .populate('student',      'name email initials photoUrl studentId')
-      .populate('traineeId',    'name email initials photoUrl studentId')
-      .populate('doctor',       'name initials')
-      .populate('supervisorId', 'name initials')
-      .populate('hospital',     'name')
+    const query = {
+      $or: [{ evaluatorId: req.user._id }, { doctor: req.user._id }, { createdBy: req.user._id }]
+    };
+    if (req.query.evaluateeRole === 'trainee' || req.query.evaluateeRole === 'supervisor') {
+      query.evaluateeRole = req.query.evaluateeRole;
+    }
+    const evaluations = await Evaluation.find(query)
+      .populate('student',     'name email initials photoUrl studentId')
+      .populate('traineeId',   'name email initials photoUrl studentId')
+      .populate('evaluateeId', 'name email initials photoUrl studentId')
+      .populate('hospital',    'name')
       .sort({ createdAt: -1 });
-
     res.json({ success: true, data: evaluations });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -229,5 +221,196 @@ router.patch('/reports/:id/grade',
     }
   }
 );
+
+// POST /api/program-director/trainees/:id/evaluations
+// PD creates a finalized-on-create evaluation for a trainee in its specialty.
+router.post('/trainees/:id/evaluations', auth, allowRoles(...PD), async (req, res) => {
+  try {
+    const info = await requirePdSpecialty(req, res);
+    if (!info) return;
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid trainee id' });
+    }
+
+    // Subject must be a trainee IN this PD's specialty (specialtyUserMatch),
+    // which is what confines the PD to its own trainees across all hospitals.
+    const trainee = await User.findOne({
+      _id: req.params.id,
+      role: coerceRoleToTrack('trainee', req.track),
+      isActive: { $ne: false },
+      ...specialtyUserMatch(info)
+    })
+      .populate('hospitalId', 'name')
+      .populate('specialtyId', 'name');
+
+    if (!trainee) {
+      return res.status(404).json({ success: false, message: 'Trainee not found' });
+    }
+
+    const evaluationType = req.body.evaluationType || req.body.type || '';
+    const scores = req.body.scores && typeof req.body.scores === 'object' ? req.body.scores : {};
+    const formData = req.body.formData && typeof req.body.formData === 'object' ? req.body.formData : {};
+    const totalScore = req.body.totalScore !== undefined && req.body.totalScore !== null && req.body.totalScore !== ''
+      ? Number(req.body.totalScore)
+      : averageScore(scores);
+    if (totalScore !== null && !Number.isFinite(totalScore)) {
+      return res.status(400).json({ success: false, message: 'totalScore must be a number' });
+    }
+
+    if (isWpbaForm(evaluationType)
+      && await wpbaAlreadyThisMonth(req.user._id, trainee._id, evaluationType)) {
+      return res.status(400).json({ success: false, message: `A ${evaluationType} evaluation has already been submitted for this trainee this month.` });
+    }
+
+    // Derive hospital from the already-scoped subject; never trust a client id.
+    const hospital = trainee.hospitalId?._id || trainee.hospital || null;
+    const specialty = req.body.specialty || trainee.specialtyId?.name || trainee.specialty || '';
+
+    const evaluation = await Evaluation.create({
+      student:        trainee._id,
+      traineeId:      trainee._id,
+      evaluateeId:    trainee._id,
+      evaluateeRole:  'trainee',
+      track:          req.track,
+      formData,
+      doctor:         req.user._id,
+      evaluatorId:    req.user._id,
+      evaluatorRole:  'program_director',
+      createdBy:      req.user._id,
+      createdByRole:  'program_director',
+      hospital,
+      specialty,
+      date:           req.body.date || new Date(),
+      evaluationType,
+      grade:          req.body.grade || '',
+      notes:          req.body.notes || req.body.comments || '',
+      comments:       req.body.comments || req.body.notes || '',
+      scores,
+      totalScore,
+      isFinalized:    true,
+      status:         'completed',
+      sentToTraineeAt: new Date()
+    });
+
+    await AuditLog.create({
+      userId: req.user._id,
+      action: 'pd_create_evaluation',
+      targetId: evaluation._id,
+      targetModel: 'Evaluation',
+      metadata: { traineeId: trainee._id, evaluationType },
+      ip: req.ip || req.headers['x-forwarded-for'] || 'unknown'
+    }).catch(err => console.error('[AuditLog] Failed to write PD evaluation:', err.message));
+
+    await Notification.create({
+      user: trainee._id,
+      message: `You have a new evaluation submitted by ${req.user.name}`
+    }).catch(err => console.error('[Notification] Failed to write PD evaluation notice:', err.message));
+
+    const populated = await Evaluation.findById(evaluation._id)
+      .populate('student', 'name email initials photoUrl studentId')
+      .populate('traineeId', 'name email initials photoUrl studentId')
+      .populate('doctor', 'name role initials')
+      .populate('evaluatorId', 'name role initials')
+      .populate('hospital', 'name');
+
+    res.status(201).json({ success: true, data: populated });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/program-director/supervisors/:id/evaluations
+// PD evaluates a supervisor in its specialty. Stored with
+// evaluateeRole:'supervisor' (student/evaluateeId hold the supervisor id,
+// traineeId left null) so trainee-facing queries never surface it. Finalized.
+router.post('/supervisors/:id/evaluations', auth, allowRoles(...PD), async (req, res) => {
+  try {
+    const info = await requirePdSpecialty(req, res);
+    if (!info) return;
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid supervisor id' });
+    }
+
+    const supervisor = await User.findOne({
+      _id: req.params.id,
+      role: coerceRoleToTrack('supervisor', req.track),
+      isActive: { $ne: false },
+      ...specialtyUserMatch(info)
+    })
+      .populate('hospitalId', 'name')
+      .populate('specialtyId', 'name');
+    if (!supervisor) {
+      return res.status(404).json({ success: false, message: 'Supervisor not found' });
+    }
+
+    const evaluationType = req.body.evaluationType || req.body.type || '';
+    const scores = req.body.scores && typeof req.body.scores === 'object' ? req.body.scores : {};
+    const formData = req.body.formData && typeof req.body.formData === 'object' ? req.body.formData : {};
+    const totalScore = req.body.totalScore !== undefined && req.body.totalScore !== null && req.body.totalScore !== ''
+      ? Number(req.body.totalScore)
+      : averageScore(scores);
+    if (totalScore !== null && !Number.isFinite(totalScore)) {
+      return res.status(400).json({ success: false, message: 'totalScore must be a number' });
+    }
+
+    if (isWpbaForm(evaluationType)
+      && await wpbaAlreadyThisMonth(req.user._id, supervisor._id, evaluationType)) {
+      return res.status(400).json({ success: false, message: `A ${evaluationType} evaluation has already been submitted for this supervisor this month.` });
+    }
+
+    const hospital = supervisor.hospitalId?._id || supervisor.hospital || null;
+    const specialty = req.body.specialty || supervisor.specialtyId?.name || supervisor.specialty || '';
+
+    const evaluation = await Evaluation.create({
+      student:        supervisor._id,
+      evaluateeId:    supervisor._id,
+      evaluateeRole:  'supervisor',
+      track:          req.track,
+      doctor:         req.user._id,
+      evaluatorId:    req.user._id,
+      evaluatorRole:  'program_director',
+      createdBy:      req.user._id,
+      createdByRole:  'program_director',
+      hospital,
+      specialty,
+      date:           req.body.date || new Date(),
+      evaluationType,
+      grade:          req.body.grade || '',
+      notes:          req.body.notes || req.body.comments || '',
+      comments:       req.body.comments || req.body.notes || '',
+      scores,
+      formData,
+      totalScore,
+      isFinalized:    true,
+      status:         'completed',
+      sentToTraineeAt: new Date()
+    });
+
+    await AuditLog.create({
+      userId: req.user._id,
+      action: 'pd_create_supervisor_evaluation',
+      targetId: evaluation._id,
+      targetModel: 'Evaluation',
+      metadata: { supervisorId: supervisor._id, evaluationType },
+      ip: req.ip || req.headers['x-forwarded-for'] || 'unknown'
+    }).catch(err => console.error('[AuditLog] Failed to write PD supervisor evaluation:', err.message));
+
+    await Notification.create({
+      user: supervisor._id,
+      message: `You have a new evaluation submitted by ${req.user.name}`
+    }).catch(err => console.error('[Notification] Failed to write PD supervisor evaluation notice:', err.message));
+
+    const populated = await Evaluation.findById(evaluation._id)
+      .populate('student',     'name email initials photoUrl')
+      .populate('evaluateeId', 'name email initials photoUrl')
+      .populate('doctor',      'name role initials')
+      .populate('evaluatorId', 'name role initials')
+      .populate('hospital',    'name');
+
+    res.status(201).json({ success: true, data: populated });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 module.exports = router;

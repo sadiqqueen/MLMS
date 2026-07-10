@@ -12,18 +12,21 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { DistributionsPanel } from './DioDistributions';
 import { RotationsPanel } from './DioRotations';
+import { ProgramDirectorsPanel } from './DioAssignPds';
 
 const TABS = [
-  { key: 'distributions', label: 'Sup. Distribution' },
-  { key: 'rotations',     label: 'Rotations' },
+  { key: 'distributions',     label: 'Sup. Distribution' },
+  { key: 'rotations',         label: 'Rotations' },
+  { key: 'program-directors', label: 'Program Directors' },
 ];
+const TAB_KEYS = TABS.map(t => t.key);
 
 export default function DioAssignments() {
   const location = useLocation();
   const navigate = useNavigate();
 
   const params = new URLSearchParams(location.search);
-  const initialTab = params.get('tab') === 'rotations' ? 'rotations' : 'distributions';
+  const initialTab = TAB_KEYS.includes(params.get('tab')) ? params.get('tab') : 'distributions';
   const wantNew = params.get('new') === '1';
 
   const [tab, setTab] = useState(initialTab);
@@ -68,9 +71,9 @@ export default function DioAssignments() {
 
         {/* Only the active panel is mounted; keyed for a subtle crossfade. */}
         <div key={tab} style={{ animation: 'fadeIn .18s ease-out' }}>
-          {tab === 'distributions'
-            ? <DistributionsPanel autoOpenNew={autoOpen && initialTab === 'distributions'} />
-            : <RotationsPanel autoOpenNew={autoOpen && initialTab === 'rotations'} />}
+          {tab === 'distributions' && <DistributionsPanel autoOpenNew={autoOpen && initialTab === 'distributions'} />}
+          {tab === 'rotations'     && <RotationsPanel autoOpenNew={autoOpen && initialTab === 'rotations'} />}
+          {tab === 'program-directors' && <ProgramDirectorsPanel />}
         </div>
       </main>
     </>

@@ -24,6 +24,7 @@ import SupervisorEvaluations from './pages/SupervisorEvaluations';
 import ProgramDirectorTrainees from './pages/ProgramDirectorTrainees';
 import ProgramDirectorSupervisors from './pages/ProgramDirectorSupervisors';
 import ProgramDirectorReports from './pages/ProgramDirectorReports';
+import ProgramDirectorEvaluations from './pages/ProgramDirectorEvaluations';
 
 import SecretaryTrainees from './pages/SecretaryTrainees';
 import SecretarySupervisors from './pages/SecretarySupervisors';
@@ -124,6 +125,11 @@ export default function App() {
           <Route path="/program-director/reports" element={
             <ProtectedRoute allowedRoles={['program_director']}>
               <ProgramDirectorReports />
+            </ProtectedRoute>
+          } />
+          <Route path="/program-director/evaluations" element={
+            <ProtectedRoute allowedRoles={['program_director']}>
+              <ProgramDirectorEvaluations />
             </ProtectedRoute>
           } />
 
@@ -344,6 +350,9 @@ export default function App() {
           } />
           <Route path="/basic/program-director/reports" element={
             <ProtectedRoute allowedRoles={['b_program_director']}><ProgramDirectorReports /></ProtectedRoute>
+          } />
+          <Route path="/basic/program-director/evaluations" element={
+            <ProtectedRoute allowedRoles={['b_program_director']}><ProgramDirectorEvaluations /></ProtectedRoute>
           } />
 
           {/* Basic — secretary */}

@@ -5,6 +5,7 @@ const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const { coerceRoleToTrack, trackFilter, trackForRole } = require('../utils/track');
 const { findPdForSpecialty } = require('../utils/pdScope');
+const { averageScore, isWpbaForm, wpbaAlreadyThisMonth } = require('../utils/evalScoring');
 const auditLog       = require('../middleware/auditLogger');
 const { v4: uuidv4 } = require('uuid');
 const User           = require('../models/User');
@@ -110,36 +111,6 @@ function groupReports(reports) {
     monthly: reports.filter(r => r.type === 'monthly'),
     final: reports.filter(r => r.type === 'final'),
   };
-}
-
-function averageScore(scores) {
-  if (!scores || typeof scores !== 'object') return null;
-  const values = Object.values(scores).map(Number).filter(n => Number.isFinite(n));
-  return values.length ? values.reduce((sum, n) => sum + n, 0) / values.length : null;
-}
-
-// Structured WPBA forms shared with the supervisor flow (evalForms.js). Free-
-// form quick evaluations (from the trainee-detail screen) are NOT in this set
-// and are therefore exempt from the once-per-month cap below.
-const WPBA_FORMS = ['Mini-CEX', 'CBD', 'DOPS', 'Academic Supervisor Report', 'FITER'];
-function isWpbaForm(type) {
-  return WPBA_FORMS.includes(type) || String(type || '').startsWith('MSF-360');
-}
-// A given evaluator may file each WPBA form type at most once per subject per
-// calendar month — matched per-evaluator so DIO and supervisor caps are
-// independent (mirrors supervisor.js).
-async function wpbaAlreadyThisMonth(evaluatorId, subjectId, evaluationType) {
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  return Evaluation.countDocuments({
-    $and: [
-      { $or: [{ evaluateeId: subjectId }, { traineeId: subjectId }, { student: subjectId }] },
-      { $or: [{ evaluatorId }, { doctor: evaluatorId }] },
-      { evaluationType },
-      { createdAt: { $gte: monthStart, $lt: monthEnd } },
-    ],
-  });
 }
 
 function isValidObjectId(id) {

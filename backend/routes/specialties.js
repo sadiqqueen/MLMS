@@ -6,6 +6,7 @@ const multer         = require('multer');
 const path           = require('path');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
+const { trackFilter } = require('../utils/track');
 const auditLog       = require('../middleware/auditLogger');
 const Specialty      = require('../models/Specialty');
 
@@ -83,6 +84,11 @@ router.get('/', auth, allowRoles(...READ_ROLES), async (req, res) => {
     if (hospital) query.hospitalId = hospital;
     if (active === 'true')  query.isActive = true;
     if (active === 'false') query.isActive = false;
+    // Track isolation: every caller except super_admin sees only their own
+    // track's specialties (a b_dio/b_secretary must never see Advanced rows,
+    // and vice-versa). This keeps specialty dropdowns track-correct so an
+    // assignment can't 400 with "Specialty is in a different track".
+    if (req.user.role !== 'super_admin') Object.assign(query, trackFilter(req.track));
 
     const specialties = await Specialty.find(query)
       .populate('hospitalId',  'name city')

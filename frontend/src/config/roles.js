@@ -98,6 +98,7 @@ const ADVANCED_LINKS = {
   program_director: [
     { to: '/program-director/trainees',    key: 'trainees',    label: 'Trainees'    },
     { to: '/program-director/supervisors', key: 'supervisors', label: 'Supervisors' },
+    { to: '/program-director/evaluations', key: 'evaluations', label: 'Evaluations' },
     { to: '/program-director/reports',     key: 'reports',     label: 'Reports'     },
   ],
 };
