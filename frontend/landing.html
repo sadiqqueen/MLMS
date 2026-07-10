@@ -520,10 +520,10 @@
 
     .tracks-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 480px));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       justify-content: center;
       align-items: stretch;
-      gap: 24px;
+      gap: 28px;
     }
 
     .track-card {
@@ -631,6 +631,67 @@
       margin-top: auto;
     }
     .btn-track:hover { background: var(--blue-mid); transform: translateY(-1px); }
+
+    /* Track unit = a track card paired with its program document.
+       .doc-left  → document sits to the LEFT of the card (basic track).
+       .doc-right → document sits to the RIGHT of the card (advanced track).
+       On smaller screens the document drops UNDER the card (see responsive). */
+    .track-unit {
+      display: flex;
+      align-items: stretch;
+      gap: 18px;
+    }
+    .track-unit .track-card { flex: 1 1 auto; min-width: 0; }
+
+    .track-doc {
+      flex: 0 0 208px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 12px;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    }
+    .track-doc:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 16px 48px rgba(12,68,124,0.12);
+      border-color: rgba(12,68,124,0.15);
+    }
+    .track-doc-icon { font-size: 40px; line-height: 1; }
+    .track-doc-tag {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--blue);
+      background: var(--blue-light);
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .track-doc-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    .track-doc-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: auto;
+      width: 100%;
+    }
+    .track-doc-actions .btn-track { width: auto; flex: 1 1 0; min-width: 74px; padding: 0 10px; }
+    .btn-track.outline {
+      background: transparent;
+      color: var(--blue);
+      border: 1.5px solid rgba(12,68,124,0.2);
+    }
+    .btn-track.outline:hover { background: var(--blue-light); }
 
     /* ══════════════════════════════════════════════════════════════
        VISION & MISSION
@@ -1014,6 +1075,7 @@
     html[dir="rtl"] .footer-bar-inner { flex-direction: row-reverse; }
     html[dir="rtl"] .footer-links     { text-align: right; }
     html[dir="rtl"] .track-card       { direction: rtl; }
+    html[dir="rtl"] .track-doc        { direction: rtl; }
     html[dir="rtl"] .track-bullets li { flex-direction: row-reverse; }
     html[dir="rtl"] .section-sub      { direction: rtl; }
     html[dir="rtl"] .section-header-center .section-sub { text-align: center; }
@@ -1025,6 +1087,13 @@
     @media (max-width: 1024px) {
       .features-grid { grid-template-columns: 1fr 1fr; }
       .footer-main   { grid-template-columns: 1fr 1fr; }
+
+      /* Narrow screens: the document drops UNDER its track card.
+         doc-left keeps DOM order [doc, card] → column-reverse puts card on top.
+         doc-right keeps DOM order [card, doc] → column keeps card on top. */
+      .track-unit.doc-left  { flex-direction: column-reverse; }
+      .track-unit.doc-right { flex-direction: column; }
+      .track-doc { flex-basis: auto; width: 100%; }
     }
 
     /* ══════════════════════════════════════════════════════════════
@@ -1217,8 +1286,18 @@
 
       <div class="tracks-grid">
 
-        <!-- Basic Training Track — left card -->
-        <div class="track-card fade-up">
+        <!-- Basic Training Track — left card; document sits to its left (under it on narrow screens) -->
+        <div class="track-unit doc-left fade-up">
+        <div class="track-doc">
+          <div class="track-doc-icon">📄</div>
+          <div class="track-doc-tag" data-en="Program Document" data-ar="وثيقة البرنامج">Program Document</div>
+          <div class="track-doc-title" data-en="Medical Internship Program" data-ar="برنامج الامتياز الطبي">Medical Internship Program</div>
+          <div class="track-doc-actions">
+            <a href="/track-documents/Medical_Internship_Program.pdf" target="_blank" rel="noopener" style="text-decoration:none;flex:1 1 0;"><button class="btn-track" type="button" data-en="View" data-ar="عرض">View</button></a>
+            <a href="/track-documents/Medical_Internship_Program.pdf" download style="text-decoration:none;flex:1 1 0;"><button class="btn-track outline" type="button" data-en="Download" data-ar="تنزيل">Download</button></a>
+          </div>
+        </div>
+        <div class="track-card">
           <div class="track-icon">🩺</div>
           <div class="track-tag" data-en="Basic Clinical Training" data-ar="التدريب السريري الأساسي">
             Basic Clinical Training
@@ -1243,9 +1322,11 @@
             <button class="btn-track" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
           </a>
         </div>
+        </div>
 
-        <!-- Specialty Track — right card -->
-        <div class="track-card fade-up">
+        <!-- Specialty Track — right card; document sits to its right (under it on narrow screens) -->
+        <div class="track-unit doc-right fade-up">
+        <div class="track-card">
           <div class="track-icon">⭐</div>
           <div class="track-tag" data-en="Advanced Clinical Training" data-ar="التدريب السريري المتقدم">
             Advanced Clinical Training
@@ -1269,6 +1350,16 @@
           <a href="#" onclick="event.preventDefault();openLoginPanel()">
             <button class="btn-track" data-en="Enter Portal" data-ar="الدخول للبوابة">Enter Portal</button>
           </a>
+        </div>
+        <div class="track-doc">
+          <div class="track-doc-icon">📄</div>
+          <div class="track-doc-tag" data-en="Program Document" data-ar="وثيقة البرنامج">Program Document</div>
+          <div class="track-doc-title" data-en="Specialty Training Guide" data-ar="دليل التدريب التخصصي">Specialty Training Guide</div>
+          <div class="track-doc-actions">
+            <a href="/track-documents/Specialty_Training_Guide_General_Model_EN.pdf" target="_blank" rel="noopener" style="text-decoration:none;flex:1 1 0;"><button class="btn-track" type="button" data-en="View" data-ar="عرض">View</button></a>
+            <a href="/track-documents/Specialty_Training_Guide_General_Model_EN.pdf" download style="text-decoration:none;flex:1 1 0;"><button class="btn-track outline" type="button" data-en="Download" data-ar="تنزيل">Download</button></a>
+          </div>
+        </div>
         </div>
 
       </div>
