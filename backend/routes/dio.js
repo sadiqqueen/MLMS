@@ -4,6 +4,7 @@ const mongoose       = require('mongoose');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const { coerceRoleToTrack, trackFilter, trackForRole } = require('../utils/track');
+const { findPdForSpecialty } = require('../utils/pdScope');
 const auditLog       = require('../middleware/auditLogger');
 const { v4: uuidv4 } = require('uuid');
 const User           = require('../models/User');
@@ -169,7 +170,7 @@ function requiredMissing(data, fields) {
 function requiredFieldsForRole(role) {
   if (role === 'trainee') return ['name', 'email', 'password', 'hospitalId', 'specialtyId', 'studentId'];
   if (role === 'supervisor') return ['name', 'email', 'password', 'phone', 'hospitalId', 'specialtyId'];
-  if (role === 'program_director') return ['name', 'email', 'password', 'phone', 'hospitalId'];
+  if (role === 'program_director') return ['name', 'email', 'password', 'phone', 'specialtyId'];
   if (role === 'secretary') return ['name', 'email', 'password', 'phone', 'hospitalId'];
   return ['name', 'email', 'password'];
 }
@@ -237,11 +238,6 @@ async function validateUserReferences(role, data, res, req) {
       res.status(400).json({ success: false, message: 'Supervisor not found or inactive' });
       return false;
     }
-  }
-
-  if (role === 'program_director') {
-    delete data.specialtyId;
-    delete data.specialty;
   }
 
   return true;
@@ -378,6 +374,14 @@ async function createManagedUser(req, res, role) {
     return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
   }
   if (!(await validateUserReferences(role, data, res, req))) return null;
+  // Enforce one Program Director per specialty (by name, within this track).
+  if (role === 'program_director' && data.specialtyId) {
+    const clash = await findPdForSpecialty(data.specialtyId, req.track, null);
+    if (clash) {
+      res.status(409).json({ success: false, message: `This specialty already has a Program Director (${clash.name})` });
+      return null;
+    }
+  }
   data.password = req.body.password;
 
   const user = new User(data);
@@ -402,6 +406,14 @@ async function updateManagedUser(req, res, role, id) {
   delete updates.email;
   delete updates.password;
   if (!(await validateUserReferences(role, updates, res, req))) return null;
+  // Re-assigning a PD's specialty must not collide with another active PD.
+  if (role === 'program_director' && updates.specialtyId) {
+    const clash = await findPdForSpecialty(updates.specialtyId, req.track, id);
+    if (clash) {
+      res.status(409).json({ success: false, message: `This specialty already has a Program Director (${clash.name})` });
+      return null;
+    }
+  }
 
   const user = await populateManagedUser(User.findByIdAndUpdate(id, updates, { new: true }));
   await writeAudit(req, `dio_update_${role}`, 'User', id, { role, fields: Object.keys(updates) });
@@ -455,9 +467,16 @@ function registerManagedUserRoutes(routeName, role) {
   router.patch(`/${routeName}/:id/reactivate`, auth, allowRoles('super_admin'), async (req, res) => {
     try {
       if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid user id' });
-      const existing = await User.findById(req.params.id).select('role');
+      const existing = await User.findById(req.params.id).select('role specialtyId');
       if (!existing || existing.role !== role) {
         return res.status(404).json({ success: false, message: 'User not found' });
+      }
+      // Reactivating a PD must not create a second active PD on the same specialty.
+      if (role === 'program_director' && existing.specialtyId) {
+        const clash = await findPdForSpecialty(existing.specialtyId, trackForRole(existing.role), req.params.id);
+        if (clash) {
+          return res.status(409).json({ success: false, message: `This specialty already has a Program Director (${clash.name})` });
+        }
       }
       const user = await populateManagedUser(User.findByIdAndUpdate(
         req.params.id,
@@ -768,12 +787,11 @@ router.get('/trainees/:id/details', auth, allowRoles(...DIO, 'super_admin'), asy
         .populate('specialtyId', 'name')
         .populate('supervisorId', 'name email phone specialty')
         .populate('doctor', 'name email phone specialty'),
-      hospitalId
-        ? User.findOne({
-            role: coerceRoleToTrack('program_director', req.track),
-            isActive: { $ne: false },
-            $or: [{ hospitalId }, { hospital: hospitalId }]
-          }).select('name email phone hospitalId hospital')
+      // The trainee's Program Director is the PD of the trainee's specialty
+      // (PDs are specialty-scoped, spanning every hospital of that specialty).
+      trainee.specialtyId
+        ? findPdForSpecialty(trainee.specialtyId?._id || trainee.specialtyId, req.track, null)
+            .then(pd => pd && User.findById(pd._id).select('name email phone specialtyId hospitalId hospital'))
         : null,
       Report.find({ student: trainee._id })
         .populate('hospital', 'name city')

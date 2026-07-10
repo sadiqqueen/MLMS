@@ -18,7 +18,9 @@ module.exports = function scopeGuard() {
         req.scope = { supervisorId: _id };
         break;
       case 'program_director':
-        req.scope = { hospitalId: effectiveHospital };
+        // A Program Director is scoped to their single specialty (they oversee
+        // that specialty across every hospital that offers it).
+        req.scope = { specialtyId };
         break;
       case 'secretary':
         req.scope = { specialtyId };

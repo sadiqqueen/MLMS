@@ -7,6 +7,7 @@ const fs             = require('fs');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const { coerceRoleToTrack, trackForRole, baseRole } = require('../utils/track');
+const { findPdForSpecialty } = require('../utils/pdScope');
 const auditLog       = require('../middleware/auditLogger');
 
 // Ensure photos upload folder exists
@@ -225,6 +226,11 @@ router.post('/', auth, allowRoles(...WRITE_STAFF), upload.single('photo'), async
 
     // Basic staff (req.track === 'basic') can only ever create Basic (b_*) users.
     data.role = coerceRoleToTrack(data.role, req.track);
+    // One Program Director per specialty (by name, within track).
+    if (baseRole(data.role) === 'program_director' && data.specialtyId) {
+      const clash = await findPdForSpecialty(data.specialtyId, trackForRole(data.role), null);
+      if (clash) return res.status(409).json({ success: false, message: `This specialty already has a Program Director (${clash.name})` });
+    }
     const user = new User(data);
     await user.save();
 
@@ -258,6 +264,12 @@ async function updateUser(req, res) {
     const fields = {};
     allowedKeys.forEach(k => { if (req.body[k] !== undefined) fields[k] = req.body[k]; });
     if (req.file) fields.photoUrl = `/uploads/photos/${req.file.filename}`;
+
+    // One Program Director per specialty (by name, within track).
+    if (baseRole(target.role) === 'program_director' && fields.specialtyId) {
+      const clash = await findPdForSpecialty(fields.specialtyId, trackForRole(target.role), req.params.id);
+      if (clash) return res.status(409).json({ message: `This specialty already has a Program Director (${clash.name})` });
+    }
 
     const user = await User.findByIdAndUpdate(req.params.id, fields, { new: true, runValidators: true })
       .select('-password')

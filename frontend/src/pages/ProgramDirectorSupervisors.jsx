@@ -228,7 +228,7 @@ export default function ProgramDirectorSupervisors() {
                       <div style={{ fontSize:15, fontWeight:600, color:'#4B5563', marginBottom:4 }}>No supervisors found</div>
                       <div style={{ fontSize:13 }}>
                         {supervisors.length === 0
-                          ? 'No supervisors are assigned to this hospital yet.'
+                          ? 'No supervisors are assigned to your specialty yet.'
                           : 'Try a different search term.'}
                       </div>
                     </td>

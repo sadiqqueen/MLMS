@@ -28,16 +28,17 @@ function ConfirmModal({ title, message, confirmLabel, confirmClass, onConfirm, o
   );
 }
 
-// NOTE: Program Directors do NOT require specialtyId per backend rules.
-function PDModal({ pd, hospitals, onClose, onSaved }) {
+// A Program Director is tied to ONE specialty and oversees it across every
+// hospital that offers it, so we assign a specialty (not a hospital).
+function PDModal({ pd, specialties, onClose, onSaved }) {
   const isEdit = !!pd;
   const [form, setForm] = useState({
-    name:       pd?.name        || '',
-    email:      pd?.email       || '',
-    password:   '',
-    phone:      pd?.phone       || '',
-    department: pd?.department  || '',
-    hospitalId: pd?.hospitalId?._id || pd?.hospital?._id || pd?.hospitalId || '',
+    name:        pd?.name        || '',
+    email:       pd?.email       || '',
+    password:    '',
+    phone:       pd?.phone       || '',
+    department:  pd?.department   || '',
+    specialtyId: pd?.specialtyId?._id || pd?.specialtyId || '',
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -57,8 +58,8 @@ function PDModal({ pd, hospitals, onClose, onSaved }) {
     if (!isEdit && !form.email.trim()) e.email      = true;
     if (!isEdit && !form.password)     e.password   = true;
     if (!isEdit && form.password && form.password.length < 6) e.password = true;
-    if (!form.phone.trim())            e.phone      = true;
-    if (!form.hospitalId)              e.hospitalId = true;
+    if (!form.phone.trim())            e.phone       = true;
+    if (!form.specialtyId)             e.specialtyId = true;
     return e;
   }
 
@@ -68,10 +69,10 @@ function PDModal({ pd, hospitals, onClose, onSaved }) {
     setSaving(true); setApiErr('');
     try {
       const payload = {
-        name:       form.name.trim(),
-        phone:      form.phone,
-        department: form.department,
-        hospitalId: form.hospitalId,
+        name:        form.name.trim(),
+        phone:       form.phone,
+        department:  form.department,
+        specialtyId: form.specialtyId,
       };
       if (!isEdit) { payload.email = form.email.trim(); payload.password = form.password; }
       const res = isEdit
@@ -83,10 +84,14 @@ function PDModal({ pd, hospitals, onClose, onSaved }) {
       setApiErr(err.response?.data?.message || 'Save failed');
     } finally { setSaving(false); }
   }
-  const hospitalOptions = hospitals.map(h => ({
-    value: h._id,
-    label: `${h.name}${h.city ? ` (${h.city})` : ''}`,
-  }));
+  // De-duplicate specialties by name (the DB carries one row per hospital);
+  // any row of a given name works — the backend re-expands the scope by name.
+  const specialtyOptions = Object.values(
+    specialties.reduce((acc, s) => {
+      if (s?.name && !acc[s.name]) acc[s.name] = { value: s._id, label: s.name };
+      return acc;
+    }, {})
+  ).sort((a, b) => a.label.localeCompare(b.label));
 
   return (
     <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -126,14 +131,17 @@ function PDModal({ pd, hospitals, onClose, onSaved }) {
               <input value={form.department} onChange={e => set('department', e.target.value)} />
             </div>
             <div className="admin-field full">
-              <label>Hospital *</label>
+              <label>Specialty *</label>
               <SearchableSelect
-                value={form.hospitalId}
-                onChange={v => set('hospitalId', v)}
-                options={hospitalOptions}
-                placeholder="Search hospital..."
-                error={errors.hospitalId}
+                value={form.specialtyId}
+                onChange={v => set('specialtyId', v)}
+                options={specialtyOptions}
+                placeholder="Search specialty..."
+                error={errors.specialtyId}
               />
+              <div style={{ fontSize:11, color:'#8B8FA8', marginTop:4 }}>
+                Oversees this specialty across every hospital that offers it. One Program Director per specialty.
+              </div>
             </div>
           </div>
           {apiErr && (
@@ -155,7 +163,7 @@ function PDModal({ pd, hospitals, onClose, onSaved }) {
 
 export default function DioProgramDirectors() {
   const [pds,          setPds         ] = useState([]);
-  const [hospitals,    setHospitals   ] = useState([]);
+  const [specialties,  setSpecialties ] = useState([]);
   const [loading,      setLoading     ] = useState(true);
   const [view,         setView        ] = useState('list');
   const [search,       setSearch      ] = useState('');
@@ -174,12 +182,12 @@ export default function DioProgramDirectors() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [pRes, hRes] = await Promise.all([
+      const [pRes, sRes] = await Promise.all([
         api.get(`/api/dio/program-directors${showInactive ? '?includeInactive=true' : ''}`),
-        api.get('/api/hospitals'),
+        api.get('/api/specialties'),
       ]);
       setPds(pRes.data?.data || pRes.data || []);
-      setHospitals(hRes.data?.data || hRes.data || []);
+      setSpecialties((sRes.data?.data || sRes.data || []).filter(s => s.isActive !== false));
     } catch { showToast('Failed to load program directors', 'error'); }
     finally { setLoading(false); }
   }, [showInactive]);
@@ -192,7 +200,7 @@ export default function DioProgramDirectors() {
       || p.name?.toLowerCase().includes(q)
       || p.email?.toLowerCase().includes(q)
       || (p.department || '').toLowerCase().includes(q)
-      || (p.hospitalId?.name || p.hospital?.name || '').toLowerCase().includes(q);
+      || (p.specialtyId?.name || '').toLowerCase().includes(q);
   });
 
   function handleSaved(saved, isEdit) {
@@ -255,7 +263,7 @@ export default function DioProgramDirectors() {
           {view === 'list' && <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
-                <tr><th>#</th><th>Program Director</th><th>Department</th><th>Hospital</th><th>Status</th><th>Actions</th></tr>
+                <tr><th>#</th><th>Program Director</th><th>Department</th><th>Specialty</th><th>Status</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {filtered.length === 0 && (
@@ -286,7 +294,11 @@ export default function DioProgramDirectors() {
                         </div>
                       </td>
                       <td style={{ fontSize:13, color:'#4B5563' }}>{p.department || '—'}</td>
-                      <td style={{ fontSize:13, color:'#4B5563' }}>{p.hospitalId?.name || p.hospital?.name || '—'}</td>
+                      <td>
+                        {p.specialtyId?.name
+                          ? <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'#EEEDFE', color:'#3C3489' }}>{p.specialtyId.name}</span>
+                          : <span style={{ fontSize:13, color:'#8B8FA8' }}>—</span>}
+                      </td>
                       <td>
                         <span style={{ fontSize:11, fontWeight:600, padding:'3px 8px', borderRadius:20,
                           background: active ? '#D1FAE5' : '#FEE2E2',
@@ -321,11 +333,11 @@ export default function DioProgramDirectors() {
               {filtered.length === 0 && <div className="admin-empty" style={{ gridColumn:'1/-1' }}>{pds.length === 0 ? 'No program directors yet.' : 'No match.'}</div>}
               {filtered.map(p => {
                 const active = p.isActive !== false;
-                const hospital = p.hospitalId?.name || p.hospital?.name || '-';
+                const specialty = p.specialtyId?.name || 'No specialty';
                 return (
                   <div className="management-card" key={p._id} style={{ opacity: active ? 1 : 0.65 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>{p.photoUrl ? <img src={`${API_BASE}${p.photoUrl}`} alt="" className="cell-photo" /> : <div className="cell-initials">{p.initials || p.name?.[0] || '?'}</div>}<div><div className="management-card-title">{p.name}</div><div className="management-card-sub">{p.email}</div></div></div>
-                    <div className="management-card-sub">{p.department || 'No department'} - {hospital}</div>
+                    <div className="management-card-sub">{p.department || 'No department'} - {specialty}</div>
                     <div className="management-card-meta"><span style={{ fontSize:11, fontWeight:600, padding:'3px 8px', borderRadius:20, background: active ? '#D1FAE5' : '#FEE2E2', color: active ? '#065F46' : '#991B1B' }}>{active ? 'Active' : 'Inactive'}</span></div>
                     <div className="management-card-actions"><button className="btn-action edit" title="Edit" aria-label={`Edit ${p.name}`} onClick={() => { setEditItem(p); setShowModal(true); }}><IconPencil /></button>{active && <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${p.name}`} onClick={() => setConfirmDeact(p)}><IconBan /></button>}</div>
                   </div>
@@ -338,7 +350,7 @@ export default function DioProgramDirectors() {
         {showModal && (
           <PDModal
             pd={editItem}
-            hospitals={hospitals}
+            specialties={specialties}
             onClose={() => { setShowModal(false); setEditItem(null); }}
             onSaved={handleSaved}
           />

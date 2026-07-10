@@ -3,8 +3,9 @@ const router         = require('express').Router();
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const auditLog       = require('../middleware/auditLogger');
+const { coerceRoleToTrack } = require('../utils/track');
+const { specialtyIdsForName, specialtyUserMatch } = require('../utils/pdScope');
 const User           = require('../models/User');
-const Distribution   = require('../models/Distribution');
 const Rotation       = require('../models/Rotation');
 const Report         = require('../models/Report');
 const Evaluation     = require('../models/Evaluation');
@@ -12,20 +13,29 @@ const Notification   = require('../models/Notification');
 
 const PD = ['program_director'];
 
-function getHospital(user) {
-  return user.hospitalId || user.hospital || null;
+// Resolve the PD's specialty scope (all same-named Specialty rows in this track).
+// A Program Director oversees ONE specialty across every hospital that offers it.
+// Sends a 403 and returns null when the PD has no specialty assigned.
+async function requirePdSpecialty(req, res) {
+  const info = await specialtyIdsForName(req.user.specialtyId, req.track);
+  if (!info) {
+    res.status(403).json({ success: false, message: 'Program Director has no specialty assigned' });
+    return null;
+  }
+  return info;
 }
 
 // GET /api/program-director/trainees
-// All trainees in this program director's hospital, across all specialties
+// All trainees in this program director's specialty, across all hospitals.
 router.get('/trainees', auth, allowRoles(...PD), async (req, res) => {
   try {
-    const hospitalId = getHospital(req.user);
+    const info = await requirePdSpecialty(req, res);
+    if (!info) return;
 
     const trainees = await User.find({
-      role:     'trainee',
-      $or:      [{ hospitalId }, { hospital: hospitalId }],
-      isActive: { $ne: false }
+      role:     coerceRoleToTrack('trainee', req.track),
+      isActive: { $ne: false },
+      ...specialtyUserMatch(info)
     })
       .select('-password')
       .populate('hospitalId',  'name city')
@@ -38,8 +48,7 @@ router.get('/trainees', auth, allowRoles(...PD), async (req, res) => {
     const distributions = await Rotation.find({
       $or: [
         { traineeId: { $in: traineeIds } },
-        { student: { $in: traineeIds } },
-        { hospitalId }
+        { student:   { $in: traineeIds } }
       ]
     })
       .populate('traineeId', 'name email studentId')
@@ -58,15 +67,16 @@ router.get('/trainees', auth, allowRoles(...PD), async (req, res) => {
 });
 
 // GET /api/program-director/supervisors
-// All supervisors in this hospital
+// All supervisors in this program director's specialty, across all hospitals.
 router.get('/supervisors', auth, allowRoles(...PD), async (req, res) => {
   try {
-    const hospitalId = getHospital(req.user);
+    const info = await requirePdSpecialty(req, res);
+    if (!info) return;
 
     const supervisors = await User.find({
-      role:     'supervisor',
-      $or:      [{ hospitalId }, { hospital: hospitalId }],
-      isActive: { $ne: false }
+      role:     coerceRoleToTrack('supervisor', req.track),
+      isActive: { $ne: false },
+      ...specialtyUserMatch(info)
     })
       .select('-password')
       .populate('hospitalId',  'name city')
@@ -98,14 +108,15 @@ router.get('/supervisors', auth, allowRoles(...PD), async (req, res) => {
 });
 
 // GET /api/program-director/reports
-// Final reports only — for grading by program director
+// Final reports only — for grading by program director (specialty-scoped).
 router.get('/reports', auth, allowRoles(...PD), async (req, res) => {
   try {
-    const hospitalId = getHospital(req.user);
+    const info = await requirePdSpecialty(req, res);
+    if (!info) return;
 
     const trainees = await User.find({
-      role: 'trainee',
-      $or:  [{ hospitalId }, { hospital: hospitalId }]
+      role: coerceRoleToTrack('trainee', req.track),
+      ...specialtyUserMatch(info)
     }).select('_id');
     const traineeIds = trainees.map(t => t._id);
 
@@ -127,18 +138,16 @@ router.get('/reports', auth, allowRoles(...PD), async (req, res) => {
 });
 
 // GET /api/program-director/evaluations
-// All evaluations for trainees in this program director's hospital
+// All trainee evaluations for this program director's specialty.
 router.get('/evaluations', auth, allowRoles(...PD), async (req, res) => {
   try {
-    const hospitalId = getHospital(req.user);
-    if (!hospitalId) {
-      return res.status(403).json({ success: false, message: 'Program Director has no hospital assigned' });
-    }
+    const info = await requirePdSpecialty(req, res);
+    if (!info) return;
 
     const trainees = await User.find({
-      role: 'trainee',
-      $or:  [{ hospitalId }, { hospital: hospitalId }],
-      isActive: { $ne: false }
+      role: coerceRoleToTrack('trainee', req.track),
+      isActive: { $ne: false },
+      ...specialtyUserMatch(info)
     }).select('_id');
     const traineeIds = trainees.map(t => t._id);
 
@@ -149,8 +158,7 @@ router.get('/evaluations', auth, allowRoles(...PD), async (req, res) => {
       evaluateeRole: { $ne: 'supervisor' },
       $or: [
         { traineeId: { $in: traineeIds } },
-        { student:    { $in: traineeIds } },
-        { hospital: hospitalId }
+        { student:    { $in: traineeIds } }
       ]
     })
       .populate('student',      'name email initials photoUrl studentId')
@@ -174,6 +182,9 @@ router.patch('/reports/:id/grade',
   auditLog('grade_final_report', 'Report'),
   async (req, res) => {
     try {
+      const info = await requirePdSpecialty(req, res);
+      if (!info) return;
+
       const { grade, globalRating, assessmentCriteria, assessorComments, reviewNote } = req.body;
 
       const report = await Report.findById(req.params.id);
@@ -183,10 +194,11 @@ router.patch('/reports/:id/grade',
       }
       const trainee = await User.findOne({
         _id: report.student,
-        $or: [{ hospitalId: getHospital(req.user) }, { hospital: getHospital(req.user) }]
+        role: coerceRoleToTrack('trainee', req.track),
+        ...specialtyUserMatch(info)
       });
       if (!trainee) {
-        return res.status(403).json({ success: false, message: 'Report belongs to a trainee outside this hospital' });
+        return res.status(403).json({ success: false, message: 'Report belongs to a trainee outside this specialty' });
       }
 
       report.grade              = grade || (globalRating === 'competent' ? 'Competent' : 'Not-Competent');

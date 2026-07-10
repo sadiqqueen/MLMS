@@ -387,19 +387,22 @@ async function buildProfessionalData() {
     gender: 'male'
   }, PASSWORDS.president);
 
+  // One Program Director per specialty (PDs are specialty-scoped and oversee
+  // their specialty across every hospital that offers it).
   const programDirectors = [];
   for (let i = 0; i < PROGRAM_DIRECTORS.length; i++) {
     const pd = PROGRAM_DIRECTORS[i];
     const hospital = hospitalByIndex(i);
+    const specialty = specialties[i % specialties.length];
     programDirectors.push(await upsertUser(pd.email, {
       name: pd.name,
       role: 'program_director',
       phone: pd.phone,
       hospitalId: hospital._id,
       hospital: hospital._id,
-      specialtyId: null,
-      specialty: '',
-      department: 'Clinical Training'
+      specialtyId: specialty._id,
+      specialty: specialty.name,
+      department: specialty.name
     }, PASSWORDS.program_director));
   }
 

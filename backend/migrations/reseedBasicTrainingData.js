@@ -233,12 +233,15 @@ async function buildBasicData() {
     name: 'Dr. Basic President Al-Kazemi', role: 'b_president', phone: '+964-771-500-0003', city: 'Baghdad', gender: 'male',
   }, DEMO_PASSWORD);
 
+  // One Program Director per specialty (specialty-scoped across all hospitals).
   const programDirectors = [];
   for (let i = 0; i < PROGRAM_DIRECTORS.length; i++) {
     const pd = PROGRAM_DIRECTORS[i]; const hospital = hospitalByIndex(i);
+    const specialty = specialties[i % specialties.length];
     programDirectors.push(await upsertUser(pd.email, {
       name: pd.name, role: 'b_program_director', phone: pd.phone,
-      hospitalId: hospital._id, hospital: hospital._id, department: 'Basic Clinical Training',
+      hospitalId: hospital._id, hospital: hospital._id,
+      specialtyId: specialty._id, specialty: specialty.name, department: specialty.name,
     }, DEMO_PASSWORD));
   }
 

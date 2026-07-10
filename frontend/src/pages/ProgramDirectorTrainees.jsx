@@ -332,7 +332,7 @@ export default function ProgramDirectorTrainees() {
                       <div style={{ fontSize:15, fontWeight:600, color:'#4B5563', marginBottom:4 }}>No trainees found</div>
                       <div style={{ fontSize:13 }}>
                         {trainees.length === 0
-                          ? 'No trainees are assigned to this hospital yet.'
+                          ? 'No trainees are assigned to your specialty yet.'
                           : 'Try a different filter or search term.'}
                       </div>
                     </td>

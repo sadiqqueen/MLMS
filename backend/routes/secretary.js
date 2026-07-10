@@ -3,6 +3,7 @@ const router         = require('express').Router();
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const { coerceRoleToTrack, trackFilter } = require('../utils/track');
+const { specialtyIdsForName, specialtyUserMatch, findPdForSpecialty } = require('../utils/pdScope');
 const auditLog       = require('../middleware/auditLogger');
 const User           = require('../models/User');
 const Hospital       = require('../models/Hospital');
@@ -282,13 +283,14 @@ router.patch('/supervisors/:id',
 // GET /api/secretary/program-directors
 router.get('/program-directors', auth, allowRoles(...SECRETARY), async (req, res) => {
   try {
-    const ids = await getSecretaryHospitalIds(req);
+    // The secretary sees the Program Director of their own specialty.
+    const info = await specialtyIdsForName(req.user.specialtyId, req.track);
 
     const query = {
       role: coerceRoleToTrack('program_director', req.track),
       isActive: { $ne: false }
     };
-    if (ids.length) query.$or = [{ hospitalId: { $in: ids } }, { hospital: { $in: ids } }];
+    if (info) Object.assign(query, specialtyUserMatch(info));
     else query._id = null;
 
     const pds = await User.find(query)
@@ -310,14 +312,21 @@ router.post('/program-directors',
   auditLog('create_program_director', 'User'),
   async (req, res) => {
     try {
-      const hospitalId = req.body.hospitalId || req.body.hospital || getHospital(req.user);
-      if (!hospitalId) {
-        return res.status(400).json({ success: false, message: 'hospitalId is required for Program Director' });
+      // A secretary can only create the Program Director of their OWN specialty.
+      const specialtyId = req.user.specialtyId;
+      if (!specialtyId) {
+        return res.status(400).json({ success: false, message: 'You have no specialty assigned' });
+      }
+      const clash = await findPdForSpecialty(specialtyId, req.track, null);
+      if (clash) {
+        return res.status(409).json({ success: false, message: `This specialty already has a Program Director (${clash.name})` });
       }
       const data = pick(req.body, CREATE_USER_FIELDS);
       data.role = coerceRoleToTrack('program_director', req.track);
-      delete data.specialtyId;
+      data.specialtyId = specialtyId;
       delete data.specialty;
+      // Hospital is optional metadata now (PDs span every hospital of the specialty).
+      const hospitalId = req.body.hospitalId || req.body.hospital || getHospital(req.user);
       if (hospitalId) { data.hospitalId = hospitalId; data.hospital = hospitalId; }
 
       const user = new User(data);

@@ -556,7 +556,7 @@ export default function ProgramDirectorReports() {
                       </div>
                       <div style={{ fontSize:13 }}>
                         {reports.length === 0
-                          ? 'No final reports have been submitted in this hospital yet.'
+                          ? 'No final reports have been submitted in your specialty yet.'
                           : 'Try a different filter or search term.'}
                       </div>
                     </td>
