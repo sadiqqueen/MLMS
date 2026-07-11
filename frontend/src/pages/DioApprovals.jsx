@@ -191,8 +191,11 @@ export default function DioApprovals() {
                         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('field')}</div>
                         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('from')}</div>
                         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('to')}</div>
-                        {Object.keys(cr.changes || {}).map(k => (
-                          <FragmentRow key={k} label={FIELD_LABELS[k] || k} from={showVal(cr.before?.[k])} to={showVal(cr.changes[k])} />
+                        {(cr.display && cr.display.length
+                          ? cr.display
+                          : Object.keys(cr.changes || {}).filter(k => k !== 'supervisor').map(k => ({ label: FIELD_LABELS[k] || k, from: showVal(cr.before?.[k]), to: showVal(cr.changes[k]) }))
+                        ).map((d, i) => (
+                          <FragmentRow key={i} label={d.label} from={d.from} to={d.to} />
                         ))}
                       </div>
                     </div>

@@ -214,9 +214,13 @@ export default function SecretarySupervisors() {
     try {
       if (editSupervisor) {
         const res = await api.patch(`/api/secretary/supervisors/${editSupervisor._id}`, data);
-        const updated = res.data?.data || res.data;
-        setSupervisors(prev => prev.map(s => s._id === editSupervisor._id ? updated : s));
-        showToast('Supervisor updated');
+        if (res.data?.pending) {
+          showToast('Change sent to the DIO for approval');
+        } else {
+          const updated = res.data?.data || res.data;
+          setSupervisors(prev => prev.map(s => s._id === editSupervisor._id ? updated : s));
+          showToast('Supervisor updated');
+        }
       } else {
         const res = await api.post('/api/secretary/supervisors', data);
         const created = res.data?.data || res.data;

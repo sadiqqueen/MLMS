@@ -21,11 +21,13 @@ function notifLink(message = '', role) {
   const advancedDest = () => {
     switch (baseRole(role)) {
       case 'trainee':
+        if (has(/research|publication|publish/))          return '/research';
         if (has(/evaluat|assess|competent|grade|score/)) return '/grades';
         if (has(/report/))                                return '/reports';
         if (has(/rotation|distribut|assign|specialt|hospital/)) return '/timeline';
         break;
       case 'supervisor':
+        if (has(/research/))         return '/supervisor/trainees';
         if (has(/evaluat|assess/))   return '/supervisor/evaluations';
         if (has(/report|grade/))     return '/supervisor/reports';
         if (has(/trainee|assign/))   return '/supervisor/trainees';
@@ -36,6 +38,7 @@ function notifLink(message = '', role) {
         if (has(/trainee/))       return '/program-director/trainees';
         break;
       case 'dio':
+        if (has(/change|approval|promotion|research/)) return '/dio/approvals';
         if (has(/certificat/))  return '/dio/certificates';
         if (has(/rotation/))    return '/dio/rotations';
         if (has(/distribut/))   return '/dio/distributions';
@@ -43,6 +46,7 @@ function notifLink(message = '', role) {
         if (has(/trainee/))     return '/dio/users';
         break;
       case 'secretary':
+        if (has(/research|forward|sign/))  return '/secretary/research';
         if (has(/supervisor/))             return '/secretary/supervisors';
         if (has(/trainee|report|assign/))  return '/secretary/trainees';
         break;

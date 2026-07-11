@@ -9,6 +9,8 @@ const User           = require('../models/User');
 const Hospital       = require('../models/Hospital');
 const Rotation       = require('../models/Rotation');
 const Specialty      = require('../models/Specialty');
+const Notification   = require('../models/Notification');
+const ChangeRequest  = require('../models/ChangeRequest');
 
 const SECRETARY = ['secretary'];
 const CREATE_USER_FIELDS = ['name', 'email', 'password', 'phone', 'gender', 'city',
@@ -125,6 +127,80 @@ async function supervisorInSpecialty(supervisorId, req) {
   }).select('_id');
 }
 
+// ── Secretary account edits → queued DIO approval ("Promotions") ────────────
+// A secretary's edit to a trainee/supervisor account is NOT applied directly; it
+// becomes a pending ChangeRequest the DIO approves (creates and deactivations are
+// unaffected and still apply immediately).
+const CHANGE_FIELD_LABELS = {
+  name: 'Name', phone: 'Phone', gender: 'Gender', city: 'City', department: 'Department',
+  year: 'Year', studentId: 'Student ID', hospitalId: 'Hospital', supervisorId: 'Supervisor',
+  researchSupervisorId: 'Research Supervisor', isActive: 'Active', specialty: 'Specialty',
+  enrolledSince: 'Enrolled Since',
+};
+
+// Resolve a field value to a human label for the DIO's diff view.
+async function displayValue(key, value) {
+  if (value === null || value === undefined || value === '') return '—';
+  if (['supervisorId', 'researchSupervisorId'].includes(key)) {
+    const u = await User.findById(value).select('name');
+    return u?.name || String(value);
+  }
+  if (key === 'hospitalId') {
+    const h = await Hospital.findById(value).select('name');
+    return h?.name || String(value);
+  }
+  if (key === 'isActive') return value ? 'Active' : 'Inactive';
+  if (key === 'year') return `Year ${value}`;
+  return String(value);
+}
+
+// Build the { changes, before, display } payload for a change request.
+async function buildChangePayload(fields, existing) {
+  const before = {};
+  const display = [];
+  for (const key of Object.keys(fields)) {
+    // Skip the mirrored legacy alias so the diff isn't shown twice.
+    if (key === 'supervisor') continue;
+    const beforeVal = existing[key] === undefined ? null : existing[key];
+    before[key] = beforeVal?._id || beforeVal || null;
+    display.push({
+      label: CHANGE_FIELD_LABELS[key] || key,
+      from: await displayValue(key, before[key]),
+      to: await displayValue(key, fields[key]),
+    });
+  }
+  return { before, display };
+}
+
+// Create the pending request + notify the track's DIOs. Returns the CR.
+async function queueChangeRequest({ req, routeKey, existing, fields }) {
+  const { before, display } = await buildChangePayload(fields, existing);
+  const cr = await ChangeRequest.create({
+    requestedBy: req.user._id,
+    targetModel: 'User',
+    targetId: existing._id,
+    routeKey,
+    targetLabel: existing.name || '',
+    changes: fields,
+    before,
+    display,
+    status: 'pending',
+    specialtyId: req.user.specialtyId,
+    track: req.track,
+  });
+  const dios = await User.find({
+    role: coerceRoleToTrack('dio', req.track),
+    isActive: { $ne: false }
+  }).select('_id');
+  await Promise.all(dios.map(d =>
+    Notification.create({
+      user: d._id,
+      message: `${req.user.name} requested a change to ${existing.name || 'an account'} — awaiting your approval.`,
+      category: 'promotions'
+    }).catch(() => {})));
+  return cr;
+}
+
 // ── TRAINEES ──────────────────────────────────────────────────────────────
 
 // GET /api/secretary/trainees
@@ -224,14 +300,14 @@ router.patch('/trainees/:id',
       if (fields.researchSupervisorId && !(await supervisorInSpecialty(fields.researchSupervisorId, req))) {
         return res.status(400).json({ success: false, message: 'Research supervisor is not in your specialty' });
       }
-      const user = await User.findByIdAndUpdate(req.params.id, fields, { new: true })
-        .select('-password')
-        .populate('hospitalId',  'name city')
-        .populate('specialtyId', 'name')
-        .populate('supervisorId', 'name email')
-        .populate('researchSupervisorId', 'name email');
-      if (!user) return res.status(404).json({ message: 'User not found' });
-      res.json({ success: true, data: user });
+      if (!Object.keys(fields).length) {
+        return res.status(400).json({ success: false, message: 'No changes provided' });
+      }
+      // Queue for DIO approval instead of applying directly.
+      const dup = await ChangeRequest.findOne({ targetId: existing._id, status: 'pending' });
+      if (dup) return res.status(409).json({ success: false, message: 'This account already has a pending change awaiting DIO approval' });
+      const cr = await queueChangeRequest({ req, routeKey: 'trainees', existing, fields });
+      res.status(202).json({ success: true, pending: true, data: cr });
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
@@ -307,17 +383,44 @@ router.patch('/supervisors/:id',
       const existing = await User.findOne({ _id: req.params.id, specialtyId });
       if (!existing) return res.status(404).json({ success: false, message: 'User not found in secretary specialty' });
       delete fields.specialtyId;
-      const user = await User.findByIdAndUpdate(req.params.id, fields, { new: true })
-        .select('-password')
-        .populate('hospitalId',  'name city')
-        .populate('specialtyId', 'name');
-      if (!user) return res.status(404).json({ message: 'User not found' });
-      res.json({ success: true, data: user });
+      if (!Object.keys(fields).length) {
+        return res.status(400).json({ success: false, message: 'No changes provided' });
+      }
+      // Queue for DIO approval instead of applying directly.
+      const dup = await ChangeRequest.findOne({ targetId: existing._id, status: 'pending' });
+      if (dup) return res.status(409).json({ success: false, message: 'This account already has a pending change awaiting DIO approval' });
+      const cr = await queueChangeRequest({ req, routeKey: 'supervisors', existing, fields });
+      res.status(202).json({ success: true, pending: true, data: cr });
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
   }
 );
+
+// GET /api/secretary/change-requests — the secretary's own pending/recent requests
+router.get('/change-requests', auth, allowRoles(...SECRETARY), async (req, res) => {
+  try {
+    const query = { requestedBy: req.user._id };
+    if (req.query.status) query.status = req.query.status;
+    const items = await ChangeRequest.find(query).sort({ createdAt: -1 }).limit(200);
+    res.json({ success: true, data: items });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// PATCH /api/secretary/change-requests/:id/cancel — withdraw a still-pending request
+router.patch('/change-requests/:id/cancel', auth, allowRoles(...SECRETARY), async (req, res) => {
+  try {
+    const cr = await ChangeRequest.findOne({ _id: req.params.id, requestedBy: req.user._id, status: 'pending' });
+    if (!cr) return res.status(404).json({ success: false, message: 'Pending request not found' });
+    cr.status = 'cancelled';
+    await cr.save();
+    res.json({ success: true, data: cr });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // ── PROGRAM DIRECTORS ─────────────────────────────────────────────────────
 

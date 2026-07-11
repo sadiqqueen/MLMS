@@ -61,6 +61,7 @@ const STRINGS = {
     // toasts
     loadFailed: 'فشل تحميل البيانات',
     traineeUpdated: 'تم تحديث المتدرب', traineeAdded: 'تمت إضافة المتدرب',
+    pendingApproval: 'تم إرسال التغيير إلى مدير التدريب للموافقة',
     saveFailed: 'فشل الحفظ',
     traineeDeactivated: 'تم تعطيل المتدرب', deactivateFailed: 'فشل التعطيل',
     rotationAssigned: 'تم إسناد التدوير بنجاح', rotationFailed: 'فشل إسناد التدوير',
@@ -106,6 +107,7 @@ const STRINGS = {
     startDate: 'Start Date *', endDate: 'End Date *',
     loadFailed: 'Failed to load data',
     traineeUpdated: 'Trainee updated', traineeAdded: 'Trainee added',
+    pendingApproval: 'Change sent to the DIO for approval',
     saveFailed: 'Save failed',
     traineeDeactivated: 'Trainee deactivated', deactivateFailed: 'Deactivate failed',
     rotationAssigned: 'Rotation assigned successfully', rotationFailed: 'Failed to assign rotation',
@@ -527,9 +529,14 @@ export default function SecretaryTrainees() {
     try {
       if (editTrainee) {
         const res = await api.patch(`/api/secretary/trainees/${editTrainee._id}`, data);
-        const updated = res.data?.data || res.data;
-        setTrainees(prev => prev.map(t => t._id === editTrainee._id ? updated : t));
-        showToast(t('traineeUpdated'));
+        if (res.data?.pending) {
+          // Edit is queued for DIO approval — don't change the row yet.
+          showToast(t('pendingApproval'));
+        } else {
+          const updated = res.data?.data || res.data;
+          setTrainees(prev => prev.map(t => t._id === editTrainee._id ? updated : t));
+          showToast(t('traineeUpdated'));
+        }
       } else {
         const res = await api.post('/api/secretary/trainees', data);
         const created = res.data?.data || res.data;

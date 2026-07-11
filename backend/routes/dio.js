@@ -18,6 +18,8 @@ const Evaluation     = require('../models/Evaluation');
 const Certificate    = require('../models/Certificate');
 const Notification   = require('../models/Notification');
 const AuditLog       = require('../models/AuditLog');
+const ChangeRequest  = require('../models/ChangeRequest');
+const { applyChangeRequest } = require('../utils/applyChangeRequest');
 
 // ── DIO scope = TRAINING TRACK (not hospital) ────────────────────────────────
 // A DIO oversees its entire training track (Advanced for `dio`, Basic for
@@ -1044,6 +1046,78 @@ router.get('/supervisors/trainees-map', auth, allowRoles(...DIO, 'super_admin'),
     res.json({ success: true, data: map });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// ── PROMOTIONS: secretary account-edit approvals ────────────────────────────
+
+// GET /api/dio/change-requests?status=pending — edit requests in the DIO's track
+router.get('/change-requests', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+  try {
+    const query = { ...trackFilter(req.track) };
+    if (req.query.status) query.status = req.query.status;
+    const items = await ChangeRequest.find(query)
+      .populate('requestedBy', 'name email')
+      .populate('reviewedBy', 'name')
+      .sort({ createdAt: -1 })
+      .limit(300);
+    res.json({ success: true, data: items });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// PATCH /api/dio/change-requests/:id/approve — apply the queued change
+router.patch('/change-requests/:id/approve', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+  try {
+    const query = { _id: req.params.id, status: 'pending', ...trackFilter(req.track) };
+    const cr = await ChangeRequest.findOne(query);
+    if (!cr) return res.status(404).json({ success: false, message: 'Pending request not found' });
+
+    let updated;
+    try {
+      updated = await applyChangeRequest(cr);
+    } catch (applyErr) {
+      return res.status(applyErr.status || 400).json({ success: false, message: applyErr.message });
+    }
+
+    cr.status = 'approved';
+    cr.reviewedBy = req.user._id;
+    cr.reviewedAt = new Date();
+    await cr.save();
+    await writeAudit(req, 'dio_approve_change_request', 'ChangeRequest', cr._id, { targetId: cr.targetId, routeKey: cr.routeKey });
+    await Notification.create({
+      user: cr.requestedBy,
+      message: `Your change to ${cr.targetLabel || 'an account'} was approved by the DIO.`,
+      category: 'promotions'
+    }).catch(() => {});
+
+    res.json({ success: true, data: { changeRequest: cr, user: updated } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// PATCH /api/dio/change-requests/:id/reject
+router.patch('/change-requests/:id/reject', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+  try {
+    const query = { _id: req.params.id, status: 'pending', ...trackFilter(req.track) };
+    const cr = await ChangeRequest.findOne(query);
+    if (!cr) return res.status(404).json({ success: false, message: 'Pending request not found' });
+    cr.status = 'rejected';
+    cr.reviewedBy = req.user._id;
+    cr.reviewedAt = new Date();
+    cr.reviewNote = req.body.note ? String(req.body.note).trim() : '';
+    await cr.save();
+    await writeAudit(req, 'dio_reject_change_request', 'ChangeRequest', cr._id, { targetId: cr.targetId, routeKey: cr.routeKey });
+    await Notification.create({
+      user: cr.requestedBy,
+      message: `Your change to ${cr.targetLabel || 'an account'} was not approved by the DIO.`,
+      category: 'promotions'
+    }).catch(() => {});
+    res.json({ success: true, data: cr });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
