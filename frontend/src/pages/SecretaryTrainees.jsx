@@ -44,7 +44,8 @@ const STRINGS = {
     selectYear: '— اختر السنة —',
     specialty: 'التخصص', autoSet: '(يُحدَّد تلقائياً)', noSpecialty: 'لا يوجد تخصص معيّن لحسابك',
     hospitalLabel: 'المستشفى', searchHospital: 'ابحث عن مستشفى...',
-    supervisorLabel: 'المشرف', searchSupervisor: 'ابحث عن مشرف...',
+    supervisorLabel: 'المشرف *', searchSupervisor: 'ابحث عن مشرف...',
+    researchSupervisorLabel: 'مشرف الأبحاث', supervisorRequiredErr: 'المشرف مطلوب',
     noSupsForSpec: 'لا يوجد مشرفون لتخصص',
     phone: 'الهاتف',
     gender: 'الجنس', select: '— اختر —', male: 'ذكر', female: 'أنثى',
@@ -90,7 +91,8 @@ const STRINGS = {
     selectYear: '— Select year —',
     specialty: 'Specialty', autoSet: '(auto-set)', noSpecialty: 'No specialty assigned to your account',
     hospitalLabel: 'Hospital', searchHospital: 'Search hospital...',
-    supervisorLabel: 'Supervisor', searchSupervisor: 'Search supervisor...',
+    supervisorLabel: 'Supervisor *', searchSupervisor: 'Search supervisor...',
+    researchSupervisorLabel: 'Research Supervisor', supervisorRequiredErr: 'Supervisor is required',
     noSupsForSpec: 'No supervisors found for',
     phone: 'Phone',
     gender: 'Gender', select: '— Select —', male: 'Male', female: 'Female',
@@ -149,7 +151,7 @@ function TraineeModal({ editTrainee, hospitals, supervisors, secretarySpecialty,
 
   const empty = {
     name: '', email: '', password: '', phone: '', gender: '', city: '',
-    year: '', studentId: '', hospitalId: '', supervisorId: '',
+    year: '', studentId: '', hospitalId: '', supervisorId: '', researchSupervisorId: '',
     specialtyId: specId,
   };
 
@@ -163,6 +165,7 @@ function TraineeModal({ editTrainee, hospitals, supervisors, secretarySpecialty,
     studentId:   editTrainee.studentId   || '',
     hospitalId:  editTrainee.hospitalId?._id   || editTrainee.hospitalId   || '',
     supervisorId:editTrainee.supervisorId?._id  || editTrainee.supervisorId  || '',
+    researchSupervisorId: editTrainee.researchSupervisorId?._id || editTrainee.researchSupervisorId || '',
     specialtyId: editTrainee.specialtyId?._id  || editTrainee.specialtyId  || specId,
   } : empty);
 
@@ -183,13 +186,15 @@ function TraineeModal({ editTrainee, hospitals, supervisors, secretarySpecialty,
     if (!form.name.trim())  e.name  = true;
     if (!form.email.trim()) e.email = true;
     if (!editTrainee && (!form.password || form.password.length < 6)) e.password = true;
+    if (!form.supervisorId) e.supervisorId = true;   // a trainee must have a supervisor
     setErrors(e);
     return !Object.keys(e).length;
   }
 
   function handleSave() {
     if (!validate()) return;
-    onSave({ ...form, role: 'trainee' });
+    // Empty optional reference → null so the backend unsets it cleanly.
+    onSave({ ...form, researchSupervisorId: form.researchSupervisorId || null, role: 'trainee' });
   }
 
   useEffect(() => {
@@ -273,12 +278,26 @@ function TraineeModal({ editTrainee, hospitals, supervisors, secretarySpecialty,
                 onChange={value => set('supervisorId', value)}
                 options={supervisorOptions}
                 placeholder={t('searchSupervisor')}
+                error={errors.supervisorId}
               />
+              {errors.supervisorId && (
+                <span style={{ fontSize: 11, color: 'var(--danger)', marginTop: 3, display: 'block' }}>{t('supervisorRequiredErr')}</span>
+              )}
               {specName && filteredSups.length === 0 && (
                 <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, display: 'block' }}>
                   {t('noSupsForSpec')} {specName}
                 </span>
               )}
+            </div>
+
+            <div className="admin-field">
+              <label>{t('researchSupervisorLabel')}</label>
+              <SearchableSelect
+                value={form.researchSupervisorId}
+                onChange={value => set('researchSupervisorId', value)}
+                options={supervisorOptions}
+                placeholder={t('searchSupervisor')}
+              />
             </div>
 
             <div className="admin-field">

@@ -58,9 +58,11 @@ function roleFields(role) {
   const specOpt     = { key: 'specialtyId', label: 'Assigned Specialty (optional)', type: 'specialty' };
   const studentId   = { key: 'studentId',   label: 'Student ID *',             type: 'text',      required: true, placeholder: 'STD-001' };
   const year        = { key: 'year',        label: 'Year',                     type: 'year' };
+  const supervisor  = { key: 'supervisorId',         label: 'Supervisor *',          type: 'supervisor', required: true };
+  const researchSup = { key: 'researchSupervisorId', label: 'Research Supervisor',   type: 'supervisor' };
 
   switch (role) {
-    case 'trainee':          return [name, email, password, phoneOpt, studentId, year, hospital, specReq];
+    case 'trainee':          return [name, email, password, phoneOpt, studentId, year, hospital, specReq, supervisor, researchSup];
     case 'supervisor':       return [name, email, password, phoneReq, department, hospital, specReq];
     case 'program_director': return [name, email, password, phoneReq, department, hospital];
     case 'secretary':        return [name, email, password, phoneReq, hospital, specOpt];
@@ -89,7 +91,7 @@ function ConfirmModal({ title, message, confirmLabel, onConfirm, onCancel }) {
 }
 
 // ── Add / Edit modal (role-config-driven) ─────────────────────────────────
-function UserFormModal({ user, initialRole, hospitals, specialties, onClose, onSaved }) {
+function UserFormModal({ user, initialRole, hospitals, specialties, supervisors, onClose, onSaved }) {
   const isEdit = !!user;
   const [role, setRole] = useState(user?.role || initialRole || 'trainee');
   const [form, setForm] = useState(() => ({
@@ -102,6 +104,8 @@ function UserFormModal({ user, initialRole, hospitals, specialties, onClose, onS
     year:        user?.year        || '',
     hospitalId:  user?.hospitalId?._id || user?.hospital?._id || user?.hospitalId || '',
     specialtyId: user?.specialtyId?._id || user?.specialtyId || '',
+    supervisorId:         user?.supervisorId?._id         || user?.supervisorId         || '',
+    researchSupervisorId: user?.researchSupervisorId?._id || user?.researchSupervisorId || '',
   }));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -141,6 +145,9 @@ function UserFormModal({ user, initialRole, hospitals, specialties, onClose, onS
         // the previous value.
         if (f.type === 'year')       v = v ? Number(v) : null;
         if (f.key === 'specialtyId' && !f.required && !v) v = null;
+        // Cleared optional reference fields → null so Mongoose unsets rather than
+        // trying to cast '' to an ObjectId.
+        if (f.type === 'supervisor' && !f.required && !v) v = null;
         if (f.key === 'name')        v = String(v || '').trim();
         if (f.key === 'studentId')   v = v ? String(v).trim() : v;
         if (f.key === 'email')       v = v ? String(v).trim() : v;
@@ -160,6 +167,21 @@ function UserFormModal({ user, initialRole, hospitals, specialties, onClose, onS
   const hospitalOptions  = hospitals.map(h => ({ value: h._id, label: `${h.name}${h.city ? ` (${h.city})` : ''}` }));
   const specialtyOptions = specialties.map(s => ({ value: s._id, label: s.name }));
 
+  // Supervisor options, narrowed to the chosen hospital/specialty when possible.
+  // Falls back to the full list if the filter would be empty, so the field is
+  // never a dead end.
+  const allSupervisors = (supervisors || []);
+  const filteredSupervisors = allSupervisors.filter(s => {
+    if (form.hospitalId && hospitalIdOf(s) && hospitalIdOf(s) !== form.hospitalId) return false;
+    if (form.specialtyId && specialtyIdOf(s) && specialtyIdOf(s) !== form.specialtyId) return false;
+    return true;
+  });
+  const supervisorPool = filteredSupervisors.length ? filteredSupervisors : allSupervisors;
+  const supervisorOptions = supervisorPool.map(s => ({
+    value: s._id,
+    label: `${s.name}${hospitalName(s) !== '—' ? ` · ${hospitalName(s)}` : ''}`,
+  }));
+
   function renderField(f) {
     if (f.createOnly && isEdit) return null;
     const invalid = errors[f.key] ? 'invalid' : '';
@@ -168,6 +190,8 @@ function UserFormModal({ user, initialRole, hospitals, specialties, onClose, onS
       control = <SearchableSelect value={form.hospitalId} onChange={v => set('hospitalId', v)} options={hospitalOptions} placeholder="Search hospital..." error={errors.hospitalId} />;
     } else if (f.type === 'specialty') {
       control = <SearchableSelect value={form.specialtyId} onChange={v => set('specialtyId', v)} options={specialtyOptions} placeholder="Search specialty..." error={errors.specialtyId} />;
+    } else if (f.type === 'supervisor') {
+      control = <SearchableSelect value={form[f.key]} onChange={v => set(f.key, v)} options={supervisorOptions} placeholder="Search supervisor..." error={errors[f.key]} />;
     } else if (f.type === 'year') {
       control = (
         <select value={form.year} onChange={e => set('year', e.target.value)}>
@@ -248,6 +272,8 @@ function UserViewModal({ user, trainees, onTraineeClick, onBack, onClose, onFull
     ['Department', user.department],
     user.role === 'trainee' ? ['Student ID', user.studentId] : null,
     user.role === 'trainee' ? ['Year', user.year ? `Year ${user.year}` : '—'] : null,
+    user.role === 'trainee' ? ['Supervisor', user.supervisorId?.name || user.supervisor?.name] : null,
+    user.role === 'trainee' ? ['Research Supervisor', user.researchSupervisorId?.name] : null,
     ['Status', active ? 'Active' : 'Inactive'],
   ].filter(Boolean);
 
@@ -626,6 +652,7 @@ export default function DioUsers() {
             initialRole={formModal.initialRole}
             hospitals={hospitals}
             specialties={specialties}
+            supervisors={users.filter(u => u.role === 'supervisor' && u.isActive !== false)}
             onClose={() => setFormModal(null)}
             onSaved={handleSaved}
           />

@@ -44,6 +44,9 @@ const userSchema = new mongoose.Schema(
     doctor:        { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     supervisor:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     supervisorId:  { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    // A trainee's research supervisor (may differ from the clinical supervisor).
+    // Optional — research routing falls back to supervisorId when unset.
+    researchSupervisorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
     // V2 NEW FIELDS
     hospitalId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital', default: null, index: true },

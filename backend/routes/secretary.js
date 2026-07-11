@@ -13,10 +13,11 @@ const Specialty      = require('../models/Specialty');
 const SECRETARY = ['secretary'];
 const CREATE_USER_FIELDS = ['name', 'email', 'password', 'phone', 'gender', 'city',
   'department', 'specialty', 'year', 'studentId', 'enrolledSince',
-  'hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'supervisor', 'photoUrl'];
+  'hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'supervisor',
+  'researchSupervisorId', 'photoUrl'];
 const UPDATE_USER_FIELDS = ['name', 'phone', 'gender', 'city', 'department',
   'specialty', 'year', 'studentId', 'enrolledSince', 'hospitalId',
-  'hospital', 'supervisorId', 'supervisor', 'photoUrl', 'isActive'];
+  'hospital', 'supervisorId', 'supervisor', 'researchSupervisorId', 'photoUrl', 'isActive'];
 const HOSPITAL_UPDATE_FIELDS = ['name', 'city', 'governorate', 'address', 'phone', 'email'];
 const ROTATION_UPDATE_FIELDS = ['startDate', 'endDate', 'status', 'supervisorId'];
 
@@ -113,6 +114,17 @@ function requireSecretarySpecialty(req, res) {
   return req.user.specialtyId;
 }
 
+// Confirm a supervisor id is an active supervisor in the secretary's specialty.
+async function supervisorInSpecialty(supervisorId, req) {
+  if (!supervisorId) return null;
+  return User.findOne({
+    _id: supervisorId,
+    role: coerceRoleToTrack('supervisor', req.track),
+    specialtyId: req.user.specialtyId,
+    isActive: { $ne: false }
+  }).select('_id');
+}
+
 // ── TRAINEES ──────────────────────────────────────────────────────────────
 
 // GET /api/secretary/trainees
@@ -131,6 +143,7 @@ router.get('/trainees', auth, allowRoles(...SECRETARY), async (req, res) => {
       .populate('hospital',    'name city')
       .populate('specialtyId', 'name')
       .populate('supervisorId', 'name email')
+      .populate('researchSupervisorId', 'name email')
       .sort({ name: 1 });
 
     res.json({ success: true, data: trainees });
@@ -155,6 +168,18 @@ router.post('/trainees',
       data.specialty = req.user.specialty || data.specialty || '';
       if (hospitalId)  { data.hospitalId = hospitalId; data.hospital = hospitalId; }
 
+      // A trainee must be assigned a supervisor (in this secretary's specialty).
+      if (!data.supervisorId) {
+        return res.status(400).json({ success: false, message: 'A supervisor is required' });
+      }
+      if (!(await supervisorInSpecialty(data.supervisorId, req))) {
+        return res.status(400).json({ success: false, message: 'Supervisor is not in your specialty' });
+      }
+      data.supervisor = data.supervisorId;
+      if (data.researchSupervisorId && !(await supervisorInSpecialty(data.researchSupervisorId, req))) {
+        return res.status(400).json({ success: false, message: 'Research supervisor is not in your specialty' });
+      }
+
       const user = new User(data);
       await user.save();
 
@@ -162,7 +187,8 @@ router.post('/trainees',
         .select('-password')
         .populate('hospitalId',  'name city')
         .populate('specialtyId', 'name')
-        .populate('supervisorId', 'name email');
+        .populate('supervisorId', 'name email')
+        .populate('researchSupervisorId', 'name email');
 
       res.status(201).json({ success: true, data: saved });
     } catch (err) {
@@ -185,10 +211,25 @@ router.patch('/trainees/:id',
       const existing = await User.findOne({ _id: req.params.id, specialtyId });
       if (!existing) return res.status(404).json({ success: false, message: 'User not found in secretary specialty' });
       delete fields.specialtyId;
+      // A trainee must keep a supervisor — allow changing it, never clearing it.
+      if (('supervisorId' in fields || 'supervisor' in fields) && !fields.supervisorId && !fields.supervisor) {
+        return res.status(400).json({ success: false, message: 'A trainee must have a supervisor' });
+      }
+      if (fields.supervisorId) {
+        if (!(await supervisorInSpecialty(fields.supervisorId, req))) {
+          return res.status(400).json({ success: false, message: 'Supervisor is not in your specialty' });
+        }
+        fields.supervisor = fields.supervisorId;
+      }
+      if (fields.researchSupervisorId && !(await supervisorInSpecialty(fields.researchSupervisorId, req))) {
+        return res.status(400).json({ success: false, message: 'Research supervisor is not in your specialty' });
+      }
       const user = await User.findByIdAndUpdate(req.params.id, fields, { new: true })
         .select('-password')
         .populate('hospitalId',  'name city')
-        .populate('specialtyId', 'name');
+        .populate('specialtyId', 'name')
+        .populate('supervisorId', 'name email')
+        .populate('researchSupervisorId', 'name email');
       if (!user) return res.status(404).json({ message: 'User not found' });
       res.json({ success: true, data: user });
     } catch (err) {

@@ -30,7 +30,7 @@ const AuditLog       = require('../models/AuditLog');
 const DIO = ['dio'];
 const DIO_USER_FIELDS = ['name', 'email', 'phone', 'gender', 'city', 'department',
   'specialty', 'year', 'studentId', 'enrolledSince', 'hospitalId', 'specialtyId',
-  'supervisorId', 'hospital', 'supervisor', 'photoUrl', 'isActive'];
+  'supervisorId', 'researchSupervisorId', 'hospital', 'supervisor', 'photoUrl', 'isActive'];
 const DIO_ROLE_ROUTE = {
   trainees: 'trainee',
   supervisors: 'supervisor',
@@ -139,7 +139,7 @@ function requiredMissing(data, fields) {
 }
 
 function requiredFieldsForRole(role) {
-  if (role === 'trainee') return ['name', 'email', 'password', 'hospitalId', 'specialtyId', 'studentId'];
+  if (role === 'trainee') return ['name', 'email', 'password', 'hospitalId', 'specialtyId', 'studentId', 'supervisorId'];
   if (role === 'supervisor') return ['name', 'email', 'password', 'phone', 'hospitalId', 'specialtyId'];
   if (role === 'program_director') return ['name', 'email', 'password', 'phone', 'specialtyId'];
   if (role === 'secretary') return ['name', 'email', 'password', 'phone', 'hospitalId'];
@@ -172,7 +172,7 @@ async function writeAudit(req, action, targetModel, targetId, metadata = {}) {
 }
 
 async function validateUserReferences(role, data, res, req) {
-  const invalid = validateObjectIdFields(data, ['hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'supervisor']);
+  const invalid = validateObjectIdFields(data, ['hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'supervisor', 'researchSupervisorId']);
   if (invalid) {
     res.status(400).json({ success: false, message: `Invalid ${invalid}` });
     return false;
@@ -211,6 +211,19 @@ async function validateUserReferences(role, data, res, req) {
     }
   }
 
+  if (data.researchSupervisorId) {
+    // Research supervisor must also be an active supervisor in the DIO's track.
+    const researchSup = await User.findOne({
+      _id: data.researchSupervisorId,
+      role: coerceRoleToTrack('supervisor', req.track),
+      isActive: { $ne: false }
+    });
+    if (!researchSup) {
+      res.status(400).json({ success: false, message: 'Research supervisor not found or inactive' });
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -221,7 +234,8 @@ function populateManagedUser(query) {
     .populate('hospital', 'name city governorate')
     .populate('specialtyId', 'name')
     .populate('supervisorId', 'name email')
-    .populate('supervisor', 'name email');
+    .populate('supervisor', 'name email')
+    .populate('researchSupervisorId', 'name email');
 }
 
 // GET /api/dio/stats
@@ -376,6 +390,12 @@ async function updateManagedUser(req, res, role, id) {
   const updates = normalizeUserPayload(req.body);
   delete updates.email;
   delete updates.password;
+  // A trainee must keep a supervisor: allow changing it, never clearing it.
+  if (role === 'trainee'
+      && ('supervisorId' in updates || 'supervisor' in updates)
+      && !updates.supervisorId && !updates.supervisor) {
+    return res.status(400).json({ success: false, message: 'A trainee must have a supervisor' });
+  }
   if (!(await validateUserReferences(role, updates, res, req))) return null;
   // Re-assigning a PD's specialty must not collide with another active PD.
   if (role === 'program_director' && updates.specialtyId) {

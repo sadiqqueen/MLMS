@@ -43,10 +43,12 @@ const upload = multer({
 
 const PUBLIC_VIEW_ROLES = ['program_director', 'dio', 'president'];
 
-// Trainees assigned to a supervisor (direct link + rotations + legacy distributions).
+// Trainees assigned to a supervisor (direct link + research-supervisor link +
+// rotations + legacy distributions).
 async function getAssignedTraineeIds(supervisorId) {
-  const [directTrainees, distributions, rotations] = await Promise.all([
+  const [directTrainees, researchTrainees, distributions, rotations] = await Promise.all([
     User.find({ supervisorId, role: 'trainee', isActive: { $ne: false } }).select('_id'),
+    User.find({ researchSupervisorId: supervisorId, role: 'trainee', isActive: { $ne: false } }).select('_id'),
     Distribution.find({
       $or: [
         { supervisorId, traineeId: { $ne: null } },
@@ -64,6 +66,7 @@ async function getAssignedTraineeIds(supervisorId) {
 
   return new Set([
     ...directTrainees.map(t => t._id),
+    ...researchTrainees.map(t => t._id),
     ...distributions.map(d => d.traineeId).filter(Boolean),
     ...distributions.map(d => d.student).filter(Boolean),
     ...rotations.map(r => r.traineeId).filter(Boolean),
@@ -71,8 +74,11 @@ async function getAssignedTraineeIds(supervisorId) {
   ].map(id => id.toString()));
 }
 
-// Resolve the supervisor a new submission should be routed to.
+// Resolve the supervisor a new research submission should be routed to.
+// The dedicated research supervisor takes precedence; otherwise fall back to the
+// current-rotation supervisor and then the trainee's clinical supervisor.
 async function resolveSupervisorId(trainee) {
+  if (trainee.researchSupervisorId) return trainee.researchSupervisorId;
   const rot = await Rotation.findOne({
     $or: [{ traineeId: trainee._id }, { student: trainee._id }],
     status: { $in: ['current', 'upcoming'] }
