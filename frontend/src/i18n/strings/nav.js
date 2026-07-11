@@ -44,6 +44,7 @@ const nav = {
     'nav.supervisor.trainees':           'متدربيّ',
     'nav.supervisor.reports':            'التقارير',
     'nav.supervisor.evaluations':        'التقييمات',
+    'nav.supervisor.research':           'الأبحاث',
 
     // trainee
     'nav.trainee.timeline':              'الجدول الزمني',
@@ -109,6 +110,7 @@ const nav = {
     'nav.supervisor.trainees':           'My Trainees',
     'nav.supervisor.reports':            'Reports',
     'nav.supervisor.evaluations':        'Evaluations',
+    'nav.supervisor.research':           'Research',
 
     // trainee
     'nav.trainee.timeline':              'Timeline',

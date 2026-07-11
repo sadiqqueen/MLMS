@@ -269,6 +269,26 @@ router.get('/queue', auth, allowRoles('supervisor', 'secretary', 'dio', 'super_a
   }
 });
 
+// GET /api/research/supervisor — ALL research for the supervisor's trainees,
+// every status (for the dedicated "see & sign" page). Pending items are the ones
+// the supervisor still needs to sign.
+router.get('/supervisor', auth, allowRoles('supervisor', 'super_admin'), async (req, res) => {
+  try {
+    let filter;
+    if (req.user.role === 'super_admin') {
+      filter = {};
+    } else {
+      const assigned = await getAssignedTraineeIds(req.user._id);
+      filter = { $or: [{ supervisor: req.user._id }, { trainee: { $in: [...assigned] } }] };
+    }
+    const items = await populateTrainee(Research.find(filter).populate('signedBy', 'name').populate('reviewedBy', 'name'))
+      .sort({ createdAt: -1 });
+    res.json({ success: true, data: items });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 // PATCH /api/research/:id/approve — research supervisor approves AND signs
 router.patch('/:id/approve', auth, allowRoles('supervisor', 'super_admin'), async (req, res) => {
   try {

@@ -83,6 +83,7 @@ const ADVANCED_LINKS = {
     { to: '/supervisor/trainees',    key: 'trainees',    label: 'My Trainees' },
     { to: '/supervisor/reports',     key: 'reports',     label: 'Reports'     },
     { to: '/supervisor/evaluations', key: 'evaluations', label: 'Evaluations' },
+    { to: '/supervisor/research',    key: 'research',    label: 'Research'    },
   ],
   trainee: [
     { to: '/timeline', key: 'timeline', label: 'Timeline' },

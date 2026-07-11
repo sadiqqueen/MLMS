@@ -23,6 +23,7 @@ import Certificates from './pages/Certificates';
 import SupervisorTrainees from './pages/SupervisorTrainees';
 import SupervisorReports from './pages/SupervisorReports';
 import SupervisorEvaluations from './pages/SupervisorEvaluations';
+import SupervisorResearch from './pages/SupervisorResearch';
 
 import ProgramDirectorTrainees from './pages/ProgramDirectorTrainees';
 import ProgramDirectorSupervisors from './pages/ProgramDirectorSupervisors';
@@ -136,6 +137,11 @@ export default function App() {
           <Route path="/supervisor/evaluations" element={
             <ProtectedRoute allowedRoles={['supervisor']}>
               <SupervisorEvaluations />
+            </ProtectedRoute>
+          } />
+          <Route path="/supervisor/research" element={
+            <ProtectedRoute allowedRoles={['supervisor']}>
+              <SupervisorResearch />
             </ProtectedRoute>
           } />
 
@@ -383,6 +389,9 @@ export default function App() {
           } />
           <Route path="/basic/supervisor/evaluations" element={
             <ProtectedRoute allowedRoles={['b_supervisor']}><SupervisorEvaluations /></ProtectedRoute>
+          } />
+          <Route path="/basic/supervisor/research" element={
+            <ProtectedRoute allowedRoles={['b_supervisor']}><SupervisorResearch /></ProtectedRoute>
           } />
 
           {/* Basic — program director */}
