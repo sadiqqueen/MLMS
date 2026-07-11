@@ -41,28 +41,28 @@ function DetailModal({ item, fields, onClose }) {
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:440, boxShadow:'0 20px 60px rgba(0,0,0,.2)' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:14, padding:'20px 24px', borderBottom:'1px solid #E8E9EF' }}>
+      <div style={{ background:'var(--surface)', borderRadius:16, width:'100%', maxWidth:440, boxShadow:'0 20px 60px rgba(0,0,0,.2)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:14, padding:'20px 24px', borderBottom:'1px solid var(--border)' }}>
           <div style={{ width:48, height:48, borderRadius:'50%', background:'#1B1464', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, flexShrink:0 }}>
             {item.initials || item.name?.slice(0,2)?.toUpperCase() || '?'}
           </div>
           <div style={{ flex:1 }}>
-            <div style={{ fontSize:17, fontWeight:700, color:'#1B1464' }}>{item.name}</div>
-            <div style={{ fontSize:12, color:'#8B8FA8', marginTop:2 }}>{item.email}</div>
+            <div style={{ fontSize:17, fontWeight:700, color:'var(--brand-secondary)' }}>{item.name}</div>
+            <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{item.email}</div>
           </div>
-          <button onClick={onClose} style={{ width:30, height:30, borderRadius:'50%', background:'#F5F6FA', border:'none', fontSize:18, color:'#8B8FA8', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
+          <button onClick={onClose} style={{ width:30, height:30, borderRadius:'50%', background:'var(--surface-2)', border:'none', fontSize:18, color:'var(--text-muted)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
         </div>
         <div style={{ padding:'20px 24px' }}>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px 20px' }}>
             {fields.map(([label, value]) => (
               <div key={label}>
-                <div style={{ fontSize:10, color:'#8B8FA8', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em', marginBottom:3 }}>{label}</div>
-                <div style={{ fontSize:14, color:'#1B1464', fontWeight:500 }}>{renderValue(value)}</div>
+                <div style={{ fontSize:10, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em', marginBottom:3 }}>{label}</div>
+                <div style={{ fontSize:14, color:'var(--brand-secondary)', fontWeight:500 }}>{renderValue(value)}</div>
               </div>
             ))}
           </div>
         </div>
-        <div style={{ padding:'14px 24px', borderTop:'1px solid #E8E9EF', display:'flex', justifyContent:'flex-end' }}>
+        <div style={{ padding:'14px 24px', borderTop:'1px solid var(--border)', display:'flex', justifyContent:'flex-end' }}>
           <button onClick={onClose} style={{ padding:'8px 20px', borderRadius:8, background:'#FF6B35', color:'#fff', border:'none', fontWeight:500, fontSize:13, cursor:'pointer' }}>Close</button>
         </div>
       </div>
@@ -131,7 +131,7 @@ export default function PresidentSecretaries() {
           <div className="admin-toolbar">
             <input className="admin-search" style={{ flex:1, minWidth:200 }} placeholder="Search by name, email, or specialty…" value={search} onChange={e => setSearch(e.target.value)} />
             <ViewToggle value={view} onChange={setView} />
-            <span style={{ fontSize:13, color:'#8B8FA8', flexShrink:0 }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
+            <span style={{ fontSize:13, color:'var(--text-muted)', flexShrink:0 }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
           </div>
           {view === 'list' && (
           <div className="admin-table-wrap">
@@ -139,9 +139,9 @@ export default function PresidentSecretaries() {
               <thead><tr><th>#</th><th>Secretary</th><th>Assigned Specialty</th><th>Status</th></tr></thead>
               <tbody>
                 {filtered.length === 0 && (
-                  <tr><td colSpan={4} style={{ textAlign:'center', padding:40, color:'#8B8FA8' }}>
+                  <tr><td colSpan={4} style={{ textAlign:'center', padding:40, color:'var(--text-muted)' }}>
                     <div style={{ fontSize:32, marginBottom:8 }}>📋</div>
-                    <div style={{ fontSize:15, fontWeight:600, color:'#4B5563' }}>
+                    <div style={{ fontSize:15, fontWeight:600, color:'var(--text-2)' }}>
                       {secretaries.length === 0 ? 'No secretaries found' : 'No results match your search'}
                     </div>
                   </td></tr>
@@ -151,20 +151,20 @@ export default function PresidentSecretaries() {
                   const isActive = s.isActive !== false;
                   return (
                     <tr key={s._id} style={{ cursor:'pointer' }} onClick={() => setSelected(s)}>
-                      <td style={{ color:'#8B8FA8' }}>{i+1}</td>
+                      <td style={{ color:'var(--text-muted)' }}>{i+1}</td>
                       <td>
                         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                           <div className="cell-initials">{s.initials || s.name?.[0] || '?'}</div>
-                          <div><strong>{s.name}</strong><div style={{ fontSize:11, color:'#8B8FA8' }}>{s.email}</div></div>
+                          <div><strong>{s.name}</strong><div style={{ fontSize:11, color:'var(--text-muted)' }}>{s.email}</div></div>
                         </div>
                       </td>
                       <td>
-                        <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background: specName === '—' ? '#F3F4F6' : '#EEEDFE', color: specName === '—' ? '#6B7280' : '#3C3489' }}>
+                        <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background: specName === '—' ? 'var(--border-soft)' : 'var(--chip-spec-bg)', color: specName === '—' ? 'var(--text-2)' : 'var(--chip-spec-fg)' }}>
                           {specName}
                         </span>
                       </td>
                       <td>
-                        <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background: isActive ? '#D1FAE5' : '#FEE2E2', color: isActive ? '#065F46' : '#991B1B' }}>
+                        <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background: isActive ? 'var(--success-bg)' : 'var(--danger-bg)', color: isActive ? 'var(--success-fg)' : 'var(--danger-fg)' }}>
                           {isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
@@ -195,7 +195,7 @@ export default function PresidentSecretaries() {
                       </div>
                     </div>
                     <div className="management-card-meta">
-                      <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background: specName === EMPTY ? '#F3F4F6' : '#EEEDFE', color: specName === EMPTY ? '#6B7280' : '#3C3489' }}>
+                      <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background: specName === EMPTY ? 'var(--border-soft)' : 'var(--chip-spec-bg)', color: specName === EMPTY ? 'var(--text-2)' : 'var(--chip-spec-fg)' }}>
                         {specName}
                       </span>
                       <span className={isActive ? 'badge-active' : 'badge-inactive'}>{isActive ? 'Active' : 'Inactive'}</span>

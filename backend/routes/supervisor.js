@@ -326,7 +326,8 @@ router.post('/evaluations',
 
       // Accepted forms: the three monthly WPBA forms, the Academic Supervisor
       // Report, and any MSF-360 part (evaluationType 'MSF-360 · Form A'…'E').
-      const ALLOWED_FORMS = ['Mini-CEX', 'CBD', 'DOPS', 'Academic Supervisor Report', 'FITER'];
+      // (Internship/FITER was removed from the selectable trainee forms.)
+      const ALLOWED_FORMS = ['Mini-CEX', 'CBD', 'DOPS', 'Academic Supervisor Report'];
       const isAllowedForm = ALLOWED_FORMS.includes(evaluationType) || evaluationType.startsWith('MSF-360');
       if (!isAllowedForm) {
         return res.status(400).json({

@@ -139,13 +139,13 @@ function PDModal({ pd, specialties, onClose, onSaved }) {
                 placeholder="Search specialty..."
                 error={errors.specialtyId}
               />
-              <div style={{ fontSize:11, color:'#8B8FA8', marginTop:4 }}>
+              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>
                 Oversees this specialty across every hospital that offers it. One Program Director per specialty.
               </div>
             </div>
           </div>
           {apiErr && (
-            <div style={{ marginTop:14, background:'#FEE2E2', color:'#DC2626', borderRadius:8, padding:'10px 14px', fontSize:13 }}>
+            <div style={{ marginTop:14, background:'var(--danger-bg)', color:'var(--danger-fg)', borderRadius:8, padding:'10px 14px', fontSize:13 }}>
               {apiErr}
             </div>
           )}
@@ -253,9 +253,9 @@ export default function DioProgramDirectors() {
             <input className="admin-search" style={{ flex:1, minWidth:180 }}
               placeholder="Search by name, email, department…"
               value={search} onChange={e => setSearch(e.target.value)} />
-            <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'#4B5563', cursor:'pointer' }}><input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} /> Show inactive</label>
+            <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'var(--text-2)', cursor:'pointer' }}><input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} /> Show inactive</label>
             <ViewToggle value={view} onChange={setView} />
-            <span style={{ fontSize:13, color:'#8B8FA8', flexShrink:0 }}>
+            <span style={{ fontSize:13, color:'var(--text-muted)', flexShrink:0 }}>
               {filtered.length} program director{filtered.length !== 1 ? 's' : ''}
             </span>
             <button className="btn-purple" onClick={() => { setEditItem(null); setShowModal(true); }}>+ Add Program Director</button>
@@ -270,7 +270,7 @@ export default function DioProgramDirectors() {
                   <tr>
                     <td colSpan={6} style={{ textAlign:'center', padding:40 }}>
                       <div style={{ fontSize:32, marginBottom:8 }}>⭐</div>
-                      <div style={{ fontSize:15, fontWeight:600, color:'#4B5563' }}>
+                      <div style={{ fontSize:15, fontWeight:600, color:'var(--text-2)' }}>
                         {pds.length === 0 ? 'No program directors yet.' : 'No match.'}
                       </div>
                     </td>
@@ -280,7 +280,7 @@ export default function DioProgramDirectors() {
                   const active = p.isActive !== false;
                   return (
                     <tr key={p._id} style={{ opacity: active ? 1 : 0.65 }}>
-                      <td style={{ color:'#8B8FA8' }}>{i+1}</td>
+                      <td style={{ color:'var(--text-muted)' }}>{i+1}</td>
                       <td>
                         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                           {p.photoUrl
@@ -289,20 +289,20 @@ export default function DioProgramDirectors() {
                           }
                           <div>
                             <strong>{p.name}</strong>
-                            <div style={{ fontSize:11, color:'#8B8FA8' }}>{p.email}</div>
+                            <div style={{ fontSize:11, color:'var(--text-muted)' }}>{p.email}</div>
                           </div>
                         </div>
                       </td>
-                      <td style={{ fontSize:13, color:'#4B5563' }}>{p.department || '—'}</td>
+                      <td style={{ fontSize:13, color:'var(--text-2)' }}>{p.department || '—'}</td>
                       <td>
                         {p.specialtyId?.name
-                          ? <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'#EEEDFE', color:'#3C3489' }}>{p.specialtyId.name}</span>
-                          : <span style={{ fontSize:13, color:'#8B8FA8' }}>—</span>}
+                          ? <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'var(--chip-spec-bg)', color:'var(--chip-spec-fg)' }}>{p.specialtyId.name}</span>
+                          : <span style={{ fontSize:13, color:'var(--text-muted)' }}>—</span>}
                       </td>
                       <td>
                         <span style={{ fontSize:11, fontWeight:600, padding:'3px 8px', borderRadius:20,
-                          background: active ? '#D1FAE5' : '#FEE2E2',
-                          color:      active ? '#065F46' : '#991B1B' }}>
+                          background: active ? 'var(--success-bg)' : 'var(--danger-bg)',
+                          color:      active ? 'var(--success-fg)' : 'var(--danger-fg)' }}>
                           {active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
@@ -338,7 +338,7 @@ export default function DioProgramDirectors() {
                   <div className="management-card" key={p._id} style={{ opacity: active ? 1 : 0.65 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>{p.photoUrl ? <img src={`${API_BASE}${p.photoUrl}`} alt="" className="cell-photo" /> : <div className="cell-initials">{p.initials || p.name?.[0] || '?'}</div>}<div><div className="management-card-title">{p.name}</div><div className="management-card-sub">{p.email}</div></div></div>
                     <div className="management-card-sub">{p.department || 'No department'} - {specialty}</div>
-                    <div className="management-card-meta"><span style={{ fontSize:11, fontWeight:600, padding:'3px 8px', borderRadius:20, background: active ? '#D1FAE5' : '#FEE2E2', color: active ? '#065F46' : '#991B1B' }}>{active ? 'Active' : 'Inactive'}</span></div>
+                    <div className="management-card-meta"><span style={{ fontSize:11, fontWeight:600, padding:'3px 8px', borderRadius:20, background: active ? 'var(--success-bg)' : 'var(--danger-bg)', color: active ? 'var(--success-fg)' : 'var(--danger-fg)' }}>{active ? 'Active' : 'Inactive'}</span></div>
                     <div className="management-card-actions"><button className="btn-action edit" title="Edit" aria-label={`Edit ${p.name}`} onClick={() => { setEditItem(p); setShowModal(true); }}><IconPencil /></button>{active && <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${p.name}`} onClick={() => setConfirmDeact(p)}><IconBan /></button>}</div>
                   </div>
                 );

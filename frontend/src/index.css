@@ -12,6 +12,8 @@
   --danger:#E03131; --danger-bg:#FCEBEB; --danger-fg:#791F1F;
   --info:#185FA5; --info-bg:#E6F1FB; --info-fg:#0C447C;
   --cat-1:#0984e3; --cat-2:#00B894; --cat-3:#8e44ad; --cat-4:#e17055; --cat-5:#d63031; --cat-6:#fdcb6e;
+  --cat-1-bg:#E8F4FD; --cat-2-bg:#E8FDF3; --cat-3-bg:#F3E8FD; --cat-4-bg:#FDF3E8; --cat-5-bg:#FDE8EE;
+  --chip-spec-bg:#EEEDFE; --chip-spec-fg:#3C3489; --on-brand:#FFFFFF;
 }
 html[data-theme="dark"] {
   --app-bg:#141413; --surface:#1E1E1C; --surface-2:#262624; --surface-3:#2D2D2A; --elevated:#2A2A27;
@@ -24,6 +26,8 @@ html[data-theme="dark"] {
   --danger:#FF6B74; --danger-bg:rgba(224,49,49,.16); --danger-fg:#FF9CA2;
   --info:#5AA0E6; --info-bg:rgba(40,120,200,.16); --info-fg:#9CC6F0;
   --cat-1:#5AA0E6; --cat-2:#5ECB8B; --cat-3:#B79DE8; --cat-4:#F0997E; --cat-5:#FF6B74; --cat-6:#FFD98A;
+  --cat-1-bg:rgba(90,160,230,.16); --cat-2-bg:rgba(94,203,139,.16); --cat-3-bg:rgba(183,157,232,.16); --cat-4-bg:rgba(240,153,126,.16); --cat-5-bg:rgba(255,107,116,.16);
+  --chip-spec-bg:rgba(157,147,232,.16); --chip-spec-fg:#C4BCF2; --on-brand:#141413;
 }
 body { background: var(--app-bg); color: var(--text); transition: background .2s ease, color .2s ease; }
 
@@ -47,7 +51,7 @@ a      { text-decoration: none; }
   display: flex;
   width: 860px; min-height: 520px;
   border-radius: 12px; overflow: hidden;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   box-shadow: 0 4px 24px rgba(0,0,0,0.08);
   /* center the card on the page */
   position: fixed; top: 50%; left: 50%;
@@ -65,7 +69,7 @@ a      { text-decoration: none; }
 .brand-sub   { color: rgba(255,255,255,0.6); font-size: 13px; text-align: center; line-height: 1.6; }
 
 .login-right {
-  flex: 1; background: white;
+  flex: 1; background: var(--surface);
   display: flex; align-items: center; justify-content: center;
   padding: 2.5rem;
 }
@@ -73,7 +77,7 @@ a      { text-decoration: none; }
 .form-wrap  { width: 100%; max-width: 300px; }
 .form-logo-wrap { margin-bottom: 12px; }
 .form-logo-img  { width: 46px; height: auto; display: block; }
-.form-sub   { font-size: 13px; color: #666; margin-bottom: 1.5rem; }
+.form-sub   { font-size: 13px; color: var(--text-2); margin-bottom: 1.5rem; }
 
 .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 1rem; }
 .field label { font-size: 13px; color: var(--text-2); }
@@ -128,27 +132,31 @@ html[data-theme="dark"] { color-scheme: dark; }
 .password-wrap { display: flex; align-items: center; position: relative; }
 .password-wrap input {
   width: 100%; height: 38px; padding: 0 60px 0 12px;
-  border: 1px solid #ccc; border-radius: 8px; font-size: 14px; outline: none;
+  border: 1px solid var(--border); border-radius: 8px; font-size: 14px; outline: none;
+  background: var(--surface); color: var(--text);
 }
-.password-wrap input:focus { border-color: #378ADD; box-shadow: 0 0 0 2px rgba(55,138,221,0.15); }
-.eye-btn { position: absolute; right: 10px; background: none; border: none; font-size: 12px; color: #666; }
+.password-wrap input:focus { border-color: var(--link); box-shadow: 0 0 0 2px rgba(55,138,221,0.15); }
+.eye-btn { position: absolute; right: 10px; background: none; border: none; font-size: 12px; color: var(--text-2); }
 
-.error-msg  { font-size: 12px; color: #c0392b; margin-bottom: 8px; min-height: 16px; }
+.error-msg  { font-size: 12px; color: var(--danger); margin-bottom: 8px; min-height: 16px; }
 .login-btn  { width: 100%; height: 40px; background: #185FA5; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; }
 .login-btn:hover:not(:disabled) { background: #e07b0f; }
 .login-btn:disabled { opacity: 0.65; cursor: not-allowed; }
-.forgot     { font-size: 12px; color: #888; text-align: center; margin-top: 1rem; }
+.forgot     { font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 1rem; }
 
 /* ── TOP NAV ─────────────────────────────────────────────────────────────── */
 .topnav {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 1.5rem; height: 80px; background: #2a2c75;
+  padding: 6px 1.5rem; min-height: 80px; background: #2a2c75;
   position: sticky; top: 0; z-index: 100;
 }
 
-.nav-logo      { display: flex; align-items: center; }
+.nav-logo      { display: flex; align-items: center; flex-shrink: 0; }
 .nav-logo-img  { height: 72px; width: auto; display: block; }
-.nav-links { display: inline-flex; align-items: center; gap: 4px; position: absolute; left: 50%; transform: translateX(-50%); }
+/* In-flow flex item (was absolute-centered → overlapped .nav-right). flex:1 fills
+   the middle and centers the links; flex-wrap is the safety net so links can never
+   overlap or clip — they wrap to a second row and .topnav's min-height grows. */
+.nav-links { display: flex; flex: 1 1 auto; min-width: 0; align-items: center; justify-content: center; gap: 4px; row-gap: 4px; flex-wrap: wrap; }
 
 .nav-link {
   color: rgba(255,255,255,0.75);
@@ -293,8 +301,19 @@ html[data-theme="dark"] { color-scheme: dark; }
 .portal-navbar .avatar:hover { background: #E85A26; }
 .portal-logo { height: 72px; width: auto; display: block; }
 
+/* ── NAV SQUEEZE (tablet/laptop) — tighten spacing for link-heavy roles (DIO,
+   president, super_admin have 6 links) so a single row fits before wrapping.
+   Placed after topnav-white/portal-navbar so it wins the cascade. */
+@media (min-width: 769px) and (max-width: 1200px) {
+  .nav-link { padding: 7px 10px; font-size: 14px; }
+  .nav-link.active { font-size: 15px; }
+  .nav-links { gap: 2px; }
+  .nav-toggle-btn, .bell-btn { padding: 7px 10px; }
+  .nav-right { gap: 6px; }
+}
+
 /* ── NOTIFICATION PANEL ─────────────────────────────────────────────────── */
-.notif-panel { position: absolute; top: calc(100% + 8px); inset-inline-end: 0; width: 320px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px var(--shadow); z-index: 1000; overflow: hidden; }
+.notif-panel { position: absolute; top: calc(100% + 8px); inset-inline-end: 0; width: 320px; max-width: calc(100vw - 24px); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px var(--shadow); z-index: 1000; overflow: hidden; }
 .notif-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--border-soft); }
 .notif-title  { font-size: 13px; font-weight: 500; color: var(--text); }
 .notif-mark-all { background: none; border: none; font-size: 12px; color: var(--accent); }
@@ -316,7 +335,7 @@ html[data-theme="dark"] { color-scheme: dark; }
 .notif-del:hover { background: var(--danger-bg); color: var(--danger); }
 
 /* ── PROFILE DROPDOWN ───────────────────────────────────────────────────── */
-.profile-dropdown { position: absolute; top: calc(100% + 8px); inset-inline-end: 0; width: 220px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px var(--shadow); z-index: 1000; overflow: hidden; }
+.profile-dropdown { position: absolute; top: calc(100% + 8px); inset-inline-end: 0; width: 220px; max-width: calc(100vw - 24px); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px var(--shadow); z-index: 1000; overflow: hidden; }
 .pd-header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
 .pd-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--brand-primary); color: white; font-size: 13px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .pd-name   { font-size: 13px; font-weight: 500; color: var(--text); }
@@ -1073,6 +1092,16 @@ html[data-theme="dark"] { color-scheme: dark; }
 .btn-action.reactivate { background: rgba(5,150,105,0.12);  color: #059669; }
 .btn-action.revoke     { background: rgba(217,119,6,0.14);  color: #B45309; }
 .btn-action.print      { background: rgba(24,95,165,0.12);  color: #185FA5; }
+/* Dark mode: brighten the icon colors so the action buttons stay legible on the
+   dark surface (the light-mode navy/grey text is invisible there). */
+html[data-theme="dark"] .btn-action.view       { background: rgba(90,160,230,.18);  color: var(--link); }
+html[data-theme="dark"] .btn-action.edit       { background: rgba(90,160,230,.18);  color: var(--link); }
+html[data-theme="dark"] .btn-action.password   { background: rgba(155,154,147,.20); color: var(--text-2); }
+html[data-theme="dark"] .btn-action.lock       { background: rgba(229,180,84,.18);  color: var(--warning); }
+html[data-theme="dark"] .btn-action.delete     { background: rgba(255,107,116,.18); color: var(--danger); }
+html[data-theme="dark"] .btn-action.reactivate { background: rgba(94,203,139,.18);  color: var(--success); }
+html[data-theme="dark"] .btn-action.revoke     { background: rgba(229,180,84,.18);  color: var(--warning); }
+html[data-theme="dark"] .btn-action.print      { background: rgba(90,160,230,.18);  color: var(--link); }
 
 /* ── CARD GRID VIEW ─────────────────────────────────────────────────────── */
 .admin-card-grid {
@@ -1144,11 +1173,11 @@ html[data-theme="dark"] { color-scheme: dark; }
 
 /* ── BADGES ─────────────────────────────────────────────────────────────── */
 .badge-role    { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-.badge-student { background: #e8f4fd; color: var(--cat-1); }
-.badge-doctor  { background: #e8fdf3; color: var(--cat-2); }
-.badge-professor { background: #f3e8fd; color: var(--cat-3); }
-.badge-admin   { background: #fdf3e8; color: var(--cat-4); }
-.badge-super_admin { background: #fde8ee; color: var(--cat-5); }
+.badge-student { background: var(--cat-1-bg); color: var(--cat-1); }
+.badge-doctor  { background: var(--cat-2-bg); color: var(--cat-2); }
+.badge-professor { background: var(--cat-3-bg); color: var(--cat-3); }
+.badge-admin   { background: var(--cat-4-bg); color: var(--cat-4); }
+.badge-super_admin { background: var(--cat-5-bg); color: var(--cat-5); }
 
 .badge-active   { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: var(--success-bg); color: var(--success); }
 .badge-inactive { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: var(--surface-3); color: var(--text-muted); }
@@ -1726,12 +1755,12 @@ html[data-theme="dark"] { color-scheme: dark; }
 
 /* ── V2 additions ── */
 .topnav-white .avatar { background: #FF6B35; }
-.badge-trainee { background:#DBEAFE; color:var(--cat-1); display:inline-block; font-size:11px; font-weight:600; padding:2px 9px; border-radius:20px; }
+.badge-trainee { background:var(--cat-1-bg); color:var(--cat-1); display:inline-block; font-size:11px; font-weight:600; padding:2px 9px; border-radius:20px; }
 
 /* ── CERTIFICATE PRINT PAGE ─────────────────────────────────────────────── */
 .cert-print-root {
   min-height: 100vh;
-  background: #f3f4f6;
+  background: var(--app-bg);
   padding: 24px;
   display: flex;
   flex-direction: column;

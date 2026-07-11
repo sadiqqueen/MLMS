@@ -478,8 +478,18 @@ const INTERNSHIP_FITER = {
   feedback: [{ key: 'comments', label: 'Assessor comments — what was effective, what could be improved, suggested actions & timeline' }],
 };
 
-// All six forms live in one list; the supervisor picks any to evaluate a trainee.
-EVAL_FORMS.push(MSF_360, ACADEMIC_SUPERVISOR_REPORT, INTERNSHIP_FITER);
+// Selectable TRAINEE forms. The Internship (FITER) form was removed from the
+// selectable list, but stays in ALL_FORMS below so previously saved FITER
+// evaluations still resolve (title, domains, print layout).
+EVAL_FORMS.push(MSF_360, ACADEMIC_SUPERVISOR_REPORT);
+
+// Every historical form, including the now-unselectable Internship/FITER — used
+// only by getForm() to render/print saved evaluations of removed forms.
+const ALL_FORMS = [...EVAL_FORMS, INTERNSHIP_FITER];
+
+// Supervisor-subject evaluations currently expose NO forms (product decision).
+// Future supervisor forms are added here, not to EVAL_FORMS.
+export const SUPERVISOR_EVAL_FORMS = [];
 
 export const FORM_TYPES = EVAL_FORMS.map(f => f.type);
 
@@ -488,11 +498,11 @@ export const FORM_TYPES = EVAL_FORMS.map(f => f.type);
 // resolves to that part merged onto the MSF parent, so consumers see its domains.
 export function getForm(type) {
   const raw = String(type || '');
-  const exact = EVAL_FORMS.find(f => f.type === raw);
+  const exact = ALL_FORMS.find(f => f.type === raw);
   if (exact) return exact;
   const m = raw.match(/^(.*) · Form ([A-E])$/);
   if (m) {
-    const parent = EVAL_FORMS.find(f => f.type === m[1]);
+    const parent = ALL_FORMS.find(f => f.type === m[1]);
     const part = parent && parent.parts && parent.parts.find(p => p.code === m[2]);
     if (parent && part) return { ...parent, ...part };
   }

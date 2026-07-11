@@ -87,30 +87,30 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div style={{
-        background:'#fff', borderRadius:16, width:'100%', maxWidth:700,
+        background:'var(--surface)', borderRadius:16, width:'100%', maxWidth:700,
         boxShadow:'0 20px 60px rgba(0,0,0,.2)',
         maxHeight:'90vh', overflowY:'auto'
       }}>
         {/* Header */}
         <div style={{
           display:'flex', alignItems:'flex-start', justifyContent:'space-between',
-          padding:'20px 24px', borderBottom:'1px solid #E8E9EF',
-          position:'sticky', top:0, background:'#fff', zIndex:10
+          padding:'20px 24px', borderBottom:'1px solid var(--border)',
+          position:'sticky', top:0, background:'var(--surface)', zIndex:10
         }}>
           <div>
-            <div style={{ fontSize:17, fontWeight:700, color:'#1B1464' }}>
+            <div style={{ fontSize:17, fontWeight:700, color:'var(--brand-secondary)' }}>
               {isGraded ? 'Final Report — Graded' : 'Grade Final Report'}
             </div>
             <div style={{ display:'flex', gap:8, marginTop:4, alignItems:'center', flexWrap:'wrap' }}>
               <span style={{
                 fontSize:11, padding:'2px 9px', borderRadius:20,
-                fontWeight:600, background:'#FEE2E2', color:'#991B1B'
+                fontWeight:600, background:'var(--danger-bg)', color:'var(--danger-fg)'
               }}>Final Report</span>
-              <span style={{ fontSize:12, color:'#8B8FA8' }}>{report.title}</span>
+              <span style={{ fontSize:12, color:'var(--text-muted)' }}>{report.title}</span>
               {isGraded && (
                 <span style={{
                   fontSize:11, padding:'2px 9px', borderRadius:20,
-                  fontWeight:600, background:'#D1FAE5', color:'#065F46'
+                  fontWeight:600, background:'var(--success-bg)', color:'var(--success-fg)'
                 }}>Graded</span>
               )}
             </div>
@@ -118,8 +118,8 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
           <button
             onClick={onClose}
             style={{
-              width:30, height:30, borderRadius:'50%', background:'#F5F6FA',
-              border:'none', fontSize:18, color:'#8B8FA8', cursor:'pointer',
+              width:30, height:30, borderRadius:'50%', background:'var(--surface-2)',
+              border:'none', fontSize:18, color:'var(--text-muted)', cursor:'pointer',
               display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0
             }}
           >✕</button>
@@ -130,11 +130,11 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
           {/* PD grading notice */}
           {!isGraded && (
             <div style={{
-              background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:10,
+              background:'var(--info-bg)', border:'1px solid #BFDBFE', borderRadius:10,
               padding:'12px 16px', marginBottom:20, display:'flex', gap:10, alignItems:'flex-start'
             }}>
               <div style={{ fontSize:18 }}>📋</div>
-              <div style={{ fontSize:13, color:'#1E40AF', lineHeight:1.6 }}>
+              <div style={{ fontSize:13, color:'var(--info-fg)', lineHeight:1.6 }}>
                 <strong>Program Director grading.</strong> You are grading this final report.
                 Weekly and monthly reports are assessed by the supervising physician.
               </div>
@@ -143,7 +143,7 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
 
           {/* Trainee info */}
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:12, fontWeight:700, color:'#8B8FA8', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:10 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:10 }}>
               Trainee Information
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px 20px' }}>
@@ -155,8 +155,8 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
                 ['Rotation',       rotaStr],
               ].map(([label, value]) => (
                 <div key={label}>
-                  <div style={{ fontSize:11, color:'#8B8FA8', marginBottom:2 }}>{label}</div>
-                  <div style={{ fontSize:13, color:'#1B1464', fontWeight:500 }}>{value}</div>
+                  <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:2 }}>{label}</div>
+                  <div style={{ fontSize:13, color:'var(--brand-secondary)', fontWeight:500 }}>{value}</div>
                 </div>
               ))}
             </div>
@@ -164,7 +164,7 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
 
           {/* Assessor info */}
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:12, fontWeight:700, color:'#8B8FA8', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:10 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:10 }}>
               Program Director (Assessor)
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px 20px' }}>
@@ -174,8 +174,8 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
                 ['Hospital',report.hospital?.name    || '—'],
               ].map(([label, value]) => (
                 <div key={label}>
-                  <div style={{ fontSize:11, color:'#8B8FA8', marginBottom:2 }}>{label}</div>
-                  <div style={{ fontSize:13, color:'#1B1464', fontWeight:500 }}>{value}</div>
+                  <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:2 }}>{label}</div>
+                  <div style={{ fontSize:13, color:'var(--brand-secondary)', fontWeight:500 }}>{value}</div>
                 </div>
               ))}
             </div>
@@ -184,7 +184,7 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
           {/* File link */}
           {report.fileUrl && (
             <div style={{ marginBottom:20 }}>
-              <div style={{ fontSize:12, fontWeight:700, color:'#8B8FA8', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:8 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:8 }}>
                 Report File
               </div>
               <a
@@ -192,8 +192,8 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
                 target="_blank" rel="noreferrer"
                 style={{
                   display:'inline-flex', alignItems:'center', gap:7,
-                  padding:'8px 16px', borderRadius:8, background:'#EFF6FF',
-                  color:'#2563EB', fontWeight:500, fontSize:13, textDecoration:'none',
+                  padding:'8px 16px', borderRadius:8, background:'var(--info-bg)',
+                  color:'var(--info-fg)', fontWeight:500, fontSize:13, textDecoration:'none',
                   border:'1px solid #BFDBFE'
                 }}
               >
@@ -204,7 +204,7 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
 
           {/* ASR Criteria */}
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:12, fontWeight:700, color:'#8B8FA8', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:12 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:12 }}>
               ASR Assessment Criteria
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr', gap:6, marginBottom:6 }}>
@@ -221,10 +221,10 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
                 style={{
                   display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr',
                   gap:6, padding:'8px 0',
-                  borderTop: idx === 0 ? 'none' : '1px solid #F5F6FA'
+                  borderTop: idx === 0 ? 'none' : '1px solid var(--surface-2)'
                 }}
               >
-                <div style={{ fontSize:13, color:'#1B1464', alignSelf:'center' }}>{name}</div>
+                <div style={{ fontSize:13, color:'var(--brand-secondary)', alignSelf:'center' }}>{name}</div>
                 {RATINGS.map(r => {
                   const sel = criteria[name] === r.key;
                   return (
@@ -236,7 +236,7 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
                         style={{
                           width:28, height:28, borderRadius:'50%',
                           border: sel ? `2px solid ${r.color}` : '1.5px solid #D1D5DB',
-                          background: sel ? r.color : '#fff',
+                          background: sel ? r.color : 'var(--surface)',
                           cursor: isGraded ? 'default' : 'pointer',
                           transition:'background-color .12s ease, border-color .12s ease',
                           opacity: isGraded && !sel ? 0.5 : 1
@@ -251,7 +251,7 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
 
           {/* Global Rating */}
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:12, fontWeight:700, color:'#4B5563', marginBottom:10 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:'var(--text-2)', marginBottom:10 }}>
               Global Rating *
             </div>
             <div style={{ display:'flex', gap:12 }}>
@@ -265,9 +265,9 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
                     onClick={() => !isGraded && setGlobalRating(active ? '' : val)}
                     style={{
                       flex:1, padding:'12px 0', borderRadius:10,
-                      border: active ? `2px solid ${color}` : '1.5px solid #E8E9EF',
-                      background: active ? (val==='competent' ? '#E8FDF3' : '#FEF0F0') : '#fff',
-                      color: active ? color : '#4B5563',
+                      border: active ? `2px solid ${color}` : '1.5px solid var(--border)',
+                      background: active ? (val==='competent' ? 'var(--success-bg)' : '#FEF0F0') : 'var(--surface)',
+                      color: active ? color : 'var(--text-2)',
                       fontWeight:700, fontSize:14,
                       cursor: isGraded ? 'default' : 'pointer',
                       transition:'background-color .15s ease, border-color .15s ease, color .15s ease'
@@ -283,7 +283,7 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
           {/* Letter Grade (optional) */}
           {!isGraded && (
             <div style={{ marginBottom:20 }}>
-              <div style={{ fontSize:12, fontWeight:600, color:'#4B5563', marginBottom:8 }}>
+              <div style={{ fontSize:12, fontWeight:600, color:'var(--text-2)', marginBottom:8 }}>
                 Letter Grade (optional)
               </div>
               <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
@@ -296,7 +296,7 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
                       style={{
                         width:40, height:40, borderRadius:'50%',
                         border: active ? '2px solid #185FA5' : '1.5px solid #D1D5DB',
-                        background: active ? '#185FA5' : 'white',
+                        background: active ? '#185FA5' : 'var(--surface)',
                         color: active ? 'white' : '#444',
                         fontSize:12, fontWeight:700, cursor:'pointer', transition:'background-color .12s ease, border-color .12s ease, color .12s ease'
                       }}
@@ -309,7 +309,7 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
 
           {/* Comments */}
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:12, fontWeight:600, color:'#4B5563', marginBottom:6 }}>
+            <div style={{ fontSize:12, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>
               {isGraded ? 'Assessment Notes' : 'Comments / Feedback (shown to trainee)'}
             </div>
             <textarea
@@ -319,9 +319,9 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
               placeholder="Enter feedback for the trainee…"
               style={{
                 width:'100%', minHeight:90, padding:'10px 12px',
-                border:'1.5px solid #E8E9EF', borderRadius:8, fontSize:13,
-                color:'#1B1464', resize:'vertical', fontFamily:'inherit',
-                background: isGraded ? '#F5F6FA' : '#fff'
+                border:'1.5px solid var(--border)', borderRadius:8, fontSize:13,
+                color:'var(--brand-secondary)', resize:'vertical', fontFamily:'inherit',
+                background: isGraded ? 'var(--surface-2)' : 'var(--surface)'
               }}
             />
           </div>
@@ -329,16 +329,16 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
           {/* Graded confirmation banner */}
           {isGraded && (
             <div style={{
-              background:'#D1FAE5', border:'1px solid #059669',
+              background:'var(--success-bg)', border:'1px solid #059669',
               borderRadius:10, padding:'14px 16px', marginBottom:16,
               display:'flex', alignItems:'center', gap:10
             }}>
               <div style={{ fontSize:20 }}>✓</div>
               <div>
-                <div style={{ fontSize:13, fontWeight:600, color:'#065F46' }}>
+                <div style={{ fontSize:13, fontWeight:600, color:'var(--success-fg)' }}>
                   Final report graded
                 </div>
-                <div style={{ fontSize:12, color:'#047857', marginTop:2 }}>
+                <div style={{ fontSize:12, color:'var(--success-fg)', marginTop:2 }}>
                   Grade: {report.grade} · Global: {report.globalRating} ·
                   By {report.gradedBy?.name || '—'} on {fmtDate(report.gradedAt)}
                 </div>
@@ -348,8 +348,8 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
 
           {error && (
             <div style={{
-              background:'#FEE2E2', borderRadius:8, padding:'10px 14px',
-              fontSize:13, color:'#DC2626', marginBottom:16
+              background:'var(--danger-bg)', borderRadius:8, padding:'10px 14px',
+              fontSize:13, color:'var(--danger-fg)', marginBottom:16
             }}>
               {error}
             </div>
@@ -363,8 +363,8 @@ function GradeModal({ report, programDirector, onClose, onSaved }) {
                   type="button"
                   onClick={onClose}
                   style={{
-                    padding:'9px 20px', borderRadius:8, background:'#fff',
-                    color:'#4B5563', border:'1.5px solid #E8E9EF',
+                    padding:'9px 20px', borderRadius:8, background:'var(--surface)',
+                    color:'var(--text-2)', border:'1.5px solid var(--border)',
                     fontWeight:500, fontSize:13, cursor:'pointer'
                   }}
                 >
@@ -452,7 +452,7 @@ export default function ProgramDirectorReports() {
       <main className="admin-main">
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, marginBottom:20 }}>
           {[0,1,2].map(i => (
-            <div key={i} style={{ background:'#fff', border:'1px solid #E8E9EF', borderRadius:12, padding:'16px 20px', display:'flex', alignItems:'center', gap:14 }}>
+            <div key={i} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 20px', display:'flex', alignItems:'center', gap:14 }}>
               <Sk w={46} h={46} r={10} /><Sk w={110} h={14} />
             </div>
           ))}
@@ -493,7 +493,7 @@ export default function ProgramDirectorReports() {
             { label:'Graded',              count: gradedCount,      color:'#059669', bg:'#D1FAE5' },
           ].map(c => (
             <div key={c.label} style={{
-              background:'#fff', border:'1px solid #E8E9EF', borderRadius:12,
+              background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12,
               padding:'16px 20px', display:'flex', alignItems:'center', gap:14
             }}>
               <div style={{
@@ -501,7 +501,7 @@ export default function ProgramDirectorReports() {
                 display:'flex', alignItems:'center', justifyContent:'center',
                 fontSize:20, fontWeight:700, color:c.color, flexShrink:0
               }}>{c.count}</div>
-              <div style={{ fontSize:13, color:'#4B5563', fontWeight:500 }}>{c.label}</div>
+              <div style={{ fontSize:13, color:'var(--text-2)', fontWeight:500 }}>{c.label}</div>
             </div>
           ))}
         </div>
@@ -549,9 +549,9 @@ export default function ProgramDirectorReports() {
               <tbody>
                 {displayed.length === 0 && (
                   <tr>
-                    <td colSpan={7} style={{ textAlign:'center', padding:40, color:'#8B8FA8' }}>
+                    <td colSpan={7} style={{ textAlign:'center', padding:40, color:'var(--text-muted)' }}>
                       <div style={{ fontSize:32, marginBottom:8 }}>📄</div>
-                      <div style={{ fontSize:15, fontWeight:600, color:'#4B5563', marginBottom:4 }}>
+                      <div style={{ fontSize:15, fontWeight:600, color:'var(--text-2)', marginBottom:4 }}>
                         No final reports found
                       </div>
                       <div style={{ fontSize:13 }}>
@@ -563,8 +563,8 @@ export default function ProgramDirectorReports() {
                   </tr>
                 )}
                 {displayed.map((r, i) => (
-                  <tr key={r._id} style={{ background: r.status !== 'graded' ? '#FFFEF5' : '#fff' }}>
-                    <td style={{ color:'#8B8FA8' }}>{i + 1}</td>
+                  <tr key={r._id} style={{ background: r.status !== 'graded' ? '#FFFEF5' : 'var(--surface)' }}>
+                    <td style={{ color:'var(--text-muted)' }}>{i + 1}</td>
 
                     <td>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -575,18 +575,18 @@ export default function ProgramDirectorReports() {
                         <div>
                           <strong>{r.student?.name || '—'}</strong>
                           {r.student?.studentId && (
-                            <div style={{ fontSize:11, color:'#8B8FA8' }}>ID: {r.student.studentId}</div>
+                            <div style={{ fontSize:11, color:'var(--text-muted)' }}>ID: {r.student.studentId}</div>
                           )}
                         </div>
                       </div>
                     </td>
 
                     <td style={{ maxWidth:200 }}>
-                      <div style={{ fontWeight:500, color:'#1B1464', fontSize:13 }}>{r.title}</div>
-                      <div style={{ fontSize:11, color:'#8B8FA8' }}>{r.hospital?.name || ''}</div>
+                      <div style={{ fontWeight:500, color:'var(--brand-secondary)', fontSize:13 }}>{r.title}</div>
+                      <div style={{ fontSize:11, color:'var(--text-muted)' }}>{r.hospital?.name || ''}</div>
                     </td>
 
-                    <td style={{ whiteSpace:'nowrap', fontSize:13, color:'#4B5563' }}>
+                    <td style={{ whiteSpace:'nowrap', fontSize:13, color:'var(--text-2)' }}>
                       {fmtDate(r.date)}
                     </td>
 
@@ -594,7 +594,7 @@ export default function ProgramDirectorReports() {
                       {r.fileUrl
                         ? <a href={`${API_BASE}${r.fileUrl}`} target="_blank" rel="noreferrer"
                              title="View" aria-label="View"
-                             style={{ color:'#185FA5', fontSize:13, fontWeight:500, display:'inline-flex', alignItems:'center' }}>
+                             style={{ color:'var(--link)', fontSize:13, fontWeight:500, display:'inline-flex', alignItems:'center' }}>
                             <IconEye size={15} />
                           </a>
                         : <span style={{ color:'#D1D5DB', fontSize:12 }}>None</span>
@@ -605,14 +605,14 @@ export default function ProgramDirectorReports() {
                       {r.status === 'graded' ? (
                         <span style={{
                           fontSize:11, fontWeight:600, padding:'3px 9px',
-                          borderRadius:20, background:'#D1FAE5', color:'#065F46'
+                          borderRadius:20, background:'var(--success-bg)', color:'var(--success-fg)'
                         }}>
                           Graded {r.grade ? `· ${r.grade}` : ''}
                         </span>
                       ) : (
                         <span style={{
                           fontSize:11, fontWeight:600, padding:'3px 9px',
-                          borderRadius:20, background:'#FEF3C7', color:'#92400E'
+                          borderRadius:20, background:'var(--warning-bg)', color:'var(--warning-fg)'
                         }}>Pending</span>
                       )}
                     </td>

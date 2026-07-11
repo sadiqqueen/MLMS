@@ -85,8 +85,14 @@ function sameId(a, b) {
   return left.toString() === right.toString();
 }
 
+// super_admin and dio are system-wide certificate overseers (no hospital scope);
+// every other reader (program_director, president) is scoped to its own hospital.
+function isCertificateOverseer(user) {
+  return user.role === 'super_admin' || user.role === 'dio';
+}
+
 function scopedCertificateQuery(req, res) {
-  if (req.user.role === 'super_admin') return {};
+  if (isCertificateOverseer(req.user)) return {};
   const hospitalId = getHospital(req.user);
   if (!hospitalId) {
     res.status(403).json({ success: false, message: 'Account is not assigned to a hospital' });
@@ -105,6 +111,14 @@ function ensureCertificateScope(req, res, cert) {
   if (sameId(cert.hospital, hospitalId)) return true;
   res.status(403).json({ success: false, message: 'Access denied: certificate belongs to a different hospital' });
   return false;
+}
+
+// READ scope: overseers (super_admin, dio) may open/print ANY certificate; other
+// roles fall back to hospital scoping. Used only by the GET read endpoints —
+// the WRITE guard (ensureCertificateScope) is intentionally left untouched.
+function ensureCertificateReadScope(req, res, cert) {
+  if (isCertificateOverseer(req.user)) return true;
+  return ensureCertificateScope(req, res, cert);
 }
 
 // GET /api/certificates
@@ -127,7 +141,7 @@ router.get('/:id', auth, allowRoles(...CERT_READ), async (req, res) => {
     }
     const cert = await populate(Certificate.findById(req.params.id));
     if (!cert) return res.status(404).json({ success: false, message: 'Certificate not found' });
-    if (!ensureCertificateScope(req, res, cert)) return;
+    if (!ensureCertificateReadScope(req, res, cert)) return;
     res.json({ success: true, data: formatCertificateForPrint(req, cert) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -142,7 +156,7 @@ router.get('/:id/print', auth, allowRoles(...CERT_READ), async (req, res) => {
     }
     const cert = await populate(Certificate.findById(req.params.id));
     if (!cert) return res.status(404).json({ success: false, message: 'Certificate not found' });
-    if (!ensureCertificateScope(req, res, cert)) return;
+    if (!ensureCertificateReadScope(req, res, cert)) return;
     await audit(req, 'view_certificate_print', cert._id, { status: cert.revokedAt ? 'revoked' : 'valid' });
     res.json({ success: true, data: formatCertificateForPrint(req, cert) });
   } catch (err) {

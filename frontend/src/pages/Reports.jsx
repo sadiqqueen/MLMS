@@ -267,9 +267,9 @@ export default function Reports() {
         {/* No active distribution — show legacy submit form */}
         {!distribution && !loading && (
           <>
-            <div className="card" style={{ textAlign:'center', padding:40, color:'#8B8FA8' }}>
+            <div className="card" style={{ textAlign:'center', padding:40, color:'var(--text-muted)' }}>
               <div style={{ fontSize:36, marginBottom:12 }}>📋</div>
-              <div style={{ fontSize:16, fontWeight:600, color:'#4B5563', marginBottom:6 }}>Not assigned to a specialty yet</div>
+              <div style={{ fontSize:16, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>Not assigned to a specialty yet</div>
               <div style={{ fontSize:13 }}>Once your secretary assigns you to a specialty, your report templates will appear here.</div>
             </div>
 

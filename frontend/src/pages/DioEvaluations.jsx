@@ -13,9 +13,10 @@ import api          from '../api/axios';
 import Sk           from '../components/Skeleton';
 import { IconEye }  from '../components/icons';
 import {
-  EvalModal, Avatar, isThisMonth, safeArr, baseEvalType, evalSubjectId, MONTHLY_CAP,
+  EvalModal, Avatar, isThisMonth, safeArr, baseEvalType, evalSubjectId,
 } from '../components/evaluations/EvalModal';
 import { EVAL_STRINGS } from '../components/evaluations/evalStrings';
+import { EVAL_FORMS, SUPERVISOR_EVAL_FORMS } from '../data/evalForms';
 
 const TABS = [
   { key: 'trainees',    en: 'Trainees',    ar: 'المتدربون' },
@@ -58,6 +59,11 @@ export default function DioEvaluations() {
 
   const isSupervisorTab = tab === 'supervisors';
   const people = isSupervisorTab ? supervisors : trainees;
+  // Forms available for the active subject: none for supervisors (all removed),
+  // the trainee WPBA set otherwise. cap 0 → hide the "X/N forms" progress + the
+  // "all forms done" state so supervisor rows read cleanly.
+  const activeForms = isSupervisorTab ? SUPERVISOR_EVAL_FORMS : EVAL_FORMS;
+  const cap = activeForms.length;
   const tabLabel = lang === 'ar' ? TABS.find(x => x.key === tab).ar : TABS.find(x => x.key === tab).en;
 
   // Split the DIO's evaluations by subject type (legacy rows → trainee).
@@ -79,7 +85,8 @@ export default function DioEvaluations() {
   }
   function monthlyTypesFor(id) {
     return new Set(
-      tabEvals.filter(ev => evalSubjectId(ev) === id && isThisMonth(ev?.date || ev?.createdAt)).map(baseEvalType)
+      tabEvals.filter(ev => evalSubjectId(ev) === id && isThisMonth(ev?.date || ev?.createdAt))
+        .map(baseEvalType).filter(tp => activeForms.some(f => f.type === tp))
     ).size;
   }
 
@@ -206,7 +213,7 @@ export default function DioEvaluations() {
             const id         = person._id?.toString();
             const count      = evalCountFor(id);
             const monthTypes = monthlyTypesFor(id);
-            const complete   = monthTypes >= MONTHLY_CAP;
+            const complete   = cap > 0 && monthTypes >= cap;
 
             return (
               <div
@@ -225,7 +232,7 @@ export default function DioEvaluations() {
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                     {person.studentId ? `${t('idLabel')}: ${person.studentId} · ` : ''}
-                    {count} {t('evaluationsTotal')} · {monthTypes}/{MONTHLY_CAP} {t('formsThisMonth')}
+                    {count} {t('evaluationsTotal')}{cap > 0 ? ` · ${monthTypes}/${cap} ${t('formsThisMonth')}` : ''}
                   </div>
                 </div>
 
@@ -260,6 +267,7 @@ export default function DioEvaluations() {
           <EvalModal
             item={selected}
             evals={tabEvals}
+            forms={activeForms}
             assessorName={me?.name}
             onClose={() => setSelected(null)}
             onSubmitted={handleSubmitted}

@@ -36,7 +36,7 @@ const EMPTY_FORM = {
 };
 
 const lbl = {
-  display: 'block', fontSize: 12, fontWeight: 600, color: '#666',
+  display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-2)',
   marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em',
 };
 
@@ -120,7 +120,7 @@ export default function Certificates() {
 
         <div className="admin-toolbar" style={{ marginBottom: 16 }}>
           <ViewToggle value={view} onChange={setView} />
-          <span style={{ fontSize:13, color:'#8B8FA8', flexShrink:0 }}>
+          <span style={{ fontSize:13, color:'var(--text-muted)', flexShrink:0 }}>
             {certificates.length} certificate{certificates.length !== 1 ? 's' : ''}
           </span>
           <button className="btn-purple" onClick={() => { setShowForm(true); setForm(EMPTY_FORM); }}>
@@ -157,7 +157,7 @@ export default function Certificates() {
             </div>
           </div>
         ) : certificates.length === 0 ? (
-          <div style={{ padding: 48, textAlign: 'center', color: '#aaa', fontSize: 14 }}>
+          <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
             No certificates issued yet
           </div>
         ) : (
@@ -174,15 +174,15 @@ export default function Certificates() {
                 <tbody>
                   {certificates.map((c, i) => (
                     <tr key={c._id}>
-                      <td style={{ color: '#aaa', width: 36 }}>{i + 1}</td>
+                      <td style={{ color: 'var(--text-muted)', width: 36 }}>{i + 1}</td>
                       <td>
                         <div style={{ fontWeight: 600 }}>{c.student?.name || '—'}</div>
-                        <div style={{ fontSize: 11, color: '#aaa' }}>{c.student?.studentId || ''}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.student?.studentId || ''}</div>
                       </td>
                       <td>{textValue(c.specialty)}</td>
                       <td>{c.hospital?.name || '—'}</td>
                       <td>{fmtDate(c.issueDate)}</td>
-                      <td style={{ maxWidth: 180, color: '#666', fontSize: 13 }}>{c.notes || '—'}</td>
+                      <td style={{ maxWidth: 180, color: 'var(--text-2)', fontSize: 13 }}>{c.notes || '—'}</td>
                       <td>
                         <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
                           {!c.revokedAt && c._id && (
@@ -280,7 +280,7 @@ export default function Certificates() {
                       <ul style={{
                         position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 400,
                         margin: 0, padding: 0, listStyle: 'none',
-                        background: '#fff', border: '1px solid #e8eaf0', borderRadius: 10,
+                        background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
                         boxShadow: '0 6px 24px rgba(0,0,0,0.13)', maxHeight: 240, overflowY: 'auto',
                       }}>
                         {filtered.map(s => (
@@ -290,16 +290,16 @@ export default function Certificates() {
                               onMouseDown={e => { e.preventDefault(); selectStudent(s); }}
                               style={{
                                 width: '100%', textAlign: 'left', background: 'none',
-                                border: 'none', borderBottom: '1px solid #f3f3f3',
+                                border: 'none', borderBottom: '1px solid var(--border-soft)',
                                 padding: '10px 14px', cursor: 'pointer', display: 'block',
                               }}
                               onMouseEnter={e => e.currentTarget.style.background = '#f0f3ff'}
                               onMouseLeave={e => e.currentTarget.style.background = 'none'}
                             >
                               <span style={{ fontWeight: 600, fontSize: 14 }}>{s.name}</span>
-                              {s.studentId && <span style={{ marginLeft: 8, fontSize: 12, color: '#aaa' }}>{s.studentId}</span>}
-                              {s.year      && <span style={{ marginLeft: 8, fontSize: 12, color: '#aaa' }}>Year {s.year}</span>}
-                              {s.hospital?.name && <span style={{ marginLeft: 8, fontSize: 12, color: '#7c6fcd' }}>{s.hospital.name}</span>}
+                              {s.studentId && <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-muted)' }}>{s.studentId}</span>}
+                              {s.year      && <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-muted)' }}>Year {s.year}</span>}
+                              {s.hospital?.name && <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--brand-secondary)' }}>{s.hospital.name}</span>}
                             </button>
                           </li>
                         ))}
@@ -311,46 +311,46 @@ export default function Certificates() {
                 {/* ── Auto-filled student info ── */}
                 {form.student && (
                   <div style={{
-                    background: '#f5f7ff', border: '1px solid #e0e4ff',
+                    background: 'var(--surface-2)', border: '1px solid #e0e4ff',
                     borderRadius: 10, padding: '12px 16px', marginBottom: 16,
                   }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#8b83d0', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
                       Selected Trainee
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '8px 16px', fontSize: 13 }}>
                       <div>
-                        <div style={{ color: '#999', fontSize: 11, marginBottom: 2 }}>Full Name</div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 11, marginBottom: 2 }}>Full Name</div>
                         <div style={{ fontWeight: 600 }}>{form.student.name}</div>
                       </div>
                       {form.student.studentId && (
                         <div>
-                          <div style={{ color: '#999', fontSize: 11, marginBottom: 2 }}>Student ID</div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 11, marginBottom: 2 }}>Student ID</div>
                           <div style={{ fontWeight: 600 }}>{form.student.studentId}</div>
                         </div>
                       )}
                       {form.student.year && (
                         <div>
-                          <div style={{ color: '#999', fontSize: 11, marginBottom: 2 }}>Year</div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 11, marginBottom: 2 }}>Year</div>
                           <div style={{ fontWeight: 600 }}>Year {form.student.year}</div>
                         </div>
                       )}
                       {form.hospital?.name && (
                         <div>
-                          <div style={{ color: '#999', fontSize: 11, marginBottom: 2 }}>Hospital</div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 11, marginBottom: 2 }}>Hospital</div>
                           <div style={{ fontWeight: 600 }}>{form.hospital.name}</div>
                         </div>
                       )}
                       {form.student.doctor?.name && (
                         <div>
-                          <div style={{ color: '#999', fontSize: 11, marginBottom: 2 }}>Doctor</div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 11, marginBottom: 2 }}>Doctor</div>
                           <div style={{ fontWeight: 600 }}>{form.student.doctor.name}</div>
                           {form.student.doctor.specialty && (
-                            <div style={{ fontSize: 11, color: '#aaa' }}>{textValue(form.student.doctor.specialty)}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{textValue(form.student.doctor.specialty)}</div>
                           )}
                         </div>
                       )}
                       <div style={{ gridColumn: '1 / -1', marginTop: 4 }}>
-                        <div style={{ color: '#999', fontSize: 11, marginBottom: 4 }}>Specialty</div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 11, marginBottom: 4 }}>Specialty</div>
                         <SearchableSelect
                           value={form.specialty}
                           onChange={value => setForm(f => ({ ...f, specialty: value }))}

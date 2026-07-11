@@ -97,10 +97,10 @@ export default function AdminSpecialties() {
 
     return (
       <div style={{
-        border: '1px solid #E8E9EF', borderRadius: 10, padding: '16px 14px',
-        background: '#F8F9FA', display: 'flex', flexDirection: 'column', gap: 10
+        border: '1px solid var(--border)', borderRadius: 10, padding: '16px 14px',
+        background: 'var(--surface-2)', display: 'flex', flexDirection: 'column', gap: 10
       }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#1B1464' }}>{label}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand-secondary)' }}>{label}</div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
           {hasPdf ? (
@@ -110,15 +110,15 @@ export default function AdminSpecialties() {
                 href={specialty[field]}
                 target="_blank"
                 rel="noreferrer"
-                style={{ color: '#185FA5', fontWeight: 500 }}
+                style={{ color: 'var(--link)', fontWeight: 500 }}
               >
                 Template uploaded ↗
               </a>
             </>
           ) : (
             <>
-              <span style={{ color: '#D1D5DB' }}>○</span>
-              <span style={{ color: '#8B8FA8' }}>No template yet</span>
+              <span style={{ color: 'var(--text-muted)' }}>○</span>
+              <span style={{ color: 'var(--text-muted)' }}>No template yet</span>
             </>
           )}
         </div>
@@ -127,8 +127,8 @@ export default function AdminSpecialties() {
           className="pdf-upload-btn"
           style={{
             padding: '7px 14px', borderRadius: 7,
-            background: hasPdf ? '#EEEDFE' : '#FF6B35',
-            color: hasPdf ? '#1B1464' : '#fff',
+            background: hasPdf ? 'var(--chip-spec-bg)' : '#FF6B35',
+            color: hasPdf ? 'var(--brand-secondary)' : '#fff',
             border: 'none', fontWeight: 600, fontSize: 12,
             cursor: isLoading ? 'default' : 'pointer',
             opacity: isLoading ? 0.7 : 1,
@@ -161,7 +161,7 @@ export default function AdminSpecialties() {
       <main className="admin-main">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {[0,1,2,3,4].map(i => (
-            <div key={i} style={{ background: '#fff', border: '1px solid #E8E9EF', borderRadius: 12, padding: 24 }}>
+            <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 24 }}>
               <Sk w={200} h={18} style={{ marginBottom: 16 }} />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 12 }}>
                 {[0,1,2].map(j => <Sk key={j} h={80} r={8} />)}
@@ -183,16 +183,16 @@ export default function AdminSpecialties() {
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: '#1B1464' }}>Specialties</div>
-            <div style={{ fontSize: 13, color: '#8B8FA8', marginTop: 2 }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--brand-secondary)' }}>Specialties</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
               Manage specialties and upload PDF report and evaluation templates for each
             </div>
           </div>
         </div>
 
         {/* Create new specialty */}
-        <div style={{ background: '#fff', border: '1px solid #E8E9EF', borderRadius: 12, padding: 20, marginBottom: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#1B1464', marginBottom: 12 }}>Add Specialty</div>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 20, marginBottom: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--brand-secondary)', marginBottom: 12 }}>Add Specialty</div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <input
               className="admin-search"
@@ -214,9 +214,9 @@ export default function AdminSpecialties() {
         </div>
 
         {specialties.length === 0 && (
-          <div style={{ textAlign: 'center', padding: 56, color: '#8B8FA8' }}>
+          <div style={{ textAlign: 'center', padding: 56, color: 'var(--text-muted)' }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>🔬</div>
-            <div style={{ fontSize: 16, fontWeight: 600, color: '#4B5563', marginBottom: 6 }}>No specialties yet</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>No specialties yet</div>
             <div style={{ fontSize: 13 }}>Add a specialty above to get started.</div>
           </div>
         )}
@@ -224,32 +224,32 @@ export default function AdminSpecialties() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {specialties.map(specialty => (
             <div key={specialty._id} style={{
-              background: '#fff', border: '1px solid #E8E9EF', borderRadius: 12,
+              background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
               padding: 24, boxShadow: '0 1px 3px rgba(0,0,0,.06)'
             }}>
 
               {/* Header */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
                 <div>
-                  <div style={{ fontSize: 17, fontWeight: 700, color: '#1B1464' }}>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--brand-secondary)' }}>
                     🔬 {specialty.name}
                   </div>
-                  <div style={{ fontSize: 12, color: '#8B8FA8', marginTop: 3 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
                     {specialty.secretaryId?.name ? `Secretary: ${specialty.secretaryId.name}` : 'No secretary assigned'}
                     {specialty.hospitalId?.name ? ` · ${specialty.hospitalId.name}` : ''}
                   </div>
                 </div>
                 <span style={{
                   fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
-                  background: specialty.isActive !== false ? '#D1FAE5' : '#FEE2E2',
-                  color:      specialty.isActive !== false ? '#065F46' : '#991B1B'
+                  background: specialty.isActive !== false ? 'var(--success-bg)' : 'var(--danger-bg)',
+                  color:      specialty.isActive !== false ? 'var(--success-fg)' : 'var(--danger-fg)'
                 }}>
                   {specialty.isActive !== false ? 'Active' : 'Inactive'}
                 </span>
               </div>
 
               {/* Report PDFs */}
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#8B8FA8', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>
                 Report Templates
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, marginBottom: 20 }}>
@@ -259,7 +259,7 @@ export default function AdminSpecialties() {
               </div>
 
               {/* Evaluation PDFs */}
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#8B8FA8', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>
                 Evaluation Form Templates
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 14 }}>

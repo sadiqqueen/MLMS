@@ -79,8 +79,8 @@ export default function AuditLog() {
       <main className="admin-main">
 
         <div style={{ marginBottom:20 }}>
-          <div style={{ fontSize:22, fontWeight:700, color:'#1B1464' }}>Audit Log</div>
-          <div style={{ fontSize:13, color:'#8B8FA8', marginTop:2 }}>
+          <div style={{ fontSize:22, fontWeight:700, color:'var(--brand-secondary)' }}>Audit Log</div>
+          <div style={{ fontSize:13, color:'var(--text-muted)', marginTop:2 }}>
             Every create, update, and delete action across the system · {total} total entries
           </div>
         </div>
@@ -94,7 +94,7 @@ export default function AuditLog() {
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
-            <span style={{ fontSize:13, color:'#8B8FA8', flexShrink:0 }}>
+            <span style={{ fontSize:13, color:'var(--text-muted)', flexShrink:0 }}>
               Page {page} of {totalPages || 1}
             </span>
           </div>
@@ -116,9 +116,9 @@ export default function AuditLog() {
                 ))}
                 {!loading && filtered.length === 0 && (
                   <tr>
-                    <td colSpan={5} style={{ textAlign:'center', padding:40, color:'#8B8FA8' }}>
+                    <td colSpan={5} style={{ textAlign:'center', padding:40, color:'var(--text-muted)' }}>
                       <div style={{ fontSize:32, marginBottom:8 }}>📋</div>
-                      <div style={{ fontSize:15, fontWeight:600, color:'#4B5563' }}>No audit entries found</div>
+                      <div style={{ fontSize:15, fontWeight:600, color:'var(--text-2)' }}>No audit entries found</div>
                     </td>
                   </tr>
                 )}
@@ -127,7 +127,7 @@ export default function AuditLog() {
                   const roleStyle   = ROLE_BADGE[log.userId?.role] || { bg:'#F3F4F6', color:'#6B7280' };
                   return (
                     <tr key={log._id}>
-                      <td style={{ fontSize:12, color:'#8B8FA8', whiteSpace:'nowrap' }}>
+                      <td style={{ fontSize:12, color:'var(--text-muted)', whiteSpace:'nowrap' }}>
                         {fmt(log.createdAt)}
                       </td>
                       <td>
@@ -137,7 +137,7 @@ export default function AuditLog() {
                             <span style={{ fontSize:10, fontWeight:600, padding:'1px 6px', borderRadius:20, background:roleStyle.bg, color:roleStyle.color }}>
                               {log.userId?.role || '—'}
                             </span>
-                            <span style={{ fontSize:11, color:'#8B8FA8' }}>{log.userId?.email || ''}</span>
+                            <span style={{ fontSize:11, color:'var(--text-muted)' }}>{log.userId?.email || ''}</span>
                           </div>
                         </div>
                       </td>
@@ -146,8 +146,8 @@ export default function AuditLog() {
                           {log.action?.replace(/_/g, ' ')}
                         </span>
                       </td>
-                      <td style={{ fontSize:13, color:'#4B5563' }}>{log.targetModel || '—'}</td>
-                      <td style={{ fontSize:12, color:'#8B8FA8', fontFamily:'monospace' }}>{log.ip || '—'}</td>
+                      <td style={{ fontSize:13, color:'var(--text-2)' }}>{log.targetModel || '—'}</td>
+                      <td style={{ fontSize:12, color:'var(--text-muted)', fontFamily:'monospace' }}>{log.ip || '—'}</td>
                     </tr>
                   );
                 })}

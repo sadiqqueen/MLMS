@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api/axios';
+import { usePrefs } from '../context/PrefsContext';
 
 function fmt(d) {
   if (!d) return '—';
@@ -18,6 +19,8 @@ function textValue(value, fallback = '—') {
 
 export default function VerifyCertificate() {
   const { code }     = useParams();
+  const { theme }    = usePrefs();
+  const logoSrc      = theme === 'dark' ? '/logo-light.png' : '/logo.png';
   const [result,     setResult    ] = useState(null);
   const [loading,    setLoading   ] = useState(false);
   const [manualCode, setManualCode] = useState(code || '');
@@ -44,12 +47,12 @@ export default function VerifyCertificate() {
 
   return (
     <div style={{
-      minHeight:'100vh', background:'#F5F6FA',
+      minHeight:'100vh', background:'var(--app-bg)',
       display:'flex', flexDirection:'column', alignItems:'center',
       justifyContent:'center', padding:24,
       fontFamily:'Inter,-apple-system,BlinkMacSystemFont,sans-serif'
     }}>
-      <img src="/logo.png" alt="MTMS" style={{ height:72, marginBottom:24 }} />
+      <img src={logoSrc} alt="MTMS" style={{ height:72, marginBottom:24 }} />
 
       <div style={{
         background:'#fff', borderRadius:16, border:'1px solid #E8E9EF',
@@ -182,7 +185,7 @@ export default function VerifyCertificate() {
         )}
       </div>
 
-      <div style={{ fontSize:12, color:'#8B8FA8', marginTop:20, textAlign:'center', maxWidth:400 }}>
+      <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:20, textAlign:'center', maxWidth:400 }}>
         This verification service confirms the authenticity of certificates issued by the Medical Training Management System (MTMS).
       </div>
     </div>

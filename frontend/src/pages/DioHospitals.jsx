@@ -74,7 +74,7 @@ export function HospitalModal({ hospital, onClose, onSaved }) {
               <input value={form.address} onChange={e => set('address', e.target.value)} placeholder="Full address" />
             </div>
           </div>
-          {apiErr && <div style={{ marginTop: 14, background: '#FEE2E2', color: '#DC2626', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>{apiErr}</div>}
+          {apiErr && <div style={{ marginTop: 14, background: 'var(--danger-bg)', color: 'var(--danger-fg)', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>{apiErr}</div>}
         </div>
         <div className="admin-modal-footer">
           <button className="btn-outline" onClick={onClose}>Cancel</button>
@@ -124,7 +124,7 @@ export function SpecialtyModal({ hospital, onClose, onSaved }) {
               onKeyDown={e => e.key === 'Enter' && save()}
               placeholder="e.g. Cardiology" />
           </div>
-          {apiErr && <div style={{ marginTop: 14, background: '#FEE2E2', color: '#DC2626', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>{apiErr}</div>}
+          {apiErr && <div style={{ marginTop: 14, background: 'var(--danger-bg)', color: 'var(--danger-fg)', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>{apiErr}</div>}
         </div>
         <div className="admin-modal-footer">
           <button className="btn-outline" onClick={onClose}>Cancel</button>
@@ -232,11 +232,11 @@ export function StaffModal({ role, hospital, specialties, onClose, onSaved }) {
             )}
           </div>
           {isSup && specOptions.length === 0 && (
-            <div style={{ marginTop: 12, fontSize: 12, color: '#92400E', background: '#FEF3C7', borderRadius: 8, padding: '8px 12px' }}>
+            <div style={{ marginTop: 12, fontSize: 12, color: 'var(--warning-fg)', background: 'var(--warning-bg)', borderRadius: 8, padding: '8px 12px' }}>
               This hospital has no specialties yet — add one first, or pick a shared specialty.
             </div>
           )}
-          {apiErr && <div style={{ marginTop: 14, background: '#FEE2E2', color: '#DC2626', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>{apiErr}</div>}
+          {apiErr && <div style={{ marginTop: 14, background: 'var(--danger-bg)', color: 'var(--danger-fg)', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>{apiErr}</div>}
         </div>
         <div className="admin-modal-footer">
           <button className="btn-outline" onClick={onClose}>Cancel</button>
@@ -250,14 +250,14 @@ export function StaffModal({ role, hospital, specialties, onClose, onSaved }) {
 function Section({ title, count, children }) {
   return (
     <div>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#8B8FA8', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>
         {title}{count !== undefined ? ` (${count})` : ''}
       </div>
       {children}
     </div>
   );
 }
-function Muted({ children }) { return <div style={{ fontSize: 13, color: '#B8BBC8' }}>{children}</div>; }
+function Muted({ children }) { return <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{children}</div>; }
 
 function HospitalCard({ h, onAction, onOpen }) {
   const location = [h.city, h.governorate].filter(Boolean).join(' · ') || '—';
@@ -265,8 +265,8 @@ function HospitalCard({ h, onAction, onOpen }) {
     <div className="admin-card" style={{ padding: 0, display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border, #E8E9EF)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
         <div style={{ minWidth: 0, cursor: 'pointer' }} onClick={onOpen} title="Open hospital page" role="link">
-          <div style={{ fontSize: 16, fontWeight: 800, color: '#1B1464' }}>🏥 {h.name}</div>
-          <div style={{ fontSize: 12, color: '#8B8FA8', marginTop: 2 }}>{location} · <span style={{ color: '#185FA5', fontWeight: 600 }}>View page →</span></div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--brand-secondary)' }}>🏥 {h.name}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{location} · <span style={{ color: 'var(--link)', fontWeight: 600 }}>View page →</span></div>
         </div>
         <button className="btn-action edit" title="Edit hospital" aria-label={`Edit ${h.name}`} onClick={() => onAction('hospital', h)}>
           <IconPencil />
@@ -279,8 +279,8 @@ function HospitalCard({ h, onAction, onOpen }) {
             ? <Muted>Not assigned</Muted>
             : <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {h.programDirectors.map(pd => (
-                  <div key={pd._id} style={{ fontSize: 14, fontWeight: 600, color: '#1B1464' }}>⭐ {pd.name}
-                    {pd.department ? <span style={{ fontSize: 12, color: '#8B8FA8', fontWeight: 400 }}> · {pd.department}</span> : null}</div>
+                  <div key={pd._id} style={{ fontSize: 14, fontWeight: 600, color: 'var(--brand-secondary)' }}>⭐ {pd.name}
+                    {pd.department ? <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}> · {pd.department}</span> : null}</div>
                 ))}
               </div>}
         </Section>
@@ -291,8 +291,8 @@ function HospitalCard({ h, onAction, onOpen }) {
             : <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {h.specialties.map(sp => (
                   <div key={sp._id || sp.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '7px 10px', border: '1px solid var(--border-soft, #F0F0F0)', borderRadius: 8, background: 'var(--surface-2, #FAFAFC)' }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: '#EEEDFE', color: '#3C3489', whiteSpace: 'nowrap' }}>{sp.name}</span>
-                    <span style={{ fontSize: 12, color: sp.secretary ? '#4B5563' : '#B8BBC8', textAlign: 'right' }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)', whiteSpace: 'nowrap' }}>{sp.name}</span>
+                    <span style={{ fontSize: 12, color: sp.secretary ? 'var(--text-2)' : 'var(--text-muted)', textAlign: 'right' }}>
                       {sp.secretary ? `📋 ${sp.secretary.name}` : 'No secretary'}
                     </span>
                   </div>
@@ -305,8 +305,8 @@ function HospitalCard({ h, onAction, onOpen }) {
             ? <Muted>None assigned</Muted>
             : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {h.supervisors.map(s => (
-                  <span key={s._id} title={s.email || ''} style={{ fontSize: 12, fontWeight: 500, padding: '4px 10px', borderRadius: 8, background: '#F1F5F9', color: '#334155' }}>
-                    {s.name}{s.specialty ? <span style={{ color: '#8B8FA8' }}> · {s.specialty}</span> : null}
+                  <span key={s._id} title={s.email || ''} style={{ fontSize: 12, fontWeight: 500, padding: '4px 10px', borderRadius: 8, background: 'var(--surface-2)', color: 'var(--text-2)' }}>
+                    {s.name}{s.specialty ? <span style={{ color: 'var(--text-muted)' }}> · {s.specialty}</span> : null}
                   </span>
                 ))}
               </div>}
@@ -394,14 +394,14 @@ export default function DioHospitals() {
           <input className="admin-search" style={{ flex: 1, minWidth: 200 }}
             placeholder="Search by hospital, city, specialty or supervisor…"
             value={search} onChange={e => setSearch(e.target.value)} />
-          <span style={{ fontSize: 13, color: '#8B8FA8', flexShrink: 0 }}>{filtered.length} hospital{filtered.length !== 1 ? 's' : ''}</span>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)', flexShrink: 0 }}>{filtered.length} hospital{filtered.length !== 1 ? 's' : ''}</span>
           <button className="btn-purple" onClick={() => setModal({ type: 'hospital', hospital: null })}>+ Add Hospital</button>
         </div>
 
         {filtered.length === 0 && (
-          <div style={{ textAlign: 'center', padding: 56, color: '#8B8FA8' }}>
+          <div style={{ textAlign: 'center', padding: 56, color: 'var(--text-muted)' }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>🏥</div>
-            <div style={{ fontSize: 16, fontWeight: 600, color: '#4B5563' }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-2)' }}>
               {hospitals.length === 0 ? 'No hospitals yet. Click "+ Add Hospital".' : 'No hospitals match your search.'}
             </div>
           </div>

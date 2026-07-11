@@ -30,12 +30,12 @@ function SupervisorModal({ supervisor, onClose }) {
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div style={{
-        background: '#fff', borderRadius: 16, width: '100%', maxWidth: 440,
+        background: 'var(--surface)', borderRadius: 16, width: '100%', maxWidth: 440,
         boxShadow: '0 20px 60px rgba(0,0,0,.2)'
       }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 14,
-          padding: '20px 24px', borderBottom: '1px solid #E8E9EF'
+          padding: '20px 24px', borderBottom: '1px solid var(--border)'
         }}>
           <div style={{
             width: 52, height: 52, borderRadius: '50%',
@@ -46,14 +46,14 @@ function SupervisorModal({ supervisor, onClose }) {
             {supervisor.initials || supervisor.name?.slice(0,2)?.toUpperCase() || '?'}
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 17, fontWeight: 700, color: '#1B1464' }}>{supervisor.name}</div>
-            <div style={{ fontSize: 12, color: '#8B8FA8', marginTop: 2 }}>{supervisor.email}</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--brand-secondary)' }}>{supervisor.name}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{supervisor.email}</div>
           </div>
           <button
             onClick={onClose}
             style={{
-              width: 30, height: 30, borderRadius: '50%', background: '#F5F6FA',
-              border: 'none', fontSize: 18, color: '#8B8FA8', cursor: 'pointer',
+              width: 30, height: 30, borderRadius: '50%', background: 'var(--surface-2)',
+              border: 'none', fontSize: 18, color: 'var(--text-muted)', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}
           >✕</button>
@@ -71,17 +71,17 @@ function SupervisorModal({ supervisor, onClose }) {
             ].map(([label, value]) => (
               <div key={label}>
                 <div style={{
-                  fontSize: 10, color: '#8B8FA8', fontWeight: 600,
+                  fontSize: 10, color: 'var(--text-muted)', fontWeight: 600,
                   textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 3
                 }}>{label}</div>
-                <div style={{ fontSize: 14, color: '#1B1464', fontWeight: 500 }}>{String(value)}</div>
+                <div style={{ fontSize: 14, color: 'var(--brand-secondary)', fontWeight: 500 }}>{String(value)}</div>
               </div>
             ))}
           </div>
         </div>
 
         <div style={{
-          padding: '14px 24px', borderTop: '1px solid #E8E9EF',
+          padding: '14px 24px', borderTop: '1px solid var(--border)',
           display: 'flex', justifyContent: 'flex-end'
         }}>
           <button
@@ -140,7 +140,7 @@ export default function ProgramDirectorSupervisors() {
       <main className="admin-main">
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:20 }}>
           {[0,1,2].map(i => (
-            <div key={i} style={{ background:'#fff', border:'1px solid #E8E9EF', borderRadius:12, padding:'16px 20px', display:'flex', alignItems:'center', gap:14 }}>
+            <div key={i} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 20px', display:'flex', alignItems:'center', gap:14 }}>
               <Sk w={46} h={46} r={10} /><Sk w={110} h={14} />
             </div>
           ))}
@@ -177,12 +177,12 @@ export default function ProgramDirectorSupervisors() {
         {/* Stat cards */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:20 }}>
           {[
-            { label:'Total Supervisors',      count: supervisors.length, color:'#2563EB', bg:'#DBEAFE' },
-            { label:'Total Assigned Trainees',count: totalTrainees,       color:'#059669', bg:'#D1FAE5' },
-            { label:'Avg Trainees / Supervisor', count: avgTrainees,      color:'#D97706', bg:'#FEF3C7' },
+            { label:'Total Supervisors',      count: supervisors.length, color:'var(--info-fg)', bg:'var(--info-bg)' },
+            { label:'Total Assigned Trainees',count: totalTrainees,       color:'var(--success-fg)', bg:'var(--success-bg)' },
+            { label:'Avg Trainees / Supervisor', count: avgTrainees,      color:'var(--warning-fg)', bg:'var(--warning-bg)' },
           ].map(c => (
             <div key={c.label} style={{
-              background:'#fff', border:'1px solid #E8E9EF', borderRadius:12,
+              background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12,
               padding:'16px 20px', display:'flex', alignItems:'center', gap:14
             }}>
               <div style={{
@@ -190,7 +190,7 @@ export default function ProgramDirectorSupervisors() {
                 display:'flex', alignItems:'center', justifyContent:'center',
                 fontSize:20, fontWeight:700, color:c.color, flexShrink:0
               }}>{c.count}</div>
-              <div style={{ fontSize:13, color:'#4B5563', fontWeight:500 }}>{c.label}</div>
+              <div style={{ fontSize:13, color:'var(--text-2)', fontWeight:500 }}>{c.label}</div>
             </div>
           ))}
         </div>
@@ -223,9 +223,9 @@ export default function ProgramDirectorSupervisors() {
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} style={{ textAlign:'center', padding:40, color:'#8B8FA8' }}>
+                    <td colSpan={7} style={{ textAlign:'center', padding:40, color:'var(--text-muted)' }}>
                       <div style={{ fontSize:32, marginBottom:8 }}>👨‍⚕️</div>
-                      <div style={{ fontSize:15, fontWeight:600, color:'#4B5563', marginBottom:4 }}>No supervisors found</div>
+                      <div style={{ fontSize:15, fontWeight:600, color:'var(--text-2)', marginBottom:4 }}>No supervisors found</div>
                       <div style={{ fontSize:13 }}>
                         {supervisors.length === 0
                           ? 'No supervisors are assigned to your specialty yet.'
@@ -236,7 +236,7 @@ export default function ProgramDirectorSupervisors() {
                 )}
                 {filtered.map((s, i) => (
                   <tr key={s._id} style={{ cursor:'pointer' }} onClick={() => setSelected(s)}>
-                    <td style={{ color:'#8B8FA8' }}>{i + 1}</td>
+                    <td style={{ color:'var(--text-muted)' }}>{i + 1}</td>
                     <td>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                         {s.photoUrl
@@ -245,26 +245,26 @@ export default function ProgramDirectorSupervisors() {
                         }
                         <div>
                           <strong>{s.name}</strong>
-                          <div style={{ fontSize:11, color:'#8B8FA8' }}>{s.email}</div>
+                          <div style={{ fontSize:11, color:'var(--text-muted)' }}>{s.email}</div>
                         </div>
                       </div>
                     </td>
                     <td>
                       <span style={{
                         fontSize:11, fontWeight:600, padding:'3px 9px',
-                        borderRadius:20, background:'#EEEDFE', color:'#3C3489'
+                        borderRadius:20, background:'var(--chip-spec-bg)', color:'var(--chip-spec-fg)'
                       }}>
                         {textValue(s.specialtyId || s.specialty)}
                       </span>
                     </td>
-                    <td style={{ fontSize:13, color:'#4B5563' }}>{s.department || '—'}</td>
-                    <td style={{ fontSize:13, color:'#4B5563' }}>{s.phone || '—'}</td>
+                    <td style={{ fontSize:13, color:'var(--text-2)' }}>{s.department || '—'}</td>
+                    <td style={{ fontSize:13, color:'var(--text-2)' }}>{s.phone || '—'}</td>
                     <td>
                       <div style={{
                         display:'inline-flex', alignItems:'center', justifyContent:'center',
                         width:32, height:32, borderRadius:'50%',
-                        background: (s.traineeCount || 0) > 0 ? '#1B1464' : '#F5F6FA',
-                        color: (s.traineeCount || 0) > 0 ? '#fff' : '#8B8FA8',
+                        background: (s.traineeCount || 0) > 0 ? '#1B1464' : 'var(--surface-2)',
+                        color: (s.traineeCount || 0) > 0 ? '#fff' : 'var(--text-muted)',
                         fontSize:13, fontWeight:700
                       }}>
                         {s.traineeCount || 0}

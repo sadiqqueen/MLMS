@@ -142,7 +142,7 @@ function SecretaryModal({ secretary, hospitals, specialties, onClose, onSaved })
             </div>
           </div>
           {apiErr && (
-            <div style={{ marginTop:14, background:'#FEE2E2', color:'#DC2626', borderRadius:8, padding:'10px 14px', fontSize:13 }}>
+            <div style={{ marginTop:14, background:'var(--danger-bg)', color:'var(--danger-fg)', borderRadius:8, padding:'10px 14px', fontSize:13 }}>
               {apiErr}
             </div>
           )}
@@ -252,9 +252,9 @@ export default function DioSecretaries() {
             <input className="admin-search" style={{ flex:1, minWidth:180 }}
               placeholder="Search by name, email, specialty…"
               value={search} onChange={e => setSearch(e.target.value)} />
-            <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'#4B5563', cursor:'pointer' }}><input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} /> Show inactive</label>
+            <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'var(--text-2)', cursor:'pointer' }}><input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} /> Show inactive</label>
             <ViewToggle value={view} onChange={setView} />
-            <span style={{ fontSize:13, color:'#8B8FA8', flexShrink:0 }}>
+            <span style={{ fontSize:13, color:'var(--text-muted)', flexShrink:0 }}>
               {filtered.length} secretar{filtered.length !== 1 ? 'ies' : 'y'}
             </span>
             <button className="btn-purple" onClick={() => { setEditItem(null); setShowModal(true); }}>+ Add Secretary</button>
@@ -269,7 +269,7 @@ export default function DioSecretaries() {
                   <tr>
                     <td colSpan={6} style={{ textAlign:'center', padding:40 }}>
                       <div style={{ fontSize:32, marginBottom:8 }}>📋</div>
-                      <div style={{ fontSize:15, fontWeight:600, color:'#4B5563' }}>
+                      <div style={{ fontSize:15, fontWeight:600, color:'var(--text-2)' }}>
                         {secretaries.length === 0 ? 'No secretaries yet.' : 'No match.'}
                       </div>
                     </td>
@@ -280,7 +280,7 @@ export default function DioSecretaries() {
                   const specName = s.specialtyId?.name || '—';
                   return (
                     <tr key={s._id} style={{ opacity: active ? 1 : 0.65 }}>
-                      <td style={{ color:'#8B8FA8' }}>{i+1}</td>
+                      <td style={{ color:'var(--text-muted)' }}>{i+1}</td>
                       <td>
                         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                           {s.photoUrl
@@ -289,22 +289,22 @@ export default function DioSecretaries() {
                           }
                           <div>
                             <strong>{s.name}</strong>
-                            <div style={{ fontSize:11, color:'#8B8FA8' }}>{s.email}</div>
+                            <div style={{ fontSize:11, color:'var(--text-muted)' }}>{s.email}</div>
                           </div>
                         </div>
                       </td>
                       <td>
                         <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20,
-                          background: specName === '—' ? '#F3F4F6' : '#EEEDFE',
-                          color:      specName === '—' ? '#6B7280' : '#3C3489' }}>
+                          background: specName === '—' ? 'var(--border-soft)' : 'var(--chip-spec-bg)',
+                          color:      specName === '—' ? 'var(--text-2)' : 'var(--chip-spec-fg)' }}>
                           {specName}
                         </span>
                       </td>
-                      <td style={{ fontSize:13, color:'#4B5563' }}>{s.hospitalId?.name || s.hospital?.name || '—'}</td>
+                      <td style={{ fontSize:13, color:'var(--text-2)' }}>{s.hospitalId?.name || s.hospital?.name || '—'}</td>
                       <td>
                         <span style={{ fontSize:11, fontWeight:600, padding:'3px 8px', borderRadius:20,
-                          background: active ? '#D1FAE5' : '#FEE2E2',
-                          color:      active ? '#065F46' : '#991B1B' }}>
+                          background: active ? 'var(--success-bg)' : 'var(--danger-bg)',
+                          color:      active ? 'var(--success-fg)' : 'var(--danger-fg)' }}>
                           {active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
@@ -340,7 +340,7 @@ export default function DioSecretaries() {
                 return (
                   <div className="management-card" key={s._id} style={{ opacity: active ? 1 : 0.65 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>{s.photoUrl ? <img src={`${API_BASE}${s.photoUrl}`} alt="" className="cell-photo" /> : <div className="cell-initials">{s.initials || s.name?.[0] || '?'}</div>}<div><div className="management-card-title">{s.name}</div><div className="management-card-sub">{s.email}</div></div></div>
-                    <div className="management-card-meta"><span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background: specName === '-' ? '#F3F4F6' : '#EEEDFE', color: specName === '-' ? '#6B7280' : '#3C3489' }}>{specName}</span><span style={{ fontSize:11, fontWeight:600, padding:'3px 8px', borderRadius:20, background: active ? '#D1FAE5' : '#FEE2E2', color: active ? '#065F46' : '#991B1B' }}>{active ? 'Active' : 'Inactive'}</span></div>
+                    <div className="management-card-meta"><span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background: specName === '-' ? 'var(--border-soft)' : 'var(--chip-spec-bg)', color: specName === '-' ? 'var(--text-2)' : 'var(--chip-spec-fg)' }}>{specName}</span><span style={{ fontSize:11, fontWeight:600, padding:'3px 8px', borderRadius:20, background: active ? 'var(--success-bg)' : 'var(--danger-bg)', color: active ? 'var(--success-fg)' : 'var(--danger-fg)' }}>{active ? 'Active' : 'Inactive'}</span></div>
                     <div className="management-card-sub">{hospital}</div>
                     <div className="management-card-actions"><button className="btn-action edit" title="Edit" aria-label={`Edit ${s.name}`} onClick={() => { setEditItem(s); setShowModal(true); }}><IconPencil /></button>{active && <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${s.name}`} onClick={() => setConfirmDeact(s)}><IconBan /></button>}</div>
                   </div>

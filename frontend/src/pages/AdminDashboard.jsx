@@ -197,7 +197,7 @@ export default function AdminDashboard() {
               </thead>
               <tbody>
                 {(stats?.recentEvaluations || []).length === 0 && (
-                  <tr><td colSpan={6} style={{ textAlign: 'center', color: '#aaa', padding: 28 }}>No evaluations yet</td></tr>
+                  <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 28 }}>No evaluations yet</td></tr>
                 )}
                 {(stats?.recentEvaluations || []).map(ev => (
                   <tr key={ev._id}>

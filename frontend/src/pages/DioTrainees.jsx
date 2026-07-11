@@ -198,7 +198,7 @@ function TraineeModal({ trainee, hospitals, specialties, onClose, onSaved }) {
           </div>
 
           {apiErr && (
-            <div style={{ marginTop: 14, background: '#FEE2E2', color: '#DC2626', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>
+            <div style={{ marginTop: 14, background: 'var(--danger-bg)', color: 'var(--danger-fg)', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>
               {apiErr}
             </div>
           )}
@@ -353,12 +353,12 @@ export default function DioTrainees() {
             <input className="admin-search" style={{ flex:1, minWidth:180 }}
               placeholder="Search by name, student ID, email, specialty…"
               value={search} onChange={e => setSearch(e.target.value)} />
-            <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'#4B5563', cursor:'pointer' }}>
+            <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'var(--text-2)', cursor:'pointer' }}>
               <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
               Show inactive
             </label>
             <ViewToggle value={view} onChange={setView} />
-            <span style={{ fontSize:13, color:'#8B8FA8', flexShrink:0 }}>
+            <span style={{ fontSize:13, color:'var(--text-muted)', flexShrink:0 }}>
               {filtered.length} result{filtered.length !== 1 ? 's' : ''}
             </span>
             <button className="btn-purple" onClick={openAdd}>+ Add Trainee</button>
@@ -372,9 +372,9 @@ export default function DioTrainees() {
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} style={{ textAlign:'center', padding:40, color:'#8B8FA8' }}>
+                    <td colSpan={7} style={{ textAlign:'center', padding:40, color:'var(--text-muted)' }}>
                       <div style={{ fontSize:32, marginBottom:8 }}>🎓</div>
-                      <div style={{ fontSize:15, fontWeight:600, color:'#4B5563' }}>
+                      <div style={{ fontSize:15, fontWeight:600, color:'var(--text-2)' }}>
                         {trainees.length === 0 ? 'No trainees yet. Click "+ Add Trainee" to begin.' : 'No trainees match your search.'}
                       </div>
                     </td>
@@ -384,7 +384,7 @@ export default function DioTrainees() {
                   const active = t.isActive !== false;
                   return (
                     <tr key={t._id} style={{ opacity: active ? 1 : 0.65 }}>
-                      <td style={{ color:'#8B8FA8' }}>{i+1}</td>
+                      <td style={{ color:'var(--text-muted)' }}>{i+1}</td>
                       <td>
                         <div style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer' }}
                           onClick={() => navigate(bp + `/dio/trainees/${t._id}`)}>
@@ -394,21 +394,21 @@ export default function DioTrainees() {
                           }
                           <div>
                             <strong>{t.name}</strong>
-                            <div style={{ fontSize:11, color:'#8B8FA8' }}>{t.email}</div>
+                            <div style={{ fontSize:11, color:'var(--text-muted)' }}>{t.email}</div>
                           </div>
                         </div>
                       </td>
                       <td>
-                        <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'#EEEDFE', color:'#3C3489' }}>
+                        <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'var(--chip-spec-bg)', color:'var(--chip-spec-fg)' }}>
                           {getSpecialty(t)}
                         </span>
                       </td>
-                      <td style={{ fontSize:13, color:'#4B5563' }}>{getHospital(t)}</td>
-                      <td style={{ fontSize:13, color:'#4B5563' }}>{t.studentId || '—'}</td>
+                      <td style={{ fontSize:13, color:'var(--text-2)' }}>{getHospital(t)}</td>
+                      <td style={{ fontSize:13, color:'var(--text-2)' }}>{t.studentId || '—'}</td>
                       <td>
                         <span style={{ fontSize:11, fontWeight:600, padding:'3px 8px', borderRadius:20,
-                          background: active ? '#D1FAE5' : '#FEE2E2',
-                          color:      active ? '#065F46' : '#991B1B' }}>
+                          background: active ? 'var(--success-bg)' : 'var(--danger-bg)',
+                          color:      active ? 'var(--success-fg)' : 'var(--danger-fg)' }}>
                           {active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
@@ -462,8 +462,8 @@ export default function DioTrainees() {
                       </div>
                     </div>
                     <div className="management-card-meta">
-                      <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'#EEEDFE', color:'#3C3489' }}>{getSpecialty(t)}</span>
-                      <span style={{ fontSize:11, fontWeight:600, padding:'3px 8px', borderRadius:20, background: active ? '#D1FAE5' : '#FEE2E2', color: active ? '#065F46' : '#991B1B' }}>{active ? 'Active' : 'Inactive'}</span>
+                      <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'var(--chip-spec-bg)', color:'var(--chip-spec-fg)' }}>{getSpecialty(t)}</span>
+                      <span style={{ fontSize:11, fontWeight:600, padding:'3px 8px', borderRadius:20, background: active ? 'var(--success-bg)' : 'var(--danger-bg)', color: active ? 'var(--success-fg)' : 'var(--danger-fg)' }}>{active ? 'Active' : 'Inactive'}</span>
                     </div>
                     <div className="management-card-sub">{getHospital(t)} - {t.studentId || 'No ID'}</div>
                     <div className="management-card-actions">

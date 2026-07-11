@@ -267,7 +267,7 @@ export default function Distributions() {
               placeholder="Filter by specialty"
               value={filterSpec}
               onChange={e => { setFilterSpec(e.target.value); setPage(1); }}
-              style={{ height: 34, border: '1px solid #e5e7eb', borderRadius: 8, padding: '0 10px', fontSize: 13 }}
+              style={{ height: 34, border: '1px solid var(--border)', borderRadius: 8, padding: '0 10px', fontSize: 13 }}
             />
             <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1); }}>
               <option value="">All Statuses</option>
@@ -299,7 +299,7 @@ export default function Distributions() {
                     const isActive = item?.status === 'active';
                     return (
                       <tr key={item._id}>
-                        <td style={{ color: '#aaa' }}>{(page - 1) * rows + i + 1}</td>
+                        <td style={{ color: 'var(--text-muted)' }}>{(page - 1) * rows + i + 1}</td>
                         <td><strong>{supervisor?.name || '-'}</strong></td>
                         <td>{hospital?.name || '-'}</td>
                         <td><span className="specialty-tag">{specialty}</span></td>

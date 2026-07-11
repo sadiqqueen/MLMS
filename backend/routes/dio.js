@@ -951,6 +951,82 @@ router.get('/supervisors', auth, allowRoles(...DIO, 'super_admin'), async (req, 
   }
 });
 
+// GET /api/dio/supervisors/trainees-map
+// Bulk map { supervisorId: [trainee,...] } for the DIO supervisor cards. Mirrors
+// supervisor.js getAssignedTraineeIds (direct User.supervisorId + legacy
+// Distribution/Rotation pairs) but for ALL supervisors at once (no N+1), and
+// every returned trainee passes the same role+isActive filter as
+// GET /trainees/:id/details, so each row is clickable without a 404.
+// (Registered before program-directors; there is no GET /supervisors/:id to collide with.)
+router.get('/supervisors/trainees-map', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+  try {
+    const traineeRole = coerceRoleToTrack('trainee', req.track);
+    const trackQ = trackFilter(req.track);
+    const traineeSelect = 'name studentId year photoUrl initials specialtyId supervisorId';
+
+    const supIds = (await User.find({ role: coerceRoleToTrack('supervisor', req.track) })
+      .select('_id').lean()).map(s => s._id);
+    if (!supIds.length) return res.json({ success: true, data: {} });
+
+    const [direct, dists, rots] = await Promise.all([
+      User.find({ role: traineeRole, isActive: { $ne: false }, supervisorId: { $in: supIds } })
+        .select(traineeSelect).populate('specialtyId', 'name').lean(),
+      Distribution.find({ ...trackQ, $or: [
+        { supervisorId: { $in: supIds }, traineeId: { $ne: null } },
+        { doctor: { $in: supIds }, student: { $ne: null } },
+      ] }).select('supervisorId doctor traineeId student').lean(),
+      Rotation.find({ ...trackQ, status: { $in: ['current', 'upcoming'] }, $or: [
+        { supervisorId: { $in: supIds } },
+        { doctor: { $in: supIds } },
+      ] }).select('supervisorId doctor traineeId student').lean(),
+    ]);
+
+    // Trainee ids referenced only via distributions/rotations (not already a direct
+    // trainee) get resolved in ONE query with the same track/active filter — the
+    // safety net against legacy rows that point at other-track or inactive users.
+    const directIds = new Set(direct.map(t => String(t._id)));
+    const pairs = [];
+    const extraIds = new Set();
+    for (const d of [...dists, ...rots]) {
+      const supId = d.supervisorId || d.doctor;
+      const tId = d.traineeId || d.student;
+      if (!supId || !tId) continue;
+      pairs.push({ supId: String(supId), tId: String(tId) });
+      if (!directIds.has(String(tId))) extraIds.add(String(tId));
+    }
+
+    const extra = extraIds.size
+      ? await User.find({ _id: { $in: [...extraIds] }, role: traineeRole, isActive: { $ne: false } })
+          .select(traineeSelect).populate('specialtyId', 'name').lean()
+      : [];
+
+    const byId = {};
+    for (const t of [...direct, ...extra]) {
+      byId[String(t._id)] = {
+        _id: t._id, name: t.name, studentId: t.studentId || '', year: t.year || null,
+        photoUrl: t.photoUrl || '', initials: t.initials || '',
+        specialty: t.specialtyId?.name || '',
+      };
+    }
+
+    const map = {};
+    const seen = {};
+    const add = (supId, tId) => {
+      if (!byId[tId]) return; // dropped by the role/active filter → not clickable
+      if (!map[supId]) { map[supId] = []; seen[supId] = new Set(); }
+      if (seen[supId].has(tId)) return;
+      seen[supId].add(tId);
+      map[supId].push(byId[tId]);
+    };
+    for (const t of direct) add(String(t.supervisorId), String(t._id));
+    for (const p of pairs) add(p.supId, p.tId);
+
+    res.json({ success: true, data: map });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // GET /api/dio/program-directors
 router.get('/program-directors', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
   try {
@@ -1127,9 +1203,12 @@ router.get('/hospitals-overview', auth, allowRoles(...DIO, 'super_admin'), async
 });
 
 // GET /api/dio/certificates
+// The DIO is a system-wide certificate overseer: it lists EVERY certificate
+// (all tracks, all hospitals), so a DIO can see and open any certificate.
+// Write actions (issue/revoke/delete) below remain track-scoped.
 router.get('/certificates', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
   try {
-    const query = req.user.role === 'super_admin' ? {} : trackFilter(req.track);
+    const query = {};
 
     const certs = await Certificate.find(query)
       .populate('student',   'name email initials photoUrl studentId year')

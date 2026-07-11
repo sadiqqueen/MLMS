@@ -10,6 +10,7 @@ import {
   EvalModal, Avatar, isThisMonth, safeArr, baseEvalType, evalSubjectId, MONTHLY_CAP,
 } from '../components/evaluations/EvalModal';
 import { EVAL_STRINGS } from '../components/evaluations/evalStrings';
+import { FORM_TYPES } from '../data/evalForms';
 
 export default function SupervisorEvaluations() {
   const { user: me }   = useAuth();
@@ -67,6 +68,9 @@ export default function SupervisorEvaluations() {
       safeArr(evals)
         .filter(ev => evalSubjectId(ev) === tid && isThisMonth(ev?.date || ev?.createdAt))
         .map(baseEvalType)
+        // Only count still-selectable forms so a legacy FITER this month can't
+        // read as "6 / 5" now that the Internship form was removed.
+        .filter(tp => FORM_TYPES.includes(tp))
     );
     return set.size;
   }

@@ -244,11 +244,11 @@ function StructuredForm({ form, trainee, assessorName, onCancel, onSubmit, submi
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
           <thead>
             <tr>
-              <th style={{ ...gridCell, background: 'var(--brand-secondary)', color: '#fff', textAlign: 'left', minWidth: 180 }}>
+              <th style={{ ...gridCell, background: 'var(--brand-secondary)', color: 'var(--on-brand)', textAlign: 'left', minWidth: 180 }}>
                 Competency / Domain
               </th>
               {scale.map(s => (
-                <th key={s.value} style={{ ...gridCell, background: 'var(--brand-secondary)', color: '#fff', width: 46 }}>
+                <th key={s.value} style={{ ...gridCell, background: 'var(--brand-secondary)', color: 'var(--on-brand)', width: 46 }}>
                   {s.short}
                 </th>
               ))}
@@ -450,7 +450,10 @@ export function EvalModal({
   const monthlyCap   = forms.length;
   const traineeEvals = safeArr(evals).filter(ev => evalSubjectId(ev) === trainee?._id?.toString());
   const monthEvals   = traineeEvals.filter(ev => isThisMonth(ev?.date || ev?.createdAt));
-  const doneTypes    = new Set(monthEvals.map(baseEvalType));
+  // Only count types that are still selectable in THIS list, so a removed form
+  // (e.g. a legacy FITER this month) or a supervisor subject can't push the
+  // progress count past the cap (e.g. "6 / 5" or "1 / 0").
+  const doneTypes    = new Set(monthEvals.map(baseEvalType).filter(tp => forms.some(f => f.type === tp)));
 
   const [activeType, setActiveType] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -547,6 +550,8 @@ export function EvalModal({
             />
           ) : (
           <>
+            {forms.length > 0 ? (
+            <>
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               background: 'var(--surface-2)', borderRadius: 10, padding: '10px 14px', marginBottom: 16,
@@ -611,6 +616,15 @@ export function EvalModal({
                 );
               })}
             </div>
+            </>
+            ) : (
+              <div style={{
+                background: 'var(--surface-2)', borderRadius: 10, padding: '16px 14px',
+                marginBottom: 16, fontSize: 13, color: 'var(--text-muted)', textAlign: 'center',
+              }}>
+                {t('noFormsAvailable')}
+              </div>
+            )}
 
             {traineeEvals.length > 0 ? (
               <div>
@@ -676,7 +690,7 @@ export function EvalModal({
                             disabled={finalizing === ev?._id || !ev?._id}
                             style={{
                               padding: '6px 14px', borderRadius: 8,
-                              background: 'var(--brand-secondary)', color: '#fff',
+                              background: 'var(--brand-secondary)', color: 'var(--on-brand)',
                               border: 'none', fontSize: 12, fontWeight: 600,
                               cursor: 'pointer', flexShrink: 0,
                               opacity: finalizing === ev?._id ? 0.7 : 1,

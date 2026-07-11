@@ -18,8 +18,8 @@ function Card({ title, count, action, children }) {
   return (
     <section className="admin-card" style={{ padding: 18, marginBottom: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: '#1B1464' }}>
-          {title}{count !== undefined ? <span style={{ color: '#8B8FA8', fontWeight: 600 }}> ({count})</span> : null}
+        <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--brand-secondary)' }}>
+          {title}{count !== undefined ? <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}> ({count})</span> : null}
         </div>
         {action || null}
       </div>
@@ -27,7 +27,7 @@ function Card({ title, count, action, children }) {
     </section>
   );
 }
-function Muted({ children }) { return <div style={{ fontSize: 13, color: '#B8BBC8' }}>{children}</div>; }
+function Muted({ children }) { return <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{children}</div>; }
 function AddBtn({ children, onClick }) {
   return (
     <button className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '6px 12px' }} onClick={onClick}>
@@ -89,7 +89,7 @@ export default function DioHospitalDetail() {
       <Navbar />
       <main className="admin-main">
         <button className="btn-outline" onClick={() => navigate(bp + '/dio/hospitals')} style={{ marginBottom: 16, display: 'inline-flex', alignItems: 'center', gap: 6 }}><IconBack size={15} /> Back</button>
-        <div style={{ background: '#FEE2E2', color: '#DC2626', borderRadius: 12, padding: 18 }}>{error || 'Hospital not found'}</div>
+        <div style={{ background: 'var(--danger-bg)', color: 'var(--danger-fg)', borderRadius: 12, padding: 18 }}>{error || 'Hospital not found'}</div>
       </main>
     </>
   );
@@ -106,8 +106,8 @@ export default function DioHospitalDetail() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => navigate(bp + '/dio/hospitals')}><IconBack size={15} /> Back</button>
             <div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: '#1B1464' }}>🏥 {data.name}</div>
-              <div style={{ fontSize: 13, color: '#8B8FA8' }}>{location}</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--brand-secondary)' }}>🏥 {data.name}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{location}</div>
             </div>
           </div>
           <button className="btn-action edit" title="Edit hospital" aria-label="Edit hospital" onClick={() => setModal({ type: 'hospital' })}><IconPencil /></button>
@@ -121,8 +121,8 @@ export default function DioHospitalDetail() {
               ['City', data.city], ['Governorate', data.governorate],
             ].map(([label, value]) => (
               <div key={label}>
-                <div style={{ fontSize: 11, color: '#8B8FA8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 3 }}>{label}</div>
-                <div style={{ fontSize: 14, color: '#1B1464', fontWeight: 600 }}>{value || '—'}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 3 }}>{label}</div>
+                <div style={{ fontSize: 14, color: 'var(--brand-secondary)', fontWeight: 600 }}>{value || '—'}</div>
               </div>
             ))}
           </div>
@@ -138,9 +138,9 @@ export default function DioHospitalDetail() {
           {data.programDirectors.length === 0 ? <Muted>Not assigned</Muted> : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {data.programDirectors.map(pd => (
-                <div key={pd._id} style={{ fontSize: 14, fontWeight: 600, color: '#1B1464' }}>
-                  ⭐ {pd.name}{pd.department ? <span style={{ fontSize: 12, color: '#8B8FA8', fontWeight: 400 }}> · {pd.department}</span> : null}
-                  {pd.email ? <span style={{ fontSize: 12, color: '#8B8FA8', fontWeight: 400 }}> · {pd.email}</span> : null}
+                <div key={pd._id} style={{ fontSize: 14, fontWeight: 600, color: 'var(--brand-secondary)' }}>
+                  ⭐ {pd.name}{pd.department ? <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}> · {pd.department}</span> : null}
+                  {pd.email ? <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}> · {pd.email}</span> : null}
                 </div>
               ))}
             </div>
@@ -153,8 +153,8 @@ export default function DioHospitalDetail() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 8 }}>
               {data.specialties.map(sp => (
                 <div key={sp._id || sp.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '9px 12px', border: '1px solid var(--border-soft, #F0F0F0)', borderRadius: 8, background: 'var(--surface-2, #FAFAFC)' }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: '#EEEDFE', color: '#3C3489' }}>{sp.name}</span>
-                  <span style={{ fontSize: 12, color: sp.secretary ? '#4B5563' : '#B8BBC8' }}>{sp.secretary ? `📋 ${sp.secretary.name}` : 'No secretary'}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)' }}>{sp.name}</span>
+                  <span style={{ fontSize: 12, color: sp.secretary ? 'var(--text-2)' : 'var(--text-muted)' }}>{sp.secretary ? `📋 ${sp.secretary.name}` : 'No secretary'}</span>
                 </div>
               ))}
             </div>
@@ -166,8 +166,8 @@ export default function DioHospitalDetail() {
           {data.supervisors.length === 0 ? <Muted>None assigned</Muted> : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {data.supervisors.map(s => (
-                <span key={s._id} title={s.email || ''} style={{ fontSize: 12, fontWeight: 500, padding: '5px 11px', borderRadius: 8, background: '#F1F5F9', color: '#334155' }}>
-                  {s.name}{s.specialty ? <span style={{ color: '#8B8FA8' }}> · {s.specialty}</span> : null}
+                <span key={s._id} title={s.email || ''} style={{ fontSize: 12, fontWeight: 500, padding: '5px 11px', borderRadius: 8, background: 'var(--surface-2)', color: 'var(--text-2)' }}>
+                  {s.name}{s.specialty ? <span style={{ color: 'var(--text-muted)' }}> · {s.specialty}</span> : null}
                 </span>
               ))}
             </div>
@@ -183,11 +183,11 @@ export default function DioHospitalDetail() {
                 <tbody>
                   {data.trainees.map((t, i) => (
                     <tr key={t._id}>
-                      <td style={{ color: '#8B8FA8' }}>{i + 1}</td>
-                      <td><strong>{t.name}</strong>{t.year ? <span style={{ fontSize: 11, color: '#8B8FA8' }}> · Year {t.year}</span> : null}</td>
-                      <td style={{ fontSize: 13, color: '#4B5563' }}>{t.studentId || '—'}</td>
-                      <td><span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: '#EEEDFE', color: '#3C3489' }}>{t.specialty || '—'}</span></td>
-                      <td style={{ fontSize: 13, color: '#4B5563' }}>{t.supervisor || '—'}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
+                      <td><strong>{t.name}</strong>{t.year ? <span style={{ fontSize: 11, color: 'var(--text-muted)' }}> · Year {t.year}</span> : null}</td>
+                      <td style={{ fontSize: 13, color: 'var(--text-2)' }}>{t.studentId || '—'}</td>
+                      <td><span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)' }}>{t.specialty || '—'}</span></td>
+                      <td style={{ fontSize: 13, color: 'var(--text-2)' }}>{t.supervisor || '—'}</td>
                     </tr>
                   ))}
                 </tbody>

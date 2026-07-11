@@ -90,7 +90,7 @@ export default function SearchableSelect({
       {/* chevron */}
       <span style={{
         position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-        pointerEvents: 'none', color: '#8B8FA8', fontSize: 10,
+        pointerEvents: 'none', color: 'var(--text-muted)', fontSize: 10,
         transition: 'transform 0.15s ease-in-out',
         display: 'inline-block',
         ...(open ? { transform: 'translateY(-50%) rotate(180deg)' } : {}),
@@ -103,7 +103,7 @@ export default function SearchableSelect({
           onMouseDown={e => { e.preventDefault(); onChange(''); }}
           style={{
             position: 'absolute', right: 24, top: '50%', transform: 'translateY(-50%)',
-            background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer',
+            background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
             fontSize: 14, lineHeight: 1, padding: '0 2px',
           }}
           aria-label="Clear selection"
@@ -116,8 +116,8 @@ export default function SearchableSelect({
           style={{
             position: 'absolute', top: 'calc(100% + 3px)', left: 0, right: 0,
             zIndex: 600,
-            background: '#fff',
-            border: '1px solid #E8E9EF',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
             borderRadius: 10,
             boxShadow: '0 8px 24px rgba(0,0,0,.12)',
             maxHeight: 220,
@@ -126,7 +126,7 @@ export default function SearchableSelect({
           }}
         >
           {filtered.length === 0 ? (
-            <li style={{ padding: '12px 14px', fontSize: 13, color: '#8B8FA8', textAlign: 'center' }}>
+            <li style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
               No results found
             </li>
           ) : filtered.map(option => {
@@ -137,13 +137,13 @@ export default function SearchableSelect({
                   type="button"
                   onMouseDown={e => { e.preventDefault(); handleSelect(option); }}
                   style={{
-                    width: '100%', textAlign: 'left', background: isSelected ? '#EFF6FF' : 'none',
-                    border: 'none', borderBottom: '1px solid #F3F4F6',
+                    width: '100%', textAlign: 'left', background: isSelected ? 'var(--info-bg)' : 'none',
+                    border: 'none', borderBottom: '1px solid var(--border-soft)',
                     padding: '10px 14px', cursor: 'pointer',
-                    fontSize: 13, color: isSelected ? '#1D4ED8' : '#111',
+                    fontSize: 13, color: isSelected ? 'var(--info-fg)' : 'var(--text)',
                     fontWeight: isSelected ? 600 : 400, display: 'block',
                   }}
-                  onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f0f3ff'; }}
+                  onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--surface-2)'; }}
                   onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'none'; }}
                 >
                   {option.label}

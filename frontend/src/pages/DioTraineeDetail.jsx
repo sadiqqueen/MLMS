@@ -51,31 +51,31 @@ function roleLabel(role) {
 
 function StatCard({ label, value, tone = 'blue' }) {
   const colors = {
-    blue: ['#DBEAFE', '#1E40AF'],
-    amber: ['#FEF3C7', '#92400E'],
-    green: ['#D1FAE5', '#065F46'],
-    red: ['#FEE2E2', '#991B1B'],
+    blue: ['var(--info-bg)', 'var(--info-fg)'],
+    amber: ['var(--warning-bg)', 'var(--warning-fg)'],
+    green: ['var(--success-bg)', 'var(--success-fg)'],
+    red: ['var(--danger-bg)', 'var(--danger-fg)'],
   }[tone] || ['#EEF2FF', '#3730A3'];
 
   return (
-    <div style={{ background:'#fff', border:'1px solid #E8E9EF', borderRadius:12, padding:'16px 18px', display:'flex', alignItems:'center', gap:12 }}>
+    <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 18px', display:'flex', alignItems:'center', gap:12 }}>
       <div style={{ width:44, height:44, borderRadius:10, background:colors[0], color:colors[1], display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:18 }}>
         {value}
       </div>
-      <div style={{ fontSize:13, color:'#4B5563', fontWeight:600 }}>{label}</div>
+      <div style={{ fontSize:13, color:'var(--text-2)', fontWeight:600 }}>{label}</div>
     </div>
   );
 }
 
 function InfoCard({ title, rows }) {
   return (
-    <section style={{ background:'#fff', border:'1px solid #E8E9EF', borderRadius:12, padding:18 }}>
-      <div style={{ fontSize:14, fontWeight:800, color:'#1B1464', marginBottom:12 }}>{title}</div>
+    <section style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:18 }}>
+      <div style={{ fontSize:14, fontWeight:800, color:'var(--brand-secondary)', marginBottom:12 }}>{title}</div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:'12px 18px' }}>
         {rows.map(([label, value]) => (
           <div key={label}>
-            <div style={{ fontSize:11, color:'#8B8FA8', fontWeight:700, textTransform:'uppercase', letterSpacing:'.04em', marginBottom:3 }}>{label}</div>
-            <div style={{ fontSize:13, color:'#1B1464', fontWeight:600 }}>{value || '-'}</div>
+            <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:700, textTransform:'uppercase', letterSpacing:'.04em', marginBottom:3 }}>{label}</div>
+            <div style={{ fontSize:13, color:'var(--brand-secondary)', fontWeight:600 }}>{value || '-'}</div>
           </div>
         ))}
       </div>
@@ -160,25 +160,25 @@ function EvaluationModal({ trainee, currentRotation, hospital, specialty, onClos
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:2500, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:560, boxShadow:'0 20px 60px rgba(0,0,0,.2)', overflow:'hidden' }}>
-        <div style={{ padding:'18px 22px', borderBottom:'1px solid #E8E9EF', display:'flex', justifyContent:'space-between', gap:12 }}>
+      <div style={{ background:'var(--surface)', borderRadius:14, width:'100%', maxWidth:560, boxShadow:'0 20px 60px rgba(0,0,0,.2)', overflow:'hidden' }}>
+        <div style={{ padding:'18px 22px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', gap:12 }}>
           <div>
-            <div style={{ fontSize:16, fontWeight:800, color:'#1B1464' }}>Add Evaluation</div>
-            <div style={{ fontSize:12, color:'#8B8FA8', marginTop:3 }}>{trainee?.name || 'Trainee'}</div>
+            <div style={{ fontSize:16, fontWeight:800, color:'var(--brand-secondary)' }}>Add Evaluation</div>
+            <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:3 }}>{trainee?.name || 'Trainee'}</div>
           </div>
-          <button onClick={onClose} style={{ width:30, height:30, borderRadius:'50%', border:'none', background:'#F5F6FA', color:'#8B8FA8', cursor:'pointer', fontSize:18 }}>x</button>
+          <button onClick={onClose} style={{ width:30, height:30, borderRadius:'50%', border:'none', background:'var(--surface-2)', color:'var(--text-muted)', cursor:'pointer', fontSize:18 }}>x</button>
         </div>
 
         <div style={{ padding:22, display:'flex', flexDirection:'column', gap:16 }}>
           <div>
-            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#4B5563', marginBottom:7 }}>Evaluation Type</label>
+            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'var(--text-2)', marginBottom:7 }}>Evaluation Type</label>
             <select className="admin-search" style={{ width:'100%', boxSizing:'border-box', height:42 }} value={form.evaluationType} onChange={e => setField('evaluationType', e.target.value)}>
               {EVAL_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
             </select>
           </div>
 
           <div>
-            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#4B5563', marginBottom:7 }}>Overall Rating</label>
+            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'var(--text-2)', marginBottom:7 }}>Overall Rating</label>
             <select className="admin-search" style={{ width:'100%', boxSizing:'border-box', height:42 }} value={form.overall} onChange={e => setField('overall', e.target.value)}>
               {RATING_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
@@ -191,18 +191,18 @@ function EvaluationModal({ trainee, currentRotation, hospital, specialty, onClos
               ['professionalism', 'Professionalism'],
             ].map(([key, label]) => (
               <div key={key}>
-                <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#4B5563', marginBottom:7 }}>{label} (0-100)</label>
+                <label style={{ display:'block', fontSize:12, fontWeight:700, color:'var(--text-2)', marginBottom:7 }}>{label} (0-100)</label>
                 <input className="admin-search" style={{ width:'100%', boxSizing:'border-box', height:42 }} type="number" min="0" max="100" value={form[key]} onChange={e => setField(key, e.target.value)} />
               </div>
             ))}
           </div>
 
           <div>
-            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#4B5563', marginBottom:7 }}>Comments / Feedback</label>
+            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'var(--text-2)', marginBottom:7 }}>Comments / Feedback</label>
             <textarea className="admin-search" style={{ width:'100%', minHeight:100, boxSizing:'border-box', padding:'10px 12px', resize:'vertical', fontFamily:'inherit' }} value={form.comments} onChange={e => setField('comments', e.target.value)} />
           </div>
 
-          {error && <div style={{ background:'#FEE2E2', color:'#DC2626', borderRadius:8, padding:'10px 12px', fontSize:13 }}>{error}</div>}
+          {error && <div style={{ background:'var(--danger-bg)', color:'var(--danger-fg)', borderRadius:8, padding:'10px 12px', fontSize:13 }}>{error}</div>}
 
           <div style={{ display:'flex', justifyContent:'flex-end', gap:10 }}>
             <button className="btn-outline" onClick={onClose}>Cancel</button>
@@ -258,24 +258,24 @@ function GradeModal({ report, onClose, onSaved }) {
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:2500, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:520, boxShadow:'0 20px 60px rgba(0,0,0,.2)', overflow:'hidden' }}>
-        <div style={{ padding:'18px 22px', borderBottom:'1px solid #E8E9EF', display:'flex', justifyContent:'space-between', gap:12 }}>
+      <div style={{ background:'var(--surface)', borderRadius:14, width:'100%', maxWidth:520, boxShadow:'0 20px 60px rgba(0,0,0,.2)', overflow:'hidden' }}>
+        <div style={{ padding:'18px 22px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', gap:12 }}>
           <div>
-            <div style={{ fontSize:16, fontWeight:800, color:'#1B1464' }}>{overriding ? 'Override Grade' : 'Grade Report'}</div>
-            <div style={{ fontSize:12, color:'#8B8FA8', marginTop:3 }}>{report?.title || 'Report'} - {report?.type}</div>
+            <div style={{ fontSize:16, fontWeight:800, color:'var(--brand-secondary)' }}>{overriding ? 'Override Grade' : 'Grade Report'}</div>
+            <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:3 }}>{report?.title || 'Report'} - {report?.type}</div>
           </div>
-          <button onClick={onClose} style={{ width:30, height:30, borderRadius:'50%', border:'none', background:'#F5F6FA', color:'#8B8FA8', cursor:'pointer', fontSize:18 }}>x</button>
+          <button onClick={onClose} style={{ width:30, height:30, borderRadius:'50%', border:'none', background:'var(--surface-2)', color:'var(--text-muted)', cursor:'pointer', fontSize:18 }}>x</button>
         </div>
 
         <div style={{ padding:22, display:'flex', flexDirection:'column', gap:16 }}>
           {overriding && (
-            <div style={{ background:'#FEF3C7', border:'1px solid #FCD34D', color:'#92400E', borderRadius:10, padding:'11px 13px', fontSize:13, lineHeight:1.5 }}>
+            <div style={{ background:'var(--warning-bg)', border:'1px solid #FCD34D', color:'var(--warning-fg)', borderRadius:10, padding:'11px 13px', fontSize:13, lineHeight:1.5 }}>
               You are overriding an existing grade. Previous grade: <strong>{report.grade || '-'}</strong>{report.score !== null && report.score !== undefined ? `, score ${report.score}` : ''}.
             </div>
           )}
 
           <div>
-            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#4B5563', marginBottom:7 }}>Grade</label>
+            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'var(--text-2)', marginBottom:7 }}>Grade</label>
             <select className="admin-search" style={{ width:'100%', boxSizing:'border-box', height:42 }} value={grade} onChange={e => setGrade(e.target.value)}>
               <option value="">Select grade...</option>
               {GRADE_OPTIONS.map(g => <option key={g} value={g}>{g}</option>)}
@@ -283,16 +283,16 @@ function GradeModal({ report, onClose, onSaved }) {
           </div>
 
           <div>
-            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#4B5563', marginBottom:7 }}>Score (0-100)</label>
+            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'var(--text-2)', marginBottom:7 }}>Score (0-100)</label>
             <input className="admin-search" style={{ width:'100%', boxSizing:'border-box', height:42 }} type="number" min="0" max="100" value={score} onChange={e => setScore(e.target.value)} />
           </div>
 
           <div>
-            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'#4B5563', marginBottom:7 }}>Feedback / Comment</label>
+            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'var(--text-2)', marginBottom:7 }}>Feedback / Comment</label>
             <textarea className="admin-search" style={{ width:'100%', minHeight:90, boxSizing:'border-box', padding:'10px 12px', resize:'vertical', fontFamily:'inherit' }} value={feedback} onChange={e => setFeedback(e.target.value)} />
           </div>
 
-          {error && <div style={{ background:'#FEE2E2', color:'#DC2626', borderRadius:8, padding:'10px 12px', fontSize:13 }}>{error}</div>}
+          {error && <div style={{ background:'var(--danger-bg)', color:'var(--danger-fg)', borderRadius:8, padding:'10px 12px', fontSize:13 }}>{error}</div>}
 
           <div style={{ display:'flex', justifyContent:'flex-end', gap:10 }}>
             <button className="btn-outline" onClick={onClose}>Cancel</button>
@@ -309,13 +309,13 @@ function ReportRow({ report, onGrade }) {
   return (
     <tr>
       <td>
-        <div style={{ fontWeight:700, color:'#1B1464' }}>{report.title || '-'}</div>
-        <div style={{ fontSize:11, color:'#8B8FA8' }}>{report.type} report</div>
+        <div style={{ fontWeight:700, color:'var(--brand-secondary)' }}>{report.title || '-'}</div>
+        <div style={{ fontSize:11, color:'var(--text-muted)' }}>{report.type} report</div>
       </td>
       <td>{fmtDate(report.date || report.createdAt)}</td>
       <td>{nameOf(report.hospital)}</td>
       <td>
-        <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:graded ? '#D1FAE5' : '#FEF3C7', color:graded ? '#065F46' : '#92400E' }}>
+        <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:graded ? 'var(--success-bg)' : 'var(--warning-bg)', color:graded ? 'var(--success-fg)' : 'var(--warning-fg)' }}>
           {graded ? 'Graded' : 'Ungraded'}
         </span>
       </td>
@@ -324,7 +324,7 @@ function ReportRow({ report, onGrade }) {
       <td>{report.gradedBy?.name || '-'}</td>
       <td>{report.gradedByRole || report.gradedBy?.role || '-'}</td>
       <td>
-        {report.fileUrl ? <a href={`${API_BASE}${report.fileUrl}`} target="_blank" rel="noreferrer" style={{ color:'#185FA5', fontWeight:700, fontSize:12 }}>Open</a> : <span style={{ color:'#B8BBC8' }}>-</span>}
+        {report.fileUrl ? <a href={`${API_BASE}${report.fileUrl}`} target="_blank" rel="noreferrer" style={{ color:'var(--link)', fontWeight:700, fontSize:12 }}>Open</a> : <span style={{ color:'var(--text-muted)' }}>-</span>}
       </td>
       <td>
         <button className={graded ? 'btn-action edit' : 'btn-purple'} style={{ fontSize:12, padding:graded ? undefined : '6px 12px' }} onClick={() => onGrade(report)}>
@@ -388,7 +388,7 @@ function EvaluationsTable({ evaluations, onAdd }) {
                   <td>{roleLabel(evaluatorRole)}</td>
                   <td>{evaluation?.evaluationType || evaluation?.type || '-'}</td>
                   <td>
-                    <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:finalized ? '#D1FAE5' : '#FEF3C7', color:finalized ? '#065F46' : '#92400E' }}>
+                    <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:finalized ? 'var(--success-bg)' : 'var(--warning-bg)', color:finalized ? 'var(--success-fg)' : 'var(--warning-fg)' }}>
                       {finalized ? 'Finalized' : 'Pending'}
                     </span>
                   </td>
@@ -432,7 +432,7 @@ function CertificatesTable({ certificates }) {
                   <td>{fmtDate(certificate?.issueDate || certificate?.issuedAt || certificate?.createdAt)}</td>
                   <td>{certificate?.hospital?.name || '-'}</td>
                   <td>
-                    <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:revoked ? '#FEE2E2' : '#D1FAE5', color:revoked ? '#991B1B' : '#065F46' }}>
+                    <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:revoked ? 'var(--danger-bg)' : 'var(--success-bg)', color:revoked ? 'var(--danger-fg)' : 'var(--success-fg)' }}>
                       {revoked ? `Revoked ${fmtDate(certificate.revokedAt)}` : 'Valid'}
                     </span>
                   </td>
@@ -442,7 +442,7 @@ function CertificatesTable({ certificates }) {
                     {!revoked && certificate?._id && (
                       <button
                         className="btn-action edit"
-                        style={{ fontSize:11, background:'#FEF3C7', color:'#92400E', width:'auto', padding:'0 10px', display:'inline-flex', alignItems:'center', gap:5 }}
+                        style={{ fontSize:11, background:'var(--warning-bg)', color:'var(--warning-fg)', width:'auto', padding:'0 10px', display:'inline-flex', alignItems:'center', gap:5 }}
                         title="Print Certificate"
                         aria-label="Print Certificate"
                         onClick={() => navigate(bp + `/dio/certificates/${certificate._id}/print`)}
@@ -463,10 +463,10 @@ function CertificatesTable({ certificates }) {
 
 // ── Rotation Timeline section ────────────────────────────────────────────
 const ROT_STATUS_STYLE = {
-  upcoming:  { bg:'#EFF6FF', color:'#1D4ED8', label:'Upcoming' },
-  current:   { bg:'#D1FAE5', color:'#065F46', label:'Current'  },
-  completed: { bg:'#E8E9EF', color:'#374151', label:'Completed'},
-  cancelled: { bg:'#FEE2E2', color:'#991B1B', label:'Cancelled'},
+  upcoming:  { bg:'var(--info-bg)', color:'var(--info-fg)', label:'Upcoming' },
+  current:   { bg:'var(--success-bg)', color:'var(--success-fg)', label:'Current'  },
+  completed: { bg:'var(--border)', color:'var(--text-2)', label:'Completed'},
+  cancelled: { bg:'var(--danger-bg)', color:'var(--danger-fg)', label:'Cancelled'},
 };
 
 function RotationTimeline({ rotations, traineeId, navigate }) {
@@ -504,7 +504,7 @@ function RotationTimeline({ rotations, traineeId, navigate }) {
       <div style={{ padding:'0 0 4px' }}>
         {buckets.map(bucket => (
           <div key={bucket.key} style={{ marginBottom:16 }}>
-            <div style={{ fontSize:12, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'.05em', padding:'0 18px', marginBottom:8 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:'var(--text-2)', textTransform:'uppercase', letterSpacing:'.05em', padding:'0 18px', marginBottom:8 }}>
               {bucket.icon} {bucket.label} ({bucket.items.length})
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:8, padding:'0 18px' }}>
@@ -512,29 +512,29 @@ function RotationTimeline({ rotations, traineeId, navigate }) {
                 const hospital   = r.hospitalId  || r.hospital   || {};
                 const supervisor = r.supervisorId || r.doctor    || {};
                 const specialty  = r.specialtyId?.name || r.specialty || null;
-                const st         = ROT_STATUS_STYLE[r.status] || { bg:'#F3F4F6', color:'#374151', label: r.status };
+                const st         = ROT_STATUS_STYLE[r.status] || { bg:'var(--border-soft)', color:'var(--text-2)', label: r.status };
                 const canCancel  = r.status === 'upcoming';
                 const canEdit    = r.status === 'upcoming' || r.status === 'current';
                 return (
-                  <div key={r._id} style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, border:'1px solid #F0F0F0', borderRadius:10, padding:'12px 14px', background:'#FAFAFA', flexWrap:'wrap' }}>
+                  <div key={r._id} style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, border:'1px solid var(--border-soft)', borderRadius:10, padding:'12px 14px', background:'var(--surface-2)', flexWrap:'wrap' }}>
                     <div style={{ flex:1, minWidth:200 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:5 }}>
                         <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:20, background:st.bg, color:st.color }}>
                           {st.label}
                         </span>
                         {specialty && (
-                          <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'#EEEDFE', color:'#3C3489' }}>
+                          <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'var(--chip-spec-bg)', color:'var(--chip-spec-fg)' }}>
                             {specialty}
                           </span>
                         )}
                       </div>
-                      <div style={{ fontWeight:700, fontSize:14, color:'#1B1464', marginBottom:3 }}>
+                      <div style={{ fontWeight:700, fontSize:14, color:'var(--brand-secondary)', marginBottom:3 }}>
                         {hospital?.name || '—'}
                       </div>
-                      <div style={{ fontSize:12, color:'#6B7280' }}>
+                      <div style={{ fontSize:12, color:'var(--text-2)' }}>
                         {supervisor?.name ? `Supervisor: ${supervisor.name}` : 'No supervisor assigned'}
                       </div>
-                      <div style={{ fontSize:12, color:'#9CA3AF', marginTop:2 }}>
+                      <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
                         {fmtDate(r.startDate)} → {fmtDate(r.endDate)}
                       </div>
                     </div>
@@ -642,7 +642,7 @@ export default function DioTraineeDetail() {
       <Navbar />
       <main className="admin-main">
         <button className="btn-outline" onClick={() => navigate(bp + '/dio/trainees')} style={{ marginBottom:16, display:'inline-flex', alignItems:'center', gap:6 }}><IconBack size={15} /> Back</button>
-        <div style={{ background:'#FEE2E2', color:'#DC2626', borderRadius:12, padding:18 }}>{error}</div>
+        <div style={{ background:'var(--danger-bg)', color:'var(--danger-fg)', borderRadius:12, padding:18 }}>{error}</div>
       </main>
     </>
   );
@@ -664,20 +664,20 @@ export default function DioTraineeDetail() {
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
             <button className="btn-outline" style={{ display:'inline-flex', alignItems:'center', gap:6 }} onClick={() => navigate(bp + '/dio/trainees')}><IconBack size={15} /> Back</button>
             <div>
-              <div style={{ fontSize:22, fontWeight:900, color:'#1B1464' }}>{trainee.name || 'Trainee'}</div>
-              <div style={{ fontSize:13, color:'#8B8FA8' }}>{trainee.studentId || '-'} · {trainee.email || '-'}</div>
+              <div style={{ fontSize:22, fontWeight:900, color:'var(--brand-secondary)' }}>{trainee.name || 'Trainee'}</div>
+              <div style={{ fontSize:13, color:'var(--text-muted)' }}>{trainee.studentId || '-'} · {trainee.email || '-'}</div>
             </div>
           </div>
           <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-            <span style={{ background:ungraded.length ? '#FEE2E2' : '#D1FAE5', color:ungraded.length ? '#991B1B' : '#065F46', borderRadius:20, padding:'6px 12px', fontSize:12, fontWeight:800 }}>
+            <span style={{ background:ungraded.length ? 'var(--danger-bg)' : 'var(--success-bg)', color:ungraded.length ? 'var(--danger-fg)' : 'var(--success-fg)', borderRadius:20, padding:'6px 12px', fontSize:12, fontWeight:800 }}>
               {ungraded.length} ungraded report{ungraded.length !== 1 ? 's' : ''}
             </span>
           </div>
         </div>
 
         {/* Quick-action buttons */}
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:18, padding:'14px 16px', background:'#F8FAFD', borderRadius:12, border:'1px solid #E8E9EF' }}>
-          <div style={{ fontSize:12, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'.05em', alignSelf:'center', marginRight:4 }}>
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:18, padding:'14px 16px', background:'var(--surface-2)', borderRadius:12, border:'1px solid var(--border)' }}>
+          <div style={{ fontSize:12, fontWeight:700, color:'var(--text-2)', textTransform:'uppercase', letterSpacing:'.05em', alignSelf:'center', marginRight:4 }}>
             Quick Actions:
           </div>
           <button className="btn-action edit"
@@ -686,18 +686,18 @@ export default function DioTraineeDetail() {
             <IconPencil size={15} /> Edit Trainee
           </button>
           <button className="btn-action edit"
-            style={{ background:'#EFF6FF', color:'#1D4ED8', display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
+            style={{ background:'var(--info-bg)', color:'var(--info-fg)', display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
             onClick={() => navigate(bp + '/dio/assignments?tab=distributions&new=1')}>
             <IconPlus size={15} /> Create Distribution
           </button>
           <button className="btn-action edit"
-            style={{ background:'#F0FDF4', color:'#065F46', display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
+            style={{ background:'var(--success-bg)', color:'var(--success-fg)', display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
             onClick={() => navigate(bp + '/dio/assignments?tab=rotations&new=1')}>
             <IconPlus size={15} /> Create Rotation
           </button>
           {certificates.length > 0 && !certificates[0]?.revokedAt && (
             <button className="btn-action edit"
-              style={{ background:'#FEF3C7', color:'#92400E', width:'auto', padding:'0 12px', display:'inline-flex', alignItems:'center', gap:6 }}
+              style={{ background:'var(--warning-bg)', color:'var(--warning-fg)', width:'auto', padding:'0 12px', display:'inline-flex', alignItems:'center', gap:6 }}
               title="Print Certificate"
               aria-label="Print latest certificate"
               onClick={() => navigate(bp + `/dio/certificates/${certificates[0]._id}/print`)}>
@@ -734,23 +734,23 @@ export default function DioTraineeDetail() {
         {/* ─── Rotation Timeline ─────────────────────────────────────── */}
         <RotationTimeline rotations={rotations} traineeId={trainee._id} navigate={navigate} />
 
-        <section style={{ background:'#fff', border:'1px solid #E8E9EF', borderRadius:12, padding:18, marginBottom:16 }}>
+        <section style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:18, marginBottom:16 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, marginBottom:12 }}>
             <div>
-              <div style={{ fontSize:16, fontWeight:900, color:'#1B1464' }}>Ungraded Reports</div>
-              <div style={{ fontSize:12, color:'#8B8FA8' }}>DIO can grade weekly, monthly, and final reports from here.</div>
+              <div style={{ fontSize:16, fontWeight:900, color:'var(--brand-secondary)' }}>Ungraded Reports</div>
+              <div style={{ fontSize:12, color:'var(--text-muted)' }}>DIO can grade weekly, monthly, and final reports from here.</div>
             </div>
-            <span style={{ fontSize:12, fontWeight:800, background:'#FEF3C7', color:'#92400E', padding:'4px 10px', borderRadius:20 }}>{ungraded.length} pending</span>
+            <span style={{ fontSize:12, fontWeight:800, background:'var(--warning-bg)', color:'var(--warning-fg)', padding:'4px 10px', borderRadius:20 }}>{ungraded.length} pending</span>
           </div>
           {ungraded.length === 0 ? (
             <div className="admin-empty">No ungraded reports. Everything is caught up.</div>
           ) : (
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {ungraded.map(report => (
-                <div key={report._id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, border:'1px solid #F3F4F6', borderRadius:10, padding:'10px 12px', flexWrap:'wrap' }}>
+                <div key={report._id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, border:'1px solid var(--border-soft)', borderRadius:10, padding:'10px 12px', flexWrap:'wrap' }}>
                   <div>
-                    <div style={{ fontWeight:800, color:'#1B1464' }}>{report.title}</div>
-                    <div style={{ fontSize:12, color:'#8B8FA8' }}>{report.type} - submitted {fmtDate(report.date || report.createdAt)}</div>
+                    <div style={{ fontWeight:800, color:'var(--brand-secondary)' }}>{report.title}</div>
+                    <div style={{ fontSize:12, color:'var(--text-muted)' }}>{report.type} - submitted {fmtDate(report.date || report.createdAt)}</div>
                   </div>
                   <button className="btn-purple" onClick={() => setGradeModal(report)}>Grade</button>
                 </div>

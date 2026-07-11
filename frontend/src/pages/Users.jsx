@@ -249,7 +249,7 @@ function UserModal({ editUser, hospitals, supervisors, specialties, onSave, onCl
                 <label>Supervisor</label>
                 <SearchableSelect value={form.supervisorId} onChange={v => set('supervisorId', v)} options={supervisorOptions} placeholder="Search supervisor..." />
                 {form.specialtyId && filteredSupervisors.length === 0 && (
-                  <span style={{ fontSize: 11, color: '#8B8FA8' }}>No supervisors for this specialty</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>No supervisors for this specialty</span>
                 )}
               </div>
             )}
@@ -402,7 +402,7 @@ function ConfirmPermanentDelete({ user, supervisors = [], onConfirm, onCancel })
   return (
     <div className="confirm-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
       <div className="confirm-box" style={{ borderTop: '4px solid #B91C1C' }}>
-        <h3 style={{ color: '#991B1B' }}>Permanently Delete User</h3>
+        <h3 style={{ color: 'var(--danger-fg)' }}>Permanently Delete User</h3>
         <p>
           This will <strong>permanently remove</strong> <strong>{user?.name}</strong> and cannot be undone.
         </p>
@@ -671,9 +671,9 @@ export default function Users() {
                     const isSelf = u._id === me?._id;
                     return (
                     <tr key={u._id} style={{ opacity: active ? 1 : 0.65 }}>
-                      <td style={{ color: '#aaa' }}>{(page - 1) * rows + i + 1}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>{(page - 1) * rows + i + 1}</td>
                       <td><strong>{u.name}</strong></td>
-                      <td style={{ color: '#666' }}>{u.email}</td>
+                      <td style={{ color: 'var(--text-2)' }}>{u.email}</td>
                       <td><PhotoCell u={u} /></td>
                       <td>
                         <span className={ROLE_BADGE[u.role] || 'badge-role'}>
@@ -683,15 +683,15 @@ export default function Users() {
                       <td>
                         <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
                           background: u.track === 'basic' ? 'rgba(254,154,22,0.16)' : 'rgba(12,68,124,0.10)',
-                          color:      u.track === 'basic' ? '#b45309' : '#0c447c' }}>
+                          color:      u.track === 'basic' ? 'var(--warning-fg)' : 'var(--info-fg)' }}>
                           {u.track === 'basic' ? 'Basic' : 'Advanced'}
                         </span>
                       </td>
                       <td>{u.phone || '—'}</td>
                       <td>
                         <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20,
-                          background: active ? '#D1FAE5' : '#FEE2E2',
-                          color:      active ? '#065F46' : '#991B1B' }}>
+                          background: active ? 'var(--success-bg)' : 'var(--danger-bg)',
+                          color:      active ? 'var(--success-fg)' : 'var(--danger-fg)' }}>
                           {active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
@@ -747,8 +747,8 @@ export default function Users() {
                     <div className="user-card-sub">{u.city || '—'}</div>
                     <div style={{ margin: '4px 0' }}>
                       <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20,
-                        background: active ? '#D1FAE5' : '#FEE2E2',
-                        color:      active ? '#065F46' : '#991B1B' }}>
+                        background: active ? 'var(--success-bg)' : 'var(--danger-bg)',
+                        color:      active ? 'var(--success-fg)' : 'var(--danger-fg)' }}>
                         {active ? 'Active' : 'Inactive'}
                       </span>
                     </div>

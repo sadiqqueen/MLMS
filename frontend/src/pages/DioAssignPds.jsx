@@ -126,9 +126,9 @@ export function ProgramDirectorsPanel() {
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={3} style={{ textAlign: 'center', padding: 40, color: '#8B8FA8' }}>
+                <td colSpan={3} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
                   <div style={{ fontSize: 32, marginBottom: 8 }}>⭐</div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: '#4B5563' }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)' }}>
                     {pds.length === 0 ? 'No program directors yet.' : 'No match.'}
                   </div>
                 </td>
@@ -136,7 +136,7 @@ export function ProgramDirectorsPanel() {
             )}
             {filtered.map((p, i) => (
               <tr key={p._id}>
-                <td style={{ color: '#8B8FA8' }}>{i + 1}</td>
+                <td style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {p.photoUrl
@@ -144,7 +144,7 @@ export function ProgramDirectorsPanel() {
                       : <div className="cell-initials">{p.initials || p.name?.[0] || '?'}</div>}
                     <div>
                       <strong>{p.name}</strong>
-                      <div style={{ fontSize: 11, color: '#8B8FA8' }}>{p.email}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.email}</div>
                     </div>
                   </div>
                 </td>

@@ -21,8 +21,8 @@ import { IconPencil, IconBan, IconUserCheck } from '../components/icons';
 
 const STATUS_OPTS  = ['active', 'inactive'];
 const STATUS_STYLE = {
-  active:   { bg:'#D1FAE5', color:'#065F46' },
-  inactive: { bg:'#FEE2E2', color:'#991B1B' },
+  active:   { bg:'var(--success-bg)', color:'var(--success-fg)' },
+  inactive: { bg:'var(--danger-bg)', color:'var(--danger-fg)' },
 };
 
 function safeArr(v) { return Array.isArray(v) ? v : []; }
@@ -266,7 +266,7 @@ export function DistributionsPanel({ autoOpenNew = false }) {
             <ViewToggle value={view} onChange={setView} />
             <button className="btn-purple" style={{ height:36 }} onClick={() => { setEditItem(null); setShowModal(true); }}>+ Add</button>
           </div>
-          <div style={{ padding:'0 20px 8px', fontSize:12, color:'#8B8FA8' }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</div>
+          <div style={{ padding:'0 20px 8px', fontSize:12, color:'var(--text-muted)' }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</div>
 
           {/* LIST VIEW */}
           {view === 'list' && (
@@ -283,15 +283,15 @@ export function DistributionsPanel({ autoOpenNew = false }) {
                     const sup  = d?.supervisorId || d?.doctor || {};
                     const hosp = d?.hospitalId   || d?.hospital || {};
                     const spec = textValue(d?.specialtyId || d?.specialty);
-                    const st   = STATUS_STYLE[d?.status] || { bg:'#F3F4F6', color:'#374151' };
+                    const st   = STATUS_STYLE[d?.status] || { bg:'var(--border-soft)', color:'var(--text-2)' };
                     return (
                       <tr key={d._id}>
-                        <td style={{ color:'#8B8FA8' }}>{i+1}</td>
+                        <td style={{ color:'var(--text-muted)' }}>{i+1}</td>
                         <td>
                           <div style={{ fontWeight:600 }}>{sup?.name || '—'}</div>
-                          {sup?.email && <div style={{ fontSize:11, color:'#8B8FA8' }}>{sup.email}</div>}
+                          {sup?.email && <div style={{ fontSize:11, color:'var(--text-muted)' }}>{sup.email}</div>}
                         </td>
-                        <td><span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'#EEEDFE', color:'#3C3489' }}>{spec}</span></td>
+                        <td><span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'var(--chip-spec-bg)', color:'var(--chip-spec-fg)' }}>{spec}</span></td>
                         <td style={{ fontSize:13 }}>{hosp?.name || '—'}</td>
                         <td><span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:st.bg, color:st.color }}>{d?.status || '—'}</span></td>
                         <td>
@@ -322,7 +322,7 @@ export function DistributionsPanel({ autoOpenNew = false }) {
                 const sup  = d?.supervisorId || d?.doctor || {};
                 const hosp = d?.hospitalId   || d?.hospital || {};
                 const spec = textValue(d?.specialtyId || d?.specialty, '');
-                const st   = STATUS_STYLE[d?.status] || { bg:'#F3F4F6', color:'#374151' };
+                const st   = STATUS_STYLE[d?.status] || { bg:'var(--border-soft)', color:'var(--text-2)' };
                 return (
                   <div className="item-card" key={d._id}>
                     <div>
@@ -330,7 +330,7 @@ export function DistributionsPanel({ autoOpenNew = false }) {
                       {sup?.email && <div className="item-card-sub">{sup.email}</div>}
                     </div>
                     <div className="item-card-meta">
-                      {spec && <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'#EEEDFE', color:'#3C3489' }}>{spec}</span>}
+                      {spec && <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'var(--chip-spec-bg)', color:'var(--chip-spec-fg)' }}>{spec}</span>}
                       <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:20, background:st.bg, color:st.color }}>{d?.status || '—'}</span>
                     </div>
                     <div className="item-card-sub">🏥 {hosp?.name || '—'}</div>

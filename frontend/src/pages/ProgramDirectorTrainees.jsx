@@ -20,10 +20,10 @@ function weeksBetween(startDate, endDate) {
 }
 
 function getStatusStyle(status) {
-  if (status === 'current' || status === 'active') return { color: '#059669', bg: '#D1FAE5' };
-  if (status === 'completed') return { color: '#1B1464', bg: '#EEEDFE' };
-  if (status === 'cancelled') return { color: '#991B1B', bg: '#FEE2E2' };
-  return { color: '#D97706', bg: '#FEF3C7' };
+  if (status === 'current' || status === 'active') return { color: 'var(--success-fg)', bg: 'var(--success-bg)' };
+  if (status === 'completed') return { color: 'var(--brand-secondary)', bg: 'var(--chip-spec-bg)' };
+  if (status === 'cancelled') return { color: 'var(--danger-fg)', bg: 'var(--danger-bg)' };
+  return { color: 'var(--warning-fg)', bg: 'var(--warning-bg)' };
 }
 
 function getSpecialtyName(trainee) {
@@ -56,14 +56,14 @@ function TraineeModal({ trainee, distributions, onClose }) {
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div style={{
-        background: '#fff', borderRadius: 16, width: '100%', maxWidth: 520,
+        background: 'var(--surface)', borderRadius: 16, width: '100%', maxWidth: 520,
         boxShadow: '0 20px 60px rgba(0,0,0,.2)',
         maxHeight: '90vh', overflowY: 'auto'
       }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 14,
-          padding: '20px 24px', borderBottom: '1px solid #E8E9EF',
-          position: 'sticky', top: 0, background: '#fff', zIndex: 10
+          padding: '20px 24px', borderBottom: '1px solid var(--border)',
+          position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 10
         }}>
           <div style={{
             width: 48, height: 48, borderRadius: '50%', background: '#1B1464',
@@ -73,14 +73,14 @@ function TraineeModal({ trainee, distributions, onClose }) {
             {trainee.initials || trainee.name?.slice(0,2)?.toUpperCase() || '?'}
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 17, fontWeight: 700, color: '#1B1464' }}>{trainee.name}</div>
-            <div style={{ fontSize: 12, color: '#8B8FA8', marginTop: 2 }}>{trainee.email}</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--brand-secondary)' }}>{trainee.name}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{trainee.email}</div>
           </div>
           <button
             onClick={onClose}
             style={{
-              width: 30, height: 30, borderRadius: '50%', background: '#F5F6FA',
-              border: 'none', fontSize: 18, color: '#8B8FA8', cursor: 'pointer',
+              width: 30, height: 30, borderRadius: '50%', background: 'var(--surface-2)',
+              border: 'none', fontSize: 18, color: 'var(--text-muted)', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}
           >✕</button>
@@ -98,23 +98,23 @@ function TraineeModal({ trainee, distributions, onClose }) {
             ].map(([label, value]) => (
               <div key={label}>
                 <div style={{
-                  fontSize: 10, color: '#8B8FA8', fontWeight: 600,
+                  fontSize: 10, color: 'var(--text-muted)', fontWeight: 600,
                   textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 3
                 }}>{label}</div>
-                <div style={{ fontSize: 14, color: '#1B1464', fontWeight: 500 }}>{value}</div>
+                <div style={{ fontSize: 14, color: 'var(--brand-secondary)', fontWeight: 500 }}>{value}</div>
               </div>
             ))}
           </div>
 
           <div style={{
-            fontSize: 12, fontWeight: 700, color: '#8B8FA8',
+            fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
             textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10
           }}>
             Rotation History
           </div>
 
           {myDists.length === 0 ? (
-            <div style={{ fontSize: 13, color: '#8B8FA8', padding: '12px 0' }}>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '12px 0' }}>
               No rotations assigned yet
             </div>
           ) : myDists.map(d => {
@@ -126,20 +126,20 @@ function TraineeModal({ trainee, distributions, onClose }) {
 
             return (
               <div key={d._id} style={{
-                background: '#F8F9FA', borderRadius: 10,
+                background: 'var(--surface-2)', borderRadius: 10,
                 padding: '12px 14px', marginBottom: 8
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#1B1464' }}>{specName}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--brand-secondary)' }}>{specName}</div>
                   <span style={{
                     fontSize: 11, fontWeight: 600, padding: '2px 8px',
                     borderRadius: 20, background: style.bg, color: style.color
                   }}>{status}</span>
                 </div>
-                <div style={{ fontSize: 12, color: '#4B5563', marginBottom: 4 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 4 }}>
                   Supervisor: <strong>{supName}</strong>
                 </div>
-                <div style={{ fontSize: 12, color: '#8B8FA8' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                   {fmtDate(d.startDate)} → {fmtDate(d.endDate)}
                   {duration ? ` · ${duration} weeks` : ''}
                 </div>
@@ -149,7 +149,7 @@ function TraineeModal({ trainee, distributions, onClose }) {
         </div>
 
         <div style={{
-          padding: '14px 24px', borderTop: '1px solid #E8E9EF',
+          padding: '14px 24px', borderTop: '1px solid var(--border)',
           display: 'flex', justifyContent: 'flex-end'
         }}>
           <button
@@ -215,7 +215,7 @@ export default function ProgramDirectorTrainees() {
       <main className="admin-main">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
           {[0,1,2,3].map(i => (
-            <div key={i} style={{ background:'#fff', border:'1px solid #E8E9EF', borderRadius:12, padding:'16px 20px', display:'flex', alignItems:'center', gap:14 }}>
+            <div key={i} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 20px', display:'flex', alignItems:'center', gap:14 }}>
               <Sk w={46} h={46} r={10} /><Sk w={100} h={14} />
             </div>
           ))}
@@ -251,39 +251,39 @@ export default function ProgramDirectorTrainees() {
 
         {/* Stat cards — total + one per specialty (clickable filter) */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:12, marginBottom:20 }}>
-          <div style={{ background:'#fff', border:'1px solid #E8E9EF', borderRadius:12, padding:'14px 16px', display:'flex', alignItems:'center', gap:12 }}>
+          <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'14px 16px', display:'flex', alignItems:'center', gap:12 }}>
             <div style={{
-              width:42, height:42, borderRadius:10, background:'#DBEAFE',
+              width:42, height:42, borderRadius:10, background:'var(--info-bg)',
               display:'flex', alignItems:'center', justifyContent:'center',
-              fontSize:20, fontWeight:700, color:'#2563EB', flexShrink:0
+              fontSize:20, fontWeight:700, color:'var(--info-fg)', flexShrink:0
             }}>
               {trainees.length}
             </div>
-            <div style={{ fontSize:12, color:'#4B5563', fontWeight:500 }}>Total Trainees</div>
+            <div style={{ fontSize:12, color:'var(--text-2)', fontWeight:500 }}>Total Trainees</div>
           </div>
           {specialtyOptions.filter(s => s !== 'All').map(s => (
             <div
               key={s}
               style={{
-                background:'#fff', border:'1px solid #E8E9EF', borderRadius:12,
+                background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12,
                 padding:'14px 16px', display:'flex', alignItems:'center', gap:12,
                 cursor:'pointer',
-                boxShadow: specFilter === s ? '0 0 0 2px #1B1464' : 'none',
+                boxShadow: specFilter === s ? '0 0 0 2px var(--brand-secondary)' : 'none',
                 transition:'box-shadow .15s ease'
               }}
               onClick={() => setSpecFilter(specFilter === s ? 'All' : s)}
             >
               <div style={{
                 width:42, height:42, borderRadius:10,
-                background: specFilter === s ? '#1B1464' : '#EEEDFE',
+                background: specFilter === s ? '#1B1464' : 'var(--chip-spec-bg)',
                 display:'flex', alignItems:'center', justifyContent:'center',
                 fontSize:20, fontWeight:700,
-                color: specFilter === s ? '#fff' : '#1B1464',
+                color: specFilter === s ? '#fff' : 'var(--brand-secondary)',
                 flexShrink:0, transition:'background-color .15s ease, color .15s ease'
               }}>
                 {specCounts[s] || 0}
               </div>
-              <div style={{ fontSize:11, color:'#4B5563', fontWeight:500, lineHeight:1.3 }}>{s}</div>
+              <div style={{ fontSize:11, color:'var(--text-2)', fontWeight:500, lineHeight:1.3 }}>{s}</div>
             </div>
           ))}
         </div>
@@ -327,9 +327,9 @@ export default function ProgramDirectorTrainees() {
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} style={{ textAlign:'center', padding:40, color:'#8B8FA8' }}>
+                    <td colSpan={7} style={{ textAlign:'center', padding:40, color:'var(--text-muted)' }}>
                       <div style={{ fontSize:32, marginBottom:8 }}>🎓</div>
-                      <div style={{ fontSize:15, fontWeight:600, color:'#4B5563', marginBottom:4 }}>No trainees found</div>
+                      <div style={{ fontSize:15, fontWeight:600, color:'var(--text-2)', marginBottom:4 }}>No trainees found</div>
                       <div style={{ fontSize:13 }}>
                         {trainees.length === 0
                           ? 'No trainees are assigned to your specialty yet.'
@@ -349,7 +349,7 @@ export default function ProgramDirectorTrainees() {
 
                   return (
                     <tr key={t._id} style={{ cursor:'pointer' }} onClick={() => setSelected(t)}>
-                      <td style={{ color:'#8B8FA8' }}>{i + 1}</td>
+                      <td style={{ color:'var(--text-muted)' }}>{i + 1}</td>
                       <td>
                         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                           {t.photoUrl
@@ -358,18 +358,18 @@ export default function ProgramDirectorTrainees() {
                           }
                           <div>
                             <strong>{t.name}</strong>
-                            <div style={{ fontSize:11, color:'#8B8FA8' }}>{t.email}</div>
+                            <div style={{ fontSize:11, color:'var(--text-muted)' }}>{t.email}</div>
                           </div>
                         </div>
                       </td>
                       <td>
                         <span style={{
                           fontSize:11, fontWeight:600, padding:'3px 9px',
-                          borderRadius:20, background:'#EEEDFE', color:'#3C3489'
+                          borderRadius:20, background:'var(--chip-spec-bg)', color:'var(--chip-spec-fg)'
                         }}>{spec}</span>
                       </td>
-                      <td style={{ fontSize:13, color:'#4B5563' }}>{getHospitalName(t)}</td>
-                      <td style={{ fontSize:13, color:'#4B5563' }}>{t.studentId || '—'}</td>
+                      <td style={{ fontSize:13, color:'var(--text-2)' }}>{getHospitalName(t)}</td>
+                      <td style={{ fontSize:13, color:'var(--text-2)' }}>{t.studentId || '—'}</td>
                       <td>
                         <span style={{
                           fontSize:11, fontWeight:600, padding:'3px 9px',

@@ -125,7 +125,7 @@ function HospitalModal({ item, programDirectors, supervisors, onSave, onClose, s
                     <span key={s._id} style={{
                       display: 'inline-flex', alignItems: 'center', gap: 4,
                       padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-                      background: '#EEEDFE', color: '#1B1464'
+                      background: 'var(--chip-spec-bg)', color: 'var(--brand-secondary)'
                     }}>
                       {s.name}
                       <button
@@ -133,7 +133,7 @@ function HospitalModal({ item, programDirectors, supervisors, onSave, onClose, s
                         onClick={() => toggleSupervisor(s._id)}
                         style={{
                           background: 'none', border: 'none', cursor: 'pointer',
-                          color: '#1B1464', fontSize: 16, lineHeight: 1, padding: 0, marginLeft: 2
+                          color: 'var(--brand-secondary)', fontSize: 16, lineHeight: 1, padding: 0, marginLeft: 2
                         }}
                       >×</button>
                     </span>
@@ -151,10 +151,10 @@ function HospitalModal({ item, programDirectors, supervisors, onSave, onClose, s
 
               <div style={{
                 maxHeight: 180, overflowY: 'auto',
-                border: '1px solid #E8E9EF', borderRadius: 8, padding: '4px 8px'
+                border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px'
               }}>
                 {filteredSups.length === 0 && (
-                  <div style={{ fontSize: 13, color: '#8B8FA8', padding: '10px 4px' }}>No supervisors found</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '10px 4px' }}>No supervisors found</div>
                 )}
                 {filteredSups.map(s => (
                   <label key={s._id} style={{
@@ -167,9 +167,9 @@ function HospitalModal({ item, programDirectors, supervisors, onSave, onClose, s
                       checked={form.supervisors.includes(s._id)}
                       onChange={() => toggleSupervisor(s._id)}
                     />
-                    <span style={{ fontSize: 13, color: '#1B1464', fontWeight: 500 }}>{s.name}</span>
+                    <span style={{ fontSize: 13, color: 'var(--brand-secondary)', fontWeight: 500 }}>{s.name}</span>
                     {s.specialty && (
-                      <span style={{ fontSize: 11, color: '#8B8FA8' }}>{s.specialty}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{s.specialty}</span>
                     )}
                   </label>
                 ))}
@@ -458,7 +458,7 @@ export default function HospitalsUniversities() {
                   )}
                   {currentItems.map((item, i) => (
                     <tr key={item._id}>
-                      <td style={{ color: '#aaa' }}>{(page - 1) * rows + i + 1}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>{(page - 1) * rows + i + 1}</td>
                       <td><strong>{item.name}</strong></td>
                       <td>{item.city || '—'}</td>
                       {isHospital ? (
@@ -502,12 +502,12 @@ export default function HospitalsUniversities() {
                   {isHospital && (
                     <>
                       {item.programDirector?.name && (
-                        <div style={{ fontSize: 12, color: '#4B5563', marginTop: 4 }}>
+                        <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>
                           PD: <strong>{item.programDirector.name}</strong>
                         </div>
                       )}
                       {(item.supervisors || []).length > 0 && (
-                        <div style={{ fontSize: 12, color: '#8B8FA8' }}>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                           {(item.supervisors || []).length} supervisor{(item.supervisors || []).length !== 1 ? 's' : ''}
                         </div>
                       )}

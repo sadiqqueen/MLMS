@@ -22,9 +22,9 @@ const API_BASE = '';
 
 // ── Role config: display, badge colours, list endpoint, table empty icon ──
 const ROLE_META = {
-  trainee:          { label: 'Trainee',          api: 'trainees',          icon: '🎓', badge: { bg: '#EEEDFE', color: '#3C3489' } },
-  supervisor:       { label: 'Supervisor',       api: 'supervisors',       icon: '👨‍⚕️', badge: { bg: '#DBEAFE', color: '#1E40AF' } },
-  program_director: { label: 'Program Director', api: 'program-directors', icon: '⭐', badge: { bg: '#FEF3C7', color: '#92400E' } },
+  trainee:          { label: 'Trainee',          api: 'trainees',          icon: '🎓', badge: { bg: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)' } },
+  supervisor:       { label: 'Supervisor',       api: 'supervisors',       icon: '👨‍⚕️', badge: { bg: 'var(--info-bg)', color: 'var(--info-fg)' } },
+  program_director: { label: 'Program Director', api: 'program-directors', icon: '⭐', badge: { bg: 'var(--warning-bg)', color: 'var(--warning-fg)' } },
   secretary:        { label: 'Secretary',        api: 'secretaries',       icon: '📋', badge: { bg: '#FCE7F3', color: '#9D174D' } },
   president:        { label: 'President',        api: 'presidents',        icon: '🏛️', badge: { bg: '#E0E7FF', color: '#3730A3' } },
 };
@@ -209,7 +209,7 @@ function UserFormModal({ user, initialRole, hospitals, specialties, onClose, onS
             {fields.map(renderField)}
           </div>
           {apiErr && (
-            <div style={{ marginTop: 14, background: '#FEE2E2', color: '#DC2626', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>
+            <div style={{ marginTop: 14, background: 'var(--danger-bg)', color: 'var(--danger-fg)', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>
               {apiErr}
             </div>
           )}
@@ -233,7 +233,7 @@ function UserViewModal({ user, onClose, onFullProfile }) {
     return () => document.removeEventListener('keydown', h);
   }, [onClose]);
 
-  const meta = ROLE_META[user.role] || { label: user.role, badge: { bg: '#F3F4F6', color: '#374151' } };
+  const meta = ROLE_META[user.role] || { label: user.role, badge: { bg: 'var(--border-soft)', color: 'var(--text-2)' } };
   const active = user.isActive !== false;
   const rows = [
     ['Email', user.email],
@@ -267,8 +267,8 @@ function UserViewModal({ user, onClose, onFullProfile }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px 18px' }}>
             {rows.map(([label, value]) => (
               <div key={label}>
-                <div style={{ fontSize: 11, color: '#8B8FA8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 3 }}>{label}</div>
-                <div style={{ fontSize: 14, color: '#1B1464', fontWeight: 600 }}>{textValue(value)}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 3 }}>{label}</div>
+                <div style={{ fontSize: 14, color: 'var(--brand-secondary)', fontWeight: 600 }}>{textValue(value)}</div>
               </div>
             ))}
           </div>
@@ -438,11 +438,11 @@ export default function DioUsers() {
             <div style={{ minWidth: 170 }}>
               <SearchableSelect value={specialtyFilter} onChange={setSpecialtyFilter} options={specialtyFilterOptions} placeholder="All Specialties" />
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#4B5563', cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-2)', cursor: 'pointer' }}>
               <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} /> Show inactive
             </label>
             <ViewToggle value={view} onChange={setView} />
-            <span style={{ fontSize: 13, color: '#8B8FA8', flexShrink: 0 }}>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)', flexShrink: 0 }}>
               {filtered.length} user{filtered.length !== 1 ? 's' : ''}
             </span>
             <button className="btn-purple"
@@ -464,7 +464,7 @@ export default function DioUsers() {
                     <tr>
                       <td colSpan={7} style={{ textAlign: 'center', padding: 40 }}>
                         <div style={{ fontSize: 32, marginBottom: 8 }}>👥</div>
-                        <div style={{ fontSize: 15, fontWeight: 600, color: '#4B5563' }}>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)' }}>
                           {users.length === 0 ? 'No users yet.' : 'No users match your filters.'}
                         </div>
                       </td>
@@ -472,10 +472,10 @@ export default function DioUsers() {
                   )}
                   {filtered.map((u, i) => {
                     const active = u.isActive !== false;
-                    const meta = ROLE_META[u.role] || { label: u.role, badge: { bg: '#F3F4F6', color: '#374151' } };
+                    const meta = ROLE_META[u.role] || { label: u.role, badge: { bg: 'var(--border-soft)', color: 'var(--text-2)' } };
                     return (
                       <tr key={u._id} style={{ opacity: active ? 1 : 0.65 }}>
-                        <td style={{ color: '#8B8FA8' }}>{i + 1}</td>
+                        <td style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             {u.photoUrl
@@ -483,7 +483,7 @@ export default function DioUsers() {
                               : <div className="cell-initials">{u.initials || u.name?.[0] || '?'}</div>}
                             <div>
                               <strong>{u.name}</strong>
-                              <div style={{ fontSize: 11, color: '#8B8FA8' }}>{u.email}</div>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{u.email}</div>
                             </div>
                           </div>
                         </td>
@@ -493,13 +493,13 @@ export default function DioUsers() {
                           </span>
                         </td>
                         <td>
-                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: '#EEEDFE', color: '#3C3489' }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)' }}>
                             {specialtyName(u)}
                           </span>
                         </td>
-                        <td style={{ fontSize: 13, color: '#4B5563' }}>{hospitalName(u)}</td>
+                        <td style={{ fontSize: 13, color: 'var(--text-2)' }}>{hospitalName(u)}</td>
                         <td>
-                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, background: active ? '#D1FAE5' : '#FEE2E2', color: active ? '#065F46' : '#991B1B' }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, background: active ? 'var(--success-bg)' : 'var(--danger-bg)', color: active ? 'var(--success-fg)' : 'var(--danger-fg)' }}>
                             {active ? 'Active' : 'Inactive'}
                           </span>
                         </td>
@@ -531,7 +531,7 @@ export default function DioUsers() {
               )}
               {filtered.map(u => {
                 const active = u.isActive !== false;
-                const meta = ROLE_META[u.role] || { label: u.role, badge: { bg: '#F3F4F6', color: '#374151' } };
+                const meta = ROLE_META[u.role] || { label: u.role, badge: { bg: 'var(--border-soft)', color: 'var(--text-2)' } };
                 return (
                   <div className="management-card" key={u._id} style={{ opacity: active ? 1 : 0.65 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -540,7 +540,7 @@ export default function DioUsers() {
                     </div>
                     <div className="management-card-meta">
                       <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: meta.badge.bg, color: meta.badge.color }}>{meta.label}</span>
-                      <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, background: active ? '#D1FAE5' : '#FEE2E2', color: active ? '#065F46' : '#991B1B' }}>{active ? 'Active' : 'Inactive'}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, background: active ? 'var(--success-bg)' : 'var(--danger-bg)', color: active ? 'var(--success-fg)' : 'var(--danger-fg)' }}>{active ? 'Active' : 'Inactive'}</span>
                     </div>
                     <div className="management-card-sub">{specialtyName(u)} · {hospitalName(u)}</div>
                     <div className="management-card-actions">

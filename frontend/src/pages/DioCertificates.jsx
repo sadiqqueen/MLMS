@@ -58,6 +58,12 @@ function traineeFromCertificate(cert) {
 export default function DioCertificates() {
   const navigate = useNavigate();
   const bp = useBasePath();
+  // The DIO now lists certificates from BOTH tracks (system-wide read). Revoke/
+  // delete stay track-scoped on the backend, so only same-track rows expose those
+  // buttons; a Track badge marks each row's portal. Print works for every cert.
+  const currentTrack = bp === '/basic' ? 'basic' : 'advanced';
+  const certTrack = c => (c?.track || 'advanced');
+  const canManageCert = c => certTrack(c) === currentTrack;
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('list');
@@ -307,8 +313,8 @@ export default function DioCertificates() {
         </div>
 
         {totalCount === 0 ? (
-          <div style={{ textAlign: 'center', padding: 56, color: '#8B8FA8' }}>
-            <div style={{ fontSize: 16, fontWeight: 600, color: '#4B5563', marginBottom: 6 }}>No certificates issued yet</div>
+          <div style={{ textAlign: 'center', padding: 56, color: 'var(--text-muted)' }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>No certificates issued yet</div>
             <div style={{ fontSize: 13 }}>Click "+ Issue Certificate" to issue the first certificate.</div>
           </div>
         ) : (
@@ -342,7 +348,7 @@ export default function DioCertificates() {
                 ))}
               </div>
               <ViewToggle value={view} onChange={setView} />
-              <span style={{ fontSize: 13, color: '#8B8FA8', flexShrink: 0 }}>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)', flexShrink: 0 }}>
                 {filtered.length} result{filtered.length !== 1 ? 's' : ''}
               </span>
             </div>
@@ -367,7 +373,7 @@ export default function DioCertificates() {
                 <tbody>
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#8B8FA8' }}>
+                      <td colSpan={8} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
                         No certificates match your filters.
                       </td>
                     </tr>
@@ -377,27 +383,30 @@ export default function DioCertificates() {
                     const isRevoked = !!c?.revokedAt;
                     return (
                       <tr key={c?._id || i} style={{ opacity: isRevoked ? 0.65 : 1 }}>
-                        <td style={{ color: '#8B8FA8' }}>{i + 1}</td>
+                        <td style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
                         <td>
                           <div style={{ fontWeight: 600 }}>{trainee?.name || '-'}</div>
-                          <div style={{ fontSize: 11, color: '#8B8FA8' }}>{trainee?.email || ''}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{trainee?.email || ''}</div>
                         </td>
-                        <td style={{ fontSize: 13, color: '#4B5563' }}>{trainee?.studentId || '-'}</td>
-                        <td style={{ fontSize: 13, color: '#4B5563' }}>{textValue(c?.specialty)}</td>
+                        <td style={{ fontSize: 13, color: 'var(--text-2)' }}>{trainee?.studentId || '-'}</td>
+                        <td style={{ fontSize: 13, color: 'var(--text-2)' }}>{textValue(c?.specialty)}</td>
                         <td>
-                          <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: '#EEEDFE', color: '#3C3489' }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)' }}>
                             {c?.type || 'Completion'}
                           </span>
+                          <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20, background: 'var(--surface-2)', color: 'var(--text-2)' }}>
+                            {certTrack(c) === 'basic' ? 'Basic' : 'Advanced'}
+                          </span>
                         </td>
-                        <td style={{ fontSize: 13, color: '#4B5563' }}>{fmt(c?.issueDate || c?.issuedAt)}</td>
+                        <td style={{ fontSize: 13, color: 'var(--text-2)' }}>{fmt(c?.issueDate || c?.issuedAt)}</td>
                         <td>
                           <span style={{
                             fontSize: 11,
                             fontWeight: 600,
                             padding: '3px 9px',
                             borderRadius: 20,
-                            background: isRevoked ? '#FEE2E2' : '#D1FAE5',
-                            color: isRevoked ? '#991B1B' : '#065F46',
+                            background: isRevoked ? 'var(--danger-bg)' : 'var(--success-bg)',
+                            color: isRevoked ? 'var(--danger-fg)' : 'var(--success-fg)',
                           }}>
                             {isRevoked ? `Revoked ${fmt(c?.revokedAt)}` : 'Valid'}
                           </span>
@@ -413,7 +422,7 @@ export default function DioCertificates() {
                                 <IconPrinter />
                               </button>
                             )}
-                            {!isRevoked && (
+                            {!isRevoked && canManageCert(c) && (
                               <button type="button" className="btn-action revoke"
                                 title="Revoke"
                                 aria-label={`Revoke certificate for ${trainee?.name || 'trainee'}`}
@@ -422,13 +431,15 @@ export default function DioCertificates() {
                                 <IconBan />
                               </button>
                             )}
-                            <button type="button" className="btn-action delete"
-                              title="Delete"
-                              aria-label={`Delete certificate for ${trainee?.name || 'trainee'}`}
-                              onClick={() => handleDelete(c)}
-                              disabled={deleting === c?._id}>
-                              <IconTrash />
-                            </button>
+                            {canManageCert(c) && (
+                              <button type="button" className="btn-action delete"
+                                title="Delete"
+                                aria-label={`Delete certificate for ${trainee?.name || 'trainee'}`}
+                                onClick={() => handleDelete(c)}
+                                disabled={deleting === c?._id}>
+                                <IconTrash />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -453,10 +464,13 @@ export default function DioCertificates() {
                         <div className="management-card-sub">{trainee?.studentId || 'No student ID'}</div>
                       </div>
                       <div className="management-card-meta">
-                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: '#EEEDFE', color: '#3C3489' }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)' }}>
                           {c?.type || 'Completion'}
                         </span>
-                        <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: isRevoked ? '#FEE2E2' : '#D1FAE5', color: isRevoked ? '#991B1B' : '#065F46' }}>
+                        <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20, background: 'var(--surface-2)', color: 'var(--text-2)' }}>
+                          {certTrack(c) === 'basic' ? 'Basic' : 'Advanced'}
+                        </span>
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: isRevoked ? 'var(--danger-bg)' : 'var(--success-bg)', color: isRevoked ? 'var(--danger-fg)' : 'var(--success-fg)' }}>
                           {isRevoked ? `Revoked ${fmt(c?.revokedAt)}` : 'Valid'}
                         </span>
                       </div>
@@ -467,14 +481,16 @@ export default function DioCertificates() {
                             <IconPrinter />
                           </button>
                         )}
-                        {!isRevoked && (
+                        {!isRevoked && canManageCert(c) && (
                           <button type="button" className="btn-action revoke" title="Revoke" aria-label={`Revoke certificate for ${trainee?.name || 'trainee'}`} onClick={() => handleRevoke(c)} disabled={revoking === c?._id}>
                             <IconBan />
                           </button>
                         )}
-                        <button type="button" className="btn-action delete" title="Delete" aria-label={`Delete certificate for ${trainee?.name || 'trainee'}`} onClick={() => handleDelete(c)} disabled={deleting === c?._id}>
-                          <IconTrash />
-                        </button>
+                        {canManageCert(c) && (
+                          <button type="button" className="btn-action delete" title="Delete" aria-label={`Delete certificate for ${trainee?.name || 'trainee'}`} onClick={() => handleDelete(c)} disabled={deleting === c?._id}>
+                            <IconTrash />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -490,15 +506,15 @@ export default function DioCertificates() {
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
             onClick={e => e.target === e.currentTarget && closeIssueForm()}
           >
-            <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,.2)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid #E8E9EF', position: 'sticky', top: 0, background: '#fff', zIndex: 10 }}>
-                <div style={{ fontSize: 17, fontWeight: 700, color: '#1B1464' }}>Issue Certificate</div>
-                <button type="button" onClick={closeIssueForm} style={{ width: 30, height: 30, borderRadius: '50%', background: '#F5F6FA', border: 'none', fontSize: 18, color: '#8B8FA8', cursor: 'pointer' }}>x</button>
+            <div style={{ background: 'var(--surface)', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,.2)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 10 }}>
+                <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--brand-secondary)' }}>Issue Certificate</div>
+                <button type="button" onClick={closeIssueForm} style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--surface-2)', border: 'none', fontSize: 18, color: 'var(--text-muted)', cursor: 'pointer' }}>x</button>
               </div>
 
               <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
                 <div ref={dropdownRef} style={{ position: 'relative' }}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>
                     Search Trainee *
                   </label>
                   <input
@@ -511,25 +527,25 @@ export default function DioCertificates() {
                   />
 
                   {searchLoading && (
-                    <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', border: '1px solid #E8E9EF', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#8B8FA8', boxShadow: '0 4px 12px rgba(0,0,0,.1)', zIndex: 500 }}>
+                    <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--text-muted)', boxShadow: '0 4px 12px rgba(0,0,0,.1)', zIndex: 500 }}>
                       Searching...
                     </div>
                   )}
 
                   {!searchLoading && safeArr(searchResults).length > 0 && (
-                    <ul style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 500, margin: 0, padding: 0, listStyle: 'none', background: '#fff', border: '1px solid #E8E9EF', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.12)', maxHeight: 220, overflowY: 'auto' }}>
+                    <ul style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 500, margin: 0, padding: 0, listStyle: 'none', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.12)', maxHeight: 220, overflowY: 'auto' }}>
                       {safeArr(searchResults).map((t, i) => (
                         <li key={t?._id || i}>
                           <button
                             type="button"
                             onMouseDown={e => { e.preventDefault(); selectTrainee(t); }}
-                            style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid #f3f3f3', padding: '10px 14px', cursor: 'pointer', display: 'block', fontSize: 13 }}
+                            style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--border-soft)', padding: '10px 14px', cursor: 'pointer', display: 'block', fontSize: 13 }}
                             onMouseEnter={e => { e.currentTarget.style.background = '#f0f3ff'; }}
                             onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
                           >
                             <strong>{t?.name || 'Unknown'}</strong>
-                            {t?.studentId && <span style={{ marginLeft: 8, fontSize: 11, color: '#8B8FA8' }}>{t?.studentId}</span>}
-                            {t?.specialtyId?.name && <span style={{ marginLeft: 8, fontSize: 11, color: '#7c6fcd' }}>{t?.specialtyId?.name}</span>}
+                            {t?.studentId && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text-muted)' }}>{t?.studentId}</span>}
+                            {t?.specialtyId?.name && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--brand-secondary)' }}>{t?.specialtyId?.name}</span>}
                             {t?.hospitalId?.name && <span style={{ marginLeft: 8, fontSize: 11, color: '#059669' }}>{t?.hospitalId?.name}</span>}
                           </button>
                         </li>
@@ -538,15 +554,15 @@ export default function DioCertificates() {
                   )}
 
                   {!searchLoading && searchQuery.trim().length > 1 && safeArr(searchResults).length === 0 && (
-                    <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', border: '1px solid #E8E9EF', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#8B8FA8', boxShadow: '0 4px 12px rgba(0,0,0,.1)', zIndex: 500 }}>
+                    <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--text-muted)', boxShadow: '0 4px 12px rgba(0,0,0,.1)', zIndex: 500 }}>
                       No trainees found for "{searchQuery}"
                     </div>
                   )}
                 </div>
 
                 {form.student && (
-                  <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 10, padding: '14px 16px' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#065F46', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>Selected Trainee</div>
+                  <div style={{ background: 'var(--success-bg)', border: '1px solid #BBF7D0', borderRadius: 10, padding: '14px 16px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--success-fg)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>Selected Trainee</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: 13 }}>
                       {safeArr([
                         ['Name', form.studentName || '-'],
@@ -556,8 +572,8 @@ export default function DioCertificates() {
                         ['Specialty', form.specialty || '-'],
                       ]).map(([label, value]) => (
                         <div key={label}>
-                          <div style={{ color: '#999', fontSize: 11, marginBottom: 2 }}>{label}</div>
-                          <div style={{ fontWeight: 600, color: '#1B1464' }}>{value}</div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 11, marginBottom: 2 }}>{label}</div>
+                          <div style={{ fontWeight: 600, color: 'var(--brand-secondary)' }}>{value}</div>
                         </div>
                       ))}
                     </div>
@@ -565,19 +581,19 @@ export default function DioCertificates() {
                 )}
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>Certificate Type</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>Certificate Type</label>
                   <select className="admin-search" style={{ width: '100%', boxSizing: 'border-box', height: 42 }} value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))}>
                     {safeArr(CERT_TYPES).map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>Issue Date</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>Issue Date</label>
                   <input type="date" className="admin-search" style={{ width: '100%', boxSizing: 'border-box', height: 42 }} value={form.issueDate} onChange={e => setForm(prev => ({ ...prev, issueDate: e.target.value }))} />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>Notes (optional)</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>Notes (optional)</label>
                   <textarea className="admin-search" style={{ width: '100%', boxSizing: 'border-box', minHeight: 80, padding: '10px 12px', resize: 'vertical', fontFamily: 'inherit', fontSize: 13 }} placeholder="Any additional notes..." value={form.notes} onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))} />
                 </div>
 

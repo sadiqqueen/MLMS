@@ -39,14 +39,14 @@ export default function CertificatePrint() {
   }, [id]);
 
   if (loading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:'#f3f4f6' }}>
-      <div style={{ fontSize:15, color:'#6B7280' }}>Loading certificate…</div>
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:'var(--app-bg)' }}>
+      <div style={{ fontSize:15, color:'var(--text-2)' }}>Loading certificate…</div>
     </div>
   );
 
   if (error || !cert) return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'100vh', gap:16 }}>
-      <div style={{ color:'#DC2626', fontSize:15 }}>{error || 'Certificate not found'}</div>
+      <div style={{ color:'var(--danger)', fontSize:15 }}>{error || 'Certificate not found'}</div>
       <button onClick={() => navigate(-1)} style={{ padding:'8px 20px', borderRadius:8, background:'#1B1464', color:'#fff', border:'none', cursor:'pointer' }}>Go Back</button>
     </div>
   );

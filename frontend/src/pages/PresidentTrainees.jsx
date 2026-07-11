@@ -38,28 +38,28 @@ function DetailModal({ item, fields, onClose }) {
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:460, boxShadow:'0 20px 60px rgba(0,0,0,.2)' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:14, padding:'20px 24px', borderBottom:'1px solid #E8E9EF' }}>
+      <div style={{ background:'var(--surface)', borderRadius:16, width:'100%', maxWidth:460, boxShadow:'0 20px 60px rgba(0,0,0,.2)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:14, padding:'20px 24px', borderBottom:'1px solid var(--border)' }}>
           <div style={{ width:48, height:48, borderRadius:'50%', background:'#1B1464', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, flexShrink:0 }}>
             {item.initials || item.name?.slice(0,2)?.toUpperCase() || '?'}
           </div>
           <div style={{ flex:1 }}>
-            <div style={{ fontSize:17, fontWeight:700, color:'#1B1464' }}>{item.name}</div>
-            <div style={{ fontSize:12, color:'#8B8FA8', marginTop:2 }}>{item.email}</div>
+            <div style={{ fontSize:17, fontWeight:700, color:'var(--brand-secondary)' }}>{item.name}</div>
+            <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{item.email}</div>
           </div>
-          <button onClick={onClose} style={{ width:30, height:30, borderRadius:'50%', background:'#F5F6FA', border:'none', fontSize:18, color:'#8B8FA8', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
+          <button onClick={onClose} style={{ width:30, height:30, borderRadius:'50%', background:'var(--surface-2)', border:'none', fontSize:18, color:'var(--text-muted)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
         </div>
         <div style={{ padding:'20px 24px' }}>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px 20px' }}>
             {fields.map(([label, value]) => (
               <div key={label}>
-                <div style={{ fontSize:10, color:'#8B8FA8', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em', marginBottom:3 }}>{label}</div>
-                <div style={{ fontSize:14, color:'#1B1464', fontWeight:500 }}>{renderValue(value)}</div>
+                <div style={{ fontSize:10, color:'var(--text-muted)', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em', marginBottom:3 }}>{label}</div>
+                <div style={{ fontSize:14, color:'var(--brand-secondary)', fontWeight:500 }}>{renderValue(value)}</div>
               </div>
             ))}
           </div>
         </div>
-        <div style={{ padding:'14px 24px', borderTop:'1px solid #E8E9EF', display:'flex', justifyContent:'flex-end' }}>
+        <div style={{ padding:'14px 24px', borderTop:'1px solid var(--border)', display:'flex', justifyContent:'flex-end' }}>
           <button onClick={onClose} style={{ padding:'8px 20px', borderRadius:8, background:'#FF6B35', color:'#fff', border:'none', fontWeight:500, fontSize:13, cursor:'pointer' }}>Close</button>
         </div>
       </div>
@@ -128,7 +128,7 @@ export default function PresidentTrainees() {
           <div className="admin-toolbar">
             <input className="admin-search" style={{ flex:1, minWidth:200 }} placeholder="Search by name, ID, or specialty…" value={search} onChange={e => setSearch(e.target.value)} />
             <ViewToggle value={view} onChange={setView} />
-            <span style={{ fontSize:13, color:'#8B8FA8', flexShrink:0 }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
+            <span style={{ fontSize:13, color:'var(--text-muted)', flexShrink:0 }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
           </div>
           {view === 'list' && (
           <div className="admin-table-wrap">
@@ -136,28 +136,28 @@ export default function PresidentTrainees() {
               <thead><tr><th>#</th><th>Trainee</th><th>Specialty</th><th>Hospital</th><th>Student ID</th></tr></thead>
               <tbody>
                 {filtered.length === 0 && (
-                  <tr><td colSpan={5} style={{ textAlign:'center', padding:40, color:'#8B8FA8' }}>
+                  <tr><td colSpan={5} style={{ textAlign:'center', padding:40, color:'var(--text-muted)' }}>
                     <div style={{ fontSize:32, marginBottom:8 }}>🎓</div>
-                    <div style={{ fontSize:15, fontWeight:600, color:'#4B5563' }}>
+                    <div style={{ fontSize:15, fontWeight:600, color:'var(--text-2)' }}>
                       {trainees.length === 0 ? 'No trainees found' : 'No results match your search'}
                     </div>
                   </td></tr>
                 )}
                 {filtered.map((t, i) => (
                   <tr key={t._id} style={{ cursor:'pointer' }} onClick={() => setSelected(t)}>
-                    <td style={{ color:'#8B8FA8' }}>{i+1}</td>
+                    <td style={{ color:'var(--text-muted)' }}>{i+1}</td>
                     <td>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                         {t.photoUrl
                           ? <img src={`${API_BASE}${t.photoUrl}`} alt="" className="cell-photo" />
                           : <div className="cell-initials">{t.initials || t.name?.[0] || '?'}</div>
                         }
-                        <div><strong>{t.name}</strong><div style={{ fontSize:11, color:'#8B8FA8' }}>{t.email}</div></div>
+                        <div><strong>{t.name}</strong><div style={{ fontSize:11, color:'var(--text-muted)' }}>{t.email}</div></div>
                       </div>
                     </td>
-                    <td><span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'#EEEDFE', color:'#3C3489' }}>{getSpecialty(t)}</span></td>
-                    <td style={{ fontSize:13, color:'#4B5563' }}>{getHospital(t)}</td>
-                    <td style={{ fontSize:13, color:'#4B5563' }}>{t.studentId || '—'}</td>
+                    <td><span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'var(--chip-spec-bg)', color:'var(--chip-spec-fg)' }}>{getSpecialty(t)}</span></td>
+                    <td style={{ fontSize:13, color:'var(--text-2)' }}>{getHospital(t)}</td>
+                    <td style={{ fontSize:13, color:'var(--text-2)' }}>{t.studentId || '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -170,7 +170,7 @@ export default function PresidentTrainees() {
               {filtered.map(t => (
                 <div className="management-card" key={t._id} onClick={() => setSelected(t)} style={{ cursor:'pointer' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:10 }}>{t.photoUrl ? <img src={`${API_BASE}${t.photoUrl}`} alt="" className="cell-photo" /> : <div className="cell-initials">{t.initials || t.name?.[0] || '?'}</div>}<div><div className="management-card-title">{t.name}</div><div className="management-card-sub">{t.email}</div></div></div>
-                  <div className="management-card-meta"><span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'#EEEDFE', color:'#3C3489' }}>{getSpecialty(t)}</span></div>
+                  <div className="management-card-meta"><span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'var(--chip-spec-bg)', color:'var(--chip-spec-fg)' }}>{getSpecialty(t)}</span></div>
                   <div className="management-card-sub">{getHospital(t)} - {t.studentId || 'No ID'}</div>
                 </div>
               ))}

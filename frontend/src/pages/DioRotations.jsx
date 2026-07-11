@@ -22,10 +22,10 @@ import { IconPencil, IconXCircle } from '../components/icons';
 const ROTATION_STATUSES = ['upcoming', 'current', 'completed', 'cancelled'];
 
 const STATUS_STYLE = {
-  upcoming:  { bg:'#EFF6FF', color:'#1D4ED8' },
-  current:   { bg:'#D1FAE5', color:'#065F46' },
-  completed: { bg:'#E8E9EF', color:'#374151' },
-  cancelled: { bg:'#FEE2E2', color:'#991B1B' },
+  upcoming:  { bg:'var(--info-bg)', color:'var(--info-fg)' },
+  current:   { bg:'var(--success-bg)', color:'var(--success-fg)' },
+  completed: { bg:'var(--border)', color:'var(--text-2)' },
+  cancelled: { bg:'var(--danger-bg)', color:'var(--danger-fg)' },
 };
 
 function fmtDate(d) {
@@ -176,7 +176,7 @@ function RotationModal({ item, trainees, supervisors, hospitals, specialties, on
               <label>End Date *</label>
               <input type="date" className={errors.endDate ? 'invalid' : ''} value={form.endDate}
                 onChange={e => set('endDate', e.target.value)} />
-              {errors.endDate && <span style={{ color:'#DC2626', fontSize:11 }}>End date must be after start date</span>}
+              {errors.endDate && <span style={{ color:'var(--danger-fg)', fontSize:11 }}>End date must be after start date</span>}
             </div>
 
             <div className="admin-field full">
@@ -328,7 +328,7 @@ export function RotationsPanel({ autoOpenNew = false }) {
               placeholder="Search by trainee, supervisor, hospital, specialty…"
               value={search} onChange={e => setSearch(e.target.value)} />
             <ViewToggle value={view} onChange={setView} />
-            <span style={{ fontSize:13, color:'#8B8FA8' }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
+            <span style={{ fontSize:13, color:'var(--text-muted)' }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
             <button className="btn-purple" onClick={() => { setEditItem(null); setShowModal(true); }}>+ Add Rotation</button>
           </div>
           {view === 'list' && <div className="admin-table-wrap">
@@ -341,7 +341,7 @@ export function RotationsPanel({ autoOpenNew = false }) {
                   <tr>
                     <td colSpan={9} style={{ textAlign:'center', padding:40 }}>
                       <div style={{ fontSize:32, marginBottom:8 }}>📅</div>
-                      <div style={{ fontSize:15, fontWeight:600, color:'#4B5563' }}>
+                      <div style={{ fontSize:15, fontWeight:600, color:'var(--text-2)' }}>
                         {rotations.length === 0 ? 'No rotations yet. Create the first one.' : 'No match.'}
                       </div>
                     </td>
@@ -352,21 +352,21 @@ export function RotationsPanel({ autoOpenNew = false }) {
                   const supervisor = supervisorOf(r);
                   const hospital   = hospitalOf(r);
                   const specialty  = specialtyOf(r);
-                  const st = STATUS_STYLE[r.status] || { bg:'#F3F4F6', color:'#374151' };
+                  const st = STATUS_STYLE[r.status] || { bg:'var(--border-soft)', color:'var(--text-2)' };
                   const canCancel  = r.status !== 'completed' && r.status !== 'cancelled';
                   return (
                     <tr key={r._id}>
-                      <td style={{ color:'#8B8FA8' }}>{i+1}</td>
+                      <td style={{ color:'var(--text-muted)' }}>{i+1}</td>
                       <td>
                         <div style={{ fontWeight:600 }}>{trainee?.name || '—'}</div>
-                        {trainee?.studentId && <div style={{ fontSize:11, color:'#8B8FA8' }}>{trainee.studentId}</div>}
+                        {trainee?.studentId && <div style={{ fontSize:11, color:'var(--text-muted)' }}>{trainee.studentId}</div>}
                       </td>
                       <td style={{ fontSize:13 }}>{hospital?.name || '—'}</td>
                       <td style={{ fontSize:13 }}>{supervisor?.name || '—'}</td>
                       <td>
                         {specialty !== '-'
-                          ? <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'#EEEDFE', color:'#3C3489' }}>{specialty}</span>
-                          : <span style={{ color:'#B8BBC8' }}>—</span>
+                          ? <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'var(--chip-spec-bg)', color:'var(--chip-spec-fg)' }}>{specialty}</span>
+                          : <span style={{ color:'var(--text-muted)' }}>—</span>
                         }
                       </td>
                       <td style={{ fontSize:13 }}>{fmtDate(r.startDate)}</td>
@@ -408,14 +408,14 @@ export function RotationsPanel({ autoOpenNew = false }) {
                 const supervisor = supervisorOf(r);
                 const hospital = hospitalOf(r);
                 const specialty = specialtyOf(r);
-                const st = STATUS_STYLE[r.status] || { bg:'#F3F4F6', color:'#374151' };
+                const st = STATUS_STYLE[r.status] || { bg:'var(--border-soft)', color:'var(--text-2)' };
                 const canCancel = r.status !== 'completed' && r.status !== 'cancelled';
                 return (
                   <div className="management-card" key={r._id}>
                     <div className="management-card-title">{trainee?.name || '-'}</div>
                     <div className="management-card-sub">{hospital?.name || '-'} - {fmtDate(r.startDate)} to {fmtDate(r.endDate)}</div>
                     <div className="management-card-sub">Supervisor: {supervisor?.name || '-'}</div>
-                    <div className="management-card-meta">{specialty !== '-' && <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'#EEEDFE', color:'#3C3489' }}>{specialty}</span>}<span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:st.bg, color:st.color }}>{r.status ? r.status.charAt(0).toUpperCase() + r.status.slice(1) : '-'}</span></div>
+                    <div className="management-card-meta">{specialty !== '-' && <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'var(--chip-spec-bg)', color:'var(--chip-spec-fg)' }}>{specialty}</span>}<span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:st.bg, color:st.color }}>{r.status ? r.status.charAt(0).toUpperCase() + r.status.slice(1) : '-'}</span></div>
                     <div className="management-card-actions"><button className="btn-action edit" title="Edit rotation" aria-label={`Edit rotation for ${trainee?.name || 'trainee'}`} onClick={() => { setEditItem(r); setShowModal(true); }}><IconPencil /></button>{canCancel && <button className="btn-action delete" title="Cancel rotation" aria-label={`Cancel rotation for ${trainee?.name || 'trainee'}`} onClick={() => setConfirmDel(r)}><IconXCircle /></button>}</div>
                   </div>
                 );
