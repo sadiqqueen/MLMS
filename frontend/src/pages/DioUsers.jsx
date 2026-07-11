@@ -226,12 +226,17 @@ function UserFormModal({ user, initialRole, hospitals, specialties, onClose, onS
 }
 
 // ── Read-only View modal (built from list data — no backend fetch) ─────────
-function UserViewModal({ user, onClose, onFullProfile }) {
+// For a supervisor, `trainees` lists their assigned trainees (null = failed to
+// load); clicking one calls onTraineeClick(t) to swap this modal in place to the
+// trainee's card, with onBack returning to the supervisor.
+function UserViewModal({ user, trainees, onTraineeClick, onBack, onClose, onFullProfile }) {
   useEffect(() => {
-    const h = e => { if (e.key === 'Escape') onClose(); };
+    // Escape steps back to the supervisor card if we're viewing one of their
+    // trainees, otherwise it closes the modal.
+    const h = e => { if (e.key === 'Escape') (onBack || onClose)(); };
     document.addEventListener('keydown', h);
     return () => document.removeEventListener('keydown', h);
-  }, [onClose]);
+  }, [onClose, onBack]);
 
   const meta = ROLE_META[user.role] || { label: user.role, badge: { bg: 'var(--border-soft)', color: 'var(--text-2)' } };
   const active = user.isActive !== false;
@@ -272,8 +277,47 @@ function UserViewModal({ user, onClose, onFullProfile }) {
               </div>
             ))}
           </div>
+
+          {/* Supervisor → assigned trainees (click one to view their card in this panel) */}
+          {user.role === 'supervisor' && (
+            <div style={{ marginTop: 20 }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8 }}>
+                Assigned Trainees{Array.isArray(trainees) ? ` (${trainees.length})` : ''}
+              </div>
+              {trainees === null ? (
+                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Could not load assigned trainees.</div>
+              ) : trainees.length === 0 ? (
+                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>No trainees assigned.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
+                  {trainees.map(t => (
+                    <button type="button" key={t._id}
+                      onClick={() => onTraineeClick(t)}
+                      aria-label={`View ${t.name}`}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
+                        background: 'var(--surface-2)', border: '1px solid var(--border-soft)', borderRadius: 8,
+                        padding: '7px 10px', cursor: 'pointer',
+                      }}>
+                      {t.photoUrl
+                        ? <img src={`${API_BASE}${t.photoUrl}`} alt="" className="cell-photo" style={{ width: 28, height: 28 }} />
+                        : <div className="cell-initials" style={{ width: 28, height: 28, fontSize: 12 }}>{t.initials || t.name?.[0] || '?'}</div>}
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t.studentId || t.specialty || ''}</div>
+                      </div>
+                      <span style={{ fontSize: 16, color: 'var(--text-muted)', flexShrink: 0 }}>›</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <div className="admin-modal-footer">
+          {onBack && (
+            <button className="btn-outline" onClick={onBack}>← Back to supervisor</button>
+          )}
           {user.role === 'trainee' && (
             <button className="btn-outline" onClick={onFullProfile}>Open full profile →</button>
           )}
@@ -302,6 +346,8 @@ export default function DioUsers() {
   const [showInactive, setShowInactive] = useState(false);
   const [formModal,    setFormModal   ] = useState(null);   // { user? } | null
   const [viewUser,     setViewUser    ] = useState(null);
+  const [viewFrom,     setViewFrom    ] = useState(null);   // supervisor to return to when viewing one of their trainees
+  const [traineesBySup, setTraineesBySup] = useState(null); // { supId: [trainee] } | null (null = not loaded / failed)
   const [confirmDeact, setConfirmDeact] = useState(null);
   const [toasts,       setToasts      ] = useState([]);
 
@@ -318,6 +364,9 @@ export default function DioUsers() {
       ...ROLE_ORDER.map(r => api.get(`/api/dio/${ROLE_META[r].api}${inactive}`)),
       api.get('/api/hospitals'),
       api.get('/api/specialties'),
+      // Bulk { supervisorId: [trainee] } map, so a supervisor's card can list
+      // their assigned trainees. Isolated: a failure here must not blank users.
+      api.get('/api/dio/supervisors/trainees-map'),
     ]);
     const merged = [];
     let anyFail = false;
@@ -332,8 +381,11 @@ export default function DioUsers() {
     });
     const hRes = results[ROLE_ORDER.length];
     const spRes = results[ROLE_ORDER.length + 1];
+    const tmRes = results[ROLE_ORDER.length + 2];
     if (hRes.status === 'fulfilled')  setHospitals(hRes.value.data?.data || hRes.value.data || []);
     if (spRes.status === 'fulfilled') setSpecialties(spRes.value.data?.data || spRes.value.data || []);
+    // null = failed/unavailable (modal shows a fallback line); {} = loaded-empty.
+    setTraineesBySup(tmRes.status === 'fulfilled' ? (tmRes.value.data?.data || {}) : null);
     setUsers(merged);
     if (anyFail) showToast('Some users could not be loaded', 'error');
     setLoading(false);
@@ -581,8 +633,19 @@ export default function DioUsers() {
         {viewUser && (
           <UserViewModal
             user={viewUser}
-            onClose={() => setViewUser(null)}
-            onFullProfile={() => { const id = viewUser._id; setViewUser(null); navigate(bp + `/dio/users/${id}`); }}
+            trainees={viewUser.role === 'supervisor'
+              ? (traineesBySup ? (traineesBySup[viewUser._id] || []) : null)
+              : undefined}
+            onTraineeClick={t => {
+              // Prefer the fuller trainee object already loaded into `users`; fall
+              // back to the lightweight map object so the card still renders.
+              const full = users.find(u => u.role === 'trainee' && u._id === t._id);
+              setViewFrom(viewUser);
+              setViewUser(full || { ...t, role: 'trainee' });
+            }}
+            onBack={viewFrom ? () => { setViewUser(viewFrom); setViewFrom(null); } : undefined}
+            onClose={() => { setViewUser(null); setViewFrom(null); }}
+            onFullProfile={() => { const id = viewUser._id; setViewUser(null); setViewFrom(null); navigate(bp + `/dio/users/${id}`); }}
           />
         )}
         {confirmDeact && (
