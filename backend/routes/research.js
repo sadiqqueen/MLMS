@@ -51,7 +51,10 @@ async function getAssignedTraineeIds(supervisorId) {
   const [directTrainees, researchTrainees, distributions, rotations] = await Promise.all([
     User.find({ supervisorId, role: 'trainee', isActive: { $ne: false } }).select('_id'),
     User.find({ researchSupervisorId: supervisorId, role: 'trainee', isActive: { $ne: false } }).select('_id'),
+    // Exclude deactivated (soft-deleted) placements so a former supervisor
+    // does not retain access to a trainee's private publications.
     Distribution.find({
+      status: { $ne: 'inactive' },
       $or: [
         { supervisorId, traineeId: { $ne: null } },
         { doctor: supervisorId, student: { $ne: null } }

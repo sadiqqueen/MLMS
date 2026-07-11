@@ -287,6 +287,8 @@ router.patch('/trainees/:id',
       const existing = await User.findOne({ _id: req.params.id, specialtyId });
       if (!existing) return res.status(404).json({ success: false, message: 'User not found in secretary specialty' });
       delete fields.specialtyId;
+      // Fold the legacy alias into supervisorId so it is validated, not smuggled.
+      if (fields.supervisor && !fields.supervisorId) fields.supervisorId = fields.supervisor;
       // A trainee must keep a supervisor — allow changing it, never clearing it.
       if (('supervisorId' in fields || 'supervisor' in fields) && !fields.supervisorId && !fields.supervisor) {
         return res.status(400).json({ success: false, message: 'A trainee must have a supervisor' });
@@ -309,6 +311,7 @@ router.patch('/trainees/:id',
       const cr = await queueChangeRequest({ req, routeKey: 'trainees', existing, fields });
       res.status(202).json({ success: true, pending: true, data: cr });
     } catch (err) {
+      if (err.code === 11000) return res.status(409).json({ success: false, message: 'This account already has a pending change awaiting DIO approval' });
       res.status(500).json({ message: err.message });
     }
   }
@@ -383,6 +386,18 @@ router.patch('/supervisors/:id',
       const existing = await User.findOne({ _id: req.params.id, specialtyId });
       if (!existing) return res.status(404).json({ success: false, message: 'User not found in secretary specialty' });
       delete fields.specialtyId;
+      // Fold + validate the legacy supervisor alias so it can't smuggle an
+      // arbitrary out-of-specialty reference through the change request.
+      if (fields.supervisor && !fields.supervisorId) fields.supervisorId = fields.supervisor;
+      if (fields.supervisorId) {
+        if (!(await supervisorInSpecialty(fields.supervisorId, req))) {
+          return res.status(400).json({ success: false, message: 'Supervisor is not in your specialty' });
+        }
+        fields.supervisor = fields.supervisorId;
+      }
+      if (fields.researchSupervisorId && !(await supervisorInSpecialty(fields.researchSupervisorId, req))) {
+        return res.status(400).json({ success: false, message: 'Research supervisor is not in your specialty' });
+      }
       if (!Object.keys(fields).length) {
         return res.status(400).json({ success: false, message: 'No changes provided' });
       }
@@ -392,6 +407,7 @@ router.patch('/supervisors/:id',
       const cr = await queueChangeRequest({ req, routeKey: 'supervisors', existing, fields });
       res.status(202).json({ success: true, pending: true, data: cr });
     } catch (err) {
+      if (err.code === 11000) return res.status(409).json({ success: false, message: 'This account already has a pending change awaiting DIO approval' });
       res.status(500).json({ message: err.message });
     }
   }

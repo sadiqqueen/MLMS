@@ -19,6 +19,10 @@ async function applyChangeRequest(cr) {
 
   const fields = { ...(cr.changes || {}) };
 
+  // Fold the legacy `supervisor` alias into supervisorId so it always goes
+  // through validation below — it must never be persisted unchecked.
+  if (fields.supervisor && !fields.supervisorId) fields.supervisorId = fields.supervisor;
+
   // A trainee must keep a supervisor — never let an approval clear it.
   if (cr.routeKey === 'trainees'
       && ('supervisorId' in fields || 'supervisor' in fields)
@@ -42,6 +46,7 @@ async function applyChangeRequest(cr) {
         err.status = 400;
         throw err;
       }
+      // Keep the legacy alias in sync with the validated value (never the raw input).
       if (key === 'supervisorId') fields.supervisor = fields.supervisorId;
     }
   }

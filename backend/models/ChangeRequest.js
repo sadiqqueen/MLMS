@@ -7,7 +7,7 @@ const changeRequestSchema = new mongoose.Schema(
   {
     requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true }, // secretary
     targetModel: { type: String, default: 'User' },
-    targetId:    { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
+    targetId:    { type: mongoose.Schema.Types.ObjectId, required: true },
     routeKey:    { type: String, enum: ['trainees', 'supervisors'], required: true }, // which apply-rules to re-run
     targetLabel: { type: String, default: '' },   // denormalized account name for the list
 
@@ -24,6 +24,13 @@ const changeRequestSchema = new mongoose.Schema(
     track:       { type: String, enum: ['basic', 'advanced'], default: 'advanced', index: true },
   },
   { timestamps: true }
+);
+
+// At most one PENDING request per account (backstop for the check-then-create
+// race in the secretary routes; the resulting E11000 is surfaced as a 409).
+changeRequestSchema.index(
+  { targetId: 1 },
+  { unique: true, partialFilterExpression: { status: 'pending' } }
 );
 
 module.exports = mongoose.model('ChangeRequest', changeRequestSchema);
