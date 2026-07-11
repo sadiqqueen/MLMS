@@ -16,10 +16,44 @@ function fmt(d) {
 function safeArr(v) { return Array.isArray(v) ? v : []; }
 
 const STATUS_STYLE = {
-  pending:  { bg: 'var(--warning-bg)', color: 'var(--warning-fg)', label: 'Pending approval' },
-  approved: { bg: 'var(--success-bg)', color: 'var(--success-fg)', label: 'Approved' },
-  rejected: { bg: 'var(--danger-bg)',  color: 'var(--danger-fg)',  label: 'Not approved' },
+  pending:             { bg: 'var(--warning-bg)', color: 'var(--warning-fg)', label: 'With supervisor' },
+  supervisor_approved: { bg: 'var(--info-bg)',    color: 'var(--info-fg)',    label: 'Signed — with secretary' },
+  forwarded_dio:       { bg: 'var(--info-bg)',    color: 'var(--info-fg)',    label: 'With DIO' },
+  approved:            { bg: 'var(--success-bg)', color: 'var(--success-fg)', label: 'Published' },
+  rejected:            { bg: 'var(--danger-bg)',  color: 'var(--danger-fg)',  label: 'Not approved' },
 };
+
+// Approval progress: which step index a status sits at (for the stepper).
+const STEPS = ['Supervisor', 'Secretary', 'DIO', 'Published'];
+function stepIndex(status) {
+  if (status === 'pending') return 0;
+  if (status === 'supervisor_approved') return 1;
+  if (status === 'forwarded_dio') return 2;
+  if (status === 'approved') return 3;
+  return -1; // rejected
+}
+
+function Stepper({ status }) {
+  const active = stepIndex(status);
+  if (active < 0) return null;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+      {STEPS.map((label, i) => {
+        const done = i <= active;
+        return (
+          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{
+              fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+              background: done ? 'var(--success-bg)' : 'var(--surface-3)',
+              color: done ? 'var(--success-fg)' : 'var(--text-muted)',
+            }}>{label}</span>
+            {i < STEPS.length - 1 && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>›</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function StatusBadge({ status }) {
   const s = STATUS_STYLE[status] || STATUS_STYLE.pending;
@@ -198,6 +232,12 @@ export default function Research() {
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
                         {r.journal ? `${r.journal} · ` : ''}Submitted {fmt(r.createdAt)}
                       </div>
+                      {r.signedByName && r.status !== 'rejected' && (
+                        <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>
+                          ✍ Signed by {r.signedByName}{r.signedAt ? ` · ${fmt(r.signedAt)}` : ''}
+                        </div>
+                      )}
+                      <Stepper status={r.status} />
                       {r.status === 'rejected' && r.reviewNote && (
                         <div style={{ fontSize: 12, color: 'var(--danger-fg)', marginTop: 6 }}>Reason: {r.reviewNote}</div>
                       )}

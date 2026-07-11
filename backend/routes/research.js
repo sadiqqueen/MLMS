@@ -13,11 +13,13 @@ const fs             = require('fs');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const { decodeOriginalName } = require('../utils/filename');
+const { coerceRoleToTrack } = require('../utils/track');
 const Research       = require('../models/Research');
 const User           = require('../models/User');
 const Rotation       = require('../models/Rotation');
 const Distribution   = require('../models/Distribution');
 const Notification   = require('../models/Notification');
+const AuditLog       = require('../models/AuditLog');
 
 // ── MULTER SETUP ──────────────────────────────────────────────────────────
 const uploadDir = path.join(__dirname, '../uploads/research');
@@ -203,7 +205,7 @@ router.get('/trainee/:traineeId',
     }
   });
 
-// ── SUPERVISOR (approve / reject) ────────────────────────────────────────────
+// ── APPROVAL PIPELINE (supervisor sign → secretary forward → DIO publish) ─────
 
 async function ensureSupervisorCanReview(req, doc) {
   if (req.user.role === 'super_admin') return true;
@@ -212,48 +214,210 @@ async function ensureSupervisorCanReview(req, doc) {
   return assigned.has(doc.trainee.toString());
 }
 
-// PATCH /api/research/:id/approve — supervisor approves → auto-moves to Publications
+function clientIp(req) {
+  return req.ip || req.headers['x-forwarded-for'] || 'unknown';
+}
+
+// Notify every active secretary of the trainee's specialty.
+async function notifySecretariesForTrainee(traineeId, track, message) {
+  const trainee = await User.findById(traineeId).select('specialtyId');
+  if (!trainee?.specialtyId) return;
+  const secs = await User.find({
+    role: coerceRoleToTrack('secretary', track),
+    specialtyId: trainee.specialtyId,
+    isActive: { $ne: false }
+  }).select('_id');
+  await Promise.all(secs.map(s =>
+    Notification.create({ user: s._id, message, category: 'research' }).catch(() => {})));
+}
+
+// Notify every active DIO of the track.
+async function notifyDios(track, message) {
+  const dios = await User.find({
+    role: coerceRoleToTrack('dio', track),
+    isActive: { $ne: false }
+  }).select('_id');
+  await Promise.all(dios.map(d =>
+    Notification.create({ user: d._id, message, category: 'research' }).catch(() => {})));
+}
+
+// GET /api/research/queue — the pending items for the caller's stage.
+router.get('/queue', auth, allowRoles('supervisor', 'secretary', 'dio', 'super_admin'), async (req, res) => {
+  try {
+    const role = req.user.role;
+    let filter;
+    if (role === 'supervisor') {
+      const assigned = await getAssignedTraineeIds(req.user._id);
+      filter = { status: 'pending', $or: [{ supervisor: req.user._id }, { trainee: { $in: [...assigned] } }] };
+    } else if (role === 'secretary') {
+      if (!req.user.specialtyId) return res.json({ success: true, data: [] });
+      const ids = (await User.find({ role: coerceRoleToTrack('trainee', req.track), specialtyId: req.user.specialtyId }).select('_id')).map(u => u._id);
+      filter = { status: 'supervisor_approved', trainee: { $in: ids } };
+    } else if (role === 'dio') {
+      filter = { status: 'forwarded_dio', track: req.track };
+    } else { // super_admin
+      filter = { status: { $in: ['pending', 'supervisor_approved', 'forwarded_dio'] } };
+    }
+    const items = await populateTrainee(Research.find(filter).populate('signedBy', 'name').populate('reviewedBy', 'name'))
+      .sort({ createdAt: -1 });
+    res.json({ success: true, data: items });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// PATCH /api/research/:id/approve — research supervisor approves AND signs
 router.patch('/:id/approve', auth, allowRoles('supervisor', 'super_admin'), async (req, res) => {
   try {
     const doc = await Research.findById(req.params.id);
     if (!doc) return res.status(404).json({ message: 'Not found' });
+    if (doc.status !== 'pending') {
+      return res.status(400).json({ message: 'This research is not awaiting supervisor approval' });
+    }
     if (!(await ensureSupervisorCanReview(req, doc))) {
       return res.status(403).json({ message: 'Access denied' });
     }
-    doc.status     = 'approved';
-    doc.reviewedBy = req.user._id;
-    doc.reviewedAt = new Date();
-    doc.reviewNote = req.body.note ? String(req.body.note).trim() : '';
+    const signatureName = String(req.body.signatureName || '').trim();
+    if (!signatureName) {
+      return res.status(400).json({ message: 'Type your full name to sign the approval' });
+    }
+    const now = new Date();
+    doc.status        = 'supervisor_approved';
+    doc.reviewedBy    = req.user._id;
+    doc.reviewedAt    = now;
+    doc.reviewNote    = req.body.note ? String(req.body.note).trim() : '';
+    doc.signedBy      = req.user._id;
+    doc.signedByName  = req.user.name;
+    doc.signatureName = signatureName;
+    doc.signedAt      = now;
     if (!doc.supervisor) doc.supervisor = req.user._id;
     await doc.save();
+
+    await AuditLog.create({
+      userId: req.user._id,
+      action: 'research_sign_approve',
+      targetId: doc._id,
+      targetModel: 'Research',
+      metadata: { signatureName, title: doc.title },
+      ip: clientIp(req)
+    }).catch(e => console.error('[AuditLog] research sign:', e.message));
+
     await Notification.create({
-      user:    doc.trainee,
-      message: `Your research "${doc.title}" was approved and moved to Publications.`
-    }).catch(e => console.error('[Notification] research approve:', e.message));
+      user: doc.trainee,
+      message: `Your research "${doc.title}" was approved and signed by ${req.user.name}; it was sent to the secretary.`,
+      category: 'research'
+    }).catch(() => {});
+    await notifySecretariesForTrainee(doc.trainee, doc.track, `A signed research "${doc.title}" is ready to forward to the DIO.`);
+
     res.json({ success: true, data: doc });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
-// PATCH /api/research/:id/reject — supervisor rejects
-router.patch('/:id/reject', auth, allowRoles('supervisor', 'super_admin'), async (req, res) => {
+// PATCH /api/research/:id/forward — secretary forwards a signed research to the DIO
+router.patch('/:id/forward', auth, allowRoles('secretary'), async (req, res) => {
   try {
     const doc = await Research.findById(req.params.id);
     if (!doc) return res.status(404).json({ message: 'Not found' });
-    if (!(await ensureSupervisorCanReview(req, doc))) {
-      return res.status(403).json({ message: 'Access denied' });
+    if (doc.status !== 'supervisor_approved') {
+      return res.status(400).json({ message: 'This research is not ready to forward' });
     }
-    doc.status     = 'rejected';
-    doc.reviewedBy = req.user._id;
-    doc.reviewedAt = new Date();
-    doc.reviewNote = req.body.note ? String(req.body.note).trim() : '';
-    if (!doc.supervisor) doc.supervisor = req.user._id;
+    const trainee = await User.findById(doc.trainee).select('specialtyId');
+    if (!trainee || !req.user.specialtyId || String(trainee.specialtyId) !== String(req.user.specialtyId)) {
+      return res.status(403).json({ message: 'This research is outside your specialty' });
+    }
+    doc.status      = 'forwarded_dio';
+    doc.forwardedBy = req.user._id;
+    doc.forwardedAt = new Date();
     await doc.save();
+
     await Notification.create({
-      user:    doc.trainee,
-      message: `Your research "${doc.title}" was not approved by your supervisor.`
-    }).catch(e => console.error('[Notification] research reject:', e.message));
+      user: doc.trainee,
+      message: `Your research "${doc.title}" was forwarded to the DIO for final approval.`,
+      category: 'research'
+    }).catch(() => {});
+    await notifyDios(doc.track, `A research "${doc.title}" is awaiting your final approval.`);
+
+    res.json({ success: true, data: doc });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// PATCH /api/research/:id/final-approve — DIO publishes the research
+router.patch('/:id/final-approve', auth, allowRoles('dio', 'super_admin'), async (req, res) => {
+  try {
+    const doc = await Research.findById(req.params.id);
+    if (!doc) return res.status(404).json({ message: 'Not found' });
+    if (doc.status !== 'forwarded_dio') {
+      return res.status(400).json({ message: 'This research is not awaiting final approval' });
+    }
+    if (req.user.role === 'dio' && doc.track !== req.track) {
+      return res.status(403).json({ message: 'This research belongs to a different track' });
+    }
+    doc.status          = 'approved';
+    doc.finalReviewedBy = req.user._id;
+    doc.finalReviewedAt = new Date();
+    await doc.save();
+
+    await Notification.create({
+      user: doc.trainee,
+      message: `Your research "${doc.title}" was approved and published. You can now set it public or private.`,
+      category: 'research'
+    }).catch(() => {});
+    if (doc.signedBy) {
+      await Notification.create({
+        user: doc.signedBy,
+        message: `Research you signed, "${doc.title}", was published by the DIO.`,
+        category: 'research'
+      }).catch(() => {});
+    }
+
+    res.json({ success: true, data: doc });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// PATCH /api/research/:id/reject — stage-aware rejection by the current owner
+router.patch('/:id/reject', auth, allowRoles('supervisor', 'secretary', 'dio', 'super_admin'), async (req, res) => {
+  try {
+    const doc = await Research.findById(req.params.id);
+    if (!doc) return res.status(404).json({ message: 'Not found' });
+    const role = req.user.role;
+    let stage = null;
+
+    if (role === 'super_admin') {
+      if (doc.status === 'pending') stage = 'supervisor';
+      else if (doc.status === 'supervisor_approved') stage = 'secretary';
+      else if (doc.status === 'forwarded_dio') stage = 'dio';
+    } else if (role === 'supervisor') {
+      if (doc.status === 'pending' && await ensureSupervisorCanReview(req, doc)) stage = 'supervisor';
+    } else if (role === 'secretary') {
+      if (doc.status === 'supervisor_approved') {
+        const trainee = await User.findById(doc.trainee).select('specialtyId');
+        if (trainee && req.user.specialtyId && String(trainee.specialtyId) === String(req.user.specialtyId)) stage = 'secretary';
+      }
+    } else if (role === 'dio') {
+      if (doc.status === 'forwarded_dio' && doc.track === req.track) stage = 'dio';
+    }
+
+    if (!stage) return res.status(403).json({ message: 'You cannot reject this research at its current stage' });
+
+    doc.status          = 'rejected';
+    doc.rejectedAtStage = stage;
+    doc.reviewNote      = req.body.note ? String(req.body.note).trim() : '';
+    if (stage === 'supervisor') { doc.reviewedBy = req.user._id; doc.reviewedAt = new Date(); }
+    await doc.save();
+
+    const who = stage === 'supervisor' ? 'your supervisor' : stage === 'secretary' ? 'the secretary' : 'the DIO';
+    await Notification.create({
+      user: doc.trainee,
+      message: `Your research "${doc.title}" was not approved by ${who}.`,
+      category: 'research'
+    }).catch(() => {});
+
     res.json({ success: true, data: doc });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

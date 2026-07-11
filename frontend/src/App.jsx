@@ -32,6 +32,7 @@ import ProgramDirectorEvaluations from './pages/ProgramDirectorEvaluations';
 import SecretaryTrainees from './pages/SecretaryTrainees';
 import SecretarySupervisors from './pages/SecretarySupervisors';
 import SecretaryHospitals from './pages/SecretaryHospitals';
+import SecretaryResearch from './pages/SecretaryResearch';
 
 import DioDashboard from './pages/DioDashboard';
 import DioUsers from './pages/DioUsers';
@@ -46,6 +47,7 @@ import DioDistributions from './pages/DioDistributions';
 import DioRotations from './pages/DioRotations';
 import DioAssignments from './pages/DioAssignments';
 import DioEvaluations from './pages/DioEvaluations';
+import DioApprovals from './pages/DioApprovals';
 import ConsultantMemo from './pages/ConsultantMemo';
 import ConsultantMemoAll from './pages/ConsultantMemoAll';
 import Initiatives from './pages/Initiatives';
@@ -173,6 +175,11 @@ export default function App() {
               <SecretaryHospitals />
             </ProtectedRoute>
           } />
+          <Route path="/secretary/research" element={
+            <ProtectedRoute allowedRoles={['secretary']}>
+              <SecretaryResearch />
+            </ProtectedRoute>
+          } />
 
           <Route path="/dio/dashboard" element={
             <ProtectedRoute allowedRoles={['dio']}>
@@ -245,6 +252,11 @@ export default function App() {
           <Route path="/dio/evaluations" element={
             <ProtectedRoute allowedRoles={['dio']}>
               <DioEvaluations />
+            </ProtectedRoute>
+          } />
+          <Route path="/dio/approvals" element={
+            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
+              <DioApprovals />
             </ProtectedRoute>
           } />
           <Route path="/consultant-memo" element={
@@ -397,6 +409,9 @@ export default function App() {
           <Route path="/basic/secretary/hospitals" element={
             <ProtectedRoute allowedRoles={['b_secretary']}><SecretaryHospitals /></ProtectedRoute>
           } />
+          <Route path="/basic/secretary/research" element={
+            <ProtectedRoute allowedRoles={['b_secretary']}><SecretaryResearch /></ProtectedRoute>
+          } />
 
           {/* Basic — DIO */}
           <Route path="/basic/dio/dashboard" element={
@@ -443,6 +458,9 @@ export default function App() {
           } />
           <Route path="/basic/dio/evaluations" element={
             <ProtectedRoute allowedRoles={['b_dio']}><DioEvaluations /></ProtectedRoute>
+          } />
+          <Route path="/basic/dio/approvals" element={
+            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioApprovals /></ProtectedRoute>
           } />
 
           {/* Basic — president */}

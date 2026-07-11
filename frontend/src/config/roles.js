@@ -66,6 +66,7 @@ const ADVANCED_LINKS = {
     { to: '/secretary/trainees',    key: 'trainees',    label: 'Trainees'    },
     { to: '/secretary/supervisors', key: 'supervisors', label: 'Supervisors' },
     { to: '/secretary/hospitals',   key: 'hospitals',   label: 'Hospitals'   },
+    { to: '/secretary/research',    key: 'research',    label: 'Research'    },
   ],
   dio: [
     { to: '/dio/dashboard',    key: 'dashboard',    label: 'Dashboard'    },
@@ -74,6 +75,7 @@ const ADVANCED_LINKS = {
     { to: '/dio/assignments',  key: 'assignments',  label: 'Assignments'  },
     { to: '/dio/evaluations',  key: 'evaluations',  label: 'Evaluations'  },
     { to: '/dio/certificates', key: 'certificates', label: 'Certificates' },
+    { to: '/dio/approvals',    key: 'approvals',    label: 'Promotions'   },
   ],
   asg1: [ { to: '/consultant-memo', label: 'مذكرة الاستشاري' } ],
   asg2: [ { to: '/consultant-memo', label: 'مذكرة الاستشاري' } ],

@@ -22,6 +22,7 @@ const nav = {
     'nav.secretary.supervisors':         'المشرفون',
     'nav.secretary.program_directors':   'مديرو البرامج',
     'nav.secretary.hospitals':           'المستشفيات',
+    'nav.secretary.research':            'الأبحاث',
 
     // dio
     'nav.dio.dashboard':                 'لوحة التحكم',
@@ -30,6 +31,7 @@ const nav = {
     'nav.dio.assignments':               'التوزيع والتدويرات',
     'nav.dio.evaluations':               'التقييمات',
     'nav.dio.certificates':              'الشهادات',
+    'nav.dio.approvals':                 'الموافقات',
     // legacy keys (routes kept for deep links / super_admin)
     'nav.dio.trainees':                  'المتدربون',
     'nav.dio.supervisors':               'المشرفون',
@@ -85,6 +87,7 @@ const nav = {
     'nav.secretary.supervisors':         'Supervisors',
     'nav.secretary.program_directors':   'Program Directors',
     'nav.secretary.hospitals':           'Hospitals',
+    'nav.secretary.research':            'Research',
 
     // dio
     'nav.dio.dashboard':                 'Dashboard',
@@ -93,6 +96,7 @@ const nav = {
     'nav.dio.assignments':               'Assignments',
     'nav.dio.evaluations':               'Evaluations',
     'nav.dio.certificates':              'Certificates',
+    'nav.dio.approvals':                 'Promotions',
     // legacy keys (routes kept for deep links / super_admin)
     'nav.dio.trainees':                  'Trainees',
     'nav.dio.supervisors':               'Supervisors',

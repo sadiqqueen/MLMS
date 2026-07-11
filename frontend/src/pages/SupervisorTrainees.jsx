@@ -52,6 +52,17 @@ const STRINGS = {
     reject:          'رفض',
     approved:        'معتمد',
     rejected:        'مرفوض',
+    reviewInQueue:   'راجعه من قائمة "أبحاث بانتظار مراجعتك" بالأعلى',
+    researchQueueTitle: 'أبحاث بانتظار مراجعتك',
+    approveSign:     'اعتماد وتوقيع',
+    signTitle:       'اعتماد وتوقيع البحث',
+    signPrompt:      'اكتب اسمك الكامل للتوقيع على الاعتماد',
+    signNamePh:      'الاسم الكامل',
+    noteOptional:    'ملاحظة (اختياري)',
+    rejectReason:    'سبب الرفض (اختياري)',
+    submit:          'إرسال',
+    cancel:          'إلغاء',
+    by:              'بواسطة',
     loading:         'جارٍ التحميل…',
     graded:          'مُقيّم',
     pending:         'قيد المراجعة',
@@ -98,6 +109,17 @@ const STRINGS = {
     reject:          'Reject',
     approved:        'Approved',
     rejected:        'Rejected',
+    reviewInQueue:   'Review it from "Research awaiting your review" above',
+    researchQueueTitle: 'Research awaiting your review',
+    approveSign:     'Approve & Sign',
+    signTitle:       'Approve & Sign Research',
+    signPrompt:      'Type your full name to sign the approval',
+    signNamePh:      'Full name',
+    noteOptional:    'Note (optional)',
+    rejectReason:    'Reason for rejection (optional)',
+    submit:          'Submit',
+    cancel:          'Cancel',
+    by:              'by',
     loading:         'Loading…',
     graded:          'Graded',
     pending:         'Pending',
@@ -205,13 +227,6 @@ function TraineeModal({ dist, onClose, t }) {
     return () => { alive = false; };
   }, [traineeId]);
 
-  async function reviewResearch(id, action) {
-    try {
-      const res = await api.patch(`/api/research/${id}/${action}`);
-      const updated = res.data?.data || res.data;
-      setResearch(prev => prev.map(x => x._id === id ? { ...x, ...updated } : x));
-    } catch { /* ignore */ }
-  }
 
   const sectionTitle = {
     fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
@@ -463,16 +478,12 @@ function TraineeModal({ dist, onClose, t }) {
                         {[r.authors, r.journal].filter(Boolean).join(' · ')}
                       </div>
                     )}
+                    {r.signedByName && (
+                      <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 2 }}>✍ Signed by {r.signedByName}</div>
+                    )}
                     {r.status === 'pending' && (
-                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                        <button type="button" onClick={() => reviewResearch(r._id, 'approve')}
-                          style={{ padding: '5px 12px', fontSize: 12, fontWeight: 700, borderRadius: 7, border: 'none', cursor: 'pointer', background: 'var(--success-fg)', color: '#fff' }}>
-                          {t('approve')}
-                        </button>
-                        <button type="button" onClick={() => reviewResearch(r._id, 'reject')}
-                          style={{ padding: '5px 12px', fontSize: 12, fontWeight: 700, borderRadius: 7, cursor: 'pointer', background: 'var(--surface-2)', color: 'var(--danger-fg)', border: '1px solid var(--border)' }}>
-                          {t('reject')}
-                        </button>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, fontStyle: 'italic' }}>
+                        {t('reviewInQueue')}
                       </div>
                     )}
                   </div>
@@ -500,6 +511,67 @@ function TraineeModal({ dist, onClose, t }) {
   );
 }
 
+// Approve & Sign modal — the research supervisor types their full name to sign.
+function SignModal({ item, t, onClose, onSigned }) {
+  const [name, setName] = useState('');
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const h = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', h);
+    return () => document.removeEventListener('keydown', h);
+  }, [onClose]);
+
+  async function submit() {
+    if (!name.trim()) { setError(t('signPrompt')); return; }
+    setSaving(true); setError('');
+    try {
+      await api.patch(`/api/research/${item._id}/approve`, { signatureName: name.trim(), note: note.trim() });
+      onSigned(item._id);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed');
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'var(--overlay)', zIndex: 2600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, width: '100%', maxWidth: 460, boxShadow: '0 20px 60px var(--shadow)' }}>
+        <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border)', fontSize: 16, fontWeight: 800, color: 'var(--text)' }}>
+          {t('signTitle')}
+        </div>
+        <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ fontSize: 13, color: 'var(--text-2)' }}>{item.title}</div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 6 }}>{t('signPrompt')}</label>
+            <input value={name} onChange={e => { setName(e.target.value); setError(''); }} placeholder={t('signNamePh')}
+              style={{ width: '100%', boxSizing: 'border-box', height: 42, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 14 }} />
+            {/* live cursive preview so the typed name reads as a signature */}
+            {name.trim() && (
+              <div style={{ marginTop: 8, fontFamily: 'Georgia, "Times New Roman", serif', fontStyle: 'italic', fontSize: 22, color: 'var(--brand-secondary)', borderBottom: '1px solid var(--border)', paddingBottom: 4 }}>
+                /s/ {name.trim()}
+              </div>
+            )}
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 6 }}>{t('noteOptional')}</label>
+            <textarea value={note} onChange={e => setNote(e.target.value)}
+              style={{ width: '100%', boxSizing: 'border-box', minHeight: 70, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 14, resize: 'vertical', fontFamily: 'inherit' }} />
+          </div>
+          {error && <div style={{ color: 'var(--danger-fg)', fontSize: 13 }}>{error}</div>}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <button className="btn-outline" onClick={onClose}>{t('cancel')}</button>
+            <button className="btn-purple" onClick={submit} disabled={saving}>{saving ? '…' : t('approveSign')}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SupervisorTrainees() {
   const { user: me }   = useAuth();
   const { lang }       = usePrefs();
@@ -511,6 +583,22 @@ export default function SupervisorTrainees() {
   const [search,   setSearch  ] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selected, setSelected] = useState(null);
+  const [queue,    setQueue   ] = useState([]);
+  const [signItem, setSignItem] = useState(null);
+
+  useEffect(() => {
+    api.get('/api/research/queue')
+      .then(r => setQueue(Array.isArray(r.data) ? r.data : (r.data?.data || [])))
+      .catch(() => {});
+  }, []);
+
+  async function rejectResearch(id) {
+    const note = window.prompt(t('rejectReason')) ?? '';
+    try {
+      await api.patch(`/api/research/${id}/reject`, { note });
+      setQueue(prev => prev.filter(x => x._id !== id));
+    } catch { /* ignore */ }
+  }
 
   useEffect(() => {
     api.get('/api/supervisor/trainees')
@@ -603,6 +691,41 @@ export default function SupervisorTrainees() {
             </div>
           ))}
         </div>
+
+        {/* Research awaiting the supervisor's signature/approval */}
+        {queue.length > 0 && (
+          <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 18px', marginBottom:20 }}>
+            <div style={{ fontSize:14, fontWeight:800, color:'var(--brand-secondary)', marginBottom:12 }}>
+              {t('researchQueueTitle')} <span className="badge badge-blue" style={{ marginInlineStart:6 }}>{queue.length}</span>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {queue.map(r => (
+                <div key={r._id} style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', border:'1px solid var(--border-soft)', borderRadius:10, padding:'10px 12px', background:'var(--surface-2)' }}>
+                  <div style={{ flex:1, minWidth:180 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>{r.title}</div>
+                    <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>
+                      {t('by')} {r.trainee?.name || '—'}{[r.authors, r.journal].filter(Boolean).length ? ` · ${[r.authors, r.journal].filter(Boolean).join(' · ')}` : ''}
+                    </div>
+                  </div>
+                  {r.fileUrl && (
+                    <a href={`${API_BASE}${r.fileUrl}`} target="_blank" rel="noreferrer" title={t('view')} aria-label={t('view')}
+                      style={{ width:30, height:30, borderRadius:7, background:'var(--surface)', color:'var(--text-2)', border:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', textDecoration:'none' }}>
+                      <IconEye size={15} />
+                    </a>
+                  )}
+                  <button type="button" onClick={() => setSignItem(r)}
+                    style={{ padding:'6px 12px', fontSize:12, fontWeight:700, borderRadius:7, border:'none', cursor:'pointer', background:'var(--success-fg)', color:'#fff' }}>
+                    {t('approveSign')}
+                  </button>
+                  <button type="button" onClick={() => rejectResearch(r._id)}
+                    style={{ padding:'6px 12px', fontSize:12, fontWeight:700, borderRadius:7, cursor:'pointer', background:'var(--surface)', color:'var(--danger-fg)', border:'1px solid var(--border)' }}>
+                    {t('reject')}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div style={{ marginBottom:14 }}>
           <input
@@ -730,6 +853,15 @@ export default function SupervisorTrainees() {
 
         {selected && (
           <TraineeModal dist={selected} onClose={() => setSelected(null)} t={t} />
+        )}
+
+        {signItem && (
+          <SignModal
+            item={signItem}
+            t={t}
+            onClose={() => setSignItem(null)}
+            onSigned={id => { setQueue(prev => prev.filter(x => x._id !== id)); setSignItem(null); }}
+          />
         )}
 
         <style>{`
