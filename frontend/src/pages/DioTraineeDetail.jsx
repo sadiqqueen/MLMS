@@ -461,6 +461,82 @@ function CertificatesTable({ certificates }) {
   );
 }
 
+// Trainee-uploaded courses & certificates (self-reported portfolio items).
+function CoursesTable({ courses }) {
+  const rows = safeArr(courses);
+  return (
+    <section className="admin-card">
+      <div className="admin-card-header">
+        <div className="admin-card-title">Courses & Certificates (uploaded by trainee)</div>
+      </div>
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Title</th><th>Type</th><th>Issuer</th><th>Date</th><th>File</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr><td colSpan={5} className="admin-empty">No uploaded courses or certificates</td></tr>
+            ) : rows.map((c, index) => (
+              <tr key={c?._id || index}>
+                <td style={{ fontWeight:700, color:'var(--brand-secondary)' }}>{c?.title || '-'}</td>
+                <td>{c?.kind === 'course' ? 'Course' : 'Certificate'}</td>
+                <td>{c?.issuer || '-'}</td>
+                <td>{fmtDate(c?.completedDate || c?.createdAt)}</td>
+                <td>
+                  {c?.fileUrl
+                    ? <a href={`${API_BASE}${c.fileUrl}`} target="_blank" rel="noreferrer" style={{ color:'var(--link)', fontWeight:700, fontSize:12 }}>Open</a>
+                    : <span style={{ color:'var(--text-muted)' }}>-</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// Public publications (approved researches the trainee marked Public).
+function PublicationsTable({ publications }) {
+  const rows = safeArr(publications);
+  return (
+    <section className="admin-card">
+      <div className="admin-card-header">
+        <div className="admin-card-title">Publications (public)</div>
+      </div>
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Title</th><th>Authors</th><th>Journal / Venue</th><th>Date</th><th>File</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr><td colSpan={5} className="admin-empty">No public publications</td></tr>
+            ) : rows.map((p, index) => (
+              <tr key={p?._id || index}>
+                <td style={{ fontWeight:700, color:'var(--brand-secondary)' }}>{p?.title || '-'}</td>
+                <td>{p?.authors || '-'}</td>
+                <td>{p?.journal || '-'}</td>
+                <td>{fmtDate(p?.reviewedAt || p?.createdAt)}</td>
+                <td>
+                  {p?.fileUrl
+                    ? <a href={`${API_BASE}${p.fileUrl}`} target="_blank" rel="noreferrer" style={{ color:'var(--link)', fontWeight:700, fontSize:12 }}>Open</a>
+                    : <span style={{ color:'var(--text-muted)' }}>-</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 // ── Rotation Timeline section ────────────────────────────────────────────
 const ROT_STATUS_STYLE = {
   upcoming:  { bg:'var(--info-bg)', color:'var(--info-fg)', label:'Upcoming' },
@@ -566,6 +642,8 @@ export default function DioTraineeDetail() {
   const bp = useBasePath();
   const [data, setData] = useState(null);
   const [rotations, setRotations] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [publications, setPublications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [gradeModal, setGradeModal] = useState(null);
@@ -585,12 +663,16 @@ export default function DioTraineeDetail() {
     return Promise.all([
       api.get(`/api/dio/trainees/${id}/details`),
       api.get(`/api/rotations/student/${id}`),
-    ]).then(([detailsRes, rotationsRes]) => {
+      api.get(`/api/trainee-courses/trainee/${id}`).catch(() => ({ data: { data: [] } })),
+      api.get(`/api/research/trainee/${id}`).catch(() => ({ data: { data: [] } })),
+    ]).then(([detailsRes, rotationsRes, coursesRes, pubsRes]) => {
       setData(detailsRes.data?.data || detailsRes.data);
       const rots = Array.isArray(rotationsRes.data) ? rotationsRes.data : [];
       // Sort: current first, then upcoming, then completed, then cancelled
       const order = { current:0, upcoming:1, completed:2, cancelled:3 };
       setRotations([...rots].sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9)));
+      setCourses(safeArr(coursesRes.data?.data || coursesRes.data));
+      setPublications(safeArr(pubsRes.data?.data || pubsRes.data));
     }).catch(err => setError(err.response?.data?.message || 'Failed to load trainee details'))
     .finally(() => {
       if (showPageLoading) setLoading(false);
@@ -641,7 +723,7 @@ export default function DioTraineeDetail() {
     <>
       <Navbar />
       <main className="admin-main">
-        <button className="btn-outline" onClick={() => navigate(bp + '/dio/trainees')} style={{ marginBottom:16, display:'inline-flex', alignItems:'center', gap:6 }}><IconBack size={15} /> Back</button>
+        <button className="btn-outline" onClick={() => navigate(bp + '/dio/users')} style={{ marginBottom:16, display:'inline-flex', alignItems:'center', gap:6 }}><IconBack size={15} /> Back</button>
         <div style={{ background:'var(--danger-bg)', color:'var(--danger-fg)', borderRadius:12, padding:18 }}>{error}</div>
       </main>
     </>
@@ -662,7 +744,7 @@ export default function DioTraineeDetail() {
         {/* Header row */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap', marginBottom:18 }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <button className="btn-outline" style={{ display:'inline-flex', alignItems:'center', gap:6 }} onClick={() => navigate(bp + '/dio/trainees')}><IconBack size={15} /> Back</button>
+            <button className="btn-outline" style={{ display:'inline-flex', alignItems:'center', gap:6 }} onClick={() => navigate(bp + '/dio/users')}><IconBack size={15} /> Back</button>
             <div>
               <div style={{ fontSize:22, fontWeight:900, color:'var(--brand-secondary)' }}>{trainee.name || 'Trainee'}</div>
               <div style={{ fontSize:13, color:'var(--text-muted)' }}>{trainee.studentId || '-'} · {trainee.email || '-'}</div>
@@ -682,7 +764,7 @@ export default function DioTraineeDetail() {
           </div>
           <button className="btn-action edit"
             style={{ display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
-            onClick={() => navigate(bp + '/dio/trainees', { state: { editId: trainee._id } })}>
+            onClick={() => navigate(bp + `/dio/users?edit=${trainee._id}`)}>
             <IconPencil size={15} /> Edit Trainee
           </button>
           <button className="btn-action edit"
@@ -761,6 +843,8 @@ export default function DioTraineeDetail() {
 
         <EvaluationsTable evaluations={evaluations} onAdd={() => setEvaluationModal(true)} />
         <CertificatesTable certificates={certificates} />
+        <CoursesTable courses={courses} />
+        <PublicationsTable publications={publications} />
 
         {REPORT_TYPES.map(type => (
           <ReportsTable

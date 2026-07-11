@@ -46,7 +46,10 @@ const nav = {
     // trainee
     'nav.trainee.timeline':              'الجدول الزمني',
     'nav.trainee.reports':               'تقاريري',
-    'nav.trainee.grades':                'الدرجات',
+    'nav.trainee.grades':                'ملف الإنجاز',
+    'nav.trainee.courses':               'الشهادات والدورات',
+    'nav.trainee.research':              'الأبحاث والمنشورات',
+    'nav.trainee.notifications':         'إشعارات مدير البرنامج',
 
     // president
     'nav.president.trainees':            'المتدربون',
@@ -106,7 +109,10 @@ const nav = {
     // trainee
     'nav.trainee.timeline':              'Timeline',
     'nav.trainee.reports':               'My Reports',
-    'nav.trainee.grades':                'Grades',
+    'nav.trainee.grades':                'Portfolio',
+    'nav.trainee.courses':               'Certificates',
+    'nav.trainee.research':              'Research',
+    'nav.trainee.notifications':         'PD Notifications',
 
     // president
     'nav.president.trainees':            'Trainees',

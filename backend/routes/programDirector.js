@@ -211,8 +211,9 @@ router.patch('/reports/:id/grade',
         .populate('gradedBy', 'name initials');
 
       await Notification.create({
-        user:    report.student,
-        message: `Your final report has been graded by the Program Director: ${report.grade}`
+        user:     report.student,
+        message:  `Your final report has been graded by the Program Director: ${report.grade}`,
+        category: 'program_director'
       });
 
       res.json({ success: true, data: populated });
@@ -303,7 +304,8 @@ router.post('/trainees/:id/evaluations', auth, allowRoles(...PD), async (req, re
 
     await Notification.create({
       user: trainee._id,
-      message: `You have a new evaluation submitted by ${req.user.name}`
+      message: `You have a new evaluation submitted by ${req.user.name}`,
+      category: 'program_director'
     }).catch(err => console.error('[Notification] Failed to write PD evaluation notice:', err.message));
 
     const populated = await Evaluation.findById(evaluation._id)

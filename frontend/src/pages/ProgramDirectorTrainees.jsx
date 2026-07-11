@@ -35,11 +35,25 @@ function getHospitalName(trainee) {
 }
 
 function TraineeModal({ trainee, distributions, onClose }) {
+  const [courses, setCourses] = useState([]);
+  const [publications, setPublications] = useState([]);
+
   useEffect(() => {
     const h = e => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', h);
     return () => document.removeEventListener('keydown', h);
   }, [onClose]);
+
+  useEffect(() => {
+    let alive = true;
+    api.get(`/api/trainee-courses/trainee/${trainee._id}`)
+      .then(r => { if (alive) setCourses(Array.isArray(r.data) ? r.data : (r.data?.data || [])); })
+      .catch(() => {});
+    api.get(`/api/research/trainee/${trainee._id}`)
+      .then(r => { if (alive) setPublications(Array.isArray(r.data) ? r.data : (r.data?.data || [])); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [trainee._id]);
 
   const myDists = distributions.filter(d => {
     const tid = d.traineeId?._id || d.traineeId || d.student?._id || d.student;
@@ -146,6 +160,66 @@ function TraineeModal({ trainee, distributions, onClose }) {
               </div>
             );
           })}
+
+          {/* Courses & Certificates (uploaded by trainee) */}
+          <div style={{
+            fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
+            textTransform: 'uppercase', letterSpacing: '.05em', margin: '20px 0 10px'
+          }}>
+            Courses & Certificates
+          </div>
+          {courses.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '4px 0' }}>
+              No courses or certificates uploaded
+            </div>
+          ) : courses.map(c => (
+            <div key={c._id} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+              background: 'var(--surface-2)', borderRadius: 10, padding: '10px 14px', marginBottom: 8
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--brand-secondary)' }}>{c.title}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                  {c.kind === 'course' ? 'Course' : 'Certificate'}
+                  {c.issuer ? ` · ${c.issuer}` : ''}
+                  {c.completedDate ? ` · ${fmtDate(c.completedDate)}` : ''}
+                </div>
+              </div>
+              {c.fileUrl && (
+                <a href={`${API_BASE}${c.fileUrl}`} target="_blank" rel="noreferrer"
+                  style={{ fontSize: 12, fontWeight: 700, color: 'var(--link)', flexShrink: 0 }}>Open</a>
+              )}
+            </div>
+          ))}
+
+          {/* Public Publications */}
+          <div style={{
+            fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
+            textTransform: 'uppercase', letterSpacing: '.05em', margin: '20px 0 10px'
+          }}>
+            Publications
+          </div>
+          {publications.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '4px 0' }}>
+              No public publications
+            </div>
+          ) : publications.map(p => (
+            <div key={p._id} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+              background: 'var(--surface-2)', borderRadius: 10, padding: '10px 14px', marginBottom: 8
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--brand-secondary)' }}>{p.title}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                  {[p.authors, p.journal].filter(Boolean).join(' · ') || 'Publication'}
+                </div>
+              </div>
+              {p.fileUrl && (
+                <a href={`${API_BASE}${p.fileUrl}`} target="_blank" rel="noreferrer"
+                  style={{ fontSize: 12, fontWeight: 700, color: 'var(--link)', flexShrink: 0 }}>Open</a>
+              )}
+            </div>
+          ))}
         </div>
 
         <div style={{

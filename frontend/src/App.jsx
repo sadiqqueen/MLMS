@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { PrefsProvider } from './context/PrefsContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -10,6 +10,9 @@ import Reports from './pages/Reports';
 import Grades from './pages/Grades';
 import Timeline from './pages/Timeline';
 import Profile from './pages/Profile';
+import CertificatesCourses from './pages/CertificatesCourses';
+import Research from './pages/Research';
+import Notifications from './pages/Notifications';
 
 import AdminDashboard from './pages/AdminDashboard';
 import Users from './pages/Users';
@@ -34,7 +37,6 @@ import DioDashboard from './pages/DioDashboard';
 import DioUsers from './pages/DioUsers';
 import DioHospitals from './pages/DioHospitals';
 import DioHospitalDetail from './pages/DioHospitalDetail';
-import DioTrainees from './pages/DioTrainees';
 import DioTraineeDetail from './pages/DioTraineeDetail';
 import DioSupervisors from './pages/DioSupervisors';
 import DioProgramDirectors from './pages/DioProgramDirectors';
@@ -69,6 +71,14 @@ function RootRedirect() {
   return null;
 }
 
+// Backward-compat redirect for the old trainee-card URL: the DIO trainee card
+// now lives under the Users section (/dio/users/:id). <Navigate> can't
+// interpolate :id, so we read it from the params here.
+function LegacyTraineeRedirect({ prefix = '' }) {
+  const { id } = useParams();
+  return <Navigate to={`${prefix}/dio/users/${id}`} replace />;
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -93,6 +103,21 @@ export default function App() {
           <Route path="/grades" element={
             <ProtectedRoute allowedRoles={['trainee']}>
               <Grades />
+            </ProtectedRoute>
+          } />
+          <Route path="/certificates-courses" element={
+            <ProtectedRoute allowedRoles={['trainee']}>
+              <CertificatesCourses />
+            </ProtectedRoute>
+          } />
+          <Route path="/research" element={
+            <ProtectedRoute allowedRoles={['trainee']}>
+              <Research />
+            </ProtectedRoute>
+          } />
+          <Route path="/notifications" element={
+            <ProtectedRoute allowedRoles={['trainee']}>
+              <Notifications />
             </ProtectedRoute>
           } />
 
@@ -159,6 +184,11 @@ export default function App() {
               <DioUsers />
             </ProtectedRoute>
           } />
+          <Route path="/dio/users/:id" element={
+            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
+              <DioTraineeDetail />
+            </ProtectedRoute>
+          } />
           <Route path="/dio/hospitals" element={
             <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
               <DioHospitals />
@@ -169,16 +199,9 @@ export default function App() {
               <DioHospitalDetail />
             </ProtectedRoute>
           } />
-          <Route path="/dio/trainees" element={
-            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
-              <DioTrainees />
-            </ProtectedRoute>
-          } />
-          <Route path="/dio/trainees/:id" element={
-            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
-              <DioTraineeDetail />
-            </ProtectedRoute>
-          } />
+          {/* Legacy trainee routes — consolidated into the DIO Users section */}
+          <Route path="/dio/trainees" element={<Navigate to="/dio/users" replace />} />
+          <Route path="/dio/trainees/:id" element={<LegacyTraineeRedirect />} />
           <Route path="/dio/supervisors" element={
             <ProtectedRoute allowedRoles={['dio']}>
               <DioSupervisors />
@@ -329,6 +352,15 @@ export default function App() {
           <Route path="/basic/grades" element={
             <ProtectedRoute allowedRoles={['b_trainee']}><Grades /></ProtectedRoute>
           } />
+          <Route path="/basic/certificates-courses" element={
+            <ProtectedRoute allowedRoles={['b_trainee']}><CertificatesCourses /></ProtectedRoute>
+          } />
+          <Route path="/basic/research" element={
+            <ProtectedRoute allowedRoles={['b_trainee']}><Research /></ProtectedRoute>
+          } />
+          <Route path="/basic/notifications" element={
+            <ProtectedRoute allowedRoles={['b_trainee']}><Notifications /></ProtectedRoute>
+          } />
 
           {/* Basic — supervisor */}
           <Route path="/basic/supervisor/trainees" element={
@@ -373,18 +405,18 @@ export default function App() {
           <Route path="/basic/dio/users" element={
             <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioUsers /></ProtectedRoute>
           } />
+          <Route path="/basic/dio/users/:id" element={
+            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioTraineeDetail /></ProtectedRoute>
+          } />
           <Route path="/basic/dio/hospitals" element={
             <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioHospitals /></ProtectedRoute>
           } />
           <Route path="/basic/dio/hospitals/:id" element={
             <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioHospitalDetail /></ProtectedRoute>
           } />
-          <Route path="/basic/dio/trainees" element={
-            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioTrainees /></ProtectedRoute>
-          } />
-          <Route path="/basic/dio/trainees/:id" element={
-            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioTraineeDetail /></ProtectedRoute>
-          } />
+          {/* Legacy trainee routes — consolidated into the DIO Users section */}
+          <Route path="/basic/dio/trainees" element={<Navigate to="/basic/dio/users" replace />} />
+          <Route path="/basic/dio/trainees/:id" element={<LegacyTraineeRedirect prefix="/basic" />} />
           <Route path="/basic/dio/supervisors" element={
             <ProtectedRoute allowedRoles={['b_dio']}><DioSupervisors /></ProtectedRoute>
           } />

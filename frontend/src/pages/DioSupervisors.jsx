@@ -389,7 +389,7 @@ export default function DioSupervisors() {
                             <div style={{ display:'flex', flexDirection:'column', gap:4, maxHeight:180, overflowY:'auto' }}>
                               {list.map(t => (
                                 <button type="button" key={t._id}
-                                  onClick={() => navigate(bp + `/dio/trainees/${t._id}`)}
+                                  onClick={() => navigate(bp + `/dio/users/${t._id}`)}
                                   aria-label={`View ${t.name}`}
                                   style={{ display:'flex', alignItems:'center', gap:8, width:'100%', textAlign:'left',
                                     background:'var(--surface-2)', border:'1px solid var(--border-soft)', borderRadius:8,

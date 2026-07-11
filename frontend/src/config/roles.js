@@ -85,7 +85,10 @@ const ADVANCED_LINKS = {
   trainee: [
     { to: '/timeline', key: 'timeline', label: 'Timeline' },
     { to: '/reports',  key: 'reports',  label: 'Reports'  },
-    { to: '/grades',   key: 'grades',   label: 'Grades'   },
+    { to: '/grades',   key: 'grades',   label: 'Portfolio' },
+    { to: '/certificates-courses', key: 'courses', label: 'Certificates' },
+    { to: '/research', key: 'research', label: 'Research' },
+    { to: '/notifications', key: 'notifications', label: 'Notifications' },
   ],
   president: [
     { to: '/president/trainees',          key: 'trainees',          label: 'Trainees'       },

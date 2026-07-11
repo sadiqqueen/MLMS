@@ -8,7 +8,7 @@
 // built entirely from data the list endpoints already return (the DIO is
 // authorized for those), so no per-record fetch and no "Access Denied".
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import useBasePath from '../hooks/useBasePath';
 import Navbar from '../components/Navbar';
 import Toast from '../components/Toast';
@@ -287,6 +287,7 @@ function UserViewModal({ user, onClose, onFullProfile }) {
 // ── Main page ──────────────────────────────────────────────────────────────
 export default function DioUsers() {
   const navigate = useNavigate();
+  const location = useLocation();
   const bp = useBasePath();
 
   const [users,        setUsers       ] = useState([]);
@@ -339,6 +340,17 @@ export default function DioUsers() {
   }, [showInactive]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Deep-link ?edit=<id> (e.g. from the trainee card's "Edit Trainee" action):
+  // once the user lists are loaded, open the edit modal for that user, then
+  // strip the param so a refresh doesn't reopen it.
+  useEffect(() => {
+    const editId = new URLSearchParams(location.search).get('edit');
+    if (!editId || loading) return;
+    const target = users.find(u => u._id === editId && CREATABLE_ROLES.includes(u.role));
+    if (target) setFormModal({ user: target });
+    navigate(location.pathname, { replace: true });
+  }, [location.search, location.pathname, loading, users, navigate]);
 
   // Role counts across the loaded set (respecting show-inactive).
   const roleCounts = useMemo(() => {
@@ -570,7 +582,7 @@ export default function DioUsers() {
           <UserViewModal
             user={viewUser}
             onClose={() => setViewUser(null)}
-            onFullProfile={() => { const id = viewUser._id; setViewUser(null); navigate(bp + `/dio/trainees/${id}`); }}
+            onFullProfile={() => { const id = viewUser._id; setViewUser(null); navigate(bp + `/dio/users/${id}`); }}
           />
         )}
         {confirmDeact && (

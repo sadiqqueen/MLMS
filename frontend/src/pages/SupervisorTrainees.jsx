@@ -42,8 +42,16 @@ const STRINGS = {
     weeks:           'أسابيع',
     reports:         'التقارير',
     evaluations:     'التقييمات',
+    courses:         'الشهادات والدورات',
+    research:        'الأبحاث والمنشورات',
     noReports:       'لا توجد تقارير بعد',
     noEvaluations:   'لا توجد تقييمات بعد',
+    noCourses:       'لا توجد شهادات أو دورات',
+    noResearch:      'لا توجد أبحاث',
+    approve:         'اعتماد',
+    reject:          'رفض',
+    approved:        'معتمد',
+    rejected:        'مرفوض',
     loading:         'جارٍ التحميل…',
     graded:          'مُقيّم',
     pending:         'قيد المراجعة',
@@ -80,8 +88,16 @@ const STRINGS = {
     weeks:           'weeks',
     reports:         'Reports',
     evaluations:     'Evaluations',
+    courses:         'Courses & Certificates',
+    research:        'Researches & Publications',
     noReports:       'No reports yet',
     noEvaluations:   'No evaluations yet',
+    noCourses:       'No courses or certificates uploaded',
+    noResearch:      'No researches submitted',
+    approve:         'Approve',
+    reject:          'Reject',
+    approved:        'Approved',
+    rejected:        'Rejected',
     loading:         'Loading…',
     graded:          'Graded',
     pending:         'Pending',
@@ -158,6 +174,8 @@ function TraineeModal({ dist, onClose, t }) {
   const traineeId = getTraineeId(dist);
   const [reports,    setReports]    = useState([]);
   const [evals,      setEvals]      = useState([]);
+  const [courses,    setCourses]    = useState([]);
+  const [research,   setResearch]   = useState([]);
   const [detLoading, setDetLoading] = useState(true);
 
   useEffect(() => {
@@ -173,15 +191,27 @@ function TraineeModal({ dist, onClose, t }) {
     Promise.all([
       api.get(`/api/reports/student/${traineeId}`).then(r => r.data).catch(() => []),
       api.get(`/api/evaluations/student/${traineeId}`).then(r => r.data).catch(() => []),
+      api.get(`/api/trainee-courses/trainee/${traineeId}`).then(r => r.data).catch(() => []),
+      api.get(`/api/research/trainee/${traineeId}`).then(r => r.data).catch(() => []),
     ])
-      .then(([rep, ev]) => {
+      .then(([rep, ev, crs, rsh]) => {
         if (!alive) return;
         setReports(Array.isArray(rep) ? rep : (rep?.data || []));
         setEvals(Array.isArray(ev) ? ev : (ev?.data || []));
+        setCourses(Array.isArray(crs) ? crs : (crs?.data || []));
+        setResearch(Array.isArray(rsh) ? rsh : (rsh?.data || []));
       })
       .finally(() => { if (alive) setDetLoading(false); });
     return () => { alive = false; };
   }, [traineeId]);
+
+  async function reviewResearch(id, action) {
+    try {
+      const res = await api.patch(`/api/research/${id}/${action}`);
+      const updated = res.data?.data || res.data;
+      setResearch(prev => prev.map(x => x._id === id ? { ...x, ...updated } : x));
+    } catch { /* ignore */ }
+  }
 
   const sectionTitle = {
     fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
@@ -354,6 +384,100 @@ function TraineeModal({ dist, onClose, t }) {
                   </button>
                 </div>
               ))
+            )}
+          </div>
+
+          {/* Courses & Certificates (uploaded by trainee) */}
+          <div style={{ marginTop: 20 }}>
+            <div style={sectionTitle}>{t('courses')}</div>
+            {detLoading ? (
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>{t('loading')}</div>
+            ) : courses.length === 0 ? (
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>{t('noCourses')}</div>
+            ) : (
+              courses.map(c => (
+                <div key={c._id} style={detailRow}>
+                  <span className="status-ic status-ic-green" title={c.kind === 'course' ? 'Course' : 'Certificate'}><IconCheck size={15} /></span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {c.title || '—'}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                      {c.kind === 'course' ? 'Course' : 'Certificate'}
+                      {c.issuer ? ` · ${c.issuer}` : ''}
+                      {c.completedDate ? ` · ${fmtDate(c.completedDate)}` : ''}
+                    </div>
+                  </div>
+                  {c.fileUrl ? (
+                    <a href={`${API_BASE}${c.fileUrl}`} target="_blank" rel="noreferrer"
+                      title={t('view')} aria-label={t('view')}
+                      style={{
+                        width: 28, height: 28, borderRadius: 7, background: 'var(--surface-2)',
+                        color: 'var(--text-2)', border: '1px solid var(--border)', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none'
+                      }}>
+                      <IconEye size={15} />
+                    </a>
+                  ) : (
+                    <span style={{ flexShrink: 0, fontSize: 13, color: 'var(--text-muted)' }}>—</span>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Researches & Publications (approve pending; view publications) */}
+          <div style={{ marginTop: 20 }}>
+            <div style={sectionTitle}>{t('research')}</div>
+            {detLoading ? (
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>{t('loading')}</div>
+            ) : research.length === 0 ? (
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>{t('noResearch')}</div>
+            ) : (
+              research.map(r => {
+                const st = r.status === 'approved'
+                  ? { bg: 'var(--success-bg)', color: 'var(--success-fg)', label: t('approved') }
+                  : r.status === 'rejected'
+                    ? { bg: 'var(--danger-bg)', color: 'var(--danger-fg)', label: t('rejected') }
+                    : { bg: 'var(--warning-bg)', color: 'var(--warning-fg)', label: t('pending') };
+                return (
+                  <div key={r._id} style={{ padding: '9px 0', borderBottom: '1px solid var(--border-soft)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', flex: 1, minWidth: 120 }}>{r.title}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: st.bg, color: st.color }}>{st.label}</span>
+                      {r.status === 'approved' && (
+                        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>
+                          {r.visibility === 'public' ? '· Public' : '· Private'}
+                        </span>
+                      )}
+                      {r.fileUrl && (
+                        <a href={`${API_BASE}${r.fileUrl}`} target="_blank" rel="noreferrer"
+                          title={t('view')} aria-label={t('view')}
+                          style={{ width: 26, height: 26, borderRadius: 6, background: 'var(--surface-2)', color: 'var(--text-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
+                          <IconEye size={14} />
+                        </a>
+                      )}
+                    </div>
+                    {(r.journal || r.authors) && (
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                        {[r.authors, r.journal].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
+                    {r.status === 'pending' && (
+                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                        <button type="button" onClick={() => reviewResearch(r._id, 'approve')}
+                          style={{ padding: '5px 12px', fontSize: 12, fontWeight: 700, borderRadius: 7, border: 'none', cursor: 'pointer', background: 'var(--success-fg)', color: '#fff' }}>
+                          {t('approve')}
+                        </button>
+                        <button type="button" onClick={() => reviewResearch(r._id, 'reject')}
+                          style={{ padding: '5px 12px', fontSize: 12, fontWeight: 700, borderRadius: 7, cursor: 'pointer', background: 'var(--surface-2)', color: 'var(--danger-fg)', border: '1px solid var(--border)' }}>
+                          {t('reject')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
             )}
           </div>
         </div>

@@ -40,7 +40,7 @@ function notifLink(message = '', role) {
         if (has(/rotation/))    return '/dio/rotations';
         if (has(/distribut/))   return '/dio/distributions';
         if (has(/supervisor/))  return '/dio/supervisors';
-        if (has(/trainee/))     return '/dio/trainees';
+        if (has(/trainee/))     return '/dio/users';
         break;
       case 'secretary':
         if (has(/supervisor/))             return '/secretary/supervisors';

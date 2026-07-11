@@ -88,6 +88,8 @@ app.use('/uploads', auth, express.static(path.join(__dirname, 'uploads')));
 app.use('/api/evaluations', writeMethodsOnly);
 app.use('/api/reports', writeMethodsOnly);
 app.use('/api/certificates', writeMethodsOnly);
+app.use('/api/trainee-courses', writeMethodsOnly);
+app.use('/api/research', writeMethodsOnly);
 
 // ── HEALTH CHECK ─────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date() }));
@@ -114,6 +116,8 @@ app.use('/api/secretary',         require('./routes/secretary'));
 app.use('/api/dio',               require('./routes/dio'));
 app.use('/api/president',         require('./routes/president'));
 app.use('/api/trainee',           require('./routes/trainee'));
+app.use('/api/trainee-courses',   require('./routes/traineeCourses'));
+app.use('/api/research',          require('./routes/research'));
 app.use('/api/admin',             require('./routes/adminV2'));
 app.use('/api/consultant-memo',   require('./routes/consultantMemo'));
 app.use('/api/scientific-councils', require('./routes/scientificCouncils'));
