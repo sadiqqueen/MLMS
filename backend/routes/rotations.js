@@ -7,6 +7,7 @@ const Specialty      = require('../models/Specialty');
 const AuditLog       = require('../models/AuditLog');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
+const { trackFilter, trackForRole, coerceRoleToTrack } = require('../utils/track');
 
 const WRITE_ROLES = ['super_admin', 'dio'];
 const READ_ROLES  = ['super_admin', 'dio', 'program_director', 'president'];
@@ -32,47 +33,18 @@ function normalizeRotationData(data) {
   return data;
 }
 
-function getHospital(user) {
-  const hospital = user.hospitalId || user.hospital || null;
-  return hospital?._id || hospital;
-}
-
-function sameId(a, b) {
-  if (!a || !b) return false;
-  const left = a?._id || a;
-  const right = b?._id || b;
-  return left.toString() === right.toString();
-}
-
-function hospitalCondition(hospitalId) {
-  return { $or: [{ hospitalId }, { hospital: hospitalId }] };
-}
-
-function addAnd(query, condition) {
-  if (!condition) return;
-  query.$and = [...(query.$and || []), condition];
-}
-
-function belongsToHospital(doc, hospitalId) {
-  return sameId(doc?.hospitalId, hospitalId) || sameId(doc?.hospital, hospitalId);
-}
-
-function getDioHospitalOrFail(req, res) {
-  if (req.user.role !== 'dio') return null;
-  const hospitalId = getHospital(req.user);
-  if (!hospitalId) {
-    res.status(403).json({ success: false, message: 'DIO account is not assigned to a hospital' });
-    return false;
-  }
-  return hospitalId;
+// The DIO is a TRACK-WIDE overseer (no hospital scope): it manages every rotation
+// in its own track (req.track) across all hospitals, and never the other track.
+// Legacy docs with no `track` field count as 'advanced' — mirrors trackFilter()
+// semantics, so never use `track === 'advanced'` equality in a Mongo query.
+function rotationInTrack(rotation, track) {
+  return track === 'basic' ? rotation?.track === 'basic' : rotation?.track !== 'basic';
 }
 
 function ensureDioCanAccessRotation(req, res, rotation) {
-  const hospitalId = getDioHospitalOrFail(req, res);
-  if (hospitalId === false) return false;
-  if (!hospitalId) return true;
-  if (belongsToHospital(rotation, hospitalId)) return true;
-  res.status(403).json({ success: false, message: 'Access denied: rotation belongs to a different hospital' });
+  if (req.user.role !== 'dio') return true;
+  if (rotationInTrack(rotation, req.track)) return true;
+  res.status(403).json({ success: false, message: 'Access denied: rotation belongs to a different track' });
   return false;
 }
 
@@ -107,12 +79,7 @@ async function audit(req, action, targetId, metadata = {}) {
 
 async function validateRotationPayload(data, res, { creating = false, existingId = null, existing = null, req = null } = {}) {
   normalizeRotationData(data);
-  const dioHospitalId = req ? getDioHospitalOrFail(req, res) : null;
-  if (dioHospitalId === false) return false;
-  if (dioHospitalId && data.hospitalId && !sameId(data.hospitalId, dioHospitalId)) {
-    res.status(403).json({ success: false, message: 'DIO users can only manage their assigned hospital' });
-    return false;
-  }
+  const isDio = req?.user?.role === 'dio';
 
   const required = creating ? ['traineeId', 'hospitalId', 'startDate', 'endDate'] : [];
   const missing = required.filter(k => !data[k]);
@@ -165,15 +132,18 @@ async function validateRotationPayload(data, res, { creating = false, existingId
   }
 
   if (data.traineeId) {
-    const trainee = await User.findOne({ _id: data.traineeId, role: 'trainee', isActive: { $ne: false } });
+    const trainee = await User.findOne({
+      _id: data.traineeId,
+      role: isDio ? coerceRoleToTrack('trainee', req.track) : 'trainee',
+      isActive: { $ne: false },
+    });
     if (!trainee) {
       res.status(400).json({ success: false, message: 'Trainee not found or inactive' });
       return false;
     }
-    if (dioHospitalId && !belongsToHospital(trainee, dioHospitalId)) {
-      res.status(403).json({ success: false, message: 'Trainee belongs to a different hospital' });
-      return false;
-    }
+    // track is server-derived from the referenced trainee (never client-set), so a
+    // b_dio-created rotation lands in the Basic track instead of the schema default.
+    data.track = trackForRole(trainee.role);
   }
 
   if (data.hospitalId) {
@@ -182,16 +152,20 @@ async function validateRotationPayload(data, res, { creating = false, existingId
       res.status(400).json({ success: false, message: 'Hospital not found or inactive' });
       return false;
     }
+    if (isDio && (hospital.track || 'advanced') !== req.track) {
+      res.status(403).json({ success: false, message: 'Hospital belongs to a different track' });
+      return false;
+    }
   }
 
   if (data.supervisorId) {
-    const supervisor = await User.findOne({ _id: data.supervisorId, role: 'supervisor', isActive: { $ne: false } });
+    const supervisor = await User.findOne({
+      _id: data.supervisorId,
+      role: isDio ? coerceRoleToTrack('supervisor', req.track) : 'supervisor',
+      isActive: { $ne: false },
+    });
     if (!supervisor) {
       res.status(400).json({ success: false, message: 'Supervisor not found or inactive' });
-      return false;
-    }
-    if (dioHospitalId && !belongsToHospital(supervisor, dioHospitalId)) {
-      res.status(403).json({ success: false, message: 'Supervisor belongs to a different hospital' });
       return false;
     }
   }
@@ -202,8 +176,8 @@ async function validateRotationPayload(data, res, { creating = false, existingId
       res.status(400).json({ success: false, message: 'Specialty not found or inactive' });
       return false;
     }
-    if (dioHospitalId && specialty.hospitalId && !sameId(specialty.hospitalId, dioHospitalId)) {
-      res.status(403).json({ success: false, message: 'Specialty belongs to a different hospital' });
+    if (isDio && (specialty.track || 'advanced') !== req.track) {
+      res.status(403).json({ success: false, message: 'Specialty belongs to a different track' });
       return false;
     }
   }
@@ -253,9 +227,9 @@ function populateRotation(query) {
 router.get('/', auth, allowRoles(...READ_ROLES), async (req, res) => {
   try {
     const query = {};
-    const dioHospitalId = getDioHospitalOrFail(req, res);
-    if (dioHospitalId === false) return;
-    if (dioHospitalId) addAnd(query, hospitalCondition(dioHospitalId));
+    // DIO = track-wide: own track across all hospitals (top-level `track` key,
+    // safe to merge alongside the status / trainee-$or / hospital-$and below).
+    if (req.user.role === 'dio') Object.assign(query, trackFilter(req.track));
     if (req.query.status) query.status = req.query.status;
     if (req.query.traineeId || req.query.student) {
       const id = req.query.traineeId || req.query.student;
@@ -281,14 +255,9 @@ router.get('/doctor/:doctorId', auth, async (req, res) => {
     if (!isOwner && !isStaff) return res.status(403).json({ success: false, message: 'Access denied' });
 
     const rotations = await populateRotation(Rotation.find({
-      $or: [{ doctor: req.params.doctorId }, { supervisorId: req.params.doctorId }]
+      $or: [{ doctor: req.params.doctorId }, { supervisorId: req.params.doctorId }],
+      ...(req.user.role === 'dio' ? trackFilter(req.track) : {}),
     })).sort({ startDate: -1 });
-    if (req.user.role === 'dio') {
-      const hospitalId = getDioHospitalOrFail(req, res);
-      if (hospitalId === false) return;
-      const outOfScope = rotations.find(rotation => !belongsToHospital(rotation, hospitalId));
-      if (outOfScope) return res.status(403).json({ success: false, message: 'Access denied: rotations belong to a different hospital' });
-    }
     res.json(rotations);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -302,14 +271,9 @@ router.get('/student/:id', auth, async (req, res) => {
     if (!isOwner && !isStaff) return res.status(403).json({ success: false, message: 'Access denied' });
 
     const rotations = await populateRotation(Rotation.find({
-      $or: [{ traineeId: req.params.id }, { student: req.params.id }]
+      $or: [{ traineeId: req.params.id }, { student: req.params.id }],
+      ...(req.user.role === 'dio' ? trackFilter(req.track) : {}),
     })).sort({ startDate: 1 });
-    if (req.user.role === 'dio') {
-      const hospitalId = getDioHospitalOrFail(req, res);
-      if (hospitalId === false) return;
-      const outOfScope = rotations.find(rotation => !belongsToHospital(rotation, hospitalId));
-      if (outOfScope) return res.status(403).json({ success: false, message: 'Access denied: rotations belong to a different hospital' });
-    }
     res.json(rotations);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
