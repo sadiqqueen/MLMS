@@ -15,6 +15,7 @@ const nav = {
     'nav.super_admin.hospitals':         'المستشفيات',
     'nav.super_admin.specialties':       'التخصصات',
     'nav.super_admin.certificates':      'الشهادات',
+    'nav.super_admin.event_feedback':    'تقييم الفعاليات',
     'nav.super_admin.audit_log':         'سجل التدقيق',
 
     // secretary
@@ -81,6 +82,7 @@ const nav = {
     'nav.super_admin.hospitals':         'Hospitals',
     'nav.super_admin.specialties':       'Specialties',
     'nav.super_admin.certificates':      'Certificates',
+    'nav.super_admin.event_feedback':    'Event Feedback',
     'nav.super_admin.audit_log':         'Audit Log',
 
     // secretary

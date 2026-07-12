@@ -59,7 +59,7 @@ const ADVANCED_LINKS = {
     { to: '/admin/users',        key: 'users',        label: 'Users'        },
     { to: '/admin/hospitals',    key: 'hospitals',    label: 'Hospitals'    },
     { to: '/admin/certificates', key: 'certificates', label: 'Certificates' },
-    { to: '/admin/event-feedback',                    label: 'Event Feedback' },
+    { to: '/admin/event-feedback', key: 'event_feedback', label: 'Event Feedback' },
     { to: '/admin/audit-log',    key: 'audit_log',    label: 'Audit Log'    },
   ],
   secretary: [

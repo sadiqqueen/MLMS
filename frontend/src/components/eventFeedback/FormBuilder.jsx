@@ -106,7 +106,7 @@ export default function FormBuilder({ formId, onToast, onStatus }) {
   const sel = selIdx >= 0 ? fields[selIdx] : null;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.2fr) minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 16, alignItems: 'start' }}>
       {/* LEFT: builder */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {/* Form header + status + publish controls */}
@@ -291,7 +291,7 @@ function Preview({ form, accent }) {
 function PreviewControl({ f, accent }) {
   if (f.type === 'rating') return (
     <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-      {FACES.map((e, i) => <div key={i} style={{ flex: 1, textAlign: 'center', fontSize: 22, filter: 'grayscale(.35) opacity(.7)' }}>{e}</div>)}
+      {FACES.map((e, i) => <div key={i} style={{ flex: 1, minWidth: 0, textAlign: 'center', fontSize: 22, filter: 'grayscale(.35) opacity(.7)' }}>{e}</div>)}
     </div>
   );
   if (f.type === 'yes_no') return (
