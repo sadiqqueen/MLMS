@@ -51,6 +51,7 @@ import DioEvaluations from './pages/DioEvaluations';
 import DioApprovals from './pages/DioApprovals';
 import ConsultantMemo from './pages/ConsultantMemo';
 import ConsultantMemoAll from './pages/ConsultantMemoAll';
+import ConsultantMemoApproved from './pages/ConsultantMemoApproved';
 import Initiatives from './pages/Initiatives';
 import CertificatePrint from './pages/CertificatePrint';
 
@@ -273,6 +274,11 @@ export default function App() {
           <Route path="/consultant-memo/all" element={
             <ProtectedRoute allowedRoles={['asg1', 'asg2']}>
               <ConsultantMemoAll />
+            </ProtectedRoute>
+          } />
+          <Route path="/consultant-memo/approved" element={
+            <ProtectedRoute allowedRoles={['asg1', 'asg2']}>
+              <ConsultantMemoApproved />
             </ProtectedRoute>
           } />
           {/* Initiatives — ASG roles only (mirrors the backend 403 guard).

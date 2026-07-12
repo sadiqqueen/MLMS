@@ -7,7 +7,7 @@ import { useMemoPrefs } from './MemoPrefs';
 import { useInitiativeAccess } from './useInitiativeAccess';
 import { INIT_STRINGS } from './initiativeStrings';
 import { MemoModal } from './MemoUi';
-import { IconMoon, IconSun, IconFolder, IconPlus, IconChevron, IconBoard } from '../icons';
+import { IconMoon, IconSun, IconFolder, IconPlus, IconChevron, IconBoard, IconCheck } from '../icons';
 
 const roleLabel = (role) =>
   role === 'asg1' ? 'ASG.1' : role === 'asg2' ? 'ASG.2' : (role || '').toUpperCase();
@@ -25,6 +25,7 @@ export default function MemoNavbar({ onNewMemo, guardNavigation }) {
   const navigate = useNavigate();
   const location = useLocation();
   const onAllView = location.pathname.startsWith('/consultant-memo/all');
+  const onApprovedView = location.pathname.startsWith('/consultant-memo/approved');
   const onNewMemoView = location.pathname === '/consultant-memo';
   const onInitiatives = location.pathname.startsWith('/initiatives');
 
@@ -134,6 +135,15 @@ export default function MemoNavbar({ onNewMemo, guardNavigation }) {
         >
           <IconFolder />
           <span>{t('allMemos')}</span>
+        </button>
+
+        <button
+          className={'cmx-btn cmx-btn-ghost' + (onApprovedView ? ' cmx-btn-active' : '')}
+          aria-current={onApprovedView ? 'page' : undefined}
+          onClick={guarded(() => navigate('/consultant-memo/approved'))}
+        >
+          <IconCheck />
+          <span>{t('approvedMemos')}</span>
         </button>
 
         <button

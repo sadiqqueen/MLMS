@@ -4,6 +4,7 @@ const multer         = require('multer');
 const path           = require('path');
 const fs             = require('fs');
 const ConsultantMemo = require('../models/ConsultantMemo');
+const AuditLog       = require('../models/AuditLog');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const { decodeOriginalName } = require('../utils/filename');
@@ -23,6 +24,15 @@ function pick(body, allowed) {
   const data = {};
   allowed.forEach(k => { if (body[k] !== undefined) data[k] = body[k]; });
   return data;
+}
+
+// A memo may only be approved once ALL main content sections are filled.
+// `presidentRecommendation` is intentionally excluded (dormant field, not
+// rendered in the builder). Server-side completeness is the real gate — the
+// client's own "is complete" check is never trusted.
+const REQUIRED_SECTIONS = ['topicName', 'councilName', 'presentation', 'executiveCommittee', 'jointCouncil'];
+function missingSections(doc) {
+  return REQUIRED_SECTIONS.filter(k => !((doc[k] || '').trim()));
 }
 
 // ── Attachment file uploads (pdf, word, excel, images …) ─────────────────
@@ -152,10 +162,17 @@ router.post('/translate', auth, allowRoles(...ASG), async (req, res) => {
 router.get('/', auth, allowRoles(...ASG), async (req, res) => {
   try {
     const filter = {};
-    if (req.query.status === 'saved' || req.query.status === 'draft') filter.status = req.query.status;
+    if (['saved', 'draft', 'approved'].includes(req.query.status)) {
+      filter.status = req.query.status;
+    } else {
+      // Default list excludes approved memos — they live on the read-only
+      // "Approved memos" page (fetched explicitly with ?status=approved).
+      filter.status = { $ne: 'approved' };
+    }
     const memos = await ConsultantMemo.find(filter)
       .sort({ createdAt: -1 })
-      .select('topicName source councilName status presentation memoNumber movedToDraftAt createdAt updatedAt');
+      .select('topicName source councilName status presentation memoNumber movedToDraftAt approvedAt approvedBy createdAt updatedAt')
+      .populate('approvedBy', 'name');
     res.json(memos.map(m => ({
       _id: m._id,
       topicName: m.topicName,
@@ -164,6 +181,8 @@ router.get('/', auth, allowRoles(...ASG), async (req, res) => {
       status: m.status,
       memoNumber: m.memoNumber,
       movedToDraftAt: m.movedToDraftAt,
+      approvedAt: m.approvedAt,
+      approvedByName: m.approvedBy?.name || '',
       createdAt: m.createdAt,
       updatedAt: m.updatedAt,
       presentationPreview: (m.presentation || '').slice(0, 200),
@@ -187,6 +206,9 @@ router.get('/:id', auth, allowRoles(...ASG), async (req, res) => {
 router.post('/', auth, allowRoles(...ASG), async (req, res) => {
   try {
     const data = pick(req.body, MEMO_FIELDS);
+    if (data.status === 'approved') {
+      return res.status(400).json({ message: 'Use POST /:id/approve to approve a memo' });
+    }
     data.memoNumber = await nextMemoNumber();
     data.createdBy  = req.user._id;
     const memo = await ConsultantMemo.create(data);
@@ -201,11 +223,67 @@ router.post('/', auth, allowRoles(...ASG), async (req, res) => {
 router.put('/:id', auth, allowRoles(...ASG), async (req, res) => {
   try {
     const data = pick(req.body, MEMO_FIELDS);
+    if (data.status === 'approved') {
+      return res.status(400).json({ message: 'Use POST /:id/approve to approve a memo' });
+    }
     if (data.status === 'draft') data.movedToDraftAt = new Date();
     if (data.status === 'saved') data.movedToDraftAt = null;
-    const memo = await ConsultantMemo.findByIdAndUpdate(req.params.id, data, { new: true });
-    if (!memo) return res.status(404).json({ message: 'Memo not found' });
+
+    // Approved memos are permanently locked — reject any edit, including an
+    // attempt to revert status to saved/draft. The read check gives a clear
+    // message; the conditional write closes the approve/edit race window.
+    const existing = await ConsultantMemo.findById(req.params.id).select('status');
+    if (!existing) return res.status(404).json({ message: 'Memo not found' });
+    if (existing.status === 'approved') {
+      return res.status(409).json({ message: 'Approved memos are locked and cannot be modified' });
+    }
+    const memo = await ConsultantMemo.findOneAndUpdate(
+      { _id: req.params.id, status: { $ne: 'approved' } },
+      data,
+      { new: true }
+    );
+    if (!memo) return res.status(409).json({ message: 'Approved memos are locked and cannot be modified' });
     res.json(memo);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Approve (اعتماد) — permanent, irreversible lock. Only a saved memo with
+// ALL required sections filled can be approved; it then appears on the
+// read-only "Approved memos" page. There is no un-approve endpoint (mirrors
+// the certificate precedent: immutability by absence of a reverse endpoint).
+router.post('/:id/approve', auth, allowRoles(...ASG), async (req, res) => {
+  try {
+    const memo = await ConsultantMemo.findById(req.params.id);
+    if (!memo) return res.status(404).json({ message: 'Memo not found' });
+    if (memo.status === 'approved') return res.status(409).json({ message: 'Memo is already approved' });
+    if (memo.status !== 'saved') return res.status(409).json({ message: 'Only saved memos can be approved' });
+
+    const missing = missingSections(memo);
+    if (missing.length) {
+      return res.status(422).json({ message: 'All main sections must be filled before approval', missing });
+    }
+
+    // Terminal-state query guard (ChangeRequest precedent) — the conditional
+    // filter makes the transition atomic and single-shot.
+    const updated = await ConsultantMemo.findOneAndUpdate(
+      { _id: memo._id, status: 'saved' },
+      { $set: { status: 'approved', approvedBy: req.user._id, approvedAt: new Date(), movedToDraftAt: null } },
+      { new: true }
+    );
+    if (!updated) return res.status(409).json({ message: 'Memo status changed, reload and try again' });
+
+    AuditLog.create({
+      userId: req.user._id,
+      action: 'asg_approve_consultant_memo',
+      targetId: updated._id,
+      targetModel: 'ConsultantMemo',
+      metadata: { memoNumber: updated.memoNumber, topicName: updated.topicName },
+      ip: req.ip || req.headers['x-forwarded-for'] || 'unknown',
+    }).catch(err => console.error('[AuditLog] consultant memo approve:', err.message));
+
+    res.json(updated);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -217,6 +295,9 @@ router.delete('/:id', auth, allowRoles(...ASG), async (req, res) => {
   try {
     const memo = await ConsultantMemo.findById(req.params.id);
     if (!memo) return res.status(404).json({ message: 'Memo not found' });
+    if (memo.status === 'approved') {
+      return res.status(409).json({ message: 'Approved memos are permanent and cannot be deleted' });
+    }
     if (memo.status !== 'draft') {
       return res.status(409).json({ message: 'Only draft memos can be permanently deleted. Move it to draft first.' });
     }

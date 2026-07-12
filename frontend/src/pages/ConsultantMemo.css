@@ -139,6 +139,9 @@
 .cmx-btn-danger { background: var(--cmx-red); color: #fff; }
 .cmx-btn-danger:hover { filter: brightness(0.9); }
 .cmx-btn-sm { padding: 6px 10px; font-size: 12px; }
+.cmx-btn-approve { background: var(--cmx-green); color: #fff; }
+.cmx-btn-approve:hover { filter: brightness(0.92); }
+.cmx-btn-approve:disabled { opacity: 0.6; cursor: default; }
 
 .cmx-langs {
   display: inline-flex;

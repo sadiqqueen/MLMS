@@ -4,6 +4,9 @@ const mongoose = require('mongoose');
 // submission form. Each content section carries its own manually-set
 // date/time. `status: 'draft'` (مسودة) is the pre-delete stage of the
 // two-stage delete flow — permanent deletion is only allowed on drafts.
+// `status: 'approved'` (معتمدة) is a permanent, terminal state set via
+// POST /:id/approve — an approved memo is locked (no edit, no delete, no
+// un-approve) and appears only on the read-only "Approved memos" page.
 const consultantMemoSchema = new mongoose.Schema(
   {
     topicName:     { type: String, default: '' },   // اسم الموضوع
@@ -41,8 +44,13 @@ const consultantMemoSchema = new mongoose.Schema(
     jointCouncil:         { type: String, default: '' },         // المجلس العلمي الاستشاري المشترك
     jointCouncilDateTime: { type: Date, default: null },
 
-    status:         { type: String, enum: ['saved', 'draft'], default: 'saved', index: true },
+    status:         { type: String, enum: ['saved', 'draft', 'approved'], default: 'saved', index: true },
     movedToDraftAt: { type: Date, default: null },
+
+    // Approval (اعتماد) — permanent, terminal state. Once set, the route
+    // layer rejects PUT/DELETE; there is no un-approve endpoint.
+    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    approvedAt: { type: Date, default: null },
 
     memoNumber: { type: String, default: '' },  // auto-generated sequential, e.g. "2026/014"
     createdBy:  { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

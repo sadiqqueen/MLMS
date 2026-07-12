@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { MemoPrefsProvider, useMemoPrefs } from '../components/memo/MemoPrefs';
 import MemoNavbar from '../components/memo/MemoNavbar';
@@ -7,7 +7,7 @@ import MemoPrint from '../components/memo/MemoPrint';
 import { useMemoToasts, MemoToasts, MemoModal, AutoTextarea } from '../components/memo/MemoUi';
 import { buildAttachmentPreviews } from '../components/memo/attachmentPreviews';
 import CouncilSelect from '../components/memo/CouncilSelect';
-import { IconSave, IconPrinter, IconEye, IconPaperclip, IconTrash } from '../components/icons';
+import { IconSave, IconPrinter, IconEye, IconPaperclip, IconTrash, IconCheck } from '../components/icons';
 import './ConsultantMemo.css';
 
 const EMPTY = {
@@ -63,6 +63,15 @@ function isEmptyForm(f) {
     && DT_KEYS.every(k => !f[k]);
 }
 
+// A memo is "complete" (ready for اعتماد) when all main content sections are
+// filled: Topic, Scientific Council, Presentation, Executive Committee, Joint
+// Council. `source` and the dormant presidentRecommendation are NOT required.
+// Mirrors the server's REQUIRED_SECTIONS gate in routes/consultantMemo.js.
+function isCompleteForm(f) {
+  return ['topicName', 'presentation', 'executiveCommittee', 'jointCouncil'].every(k => f[k].trim())
+    && f.councilName.trim() !== '';
+}
+
 function snapshot(f) {
   return { ...f, attachments: [...f.attachments], attachmentFiles: [...f.attachmentFiles] };
 }
@@ -70,6 +79,7 @@ function snapshot(f) {
 function MemoForm() {
   const { theme, lang, dir, t } = useMemoPrefs();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const memoId = searchParams.get('id');
 
   const [form, setForm]             = useState(EMPTY);
@@ -85,6 +95,9 @@ function MemoForm() {
   const [councils, setCouncils]     = useState([]);
   const [otherActive, setOtherActive] = useState(false);  // أخرى chosen
   const [otherName, setOtherName]     = useState('');
+  const [memoStatus, setMemoStatus]   = useState('saved');  // 'saved' | 'draft' | 'approved'
+  const [approving, setApproving]     = useState(false);
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const { toasts, showToast, dismiss } = useMemoToasts();
   const fileInputRef = useRef(null);
   const previewsPromiseRef = useRef(Promise.resolve());
@@ -116,8 +129,15 @@ function MemoForm() {
       try {
         const res = await api.get(`/api/consultant-memo/${memoId}`);
         if (cancelled) return;
+        // Approved memos are locked/read-only — never open them in the
+        // editable builder (autosave would 409). Send to the Approved page.
+        if (res.data.status === 'approved') {
+          navigate(`/consultant-memo/approved?id=${memoId}`, { replace: true });
+          return;
+        }
         setForm(fromMemo(res.data));
         setMemoNumber(res.data.memoNumber || '');
+        setMemoStatus(res.data.status || 'saved');
         setOtherActive(false);
         setOtherName('');
         setDirty(false);
@@ -133,8 +153,8 @@ function MemoForm() {
 
   // ── Save (manual or autosave) ─────────────────────────────────────────
   const doSave = useCallback(async (silent = false) => {
-    if (savingRef.current) return;
-    if (!memoIdRef.current && isEmptyForm(formRef.current)) return;
+    if (savingRef.current) return false;
+    if (!memoIdRef.current && isEmptyForm(formRef.current)) return false;
     savingRef.current = true;
     setSaving(true);
     try {
@@ -169,8 +189,10 @@ function MemoForm() {
       if (lang === 'en') arBackupRef.current = null;  // English is canonical once saved in EN
       if (silent) setLastAuto(new Date());
       else showToast(t('savedToast'));
+      return true;
     } catch {
       if (!silent) showToast(t('saveError'), 'error');
+      return false;
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -207,6 +229,30 @@ function MemoForm() {
   async function handlePrint() {
     await previewsPromiseRef.current;   // make sure annex pages are rendered
     window.print();
+  }
+
+  // ── Approve (اعتماد) — permanent lock, then move to the Approved page ──
+  async function handleApproveConfirmed() {
+    setApproving(true);
+    try {
+      // Let any in-flight autosave land, then flush unsaved edits so the
+      // server holds the final content before it is locked. A stray debounced
+      // PUT that fires after approval simply 409s and is swallowed silently.
+      while (savingRef.current) await new Promise(r => setTimeout(r, 100));
+      if (dirtyRef.current) {
+        const ok = await doSave(true);
+        if (!ok) throw new Error('flush failed');
+      }
+      await api.post(`/api/consultant-memo/${memoIdRef.current}/approve`);
+      setDirty(false);   // silences beforeunload + guardNavigation
+      setShowApproveConfirm(false);
+      showToast(t('approvedToast'));
+      navigate('/consultant-memo/approved');
+    } catch {
+      showToast(t('approveError'), 'error');
+    } finally {
+      setApproving(false);
+    }
   }
 
   // ── Content translation when the feature is in EN mode ───────────────
@@ -307,6 +353,7 @@ function MemoForm() {
     setSearchParams({}, { replace: true });
     setForm(EMPTY);
     setMemoNumber('');
+    setMemoStatus('saved');
     setDirty(false);
     setBanner(null);
     setOtherActive(false);
@@ -473,6 +520,16 @@ function MemoForm() {
               <button type="button" className="cmx-btn cmx-btn-outline" onClick={() => setShowPreview(true)}>
                 <IconEye /> <span>{t('preview')}</span>
               </button>
+              {memoId && memoStatus === 'saved' && isCompleteForm(form) && (
+                <button
+                  type="button"
+                  className="cmx-btn cmx-btn-approve"
+                  disabled={saving || approving}
+                  onClick={() => setShowApproveConfirm(true)}
+                >
+                  <IconCheck /> <span>{approving ? t('saving') : t('approve')}</span>
+                </button>
+              )}
               <span className="cmx-autosave" aria-live="polite">
                 {autoTime ? `${t('autosaved')} · ${autoTime}` : ''}
               </span>
@@ -490,6 +547,19 @@ function MemoForm() {
             </div>
             <div className="cmx-preview-scroll">
               <MemoPrint memo={printable} lang={lang} attachmentPreviews={attachmentPreviews} />
+            </div>
+          </MemoModal>
+        )}
+
+        {showApproveConfirm && (
+          <MemoModal onClose={() => { if (!approving) setShowApproveConfirm(false); }} labelledBy="cmx-approve-title">
+            <h3 id="cmx-approve-title" className="cmx-modal-title">{t('approveConfirmTitle')}</h3>
+            <p className="cmx-modal-body">{t('approveConfirmBody')}</p>
+            <div className="cmx-modal-btns">
+              <button className="cmx-btn cmx-btn-outline" onClick={() => setShowApproveConfirm(false)} disabled={approving}>{t('cancel')}</button>
+              <button className="cmx-btn cmx-btn-approve" onClick={handleApproveConfirmed} disabled={approving}>
+                {approving ? t('saving') : t('approveYes')}
+              </button>
             </div>
           </MemoModal>
         )}
