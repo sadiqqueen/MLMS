@@ -58,7 +58,6 @@ const ADVANCED_LINKS = {
     { to: '/admin/dashboard',    key: 'dashboard',    label: 'Dashboard'    },
     { to: '/admin/users',        key: 'users',        label: 'Users'        },
     { to: '/admin/hospitals',    key: 'hospitals',    label: 'Hospitals'    },
-    { to: '/admin/specialties',  key: 'specialties',  label: 'Specialties'  },
     { to: '/admin/certificates', key: 'certificates', label: 'Certificates' },
     { to: '/admin/event-feedback',                    label: 'Event Feedback' },
     { to: '/admin/audit-log',    key: 'audit_log',    label: 'Audit Log'    },

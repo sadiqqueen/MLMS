@@ -62,7 +62,6 @@ import PresidentSecretaries from './pages/PresidentSecretaries';
 import PresidentDios from './pages/PresidentDios';
 import PresidentHospitals from './pages/PresidentHospitals';
 
-import AdminSpecialties from './pages/AdminSpecialties';
 import AuditLog from './pages/AuditLog';
 import VerifyCertificate from './pages/VerifyCertificate';
 import EventFeedback from './pages/EventFeedback';
@@ -349,11 +348,6 @@ export default function App() {
           <Route path="/admin/certificates/:id/print" element={
             <ProtectedRoute allowedRoles={['super_admin']}>
               <CertificatePrint />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/specialties" element={
-            <ProtectedRoute allowedRoles={['super_admin']}>
-              <AdminSpecialties />
             </ProtectedRoute>
           } />
           <Route path="/admin/audit-log" element={
