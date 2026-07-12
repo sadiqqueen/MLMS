@@ -24,7 +24,7 @@ const cors         = require('cors');
 const path         = require('path');
 const helmet       = require('helmet');
 const cookieParser = require('cookie-parser');
-const { globalLimiter, writeLimiter } = require('./middleware/rateLimiter');
+const { globalLimiter, writeLimiter, efReadLimiter } = require('./middleware/rateLimiter');
 const honeypot = require('./middleware/honeypot');
 const auth = require('./middleware/auth');
 
@@ -122,6 +122,12 @@ app.use('/api/admin',             require('./routes/adminV2'));
 app.use('/api/consultant-memo',   require('./routes/consultantMemo'));
 app.use('/api/scientific-councils', require('./routes/scientificCouncils'));
 app.use('/api/initiatives',       require('./routes/initiatives'));
+
+// ── EVENT FEEDBACK (separate subsystem) ────────────────────────────────────
+// Public, no-auth attendee endpoints (gated by event code + rate limiting).
+app.use('/api/event-feedback/public', efReadLimiter, require('./routes/eventFeedbackPublic'));
+// Authenticated admin endpoints (super_admin only).
+app.use('/api/event-feedback',        require('./routes/eventFeedback'));
 
 app.use(honeypot());
 

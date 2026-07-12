@@ -65,6 +65,7 @@ import PresidentHospitals from './pages/PresidentHospitals';
 import AdminSpecialties from './pages/AdminSpecialties';
 import AuditLog from './pages/AuditLog';
 import VerifyCertificate from './pages/VerifyCertificate';
+import EventFeedback from './pages/EventFeedback';
 
 function RootRedirect() {
   const { user, loading } = useAuth();
@@ -358,6 +359,11 @@ export default function App() {
           <Route path="/admin/audit-log" element={
             <ProtectedRoute allowedRoles={['super_admin']}>
               <AuditLog />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/event-feedback" element={
+            <ProtectedRoute allowedRoles={['super_admin']}>
+              <EventFeedback />
             </ProtectedRoute>
           } />
 

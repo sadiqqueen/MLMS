@@ -58,4 +58,30 @@ const writeLimiter = rateLimit({
   handler: rateLimitHandler('write_rate_limit', { success: false, message: 'Too many write requests' })
 });
 
-module.exports = { loginLimiter, refreshLimiter, globalLimiter, writeLimiter };
+// ── EVENT FEEDBACK (public, unauthenticated) LIMITERS ──────────────────────
+// Reads (fetch a form by event code): generous, per IP.
+const efReadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests, please slow down' },
+  handler: rateLimitHandler('feedback_read_rate_limit', { success: false, message: 'Too many requests, please slow down' })
+});
+
+// Submissions: keyed by IP + event code so one abuser cannot exhaust a whole
+// venue's bucket for every event at once.
+const efSubmitLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 8,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const code = req.params && req.params.code ? String(req.params.code).toUpperCase() : '';
+    return `${req.ip || 'noip'}|${code}`;
+  },
+  message: { success: false, message: 'Too many submissions from this device. Please try again later.' },
+  handler: rateLimitHandler('feedback_submit_rate_limit', { success: false, message: 'Too many submissions from this device. Please try again later.' })
+});
+
+module.exports = { loginLimiter, refreshLimiter, globalLimiter, writeLimiter, efReadLimiter, efSubmitLimiter };

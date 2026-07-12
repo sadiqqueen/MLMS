@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "seed:specialties": "node seeds/specialties.seed.js",
     "seed:superadmin": "node seeds/superadmin.seed.js",
+    "seed:feedback": "node seeds/feedback.seed.js",
     "seed:all": "npm run seed:specialties && npm run seed:superadmin",
     "migrate:legacy-roles": "node migrations/migrateLegacyRoles.js",
     "security-events": "node scripts/showSecurityEvents.js"
