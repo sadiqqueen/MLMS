@@ -131,7 +131,7 @@ export default function ProgramDirectorEvaluations() {
         <div className="filter-tabs" style={{ marginBottom: 16 }}>
           {[0, 1].map(i => <Sk key={i} w={110} h={32} r={20} />)}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 14, marginBottom: 20 }}>
           {[0, 1, 2].map(i => (
             <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
               <Sk w={46} h={46} r={10} /><Sk w={110} h={14} />
@@ -172,7 +172,7 @@ export default function ProgramDirectorEvaluations() {
         </div>
 
         {/* Stat Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 14, marginBottom: 20 }}>
           {[
             { label: t('statTotal'),     count: total,           color: 'var(--info-fg)',    bg: 'var(--info-bg)' },
             { label: t('statThisMonth'), count: thisMonth,       color: 'var(--warning-fg)', bg: 'var(--warning-bg)' },
