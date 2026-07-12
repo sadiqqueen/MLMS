@@ -266,6 +266,17 @@ function Preview({ form, accent }) {
       <div style={{ fontFamily: 'system-ui', color: '#3B2A18' }}>
         <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>{form.title || 'Untitled'}</div>
         {form.description && <div style={{ fontSize: 12.5, color: '#9C8367', lineHeight: 1.5, marginBottom: 12 }}>{form.description}</div>}
+        {/* Activity Title / Date / Facilitator(s) are admin-set per event and
+            shown read-only in the app — they are NOT attendee questions. Values
+            come from the event ("New event" dialog), not from this form. */}
+        <div style={{ background: '#fff', border: '1px dashed #E7C9A6', borderRadius: 12, padding: '10px 12px', margin: '4px 0 12px' }}>
+          <div style={{ fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.08em', color: accent, marginBottom: 6 }}>Event details · read-only</div>
+          {['Title of activity', 'Date', 'Facilitator(s)'].map(lbl2 => (
+            <div key={lbl2} style={{ fontSize: 12.5, marginTop: 3 }}>
+              <span style={{ fontWeight: 600 }}>{lbl2}:</span> <span style={{ color: '#B39B7E' }}>set per event</span>
+            </div>
+          ))}
+        </div>
         {fields.map((f, i) => {
           const prev = fields[i - 1];
           const showSection = f.section && (!prev || prev.section !== f.section);

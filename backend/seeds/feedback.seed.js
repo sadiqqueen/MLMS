@@ -43,10 +43,11 @@ const yesNo = (id, sec, label, labelAr) => ({
 
 const FIELDS = [
   // Section A — Activity details
-  text('title',       SEC.details, 'Title of activity', 'عنوان النشاط', { required: true }),
-  { id: 'date', type: 'date', section: SEC.details.en, sectionAr: SEC.details.ar, label: 'Date', labelAr: 'التاريخ', required: false },
+  // Title of activity / Date / Facilitator(s) are NOT attendee questions — they
+  // are admin-set per-event metadata (FeedbackEvent.title/date/facilitators),
+  // entered in the web "New event" dialog and shown read-only in the app. They
+  // were removed here so attendees don't re-enter them.
   text('location',    SEC.details, 'Location / Platform', 'المكان / المنصة'),
-  text('facilitator', SEC.details, 'Facilitator(s)', 'الميسّر(ون)'),
   text('participant', SEC.details, 'Participant name', 'اسم المشارك'),   // optional
   text('linked',      SEC.details, 'Linked event', 'الفعالية المرتبطة'),
 
