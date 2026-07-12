@@ -296,7 +296,20 @@ router.delete('/:id', auth, allowRoles(...ASG), async (req, res) => {
     const memo = await ConsultantMemo.findById(req.params.id);
     if (!memo) return res.status(404).json({ message: 'Memo not found' });
     if (memo.status === 'approved') {
-      return res.status(409).json({ message: 'Approved memos are permanent and cannot be deleted' });
+      // Approved memos are locked — only the ASG.1 role may still delete them.
+      if (req.user.role !== 'asg1') {
+        return res.status(409).json({ message: 'Approved memos are permanent and cannot be deleted' });
+      }
+      await memo.deleteOne();
+      AuditLog.create({
+        userId: req.user._id,
+        action: 'asg1_delete_approved_consultant_memo',
+        targetId: memo._id,
+        targetModel: 'ConsultantMemo',
+        metadata: { memoNumber: memo.memoNumber, topicName: memo.topicName },
+        ip: req.ip || req.headers['x-forwarded-for'] || 'unknown',
+      }).catch(err => console.error('[AuditLog] approved memo delete:', err.message));
+      return res.json({ message: 'Approved memo permanently deleted' });
     }
     if (memo.status !== 'draft') {
       return res.status(409).json({ message: 'Only draft memos can be permanently deleted. Move it to draft first.' });

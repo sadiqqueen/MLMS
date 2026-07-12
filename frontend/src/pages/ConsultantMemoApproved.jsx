@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 import { MemoPrefsProvider, useMemoPrefs, fmtDateTime } from '../components/memo/MemoPrefs';
 import MemoNavbar from '../components/memo/MemoNavbar';
 import MemoPrint from '../components/memo/MemoPrint';
 import { useMemoToasts, MemoToasts, MemoModal } from '../components/memo/MemoUi';
 import { buildAttachmentPreviews } from '../components/memo/attachmentPreviews';
 import Sk from '../components/Skeleton';
-import { IconEye, IconPrinter } from '../components/icons';
+import { IconEye, IconPrinter, IconTrash } from '../components/icons';
 import './ConsultantMemo.css';
 
 // Read-only "Approved memos" (المذكرات المعتمدة). Approved memos are permanently
@@ -37,6 +38,8 @@ function MemoGridSkeleton() {
 
 function MemoApprovedView() {
   const { theme, lang, dir, t } = useMemoPrefs();
+  const { user } = useAuth();
+  const canDelete = user?.role === 'asg1';   // ASG.1 may delete approved (locked) memos
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const openId = searchParams.get('id');   // deep-link from the builder redirect
@@ -48,6 +51,7 @@ function MemoApprovedView() {
   const [viewMemo, setViewMemo]     = useState(null);   // { data, previews }
   const [viewLoading, setViewLoading] = useState(false);
   const [printMemo, setPrintMemo]   = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);   // approved memo pending delete (ASG.1)
   const { toasts, showToast, dismiss } = useMemoToasts();
   const printingRef  = useRef(false);
   const autoOpenedRef = useRef(false);
@@ -102,6 +106,17 @@ function MemoApprovedView() {
       const previews = await buildAttachmentPreviews(full.attachmentFiles);
       setPrintMemo({ data: full, previews });
     } catch { showToast(t('actionError'), 'error'); }
+  }
+
+  // ASG.1-only: permanently delete an approved (locked) memo. The backend
+  // enforces the same role check; the confirm dialog guards against accidents.
+  async function deleteForever(memo) {
+    try {
+      await api.delete(`/api/consultant-memo/${memo._id}`);
+      setMemos(prev => prev.filter(m => m._id !== memo._id));
+      showToast(t('deletedToast'));
+    } catch { showToast(t('actionError'), 'error'); }
+    setDeleteTarget(null);
   }
 
   const shown = memos
@@ -180,6 +195,14 @@ function MemoApprovedView() {
                     >
                       <IconPrinter />
                     </button>
+                    {canDelete && (
+                      <button
+                        className="cmx-btn cmx-btn-danger cmx-btn-sm"
+                        onClick={() => setDeleteTarget(m)}
+                      >
+                        <IconTrash /> <span>{t('deleteForever')}</span>
+                      </button>
+                    )}
                   </div>
                 </article>
               ))}
@@ -195,6 +218,17 @@ function MemoApprovedView() {
             </div>
             <div className="cmx-preview-scroll">
               <MemoPrint memo={viewMemo.data} lang={lang} attachmentPreviews={viewMemo.previews} />
+            </div>
+          </MemoModal>
+        )}
+
+        {deleteTarget && (
+          <MemoModal onClose={() => setDeleteTarget(null)} labelledBy="cmx-del-title">
+            <h3 id="cmx-del-title" className="cmx-modal-title">{t('deleteConfirmTitle')}</h3>
+            <p className="cmx-modal-body">{t('deleteConfirmBody')}</p>
+            <div className="cmx-modal-btns">
+              <button className="cmx-btn cmx-btn-outline" onClick={() => setDeleteTarget(null)}>{t('cancel')}</button>
+              <button className="cmx-btn cmx-btn-danger" onClick={() => deleteForever(deleteTarget)}>{t('deleteYes')}</button>
             </div>
           </MemoModal>
         )}
