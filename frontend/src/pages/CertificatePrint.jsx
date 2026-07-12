@@ -1,6 +1,6 @@
 /**
  * CertificatePrint.jsx
- * Formal printable certificate page for MTMS.
+ * Formal printable certificate page for AMETI.
  *
  * Route: /dio/certificates/:id/print  (also accessible from DioTraineeDetail)
  * Backend endpoint: GET /api/certificates/:id/print
@@ -100,11 +100,11 @@ export default function CertificatePrint() {
 
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8mm', position:'relative', zIndex:1 }}>
-          <img src="/logo.png" alt="MTMS" style={{ height:64, width:'auto', display:'block' }}
+          <img src="/ameti-logo.jpeg" alt="AMETI" style={{ height:64, width:'auto', display:'block', mixBlendMode:'multiply' }}
             onError={e => { e.target.style.display='none'; }} />
           <div style={{ textAlign:'right' }}>
-            <div style={{ fontSize:11, color:'#6B7280', fontWeight:500 }}>Medical Training Management System</div>
-            <div style={{ fontSize:11, color:'#6B7280' }}>MTMS — النظام الوطني لإدارة التدريب الطبي</div>
+            <div style={{ fontSize:11, color:'#6B7280', fontWeight:500 }}>AMETI — Academy of Medical Education and Training in Iraq</div>
+            <div style={{ fontSize:11, color:'#6B7280' }}>Qimam Foundation for Health & Educational Services</div>
           </div>
         </div>
 
@@ -206,7 +206,7 @@ export default function CertificatePrint() {
             {verifyUrl}
           </div>
           <div style={{ marginTop:'1mm', fontSize:9, color:'#9CA3AF' }}>
-            MTMS · Medical Training Management System · {new Date().getFullYear()}
+            AMETI · Academy of Medical Education and Training in Iraq · {new Date().getFullYear()}
           </div>
         </div>
 

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api/axios';
-import { usePrefs } from '../context/PrefsContext';
 
 function fmt(d) {
   if (!d) return '—';
@@ -19,8 +18,7 @@ function textValue(value, fallback = '—') {
 
 export default function VerifyCertificate() {
   const { code }     = useParams();
-  const { theme }    = usePrefs();
-  const logoSrc      = theme === 'dark' ? '/logo-light.png' : '/logo.png';
+  const logoSrc      = '/ameti-logo.jpeg';
   const [result,     setResult    ] = useState(null);
   const [loading,    setLoading   ] = useState(false);
   const [manualCode, setManualCode] = useState(code || '');
@@ -52,7 +50,7 @@ export default function VerifyCertificate() {
       justifyContent:'center', padding:24,
       fontFamily:'Inter,-apple-system,BlinkMacSystemFont,sans-serif'
     }}>
-      <img src={logoSrc} alt="MTMS" style={{ height:72, marginBottom:24 }} />
+      <img src={logoSrc} alt="AMETI" style={{ height:72, marginBottom:24, background:'#fff', borderRadius:12, padding:8 }} />
 
       <div style={{
         background:'#fff', borderRadius:16, border:'1px solid #E8E9EF',
@@ -105,10 +103,10 @@ export default function VerifyCertificate() {
         {!loading && result?.valid && (
           <div className="certificate-print-area" style={{ border:'2px solid #059669', borderRadius:12, padding:24, background:'#F0FDF4', position:'relative' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, marginBottom:18, borderBottom:'1px solid #BBF7D0', paddingBottom:14 }}>
-              <img src="/logo.png" alt="MTMS" style={{ height:44, width:'auto' }} onError={e => { e.currentTarget.style.display = 'none'; }} />
+              <img src="/ameti-logo.jpeg" alt="AMETI" style={{ height:44, width:'auto', background:'#fff', borderRadius:8, padding:5, border:'1px solid #D1FAE5' }} onError={e => { e.currentTarget.style.display = 'none'; }} />
               <div style={{ textAlign:'right' }}>
                 <div style={{ fontSize:15, fontWeight:800, color:'#0C2D5E' }}>Certificate of Training</div>
-                <div style={{ fontSize:11, color:'#047857' }}>Medical Training Management System</div>
+                <div style={{ fontSize:11, color:'#047857' }}>AMETI — Academy of Medical Education and Training in Iraq</div>
               </div>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
@@ -186,7 +184,7 @@ export default function VerifyCertificate() {
       </div>
 
       <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:20, textAlign:'center', maxWidth:400 }}>
-        This verification service confirms the authenticity of certificates issued by the Medical Training Management System (MTMS).
+        This verification service confirms the authenticity of certificates issued by the Academy of Medical Education and Training in Iraq (AMETI).
       </div>
     </div>
   );
