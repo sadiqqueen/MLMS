@@ -357,7 +357,7 @@ export default function DioCertificates() {
             <div key={`${filterText}|${specialtyFilter}|${typeFilter}|${statusFilter}|${view}`} style={{ animation: 'fadeIn .18s ease-out' }}>
             {view === 'list' && (
             <div className="admin-table-wrap">
-              <table className="admin-table">
+              <table className="admin-table admin-table--stack">
                 <thead>
                   <tr>
                     <th>#</th>
@@ -384,22 +384,24 @@ export default function DioCertificates() {
                     return (
                       <tr key={c?._id || i} style={{ opacity: isRevoked ? 0.65 : 1 }}>
                         <td style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
-                        <td>
-                          <div style={{ fontWeight: 600 }}>{trainee?.name || '-'}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{trainee?.email || ''}</div>
+                        <td data-label="Trainee">
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{trainee?.name || '-'}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{trainee?.email || ''}</div>
+                          </div>
                         </td>
-                        <td style={{ fontSize: 13, color: 'var(--text-2)' }}>{trainee?.studentId || '-'}</td>
-                        <td style={{ fontSize: 13, color: 'var(--text-2)' }}>{textValue(c?.specialty)}</td>
-                        <td>
+                        <td data-label="Student ID" style={{ fontSize: 13, color: 'var(--text-2)' }}>{trainee?.studentId || '-'}</td>
+                        <td data-label="Specialty" style={{ fontSize: 13, color: 'var(--text-2)' }}>{textValue(c?.specialty)}</td>
+                        <td data-label="Type">
                           <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)' }}>
                             {c?.type || 'Completion'}
                           </span>
-                          <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20, background: 'var(--surface-2)', color: 'var(--text-2)' }}>
+                          <span style={{ marginInlineStart: 6, fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20, background: 'var(--surface-2)', color: 'var(--text-2)' }}>
                             {certTrack(c) === 'basic' ? 'Basic' : 'Advanced'}
                           </span>
                         </td>
-                        <td style={{ fontSize: 13, color: 'var(--text-2)' }}>{fmt(c?.issueDate || c?.issuedAt)}</td>
-                        <td>
+                        <td data-label="Issue Date" style={{ fontSize: 13, color: 'var(--text-2)' }}>{fmt(c?.issueDate || c?.issuedAt)}</td>
+                        <td data-label="Status">
                           <span style={{
                             fontSize: 11,
                             fontWeight: 600,
@@ -411,7 +413,7 @@ export default function DioCertificates() {
                             {isRevoked ? `Revoked ${fmt(c?.revokedAt)}` : 'Valid'}
                           </span>
                         </td>
-                        <td>
+                        <td data-label="Actions">
                           <div className="action-btns">
                             {!isRevoked && (
                               <button type="button" className="btn-action print"

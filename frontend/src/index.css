@@ -1049,6 +1049,79 @@ html[data-theme="dark"] { color-scheme: dark; }
 .admin-table tr:nth-child(even) td { background: var(--surface-2); }
 .admin-table tr:hover td { background: var(--info-bg); }
 
+/* ── STACKED TABLE (mobile, opt-in via .admin-table--stack) ─────────────────
+   Each row becomes a labeled card so no column is pushed off-screen. Cells
+   without data-label (the # column) are hidden; td[colspan] (empty state)
+   stays a plain centered block. 768px matches the nav's mobile breakpoint;
+   the 8-col table needs ~900px, so 700px would leave a band that still
+   scrolls horizontally. Logical properties keep it correct under dir="rtl". */
+@media (max-width: 768px) {
+  .admin-table--stack,
+  .admin-table--stack tbody,
+  .admin-table--stack tbody tr,
+  .admin-table--stack tbody td { display: block; }
+
+  .admin-table--stack thead { display: none; }
+
+  .admin-table--stack tbody tr {
+    margin: 12px;
+    border: 1px solid var(--surface-3);
+    border-radius: 12px;
+    background: var(--surface);
+    overflow: hidden; /* keep any cell background inside the radius */
+  }
+
+  /* Neutralize the desktop stripe + hover backgrounds so cards are uniform */
+  .admin-table--stack tbody tr:nth-child(even) td,
+  .admin-table--stack tbody tr:hover td { background: none; }
+
+  .admin-table--stack tbody td {
+    border-top: none; /* reset the base .admin-table td divider */
+    padding: 10px 14px;
+  }
+
+  /* Hide the # column (no data-label); the [colspan] guard protects the
+     empty-state cell, which is also unlabeled */
+  .admin-table--stack tbody td:not([data-label]):not([colspan]) { display: none; }
+
+  /* Labeled field rows: label at inline start, value(s) clustered at end */
+  .admin-table--stack tbody td[data-label] {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    text-align: end;
+  }
+  .admin-table--stack tbody td[data-label]::before {
+    content: attr(data-label);
+    margin-inline-end: auto; /* pushes label to the inline start */
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    text-align: start;
+    flex-shrink: 0;
+  }
+
+  /* Divider between visible rows only. The td before Trainee is the unlabeled
+     # cell, so the first visible row correctly gets no divider. */
+  .admin-table--stack tbody td[data-label] + td[data-label] {
+    border-top: 1px solid var(--border-soft);
+  }
+
+  /* Long values (emails) wrap instead of overflowing the card */
+  .admin-table--stack tbody td[data-label] > * { min-width: 0; overflow-wrap: anywhere; }
+
+  /* Empty-state cell (inline style already centers; belt-and-braces) */
+  .admin-table--stack tbody td[colspan] { text-align: center; }
+
+  /* Hide the Actions row entirely when a row has no buttons (cross-track
+     revoked cert). Harmless fallback on browsers without :has(). */
+  .admin-table--stack tbody td[data-label]:has(.action-btns:empty) { display: none; }
+}
+
 /* Table cell helpers */
 .cell-photo {
   width: 36px; height: 36px;
