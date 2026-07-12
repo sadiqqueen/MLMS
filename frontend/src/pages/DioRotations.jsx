@@ -332,7 +332,7 @@ export function RotationsPanel({ autoOpenNew = false }) {
             <button className="btn-purple" onClick={() => { setEditItem(null); setShowModal(true); }}>+ Add Rotation</button>
           </div>
           {view === 'list' && <div className="admin-table-wrap">
-            <table className="admin-table">
+            <table className="admin-table admin-table--stack">
               <thead>
                 <tr><th>#</th><th>Trainee</th><th>Hospital</th><th>Supervisor</th><th>Specialty</th><th>Start</th><th>End</th><th>Status</th><th>Actions</th></tr>
               </thead>
@@ -357,26 +357,28 @@ export function RotationsPanel({ autoOpenNew = false }) {
                   return (
                     <tr key={r._id}>
                       <td style={{ color:'var(--text-muted)' }}>{i+1}</td>
-                      <td>
-                        <div style={{ fontWeight:600 }}>{trainee?.name || '—'}</div>
-                        {trainee?.studentId && <div style={{ fontSize:11, color:'var(--text-muted)' }}>{trainee.studentId}</div>}
+                      <td data-label="Trainee">
+                        <div>
+                          <div style={{ fontWeight:600 }}>{trainee?.name || '—'}</div>
+                          {trainee?.studentId && <div style={{ fontSize:11, color:'var(--text-muted)' }}>{trainee.studentId}</div>}
+                        </div>
                       </td>
-                      <td style={{ fontSize:13 }}>{hospital?.name || '—'}</td>
-                      <td style={{ fontSize:13 }}>{supervisor?.name || '—'}</td>
-                      <td>
+                      <td data-label="Hospital" style={{ fontSize:13 }}>{hospital?.name || '—'}</td>
+                      <td data-label="Supervisor" style={{ fontSize:13 }}>{supervisor?.name || '—'}</td>
+                      <td data-label="Specialty">
                         {specialty !== '-'
                           ? <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'var(--chip-spec-bg)', color:'var(--chip-spec-fg)' }}>{specialty}</span>
                           : <span style={{ color:'var(--text-muted)' }}>—</span>
                         }
                       </td>
-                      <td style={{ fontSize:13 }}>{fmtDate(r.startDate)}</td>
-                      <td style={{ fontSize:13 }}>{fmtDate(r.endDate)}</td>
-                      <td>
+                      <td data-label="Start" style={{ fontSize:13 }}>{fmtDate(r.startDate)}</td>
+                      <td data-label="End" style={{ fontSize:13 }}>{fmtDate(r.endDate)}</td>
+                      <td data-label="Status">
                         <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:st.bg, color:st.color }}>
                           {r.status ? r.status.charAt(0).toUpperCase() + r.status.slice(1) : '—'}
                         </span>
                       </td>
-                      <td>
+                      <td data-label="Actions">
                         <div className="action-btns">
                           <button className="btn-action edit"
                             title="Edit rotation"

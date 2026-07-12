@@ -119,7 +119,7 @@ export function ProgramDirectorsPanel() {
       </div>
 
       <div className="admin-table-wrap">
-        <table className="admin-table">
+        <table className="admin-table admin-table--stack">
           <thead>
             <tr><th>#</th><th>Program Director</th><th>Assigned Specialty</th></tr>
           </thead>
@@ -137,7 +137,7 @@ export function ProgramDirectorsPanel() {
             {filtered.map((p, i) => (
               <tr key={p._id}>
                 <td style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
-                <td>
+                <td data-label="Program Director">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {p.photoUrl
                       ? <img src={`${API_BASE}${p.photoUrl}`} alt="" className="cell-photo" />
@@ -148,7 +148,7 @@ export function ProgramDirectorsPanel() {
                     </div>
                   </div>
                 </td>
-                <td style={{ minWidth: 240, maxWidth: 320 }}>
+                <td data-label="Assigned Specialty" style={{ minWidth: 240, maxWidth: 320 }}>
                   <SearchableSelect
                     value={currentValue(p)}
                     onChange={v => assignSpecialty(p, v)}

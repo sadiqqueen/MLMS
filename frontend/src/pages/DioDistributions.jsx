@@ -271,7 +271,7 @@ export function DistributionsPanel({ autoOpenNew = false }) {
           {/* LIST VIEW */}
           {view === 'list' && (
             <div className="admin-table-wrap">
-              <table className="admin-table">
+              <table className="admin-table admin-table--stack">
                 <thead><tr><th>#</th><th>Supervisor</th><th>Specialty</th><th>Hospital</th><th>Status</th><th>Actions</th></tr></thead>
                 <tbody>
                   {filtered.length === 0 && (
@@ -287,14 +287,16 @@ export function DistributionsPanel({ autoOpenNew = false }) {
                     return (
                       <tr key={d._id}>
                         <td style={{ color:'var(--text-muted)' }}>{i+1}</td>
-                        <td>
-                          <div style={{ fontWeight:600 }}>{sup?.name || '—'}</div>
-                          {sup?.email && <div style={{ fontSize:11, color:'var(--text-muted)' }}>{sup.email}</div>}
+                        <td data-label="Supervisor">
+                          <div>
+                            <div style={{ fontWeight:600 }}>{sup?.name || '—'}</div>
+                            {sup?.email && <div style={{ fontSize:11, color:'var(--text-muted)' }}>{sup.email}</div>}
+                          </div>
                         </td>
-                        <td><span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'var(--chip-spec-bg)', color:'var(--chip-spec-fg)' }}>{spec}</span></td>
-                        <td style={{ fontSize:13 }}>{hosp?.name || '—'}</td>
-                        <td><span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:st.bg, color:st.color }}>{d?.status || '—'}</span></td>
-                        <td>
+                        <td data-label="Specialty"><span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'var(--chip-spec-bg)', color:'var(--chip-spec-fg)' }}>{spec}</span></td>
+                        <td data-label="Hospital" style={{ fontSize:13 }}>{hosp?.name || '—'}</td>
+                        <td data-label="Status"><span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:st.bg, color:st.color }}>{d?.status || '—'}</span></td>
+                        <td data-label="Actions">
                           <div className="action-btns">
                             <button className="btn-action edit" title="Edit" aria-label={`Edit distribution for ${sup?.name}`}
                               onClick={() => { setEditItem(d); setShowModal(true); }}><IconPencil /></button>
