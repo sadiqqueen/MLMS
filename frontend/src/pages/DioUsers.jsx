@@ -545,7 +545,7 @@ export default function DioUsers() {
           <div key={`${roleFilter}|${hospitalFilter}|${specialtyFilter}|${search}|${view}`} style={{ animation: 'fadeIn .18s ease-out' }}>
           {view === 'list' && (
             <div className="admin-table-wrap">
-              <table className="admin-table">
+              <table className="admin-table admin-table--stack">
                 <thead>
                   <tr><th>#</th><th>User</th><th>Role</th><th>Specialty</th><th>Hospital</th><th>Status</th><th>Actions</th></tr>
                 </thead>
@@ -566,7 +566,7 @@ export default function DioUsers() {
                     return (
                       <tr key={u._id} style={{ opacity: active ? 1 : 0.65 }}>
                         <td style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
-                        <td>
+                        <td data-label="User">
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             {u.photoUrl
                               ? <img src={`${API_BASE}${u.photoUrl}`} alt="" className="cell-photo" />
@@ -577,23 +577,23 @@ export default function DioUsers() {
                             </div>
                           </div>
                         </td>
-                        <td>
+                        <td data-label="Role">
                           <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: meta.badge.bg, color: meta.badge.color }}>
                             {meta.label}
                           </span>
                         </td>
-                        <td>
+                        <td data-label="Specialty">
                           <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)' }}>
                             {specialtyName(u)}
                           </span>
                         </td>
-                        <td style={{ fontSize: 13, color: 'var(--text-2)' }}>{hospitalName(u)}</td>
-                        <td>
+                        <td data-label="Hospital" style={{ fontSize: 13, color: 'var(--text-2)' }}>{hospitalName(u)}</td>
+                        <td data-label="Status">
                           <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, background: active ? 'var(--success-bg)' : 'var(--danger-bg)', color: active ? 'var(--success-fg)' : 'var(--danger-fg)' }}>
                             {active ? 'Active' : 'Inactive'}
                           </span>
                         </td>
-                        <td>
+                        <td data-label="Actions">
                           <div className="action-btns">
                             <button className="btn-action view" title="View details" aria-label={`View ${u.name}`} onClick={() => setViewUser(u)}><IconEye /></button>
                             {u.role !== 'president' && (
