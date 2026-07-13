@@ -20,34 +20,51 @@ function idOf(v) { return (v?._id || v || '').toString(); }
 // ── Capacity strings (bilingual — used here and in DioHospitalDetail) ────────
 const CAP_STRINGS = {
   ar: {
-    annualCapacity: 'السعة السنوية', trainingDuration: 'مدة التدريب', months: 'أشهر',
+    annualCapacity: 'السعة السنوية', trainingDuration: 'مدة التدريب', years: 'سنوات',
     notSet: 'غير محدد', thisYear: 'هذه السنة', traineesThisYear: 'متدرب هذه السنة',
     exceptions: 'استثناءات', capacityTitle: 'السعة السنوية ومدة التدريب',
     editCapacity: 'تعديل السعة', save: 'حفظ', cancel: 'إلغاء', saving: 'جارٍ الحفظ…',
-    capacitySaved: 'تم حفظ إعدادات السعة', capacitySaveFailed: 'فشل حفظ إعدادات السعة',
-    emptyClears: 'اترك الحقل فارغاً لإلغاء التحديد («غير محدد»).',
+    capacitySaved: 'تم حفظ الإعدادات', capacitySaveFailed: 'فشل حفظ الإعدادات',
+    emptyClears: 'اترك حقل السعة/المدة فارغاً لإلغاء التحديد («غير محدد»).',
     invalidNumber: 'أدخل رقماً صحيحاً موجباً',
     specialty: 'التخصص',
+    panelTitle: 'إعدادات السعة والسكرتارية', panelSubtitle: 'حدّد السعة السنوية ومدة التدريب والسكرتير لكل تخصص في هذا المستشفى.',
+    secretary: 'السكرتير', unassigned: '— بدون سكرتير —', noConfigurableSpecs: 'لا توجد تخصصات قابلة للإعداد.',
+    someFailed: 'تعذّر حفظ بعض التغييرات',
   },
   en: {
-    annualCapacity: 'Annual Capacity', trainingDuration: 'Training Duration', months: 'Months',
+    annualCapacity: 'Annual Capacity', trainingDuration: 'Training Duration', years: 'Years',
     notSet: 'Not set', thisYear: 'this year', traineesThisYear: 'trainees this year',
     exceptions: 'exceptions', capacityTitle: 'Annual Capacity & Training Duration',
     editCapacity: 'Edit Capacity', save: 'Save', cancel: 'Cancel', saving: 'Saving…',
-    capacitySaved: 'Capacity settings saved', capacitySaveFailed: 'Failed to save capacity settings',
-    emptyClears: 'Leave a field empty to clear it ("Not set").',
+    capacitySaved: 'Settings saved', capacitySaveFailed: 'Failed to save settings',
+    emptyClears: 'Leave a capacity/duration field empty to clear it ("Not set").',
     invalidNumber: 'Enter a valid non-negative number',
     specialty: 'Specialty',
+    panelTitle: 'Capacity & Secretary Settings', panelSubtitle: 'Set the annual capacity, training duration and secretary for each specialty at this hospital.',
+    secretary: 'Secretary', unassigned: '— No secretary —', noConfigurableSpecs: 'No configurable specialties.',
+    someFailed: 'Some changes could not be saved',
   },
 };
 export const capT = (lang, k) => CAP_STRINGS[lang]?.[k] ?? CAP_STRINGS.en[k] ?? k;
 
-// ── Edit per-specialty capacity + training duration (DIO) ────────────────────
-export function CapacityModal({ hospital, specialty, entry, onClose, onSaved }) {
+// ── Edit capacity + training duration + secretary for ALL specialties (DIO) ──
+// One panel per hospital: every specialty with a real Specialty doc gets a row
+// (annual capacity, training duration in years, assigned secretary). Save fans
+// out one PATCH per changed field-group.
+export function HospitalCapacityModal({ hospital, specialties, caps, secretaries, onClose, onSaved, onReload }) {
   const { lang } = usePrefs();
   const t = k => capT(lang, k);
-  const [cap, setCap] = useState(entry?.annualCapacity ?? '');
-  const [dur, setDur] = useState(entry?.trainingDurationMonths ?? '');
+
+  const rowsSpecs = (specialties || []).filter(sp => sp._id); // only configurable specialties
+  const [rows, setRows] = useState(() => Object.fromEntries(rowsSpecs.map(sp => {
+    const e = caps?.[idOf(sp)] || {};
+    return [idOf(sp), {
+      cap: e.annualCapacity ?? '',
+      dur: e.trainingDurationYears ?? '',
+      secretaryId: idOf(sp.secretary) || '',
+    }];
+  })));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [apiErr, setApiErr] = useState('');
@@ -58,58 +75,117 @@ export function CapacityModal({ hospital, specialty, entry, onClose, onSaved }) 
     return () => document.removeEventListener('keydown', h);
   }, [onClose]);
 
-  // '' clears the value (sent as null); otherwise it must be a non-negative number.
+  function setRow(id, k, v) {
+    setRows(r => ({ ...r, [id]: { ...r[id], [k]: v } }));
+    setErrors(e => ({ ...e, [id]: { ...e[id], [k]: false } }));
+    setApiErr('');
+  }
+
+  // '' clears (sent as null); otherwise a non-negative integer. undefined = invalid.
   function parseVal(v) {
     if (v === '' || v === null) return null;
     const n = Number(v);
-    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : undefined; // undefined = invalid
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : undefined;
   }
 
   async function save() {
-    const capVal = parseVal(cap);
-    const durVal = parseVal(dur);
-    const e = {};
-    if (capVal === undefined) e.cap = true;
-    if (durVal === undefined) e.dur = true;
-    if (Object.keys(e).length) { setErrors(e); return; }
+    const errs = {};
+    rowsSpecs.forEach(sp => {
+      const id = idOf(sp); const row = rows[id];
+      if (parseVal(row.cap) === undefined) errs[id] = { ...errs[id], cap: true };
+      if (parseVal(row.dur) === undefined) errs[id] = { ...errs[id], dur: true };
+    });
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+
+    const calls = [];
+    rowsSpecs.forEach(sp => {
+      const id = idOf(sp); const row = rows[id];
+      const orig = caps?.[id] || {};
+      const capVal = parseVal(row.cap), durVal = parseVal(row.dur);
+      if ((orig.annualCapacity ?? null) !== capVal || (orig.trainingDurationYears ?? null) !== durVal) {
+        calls.push(api.patch(`/api/dio/hospitals/${hospital._id}/specialty-settings`,
+          { specialtyId: id, annualCapacity: capVal, trainingDurationYears: durVal }));
+      }
+      const origSec = idOf(sp.secretary) || '';
+      if ((row.secretaryId || '') !== origSec) {
+        calls.push(api.patch(`/api/dio/hospitals/${hospital._id}/specialty-secretary`,
+          { specialtyId: id, secretaryId: row.secretaryId || null }));
+      }
+    });
+
+    if (!calls.length) { onClose(); return; }
     setSaving(true); setApiErr('');
-    try {
-      await api.patch(`/api/dio/hospitals/${hospital._id}/specialty-settings`, {
-        specialtyId: specialty._id,
-        annualCapacity: capVal,
-        trainingDurationMonths: durVal,
-      });
-      onSaved(t('capacitySaved'));
-      onClose();
-    } catch (err) { setApiErr(err.response?.data?.message || t('capacitySaveFailed')); }
-    finally { setSaving(false); }
+    const results = await Promise.allSettled(calls);
+    setSaving(false);
+    const failed = results.filter(r => r.status === 'rejected');
+    if (failed.length) {
+      setApiErr(failed[0].reason?.response?.data?.message || t('someFailed'));
+      onReload && onReload(); // reflect whatever succeeded
+      return;
+    }
+    onSaved(t('capacitySaved'));
+    onClose();
   }
+
+  const secOptions = (secretaries || []).map(s => ({ id: idOf(s), name: s.name }));
 
   return (
     <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="admin-modal" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <div className="admin-modal admin-modal-lg" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
         <div className="admin-modal-header">
-          <div className="admin-modal-title">{t('editCapacity')} · {specialty.name}</div>
+          <div className="admin-modal-title">{t('panelTitle')}</div>
           <button className="admin-modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="admin-modal-body">
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>🏥 {hospital.name}</div>
-          <div className="admin-form-grid">
-            <div className="admin-field">
-              <label>{t('annualCapacity')}</label>
-              <input className={errors.cap ? 'invalid' : ''} type="number" min={0} value={cap}
-                onChange={e => { setCap(e.target.value); setErrors(x => ({ ...x, cap: false })); setApiErr(''); }}
-                placeholder={t('notSet')} />
-              {errors.cap && <span style={{ fontSize: 11, color: 'var(--danger)' }}>{t('invalidNumber')}</span>}
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>🏥 {hospital.name} — {t('panelSubtitle')}</div>
+          {rowsSpecs.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '16px 0' }}>{t('noConfigurableSpecs')}</div>
+          ) : (
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>{t('specialty')}</th>
+                    <th style={{ width: 110 }}>{t('annualCapacity')}</th>
+                    <th style={{ width: 150 }}>{t('trainingDuration')} ({t('years')})</th>
+                    <th style={{ minWidth: 170 }}>{t('secretary')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rowsSpecs.map(sp => {
+                    const id = idOf(sp); const row = rows[id]; const err = errors[id] || {};
+                    const cur = row.secretaryId;
+                    const curInList = !cur || secOptions.some(o => o.id === cur);
+                    return (
+                      <tr key={id}>
+                        <td>
+                          <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)', whiteSpace: 'nowrap' }}>{sp.name}</span>
+                        </td>
+                        <td>
+                          <input className={err.cap ? 'invalid' : ''} type="number" min={0} value={row.cap}
+                            style={{ width: '100%' }} placeholder={t('notSet')}
+                            onChange={e => setRow(id, 'cap', e.target.value)} />
+                        </td>
+                        <td>
+                          <input className={err.dur ? 'invalid' : ''} type="number" min={0} value={row.dur}
+                            style={{ width: '100%' }} placeholder={t('notSet')}
+                            onChange={e => setRow(id, 'dur', e.target.value)} />
+                        </td>
+                        <td>
+                          <select value={row.secretaryId} style={{ width: '100%' }}
+                            onChange={e => setRow(id, 'secretaryId', e.target.value)}>
+                            <option value="">{t('unassigned')}</option>
+                            {!curInList && <option value={cur}>{sp.secretary?.name || cur}</option>}
+                            {secOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                          </select>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-            <div className="admin-field">
-              <label>{t('trainingDuration')} ({t('months')})</label>
-              <input className={errors.dur ? 'invalid' : ''} type="number" min={0} value={dur}
-                onChange={e => { setDur(e.target.value); setErrors(x => ({ ...x, dur: false })); setApiErr(''); }}
-                placeholder={t('notSet')} />
-              {errors.dur && <span style={{ fontSize: 11, color: 'var(--danger)' }}>{t('invalidNumber')}</span>}
-            </div>
-          </div>
+          )}
           <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)' }}>{t('emptyClears')}</div>
           {apiErr && <div style={{ marginTop: 14, background: 'var(--danger-bg)', color: 'var(--danger-fg)', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>{apiErr}</div>}
         </div>
@@ -365,14 +441,14 @@ function Section({ title, count, children }) {
 }
 function Muted({ children }) { return <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{children}</div>; }
 
-// Compact one-line capacity summary for a specialty: "Annual Capacity: 10 · Training Duration: 6 Months · 7 / 10 this year"
+// Compact one-line capacity summary for a specialty: "Annual Capacity: 10 · Training Duration: 4 Years · 7 / 10 this year"
 function capacitySummary(entry, lang) {
   const t = k => capT(lang, k);
   const capSet = entry != null && entry.annualCapacity != null;
-  const durSet = entry != null && entry.trainingDurationMonths != null;
+  const durSet = entry != null && entry.trainingDurationYears != null;
   const parts = [
     `${t('annualCapacity')}: ${capSet ? entry.annualCapacity : t('notSet')}`,
-    `${t('trainingDuration')}: ${durSet ? `${entry.trainingDurationMonths} ${t('months')}` : t('notSet')}`,
+    `${t('trainingDuration')}: ${durSet ? `${entry.trainingDurationYears} ${t('years')}` : t('notSet')}`,
   ];
   if (capSet && entry.used != null) parts.push(`${entry.used} / ${entry.annualCapacity} ${t('thisYear')}`);
   return parts.join(' · ');
@@ -419,19 +495,10 @@ function HospitalCard({ h, caps, onAction, onOpen, onEditCapacity }) {
                           {sp.secretary ? `📋 ${sp.secretary.name}` : 'No secretary'}
                         </span>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                          {capacitySummary(entry, lang)}
-                          {entry?.exceptionsUsed > 0 && (
-                            <span style={{ color: 'var(--warning-fg)' }}> · +{entry.exceptionsUsed} {capT(lang, 'exceptions')}</span>
-                          )}
-                        </span>
-                        {sp._id && (
-                          <button className="btn-action edit" style={{ width: 24, height: 24, flexShrink: 0 }}
-                            title={capT(lang, 'editCapacity')} aria-label={`${capT(lang, 'editCapacity')} · ${sp.name}`}
-                            onClick={() => onEditCapacity(h, sp)}>
-                            <IconPencil size={12} />
-                          </button>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        {capacitySummary(entry, lang)}
+                        {entry?.exceptionsUsed > 0 && (
+                          <span style={{ color: 'var(--warning-fg)' }}> · +{entry.exceptionsUsed} {capT(lang, 'exceptions')}</span>
                         )}
                       </div>
                     </div>
@@ -457,6 +524,7 @@ function HospitalCard({ h, caps, onAction, onOpen, onEditCapacity }) {
           <button className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '6px 12px' }} onClick={() => onAction('specialty', h)}><IconPlus size={14} /> Specialty</button>
           <button className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '6px 12px' }} onClick={() => onAction('supervisor', h)}><IconPlus size={14} /> Supervisor</button>
           <button className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '6px 12px' }} onClick={() => onAction('pd', h)}><IconPlus size={14} /> Program Director</button>
+          <button className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '6px 12px' }} onClick={() => onEditCapacity(h)}><IconPencil size={13} /> {capT(lang, 'editCapacity')}</button>
         </div>
       </div>
     </div>
@@ -468,6 +536,7 @@ export default function DioHospitals() {
   const bp = useBasePath();
   const [hospitals, setHospitals] = useState([]);
   const [specialties, setSpecialties] = useState([]);
+  const [secretaries, setSecretaries] = useState([]); // for the capacity panel's secretary dropdown
   const [caps, setCaps] = useState({}); // hospitalId → { specialtyId → capacity entry }
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -494,9 +563,10 @@ export default function DioHospitals() {
   }, []);
 
   const load = useCallback(async () => {
-    const [oRes, sRes] = await Promise.allSettled([
+    const [oRes, sRes, secRes] = await Promise.allSettled([
       api.get('/api/dio/hospitals-overview'),
       api.get('/api/specialties'),
+      api.get('/api/dio/secretaries'),
     ]);
     if (oRes.status === 'fulfilled') {
       const hs = oRes.value.data?.data || oRes.value.data || [];
@@ -504,6 +574,7 @@ export default function DioHospitals() {
       loadCaps(hs);
     } else showToast('Failed to load hospitals', 'error');
     if (sRes.status === 'fulfilled') setSpecialties(sRes.value.data?.data || sRes.value.data || []);
+    if (secRes.status === 'fulfilled') setSecretaries(secRes.value.data?.data || secRes.value.data || []);
     setLoading(false);
   }, [loadCaps]);
 
@@ -568,7 +639,7 @@ export default function DioHospitals() {
           {filtered.map(h => (
             <HospitalCard key={h._id} h={h} caps={caps[h._id]} onAction={handleAction}
               onOpen={() => navigate(bp + `/dio/hospitals/${h._id}`)}
-              onEditCapacity={(hosp, sp) => setModal({ type: 'capacity', hospital: hosp, specialty: sp })} />
+              onEditCapacity={hosp => setModal({ type: 'capacity', hospital: hosp })} />
           ))}
         </div>
 
@@ -582,10 +653,11 @@ export default function DioHospitals() {
           <StaffModal role={modal.role} hospital={modal.hospital} specialties={specialties} onClose={() => setModal(null)} onSaved={onSaved} />
         )}
         {modal?.type === 'capacity' && (
-          <CapacityModal hospital={modal.hospital} specialty={modal.specialty}
-            entry={caps[modal.hospital._id]?.[idOf(modal.specialty)]}
+          <HospitalCapacityModal hospital={modal.hospital} specialties={modal.hospital.specialties}
+            caps={caps[modal.hospital._id]} secretaries={secretaries}
             onClose={() => setModal(null)}
-            onSaved={msg => { showToast(msg); loadCaps(hospitals); }} />
+            onSaved={msg => { showToast(msg); load(); }}
+            onReload={() => load()} />
         )}
 
         <Toast toasts={toasts} />

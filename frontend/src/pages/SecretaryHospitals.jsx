@@ -10,11 +10,11 @@ import Sk     from '../components/Skeleton';
 const CAP_STRINGS = {
   ar: {
     annualCapacity: 'السعة السنوية', trainingDuration: 'مدة التدريب',
-    months: 'أشهر', notSet: 'غير محدد', thisYear: 'هذه السنة', exceptions: 'استثناءات',
+    years: 'سنوات', notSet: 'غير محدد', thisYear: 'هذه السنة', exceptions: 'استثناءات',
   },
   en: {
     annualCapacity: 'Annual Capacity', trainingDuration: 'Training Duration',
-    months: 'Months', notSet: 'Not set', thisYear: 'this year', exceptions: 'exceptions',
+    years: 'Years', notSet: 'Not set', thisYear: 'this year', exceptions: 'exceptions',
   },
 };
 const capT = (lang, k) => CAP_STRINGS[lang]?.[k] ?? CAP_STRINGS.en[k] ?? k;
@@ -417,8 +417,8 @@ export default function SecretaryHospitals() {
                       + (h.capacity.exceptionsUsed > 0 ? ` (+${h.capacity.exceptionsUsed} ${ct('exceptions')})` : '')
                     : ct('notSet')],
                 [ct('trainingDuration'),
-                  h.capacity && h.capacity.trainingDurationMonths != null
-                    ? `${h.capacity.trainingDurationMonths} ${ct('months')}`
+                  h.capacity && h.capacity.trainingDurationYears != null
+                    ? `${h.capacity.trainingDurationYears} ${ct('years')}`
                     : ct('notSet')],
               ].map(([label, value]) => (
                 <div key={label}>

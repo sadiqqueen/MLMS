@@ -26,7 +26,7 @@ const hospitalSchema = new mongoose.Schema(
     specialtySettings: [{
       specialtyId:            { type: mongoose.Schema.Types.ObjectId, ref: 'Specialty', required: true },
       annualCapacity:         { type: Number, min: 0, default: null },   // null = not set
-      trainingDurationMonths: { type: Number, min: 0, default: null }    // null = not set
+      trainingDurationYears:  { type: Number, min: 0, default: null }    // null = not set (whole years)
     }],
 
     // Training portal this hospital belongs to (default 'advanced' incl. legacy).

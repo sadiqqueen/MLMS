@@ -681,7 +681,7 @@ router.get('/hospitals', auth, allowRoles(...SECRETARY), async (req, res) => {
       const capacity = {
         specialtyId,
         annualCapacity,
-        trainingDurationMonths: setting?.trainingDurationMonths ?? null,
+        trainingDurationYears: setting?.trainingDurationYears ?? null,
         used: null,
         exceptionsUsed: null,
         maxExtra: maxExtraFor(annualCapacity),

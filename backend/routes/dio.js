@@ -1273,7 +1273,7 @@ router.get('/hospitals/:id/capacity', auth, allowRoles(...DIO, 'super_admin'), a
         specialtyId: s.specialtyId,
         name: nameById.get(s.specialtyId.toString()) || '—',
         annualCapacity: s.annualCapacity ?? null,
-        trainingDurationMonths: s.trainingDurationMonths ?? null,
+        trainingDurationYears: s.trainingDurationYears ?? null,
         used,
         exceptionsUsed,
         maxExtra: maxExtraFor(s.annualCapacity),
@@ -1287,14 +1287,14 @@ router.get('/hospitals/:id/capacity', auth, allowRoles(...DIO, 'super_admin'), a
 });
 
 // PATCH /api/dio/hospitals/:id/specialty-settings
-// Upsert { specialtyId, annualCapacity, trainingDurationMonths } for one specialty
+// Upsert { specialtyId, annualCapacity, trainingDurationYears } for one specialty
 // at one hospital. null/'' clears a value ("not set"); numbers must be >= 0.
 router.patch('/hospitals/:id/specialty-settings', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
   try {
     if (!isValidObjectId(req.params.id)) {
       return res.status(400).json({ success: false, message: 'Invalid hospital id' });
     }
-    const { specialtyId, annualCapacity, trainingDurationMonths } = req.body;
+    const { specialtyId, annualCapacity, trainingDurationYears } = req.body;
     if (!isValidObjectId(specialtyId)) {
       return res.status(400).json({ success: false, message: 'Invalid specialtyId' });
     }
@@ -1316,7 +1316,7 @@ router.patch('/hospitals/:id/specialty-settings', auth, allowRoles(...DIO, 'supe
       return Math.floor(n);
     };
     const capacity = norm(annualCapacity);
-    const duration = norm(trainingDurationMonths);
+    const duration = norm(trainingDurationYears);
     if (Number.isNaN(capacity) || Number.isNaN(duration)) {
       return res.status(400).json({ success: false, message: 'Capacity and duration must be non-negative numbers' });
     }
@@ -1324,16 +1324,78 @@ router.patch('/hospitals/:id/specialty-settings', auth, allowRoles(...DIO, 'supe
     const entry = (hospital.specialtySettings || []).find(s => s.specialtyId?.toString() === String(specialtyId));
     if (entry) {
       entry.annualCapacity = capacity;
-      entry.trainingDurationMonths = duration;
+      entry.trainingDurationYears = duration;
     } else {
-      hospital.specialtySettings.push({ specialtyId, annualCapacity: capacity, trainingDurationMonths: duration });
+      hospital.specialtySettings.push({ specialtyId, annualCapacity: capacity, trainingDurationYears: duration });
     }
     await hospital.save();
     await writeAudit(req, 'dio_update_specialty_settings', 'Hospital', hospital._id, {
-      specialtyId, annualCapacity: capacity, trainingDurationMonths: duration,
+      specialtyId, annualCapacity: capacity, trainingDurationYears: duration,
     });
 
     res.json({ success: true, data: { hospitalId: hospital._id, specialtySettings: hospital.specialtySettings } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// PATCH /api/dio/hospitals/:id/specialty-secretary
+// Assign (or clear, secretaryId null) the secretary of one specialty at this
+// hospital. Assigning is authoritative: it sets Specialty.secretaryId AND scopes
+// the chosen secretary user to this specialty + hospital (their data access
+// follows their own specialtyId), so the assignment actually takes effect.
+router.patch('/hospitals/:id/specialty-secretary', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+  try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid hospital id' });
+    }
+    const { specialtyId, secretaryId } = req.body;
+    if (!isValidObjectId(specialtyId)) {
+      return res.status(400).json({ success: false, message: 'Invalid specialtyId' });
+    }
+    const clearing = secretaryId === null || secretaryId === '' || secretaryId === undefined;
+    if (!clearing && !isValidObjectId(secretaryId)) {
+      return res.status(400).json({ success: false, message: 'Invalid secretaryId' });
+    }
+
+    const hospital = await Hospital.findById(req.params.id).select('name track');
+    if (!hospital || (req.user.role === 'dio' && (hospital.track || 'advanced') !== req.track)) {
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
+    }
+    const spec = await Specialty.findById(specialtyId).select('name secretaryId track');
+    if (!spec || (req.user.role === 'dio' && (spec.track || 'advanced') !== req.track)) {
+      return res.status(404).json({ success: false, message: 'Specialty not found in your track' });
+    }
+
+    let secretary = null;
+    if (clearing) {
+      spec.secretaryId = null;
+    } else {
+      const sec = await User.findOne({
+        _id: secretaryId,
+        role: coerceRoleToTrack('secretary', req.track),
+        isActive: { $ne: false },
+      });
+      if (!sec) {
+        return res.status(400).json({ success: false, message: 'Secretary not found in your track' });
+      }
+      // Scope the secretary to this specialty + hospital so the assignment takes effect.
+      sec.specialtyId = spec._id;
+      sec.hospitalId  = hospital._id;
+      sec.hospital    = hospital._id; // legacy alias
+      await sec.save();
+      // A secretary is the recorded secretary of at most one specialty — drop any
+      // stale back-reference from other specialties so displays stay consistent.
+      await Specialty.updateMany({ secretaryId: sec._id, _id: { $ne: spec._id } }, { $set: { secretaryId: null } });
+      spec.secretaryId = sec._id;
+      secretary = { _id: sec._id, name: sec.name };
+    }
+    await spec.save();
+    await writeAudit(req, 'dio_assign_specialty_secretary', 'Specialty', spec._id, {
+      hospitalId: hospital._id, secretaryId: clearing ? null : secretary._id,
+    });
+
+    res.json({ success: true, data: { specialtyId: spec._id, secretary } });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
