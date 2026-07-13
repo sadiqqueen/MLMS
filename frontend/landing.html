@@ -1477,17 +1477,33 @@
     #mobile-app details[open] .app-guide-summary .chev { transform: rotate(180deg); }
     #mobile-app .app-guide-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-      gap: 20px; margin-top: 24px; text-align: start;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 22px; margin-top: 24px; text-align: start;
     }
-    #mobile-app .app-guide-grid figure { margin: 0; }
-    #mobile-app .app-guide-grid img {
-      width: 100%; height: auto; display: block;
-      border-radius: var(--radius); border: 1px solid var(--border);
+    #mobile-app .app-step-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 20px 22px;
+      display: flex; flex-direction: column; gap: 16px;
     }
-    #mobile-app .app-guide-grid figcaption {
-      font-size: 13px; line-height: 1.55; margin: 8px 0 0; text-align: center; max-width: none;
+    #mobile-app .app-step-head { display: flex; align-items: flex-start; gap: 12px; }
+    #mobile-app .app-step-num {
+      flex: 0 0 auto;
+      width: 34px; height: 34px; border-radius: 50%;
+      background: #fe9a16; color: #fff;
+      font-weight: 800; font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
     }
+    #mobile-app .app-step-title { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.3; }
+    #mobile-app .app-step-desc { font-size: 12.5px; color: var(--muted); line-height: 1.55; margin-top: 5px; }
+    #mobile-app .app-phone {
+      margin-top: auto; align-self: center;
+      width: 100%; max-width: 220px;
+      background: #0e0f13; border-radius: 22px; padding: 7px;
+      box-shadow: 0 10px 28px rgba(12,68,124,0.13);
+    }
+    #mobile-app .app-phone img { width: 100%; height: auto; display: block; border-radius: 15px; }
     @media (prefers-reduced-motion: reduce) {
       #mobile-app .app-guide-summary .chev { transition: none; }
     }
@@ -1529,48 +1545,90 @@
           <span class="chev" aria-hidden="true">▾</span>
         </summary>
         <div class="app-guide-grid">
-          <figure>
-            <img src="/app/guide/step_1.png" alt="Install step 1" width="720" height="1970" loading="lazy">
-            <figcaption data-en="Step 1 — Find the APK: open File Manager, locate CPD-Evaluation-Form.apk, and tap it."
-                        data-ar="الخطوة ١ — ابحث عن الملف: افتح «مدير الملفات»، وحدّد ملف CPD-Evaluation-Form.apk ثم اضغط عليه.">
-              Step 1 — Find the APK: open File Manager, locate CPD-Evaluation-Form.apk, and tap it.
-            </figcaption>
-          </figure>
-          <figure>
-            <img src="/app/guide/step_2.png" alt="Install step 2" width="720" height="1970" loading="lazy">
-            <figcaption data-en='Step 2 — Choose Package Installer: in the "Open with" prompt pick Package Installer, then tap "Just once".'
-                        data-ar="الخطوة ٢ — اختر «مثبّت الحِزم»: من نافذة «فتح بواسطة» اختر Package Installer ثم اضغط «لمرة واحدة».">
-              Step 2 — Choose Package Installer: in the "Open with" prompt pick Package Installer, then tap "Just once".
-            </figcaption>
-          </figure>
-          <figure>
-            <img src="/app/guide/step_3.png" alt="Install step 3" width="720" height="1970" loading="lazy">
-            <figcaption data-en="Step 3 — Tap Install."
-                        data-ar="الخطوة ٣ — اضغط «تثبيت» (Install).">
-              Step 3 — Tap Install.
-            </figcaption>
-          </figure>
-          <figure>
-            <img src="/app/guide/step_4.png" alt="Install step 4" width="720" height="1970" loading="lazy">
-            <figcaption data-en='Step 4 — A Play Protect warning is normal. Tap "More details".'
-                        data-ar="الخطوة ٤ — تحذير Play Protect أمر طبيعي. اضغط «مزيد من التفاصيل» (More details).">
-              Step 4 — A Play Protect warning is normal. Tap "More details".
-            </figcaption>
-          </figure>
-          <figure>
-            <img src="/app/guide/step_5.png" alt="Install step 5" width="720" height="1970" loading="lazy">
-            <figcaption data-en='Step 5 — Tap "Install anyway".'
-                        data-ar="الخطوة ٥ — اضغط «التثبيت على أي حال» (Install anyway).">
-              Step 5 — Tap "Install anyway".
-            </figcaption>
-          </figure>
-          <figure>
-            <img src="/app/guide/step_6.png" alt="Install step 6" width="720" height="1970" loading="lazy">
-            <figcaption data-en="Step 6 — Done. Tap Open to launch the app."
-                        data-ar="الخطوة ٦ — تم! اضغط «فتح» (Open) لتشغيل التطبيق.">
-              Step 6 — Done. Tap Open to launch the app.
-            </figcaption>
-          </figure>
+          <div class="app-step-card">
+            <div class="app-step-head">
+              <span class="app-step-num">1</span>
+              <div>
+                <div class="app-step-title" data-en="Find the APK file" data-ar="ابحث عن ملف التطبيق">Find the APK file</div>
+                <div class="app-step-desc"
+                     data-en="Open your File Manager, find CPD-Evaluation-Form.apk, and tap it."
+                     data-ar="افتح «مدير الملفات»، وابحث عن ملف CPD-Evaluation-Form.apk ثم اضغط عليه.">
+                  Open your File Manager, find CPD-Evaluation-Form.apk, and tap it.
+                </div>
+              </div>
+            </div>
+            <div class="app-phone"><img src="/app/guide/step_1.png" alt="Install step 1" width="720" height="1596" loading="lazy"></div>
+          </div>
+          <div class="app-step-card">
+            <div class="app-step-head">
+              <span class="app-step-num">2</span>
+              <div>
+                <div class="app-step-title" data-en="Choose Package Installer" data-ar="اختر «مثبّت الحِزم»">Choose Package Installer</div>
+                <div class="app-step-desc"
+                     data-en="In the 'Open with' menu, pick Package Installer, then tap 'Just once'."
+                     data-ar="من قائمة «فتح بواسطة»، اختر Package Installer ثم اضغط «لمرة واحدة».">
+                  In the 'Open with' menu, pick Package Installer, then tap 'Just once'.
+                </div>
+              </div>
+            </div>
+            <div class="app-phone"><img src="/app/guide/step_2.png" alt="Install step 2" width="720" height="1596" loading="lazy"></div>
+          </div>
+          <div class="app-step-card">
+            <div class="app-step-head">
+              <span class="app-step-num">3</span>
+              <div>
+                <div class="app-step-title" data-en="Tap Install" data-ar="اضغط «تثبيت»">Tap Install</div>
+                <div class="app-step-desc"
+                     data-en="When asked &quot;Do you want to install this app?&quot;, tap Install."
+                     data-ar="عند ظهور سؤال «هل تريد تثبيت هذا التطبيق؟» اضغط «تثبيت» (Install).">
+                  When asked "Do you want to install this app?", tap Install.
+                </div>
+              </div>
+            </div>
+            <div class="app-phone"><img src="/app/guide/step_3.png" alt="Install step 3" width="720" height="1596" loading="lazy"></div>
+          </div>
+          <div class="app-step-card">
+            <div class="app-step-head">
+              <span class="app-step-num">4</span>
+              <div>
+                <div class="app-step-title" data-en="Play Protect warning" data-ar="تحذير Play Protect">Play Protect warning</div>
+                <div class="app-step-desc"
+                     data-en="This is normal. Tap 'More details' to see the options."
+                     data-ar="هذا أمر طبيعي. اضغط «مزيد من التفاصيل» (More details) لعرض الخيارات.">
+                  This is normal. Tap 'More details' to see the options.
+                </div>
+              </div>
+            </div>
+            <div class="app-phone"><img src="/app/guide/step_4.png" alt="Install step 4" width="720" height="1596" loading="lazy"></div>
+          </div>
+          <div class="app-step-card">
+            <div class="app-step-head">
+              <span class="app-step-num">5</span>
+              <div>
+                <div class="app-step-title" data-en="Tap 'Install anyway'" data-ar="اضغط «التثبيت على أي حال»">Tap 'Install anyway'</div>
+                <div class="app-step-desc"
+                     data-en="Under the details, tap 'Install anyway' to continue."
+                     data-ar="أسفل التفاصيل، اضغط «التثبيت على أي حال» (Install anyway) للمتابعة.">
+                  Under the details, tap 'Install anyway' to continue.
+                </div>
+              </div>
+            </div>
+            <div class="app-phone"><img src="/app/guide/step_5.png" alt="Install step 5" width="720" height="1596" loading="lazy"></div>
+          </div>
+          <div class="app-step-card">
+            <div class="app-step-head">
+              <span class="app-step-num">6</span>
+              <div>
+                <div class="app-step-title" data-en="Done — tap Open" data-ar="تم — اضغط «فتح»">Done — tap Open</div>
+                <div class="app-step-desc"
+                     data-en="You'll see 'App installed.' Tap Open to launch the app."
+                     data-ar="ستظهر رسالة «تم تثبيت التطبيق». اضغط «فتح» (Open) لتشغيل التطبيق.">
+                  You'll see 'App installed.' Tap Open to launch the app.
+                </div>
+              </div>
+            </div>
+            <div class="app-phone"><img src="/app/guide/step_6.png" alt="Install step 6" width="720" height="1596" loading="lazy"></div>
+          </div>
         </div>
       </details>
     </div>
