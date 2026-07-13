@@ -1,8 +1,23 @@
 import { useState, useEffect } from 'react';
+import { usePrefs } from '../context/PrefsContext';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
+
+// Bilingual strings for the (new) capacity fields only — the rest of this page
+// is English-only by convention.
+const CAP_STRINGS = {
+  ar: {
+    annualCapacity: 'السعة السنوية', trainingDuration: 'مدة التدريب',
+    months: 'أشهر', notSet: 'غير محدد', thisYear: 'هذه السنة', exceptions: 'استثناءات',
+  },
+  en: {
+    annualCapacity: 'Annual Capacity', trainingDuration: 'Training Duration',
+    months: 'Months', notSet: 'Not set', thisYear: 'this year', exceptions: 'exceptions',
+  },
+};
+const capT = (lang, k) => CAP_STRINGS[lang]?.[k] ?? CAP_STRINGS.en[k] ?? k;
 
 function safeArr(value) {
   return Array.isArray(value) ? value : [];
@@ -261,6 +276,8 @@ function PersonInfoModal({ person, kind, onClose }) {
 }
 
 export default function SecretaryHospitals() {
+  const { lang } = usePrefs();
+  const ct = k => capT(lang, k);
   const [hospitals,    setHospitals   ] = useState([]);
   const [supervisors,  setSupervisors ] = useState([]);
   const [trainees,     setTrainees    ] = useState([]);
@@ -393,6 +410,16 @@ export default function SecretaryHospitals() {
                 ['City',          h.city         || '—'],
                 ['Governorate',   h.governorate  || '—'],
                 ['Address',       h.address      || '—'],
+                // DIO-controlled capacity settings for this secretary's specialty (read-only)
+                [ct('annualCapacity'),
+                  h.capacity && h.capacity.annualCapacity != null
+                    ? `${h.capacity.used ?? 0} / ${h.capacity.annualCapacity} ${ct('thisYear')}`
+                      + (h.capacity.exceptionsUsed > 0 ? ` (+${h.capacity.exceptionsUsed} ${ct('exceptions')})` : '')
+                    : ct('notSet')],
+                [ct('trainingDuration'),
+                  h.capacity && h.capacity.trainingDurationMonths != null
+                    ? `${h.capacity.trainingDurationMonths} ${ct('months')}`
+                    : ct('notSet')],
               ].map(([label, value]) => (
                 <div key={label}>
                   <div style={{

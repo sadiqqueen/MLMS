@@ -20,6 +20,19 @@ const Notification   = require('../models/Notification');
 const AuditLog       = require('../models/AuditLog');
 const ChangeRequest  = require('../models/ChangeRequest');
 const { applyChangeRequest } = require('../utils/applyChangeRequest');
+const { computeCapacityUsage, maxExtraFor, settingFor } = require('../utils/capacity');
+
+// Return a ChangeRequest as a plain object with the sensitive fields of a queued
+// capacity payload removed (never expose a stored password hash to any client).
+function viewChangeRequest(doc) {
+  const o = doc?.toObject ? doc.toObject() : { ...(doc || {}) };
+  if (o.changes && typeof o.changes === 'object') {
+    const c = { ...o.changes };
+    delete c.password;
+    o.changes = c;
+  }
+  return o;
+}
 
 // ── DIO scope = TRAINING TRACK (not hospital) ────────────────────────────────
 // A DIO oversees its entire training track (Advanced for `dio`, Basic for
@@ -1056,12 +1069,15 @@ router.get('/change-requests', auth, allowRoles(...DIO, 'super_admin'), async (r
   try {
     const query = { ...trackFilter(req.track) };
     if (req.query.status) query.status = req.query.status;
+    if (req.query.requestType) query.requestType = req.query.requestType;
     const items = await ChangeRequest.find(query)
       .populate('requestedBy', 'name email')
       .populate('reviewedBy', 'name')
+      .populate('hospitalId', 'name')
+      .populate('specialtyId', 'name')
       .sort({ createdAt: -1 })
       .limit(300);
-    res.json({ success: true, data: items });
+    res.json({ success: true, data: items.map(viewChangeRequest) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -1085,14 +1101,17 @@ router.patch('/change-requests/:id/approve', auth, allowRoles(...DIO, 'super_adm
     cr.reviewedBy = req.user._id;
     cr.reviewedAt = new Date();
     await cr.save();
-    await writeAudit(req, 'dio_approve_change_request', 'ChangeRequest', cr._id, { targetId: cr.targetId, routeKey: cr.routeKey });
+    await writeAudit(req, 'dio_approve_change_request', 'ChangeRequest', cr._id, { targetId: cr.targetId, routeKey: cr.routeKey, requestType: cr.requestType });
+    const approveMsg = cr.requestType === 'capacity_exception'
+      ? `Your capacity request for ${cr.targetLabel || 'a trainee'} was approved — the trainee was added.`
+      : `Your change to ${cr.targetLabel || 'an account'} was approved by the DIO.`;
     await Notification.create({
       user: cr.requestedBy,
-      message: `Your change to ${cr.targetLabel || 'an account'} was approved by the DIO.`,
+      message: approveMsg,
       category: 'promotions'
     }).catch(() => {});
 
-    res.json({ success: true, data: { changeRequest: cr, user: updated } });
+    res.json({ success: true, data: { changeRequest: viewChangeRequest(cr), user: updated } });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -1109,13 +1128,16 @@ router.patch('/change-requests/:id/reject', auth, allowRoles(...DIO, 'super_admi
     cr.reviewedAt = new Date();
     cr.reviewNote = req.body.note ? String(req.body.note).trim() : '';
     await cr.save();
-    await writeAudit(req, 'dio_reject_change_request', 'ChangeRequest', cr._id, { targetId: cr.targetId, routeKey: cr.routeKey });
+    await writeAudit(req, 'dio_reject_change_request', 'ChangeRequest', cr._id, { targetId: cr.targetId, routeKey: cr.routeKey, requestType: cr.requestType });
+    const rejectMsg = cr.requestType === 'capacity_exception'
+      ? `Your capacity request for ${cr.targetLabel || 'a trainee'} was not approved by the DIO.`
+      : `Your change to ${cr.targetLabel || 'an account'} was not approved by the DIO.`;
     await Notification.create({
       user: cr.requestedBy,
-      message: `Your change to ${cr.targetLabel || 'an account'} was not approved by the DIO.`,
+      message: rejectMsg,
       category: 'promotions'
     }).catch(() => {});
-    res.json({ success: true, data: cr });
+    res.json({ success: true, data: viewChangeRequest(cr) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -1225,6 +1247,95 @@ router.get('/hospitals/:id', auth, allowRoles(...DIO, 'super_admin'), async (req
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/dio/hospitals/:id/capacity
+// Per-specialty capacity settings + current-year usage for one hospital.
+router.get('/hospitals/:id/capacity', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+  try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid hospital id' });
+    }
+    const hospital = await Hospital.findById(req.params.id).select('specialtySettings track');
+    if (!hospital || (req.user.role === 'dio' && (hospital.track || 'advanced') !== req.track)) {
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
+    }
+    const settings = hospital.specialtySettings || [];
+    const specs = await Specialty.find({ _id: { $in: settings.map(s => s.specialtyId) } }).select('name');
+    const nameById = new Map(specs.map(s => [s._id.toString(), s.name]));
+
+    const specialties = await Promise.all(settings.map(async s => {
+      const { used, exceptionsUsed } = await computeCapacityUsage({
+        hospitalId: hospital._id, specialtyId: s.specialtyId, track: req.track,
+      });
+      return {
+        specialtyId: s.specialtyId,
+        name: nameById.get(s.specialtyId.toString()) || '—',
+        annualCapacity: s.annualCapacity ?? null,
+        trainingDurationMonths: s.trainingDurationMonths ?? null,
+        used,
+        exceptionsUsed,
+        maxExtra: maxExtraFor(s.annualCapacity),
+      };
+    }));
+
+    res.json({ success: true, data: { hospitalId: hospital._id, specialties } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// PATCH /api/dio/hospitals/:id/specialty-settings
+// Upsert { specialtyId, annualCapacity, trainingDurationMonths } for one specialty
+// at one hospital. null/'' clears a value ("not set"); numbers must be >= 0.
+router.patch('/hospitals/:id/specialty-settings', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+  try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid hospital id' });
+    }
+    const { specialtyId, annualCapacity, trainingDurationMonths } = req.body;
+    if (!isValidObjectId(specialtyId)) {
+      return res.status(400).json({ success: false, message: 'Invalid specialtyId' });
+    }
+
+    const hospital = await Hospital.findById(req.params.id);
+    if (!hospital || (req.user.role === 'dio' && (hospital.track || 'advanced') !== req.track)) {
+      return res.status(404).json({ success: false, message: 'Hospital not found' });
+    }
+    const spec = await Specialty.findById(specialtyId).select('name track');
+    if (!spec || (req.user.role === 'dio' && (spec.track || 'advanced') !== req.track)) {
+      return res.status(404).json({ success: false, message: 'Specialty not found in your track' });
+    }
+
+    // null / '' / undefined → not set; otherwise a non-negative integer.
+    const norm = v => {
+      if (v === null || v === '' || v === undefined) return null;
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < 0) return NaN;
+      return Math.floor(n);
+    };
+    const capacity = norm(annualCapacity);
+    const duration = norm(trainingDurationMonths);
+    if (Number.isNaN(capacity) || Number.isNaN(duration)) {
+      return res.status(400).json({ success: false, message: 'Capacity and duration must be non-negative numbers' });
+    }
+
+    const entry = (hospital.specialtySettings || []).find(s => s.specialtyId?.toString() === String(specialtyId));
+    if (entry) {
+      entry.annualCapacity = capacity;
+      entry.trainingDurationMonths = duration;
+    } else {
+      hospital.specialtySettings.push({ specialtyId, annualCapacity: capacity, trainingDurationMonths: duration });
+    }
+    await hospital.save();
+    await writeAudit(req, 'dio_update_specialty_settings', 'Hospital', hospital._id, {
+      specialtyId, annualCapacity: capacity, trainingDurationMonths: duration,
+    });
+
+    res.json({ success: true, data: { hospitalId: hospital._id, specialtySettings: hospital.specialtySettings } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

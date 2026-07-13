@@ -7,12 +7,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import useBasePath from '../hooks/useBasePath';
+import { usePrefs } from '../context/PrefsContext';
 import Navbar from '../components/Navbar';
 import Toast from '../components/Toast';
 import api from '../api/axios';
 import Sk from '../components/Skeleton';
 import { IconBack, IconPencil, IconPlus } from '../components/icons';
-import { HospitalModal, SpecialtyModal, StaffModal } from './DioHospitals';
+import { HospitalModal, SpecialtyModal, StaffModal, CapacityModal, capT } from './DioHospitals';
 
 function Card({ title, count, action, children }) {
   return (
@@ -40,12 +41,15 @@ export default function DioHospitalDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const bp = useBasePath();
+  const { lang } = usePrefs();
+  const ct = k => capT(lang, k);
 
   const [data, setData] = useState(null);
   const [specialties, setSpecialties] = useState([]);
+  const [capMap, setCapMap] = useState({}); // specialtyId → capacity entry
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [modal, setModal] = useState(null); // { type, role? }
+  const [modal, setModal] = useState(null); // { type, role?, specialty? }
   const [toasts, setToasts] = useState([]);
 
   function showToast(message, type = 'success') {
@@ -53,6 +57,14 @@ export default function DioHospitalDetail() {
     setToasts(p => [...p, { id: tid, message, type }]);
     setTimeout(() => setToasts(p => p.filter(t => t.id !== tid)), 3200);
   }
+
+  const loadCapacity = useCallback(async () => {
+    try {
+      const res = await api.get(`/api/dio/hospitals/${id}/capacity`);
+      const specs = res.data?.data?.specialties || [];
+      setCapMap(Object.fromEntries(specs.map(s => [(s.specialtyId?._id || s.specialtyId || '').toString(), s])));
+    } catch { /* capacity is optional info — keep "Not set" fallback */ }
+  }, [id]);
 
   const load = useCallback(async () => {
     setError('');
@@ -64,10 +76,11 @@ export default function DioHospitalDetail() {
       if (dRes.status === 'fulfilled') setData(dRes.value.data?.data || dRes.value.data);
       else setError(dRes.reason?.response?.data?.message || 'Failed to load hospital');
       if (sRes.status === 'fulfilled') setSpecialties(sRes.value.data?.data || sRes.value.data || []);
+      loadCapacity();
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, loadCapacity]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -161,6 +174,63 @@ export default function DioHospitalDetail() {
           )}
         </Card>
 
+        {/* Annual capacity + training duration per specialty (DIO-controlled) */}
+        <Card title={ct('capacityTitle')} count={data.specialties.length}>
+          {data.specialties.length === 0 ? <Muted>No specialties yet</Muted> : (
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>{ct('specialty')}</th>
+                    <th>{ct('annualCapacity')}</th>
+                    <th>{ct('trainingDuration')}</th>
+                    <th>{ct('thisYear')}</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.specialties.map(sp => {
+                    const entry = sp._id ? capMap[sp._id.toString()] : null;
+                    const capSet = entry != null && entry.annualCapacity != null;
+                    const durSet = entry != null && entry.trainingDurationMonths != null;
+                    return (
+                      <tr key={sp._id || sp.name}>
+                        <td>
+                          <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)' }}>{sp.name}</span>
+                        </td>
+                        <td style={{ fontSize: 13, color: capSet ? 'var(--brand-secondary)' : 'var(--text-muted)', fontWeight: capSet ? 700 : 400 }}>
+                          {capSet ? entry.annualCapacity : ct('notSet')}
+                        </td>
+                        <td style={{ fontSize: 13, color: durSet ? 'var(--brand-secondary)' : 'var(--text-muted)', fontWeight: durSet ? 700 : 400 }}>
+                          {durSet ? `${entry.trainingDurationMonths} ${ct('months')}` : ct('notSet')}
+                        </td>
+                        <td style={{ fontSize: 13, color: 'var(--text-2)' }}>
+                          {capSet && entry.used != null ? (
+                            <>
+                              {entry.used} / {entry.annualCapacity} {ct('traineesThisYear')}
+                              {entry.exceptionsUsed > 0 && (
+                                <span style={{ fontSize: 11, color: 'var(--warning-fg)' }}> · +{entry.exceptionsUsed} {ct('exceptions')}</span>
+                              )}
+                            </>
+                          ) : '—'}
+                        </td>
+                        <td>
+                          {sp._id && (
+                            <button className="btn-action edit" title={ct('editCapacity')} aria-label={`${ct('editCapacity')} · ${sp.name}`}
+                              onClick={() => setModal({ type: 'capacity', specialty: sp })}>
+                              <IconPencil size={14} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+
         {/* Supervisors */}
         <Card title="Supervisors" count={data.supervisors.length} action={<AddBtn onClick={() => setModal({ type: 'staff', role: 'supervisor' })}>Supervisor</AddBtn>}>
           {data.supervisors.length === 0 ? <Muted>None assigned</Muted> : (
@@ -205,6 +275,12 @@ export default function DioHospitalDetail() {
         )}
         {modal?.type === 'staff' && (
           <StaffModal role={modal.role} hospital={data} specialties={specialties} onClose={() => setModal(null)} onSaved={onSaved} />
+        )}
+        {modal?.type === 'capacity' && (
+          <CapacityModal hospital={data} specialty={modal.specialty}
+            entry={capMap[modal.specialty._id?.toString()]}
+            onClose={() => setModal(null)}
+            onSaved={msg => { showToast(msg); loadCapacity(); }} />
         )}
 
         <Toast toasts={toasts} />

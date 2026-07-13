@@ -44,6 +44,7 @@ const STRINGS = {
     selectYear: '— اختر السنة —',
     specialty: 'التخصص', autoSet: '(يُحدَّد تلقائياً)', noSpecialty: 'لا يوجد تخصص معيّن لحسابك',
     hospitalLabel: 'المستشفى', searchHospital: 'ابحث عن مستشفى...',
+    hospitalRequiredErr: 'المستشفى مطلوب',
     supervisorLabel: 'المشرف *', searchSupervisor: 'ابحث عن مشرف...',
     researchSupervisorLabel: 'مشرف الأبحاث', supervisorRequiredErr: 'المشرف مطلوب',
     noSupsForSpec: 'لا يوجد مشرفون لتخصص',
@@ -65,6 +66,13 @@ const STRINGS = {
     saveFailed: 'فشل الحفظ',
     traineeDeactivated: 'تم تعطيل المتدرب', deactivateFailed: 'فشل التعطيل',
     rotationAssigned: 'تم إسناد التدوير بنجاح', rotationFailed: 'فشل إسناد التدوير',
+    // capacity
+    requestPermission: 'طلب إذن من مدير التدريب',
+    requesting: 'جارٍ إرسال الطلب…',
+    capacityFullMsg: 'اكتملت السعة السنوية لهذا التخصص في هذا المستشفى.',
+    ceilingMsg: 'تم بلوغ الحد الأقصى للاستثناءات — لا يمكن تقديم طلبات إضافية هذه السنة.',
+    capacityPending: 'تم إرسال طلب السعة إلى مدير التدريب للموافقة',
+    thisYearCap: 'هذه السنة',
   },
   en: {
     trainees: 'Trainees', rotations: 'Rotations',
@@ -92,6 +100,7 @@ const STRINGS = {
     selectYear: '— Select year —',
     specialty: 'Specialty', autoSet: '(auto-set)', noSpecialty: 'No specialty assigned to your account',
     hospitalLabel: 'Hospital', searchHospital: 'Search hospital...',
+    hospitalRequiredErr: 'Hospital is required',
     supervisorLabel: 'Supervisor *', searchSupervisor: 'Search supervisor...',
     researchSupervisorLabel: 'Research Supervisor', supervisorRequiredErr: 'Supervisor is required',
     noSupsForSpec: 'No supervisors found for',
@@ -111,6 +120,13 @@ const STRINGS = {
     saveFailed: 'Save failed',
     traineeDeactivated: 'Trainee deactivated', deactivateFailed: 'Deactivate failed',
     rotationAssigned: 'Rotation assigned successfully', rotationFailed: 'Failed to assign rotation',
+    // capacity
+    requestPermission: 'Request Permission from DIO',
+    requesting: 'Sending request…',
+    capacityFullMsg: 'Annual capacity for this specialty at this hospital is full.',
+    ceilingMsg: 'The exception ceiling has been reached — no more requests are possible this year.',
+    capacityPending: 'Capacity request sent to the DIO for approval',
+    thisYearCap: 'this year',
   },
 };
 const tr = (lang, k) => STRINGS[lang]?.[k] ?? STRINGS.ar[k] ?? k;
@@ -145,7 +161,7 @@ function ConfirmDelete({ name, onConfirm, onCancel }) {
   );
 }
 
-function TraineeModal({ editTrainee, hospitals, supervisors, secretarySpecialty, onSave, onClose, saving }) {
+function TraineeModal({ editTrainee, hospitals, supervisors, secretarySpecialty, onSave, onClose, saving, capacityInfo, onRequestPermission, onClearCapacity }) {
   const { lang } = usePrefs();
   const t = k => tr(lang, k);
   const specId   = secretarySpecialty?._id || secretarySpecialty || '';
@@ -181,23 +197,40 @@ function TraineeModal({ editTrainee, hospitals, supervisors, secretarySpecialty,
   const hospitalOptions = hospitals.map(h => ({ value: h._id, label: h.name }));
   const supervisorOptions = filteredSups.map(s => ({ value: s._id, label: s.name }));
 
-  function set(k, v) { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: false })); }
+  function set(k, v) {
+    setForm(f => ({ ...f, [k]: v }));
+    setErrors(e => ({ ...e, [k]: false }));
+    // Capacity block belongs to the previously chosen hospital — clear it when it changes.
+    if (k === 'hospitalId' && capacityInfo && onClearCapacity) onClearCapacity();
+  }
 
   function validate() {
     const e = {};
     if (!form.name.trim())  e.name  = true;
     if (!form.email.trim()) e.email = true;
     if (!editTrainee && (!form.password || form.password.length < 6)) e.password = true;
+    if (!editTrainee && !form.hospitalId) e.hospitalId = true; // capacity is per-hospital → required on create
     if (!form.supervisorId) e.supervisorId = true;   // a trainee must have a supervisor
     setErrors(e);
     return !Object.keys(e).length;
   }
 
+  function payload() {
+    // Empty optional reference → null so the backend unsets it cleanly.
+    return { ...form, researchSupervisorId: form.researchSupervisorId || null, role: 'trainee' };
+  }
+
   function handleSave() {
     if (!validate()) return;
-    // Empty optional reference → null so the backend unsets it cleanly.
-    onSave({ ...form, researchSupervisorId: form.researchSupervisorId || null, role: 'trainee' });
+    onSave(payload());
   }
+
+  function handleRequest() {
+    if (!validate()) return;
+    onRequestPermission(payload());
+  }
+
+  const showRequestBtn = !editTrainee && capacityInfo && (capacityInfo.canRequest || capacityInfo.ceiling);
 
   useEffect(() => {
     const h = e => { if (e.key === 'Escape') onClose(); };
@@ -264,13 +297,17 @@ function TraineeModal({ editTrainee, hospitals, supervisors, secretarySpecialty,
             </div>
 
             <div className="admin-field">
-              <label>{t('hospitalLabel')}</label>
+              <label>{t('hospitalLabel')}{editTrainee ? '' : ' *'}</label>
               <SearchableSelect
                 value={form.hospitalId}
                 onChange={value => set('hospitalId', value)}
                 options={hospitalOptions}
                 placeholder={t('searchHospital')}
+                error={errors.hospitalId}
               />
+              {errors.hospitalId && (
+                <span style={{ fontSize: 11, color: 'var(--danger)', marginTop: 3, display: 'block' }}>{t('hospitalRequiredErr')}</span>
+              )}
             </div>
 
             <div className="admin-field">
@@ -322,12 +359,32 @@ function TraineeModal({ editTrainee, hospitals, supervisors, secretarySpecialty,
             </div>
 
           </div>
+
+          {/* Capacity reached — inline note (+ optional DIO permission request) */}
+          {!editTrainee && capacityInfo && (
+            <div style={{
+              marginTop: 14, borderRadius: 8, padding: '10px 14px', fontSize: 13,
+              background: capacityInfo.ceiling ? 'var(--danger-bg)' : 'var(--warning-bg)',
+              color: capacityInfo.ceiling ? 'var(--danger-fg)' : 'var(--warning-fg)',
+            }}>
+              <div style={{ fontWeight: 700 }}>{capacityInfo.message || t('capacityFullMsg')}</div>
+              {capacityInfo.capacity != null && capacityInfo.used != null && (
+                <div style={{ marginTop: 4 }}>{capacityInfo.used} / {capacityInfo.capacity} {t('thisYearCap')}</div>
+              )}
+            </div>
+          )}
         </div>
         <div className="admin-modal-footer">
           <button className="btn-red" onClick={onClose}>{t('cancel')}</button>
-          <button className="btn-purple" onClick={handleSave} disabled={saving}>
-            {saving ? t('saving') : editTrainee ? t('saveChanges') : t('addTraineeTitle')}
-          </button>
+          {showRequestBtn ? (
+            <button className="btn-purple" onClick={handleRequest} disabled={saving || capacityInfo.ceiling}>
+              {saving ? t('requesting') : t('requestPermission')}
+            </button>
+          ) : (
+            <button className="btn-purple" onClick={handleSave} disabled={saving}>
+              {saving ? t('saving') : editTrainee ? t('saveChanges') : t('addTraineeTitle')}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -500,6 +557,9 @@ export default function SecretaryTrainees() {
   const [delTrainee,    setDelTrainee   ] = useState(null);
   const [saving,        setSaving       ] = useState(false);
   const [toasts,        setToasts       ] = useState([]);
+  // Set when a create hit the annual-capacity limit (409 capacityFull):
+  // { message, capacity, used, canRequest, ceiling }
+  const [capacityBlock, setCapacityBlock] = useState(null);
 
   const secretarySpecialty = me?.specialtyId || null;
 
@@ -545,8 +605,54 @@ export default function SecretaryTrainees() {
       }
       setShowModal(false);
       setEditTrainee(null);
+      setCapacityBlock(null);
     } catch (err) {
-      showToast(err.response?.data?.message || t('saveFailed'), 'error');
+      const rd = err.response?.data;
+      if (!editTrainee && err.response?.status === 409 && rd?.capacityFull) {
+        // Capacity reached — keep the modal open; if canRequest, the primary
+        // action becomes "Request Permission from DIO".
+        setCapacityBlock({
+          message: rd.message || t('capacityFullMsg'),
+          capacity: rd.capacity ?? null,
+          used: rd.used ?? null,
+          canRequest: !!rd.canRequest,
+          ceiling: false,
+        });
+      } else if (!editTrainee && rd?.code === 'capacity_unset') {
+        // DIO hasn't set a capacity for this hospital/specialty — no request possible.
+        showToast(rd.message || t('saveFailed'), 'error');
+      } else {
+        showToast(rd?.message || t('saveFailed'), 'error');
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Same trainee payload, routed to the DIO as a capacity-exception request.
+  async function handleCapacityRequest(data) {
+    setSaving(true);
+    try {
+      await api.post('/api/secretary/trainees/capacity-request', data);
+      showToast(t('capacityPending'));
+      setShowModal(false);
+      setEditTrainee(null);
+      setCapacityBlock(null);
+    } catch (err) {
+      const rd = err.response?.data;
+      if (err.response?.status === 409 && rd?.ceilingReached) {
+        // Exception ceiling reached — keep the note inline, disable the request button.
+        setCapacityBlock(prev => ({
+          ...(prev || {}),
+          message: rd.message || t('ceilingMsg'),
+          canRequest: false,
+          ceiling: true,
+        }));
+      } else if (rd?.code === 'capacity_unset') {
+        showToast(rd.message || t('saveFailed'), 'error');
+      } else {
+        showToast(rd?.message || t('saveFailed'), 'error');
+      }
     } finally {
       setSaving(false);
     }
@@ -648,7 +754,7 @@ export default function SecretaryTrainees() {
         {/* Action button (own row, follows text direction) */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
           {activeTab === 'trainees' && (
-            <button className="btn-purple" onClick={() => { setEditTrainee(null); setShowModal(true); }}>
+            <button className="btn-purple" onClick={() => { setEditTrainee(null); setCapacityBlock(null); setShowModal(true); }}>
               {t('addTrainee')}
             </button>
           )}
@@ -797,8 +903,11 @@ export default function SecretaryTrainees() {
             supervisors={supervisors}
             secretarySpecialty={secretarySpecialty}
             onSave={handleSaveTrainee}
-            onClose={() => { setShowModal(false); setEditTrainee(null); }}
+            onClose={() => { setShowModal(false); setEditTrainee(null); setCapacityBlock(null); }}
             saving={saving}
+            capacityInfo={capacityBlock}
+            onRequestPermission={handleCapacityRequest}
+            onClearCapacity={() => setCapacityBlock(null)}
           />
         )}
 

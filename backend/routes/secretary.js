@@ -1,9 +1,11 @@
 // backend/routes/secretary.js
 const router         = require('express').Router();
+const bcrypt         = require('bcryptjs');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const { coerceRoleToTrack, trackFilter } = require('../utils/track');
 const { specialtyIdsForName, specialtyUserMatch, findPdForSpecialty } = require('../utils/pdScope');
+const { computeCapacityUsage, maxExtraFor, settingFor, sameId } = require('../utils/capacity');
 const auditLog       = require('../middleware/auditLogger');
 const User           = require('../models/User');
 const Hospital       = require('../models/Hospital');
@@ -11,6 +13,18 @@ const Rotation       = require('../models/Rotation');
 const Specialty      = require('../models/Specialty');
 const Notification   = require('../models/Notification');
 const ChangeRequest  = require('../models/ChangeRequest');
+
+// A ChangeRequest as a plain object with the sensitive queued password removed —
+// never return a stored password hash to any client.
+function viewChangeRequest(doc) {
+  const o = doc?.toObject ? doc.toObject() : { ...(doc || {}) };
+  if (o.changes && typeof o.changes === 'object') {
+    const c = { ...o.changes };
+    delete c.password;
+    o.changes = c;
+  }
+  return o;
+}
 
 const SECRETARY = ['secretary'];
 const CREATE_USER_FIELDS = ['name', 'email', 'password', 'phone', 'gender', 'city',
@@ -172,13 +186,26 @@ async function buildChangePayload(fields, existing) {
   return { before, display };
 }
 
-// Create the pending request + notify the track's DIOs. Returns the CR.
+// Notify every active DIO in the acting track (same 'promotions' feed used by
+// account-edit requests). Best-effort; failures never block the request.
+async function notifyTrackDios(req, message) {
+  const dios = await User.find({
+    role: coerceRoleToTrack('dio', req.track),
+    isActive: { $ne: false }
+  }).select('_id');
+  await Promise.all(dios.map(d =>
+    Notification.create({ user: d._id, message, category: 'promotions' }).catch(() => {})));
+}
+
+// Create the pending edit request + notify the track's DIOs. Returns the CR.
 async function queueChangeRequest({ req, routeKey, existing, fields }) {
   const { before, display } = await buildChangePayload(fields, existing);
   const cr = await ChangeRequest.create({
     requestedBy: req.user._id,
+    requestType: 'edit',
     targetModel: 'User',
     targetId: existing._id,
+    hospitalId: getHospital(existing) || null,
     routeKey,
     targetLabel: existing.name || '',
     changes: fields,
@@ -188,17 +215,37 @@ async function queueChangeRequest({ req, routeKey, existing, fields }) {
     specialtyId: req.user.specialtyId,
     track: req.track,
   });
-  const dios = await User.find({
-    role: coerceRoleToTrack('dio', req.track),
-    isActive: { $ne: false }
-  }).select('_id');
-  await Promise.all(dios.map(d =>
-    Notification.create({
-      user: d._id,
-      message: `${req.user.name} requested a change to ${existing.name || 'an account'} — awaiting your approval.`,
-      category: 'promotions'
-    }).catch(() => {})));
+  await notifyTrackDios(req, `${req.user.name} requested a change to ${existing.name || 'an account'} — awaiting your approval.`);
   return cr;
+}
+
+// Build + validate the full new-trainee payload from req.body, exactly as
+// POST /trainees does. On any validation failure it writes the response and
+// returns null. Shared by the direct-create and capacity-request paths.
+async function buildTraineePayload(req, res) {
+  const specialtyId = requireSecretarySpecialty(req, res);
+  if (!specialtyId) return null;
+  const hospitalId = req.body.hospitalId || req.body.hospital || getHospital(req.user);
+  const data = pick(req.body, CREATE_USER_FIELDS);
+  data.role = coerceRoleToTrack('trainee', req.track);
+  data.specialtyId = specialtyId;
+  data.specialty = req.user.specialty || data.specialty || '';
+  if (hospitalId) { data.hospitalId = hospitalId; data.hospital = hospitalId; }
+
+  if (!data.supervisorId) {
+    res.status(400).json({ success: false, message: 'A supervisor is required' });
+    return null;
+  }
+  if (!(await supervisorInSpecialty(data.supervisorId, req))) {
+    res.status(400).json({ success: false, message: 'Supervisor is not in your specialty' });
+    return null;
+  }
+  data.supervisor = data.supervisorId;
+  if (data.researchSupervisorId && !(await supervisorInSpecialty(data.researchSupervisorId, req))) {
+    res.status(400).json({ success: false, message: 'Research supervisor is not in your specialty' });
+    return null;
+  }
+  return { data, hospitalId, specialtyId };
 }
 
 // ── TRAINEES ──────────────────────────────────────────────────────────────
@@ -235,25 +282,33 @@ router.post('/trainees',
   auditLog('create_trainee', 'User'),
   async (req, res) => {
     try {
-      const specialtyId = requireSecretarySpecialty(req, res);
-      if (!specialtyId) return;
-      const hospitalId  = req.body.hospitalId || req.body.hospital || getHospital(req.user);
-      const data = pick(req.body, CREATE_USER_FIELDS);
-      data.role = coerceRoleToTrack('trainee', req.track);
-      data.specialtyId = specialtyId;
-      data.specialty = req.user.specialty || data.specialty || '';
-      if (hospitalId)  { data.hospitalId = hospitalId; data.hospital = hospitalId; }
+      const built = await buildTraineePayload(req, res);
+      if (!built) return;
+      const { data, hospitalId, specialtyId } = built;
 
-      // A trainee must be assigned a supervisor (in this secretary's specialty).
-      if (!data.supervisorId) {
-        return res.status(400).json({ success: false, message: 'A supervisor is required' });
+      // Capacity is enforced per hospital+specialty, so a hospital is required.
+      if (!hospitalId) {
+        return res.status(400).json({ success: false, message: 'A hospital is required to add a trainee' });
       }
-      if (!(await supervisorInSpecialty(data.supervisorId, req))) {
-        return res.status(400).json({ success: false, message: 'Supervisor is not in your specialty' });
+      const hospital = await Hospital.findById(hospitalId).select('specialtySettings track');
+      const setting = settingFor(hospital, specialtyId);
+      const capacity = setting?.annualCapacity;
+      if (capacity === null || capacity === undefined) {
+        return res.status(400).json({
+          success: false, code: 'capacity_unset',
+          message: 'The DIO has not set the annual capacity for your specialty at this hospital yet. Ask the DIO to set it before adding trainees.'
+        });
       }
-      data.supervisor = data.supervisorId;
-      if (data.researchSupervisorId && !(await supervisorInSpecialty(data.researchSupervisorId, req))) {
-        return res.status(400).json({ success: false, message: 'Research supervisor is not in your specialty' });
+
+      const { used, exceptionsUsed } = await computeCapacityUsage({ hospitalId, specialtyId, track: req.track });
+      if (used >= capacity) {
+        const maxExtra = maxExtraFor(capacity);
+        return res.status(409).json({
+          success: false, capacityFull: true,
+          capacity, used, maxExtra, exceptionsUsed,
+          canRequest: exceptionsUsed < maxExtra,
+          message: `Annual capacity reached (${used}/${capacity}). Request permission from the DIO to add above capacity.`
+        });
       }
 
       const user = new User(data);
@@ -269,6 +324,103 @@ router.post('/trainees',
       res.status(201).json({ success: true, data: saved });
     } catch (err) {
       if (err.code === 11000) return res.status(400).json({ success: false, message: 'Email already exists' });
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+);
+
+// POST /api/secretary/trainees/capacity-request
+// Over-capacity trainee creation, queued for DIO approval (capacity_exception).
+// The full new-trainee payload is stored on the ChangeRequest; approving creates
+// the trainee. Limited to maxExtra = max(1, floor(capacity / 5)) per year.
+router.post('/trainees/capacity-request',
+  auth,
+  allowRoles(...SECRETARY),
+  auditLog('capacity_request_trainee', 'ChangeRequest'),
+  async (req, res) => {
+    try {
+      const built = await buildTraineePayload(req, res);
+      if (!built) return;
+      const { data, hospitalId, specialtyId } = built;
+
+      if (!hospitalId) {
+        return res.status(400).json({ success: false, message: 'A hospital is required to add a trainee' });
+      }
+      const hospital = await Hospital.findById(hospitalId).select('name specialtySettings track');
+      const setting = settingFor(hospital, specialtyId);
+      const capacity = setting?.annualCapacity;
+      if (capacity === null || capacity === undefined) {
+        return res.status(400).json({
+          success: false, code: 'capacity_unset',
+          message: 'The DIO has not set the annual capacity for your specialty at this hospital yet.'
+        });
+      }
+
+      const { used, exceptionsUsed } = await computeCapacityUsage({ hospitalId, specialtyId, track: req.track });
+      const maxExtra = maxExtraFor(capacity);
+      if (exceptionsUsed >= maxExtra) {
+        return res.status(409).json({
+          success: false, ceilingReached: true, maxExtra, exceptionsUsed,
+          message: `No more capacity requests are possible for this specialty at this hospital this year (limit ${maxExtra}).`
+        });
+      }
+
+      // Normalise the email for dedup + the partial unique index.
+      const email = String(data.email || '').toLowerCase().trim();
+      if (!email) {
+        return res.status(400).json({ success: false, message: 'Email is required' });
+      }
+      data.email = email;
+
+      // One pending capacity request per (secretary, hospital, specialty, email).
+      const dup = await ChangeRequest.findOne({
+        requestType: 'capacity_exception', status: 'pending',
+        requestedBy: req.user._id, hospitalId, specialtyId, 'changes.email': email,
+      });
+      if (dup) {
+        return res.status(409).json({ success: false, message: 'A capacity request for this trainee email is already pending.' });
+      }
+
+      // Hash the password now so it is never stored in plaintext at rest; the
+      // User pre-save hook detects the bcrypt hash and does not re-hash on create.
+      if (data.password) data.password = await bcrypt.hash(String(data.password), 12);
+
+      const spec = await Specialty.findById(specialtyId).select('name');
+      const display = [
+        { label: 'Trainee',   from: '—', to: data.name || '—' },
+        { label: 'Email',     from: '—', to: email },
+        { label: 'Hospital',  from: '—', to: hospital?.name || '—' },
+        { label: 'Specialty', from: '—', to: spec?.name || '—' },
+        { label: 'Capacity',  from: '—', to: `${used}/${capacity}` },
+      ];
+
+      let cr;
+      try {
+        cr = await ChangeRequest.create({
+          requestedBy: req.user._id,
+          requestType: 'capacity_exception',
+          targetModel: 'User',
+          targetId: null,
+          hospitalId,
+          routeKey: 'trainees',
+          targetLabel: data.name || '',
+          changes: data,
+          before: {},
+          display,
+          status: 'pending',
+          specialtyId,
+          track: req.track,
+        });
+      } catch (e) {
+        if (e.code === 11000) {
+          return res.status(409).json({ success: false, message: 'A capacity request for this trainee email is already pending.' });
+        }
+        throw e;
+      }
+
+      await notifyTrackDios(req, `${req.user.name} requested permission to add ${data.name || 'a trainee'} above capacity — awaiting your approval.`);
+      res.status(201).json({ success: true, pending: true, data: viewChangeRequest(cr) });
+    } catch (err) {
       res.status(500).json({ success: false, message: err.message });
     }
   }
@@ -418,8 +570,13 @@ router.get('/change-requests', auth, allowRoles(...SECRETARY), async (req, res) 
   try {
     const query = { requestedBy: req.user._id };
     if (req.query.status) query.status = req.query.status;
-    const items = await ChangeRequest.find(query).sort({ createdAt: -1 }).limit(200);
-    res.json({ success: true, data: items });
+    if (req.query.requestType) query.requestType = req.query.requestType;
+    const items = await ChangeRequest.find(query)
+      .populate('hospitalId', 'name')
+      .populate('specialtyId', 'name')
+      .sort({ createdAt: -1 })
+      .limit(200);
+    res.json({ success: true, data: items.map(viewChangeRequest) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -508,12 +665,36 @@ router.post('/program-directors',
 // ── HOSPITALS ─────────────────────────────────────────────────────────────
 
 // GET /api/secretary/hospitals
+// Each hospital is annotated with a `capacity` summary for the secretary's OWN
+// specialty (annual capacity + training duration + current-year usage), so the
+// UI can show "7 / 10" read-only per hospital.
 router.get('/hospitals', auth, allowRoles(...SECRETARY), async (req, res) => {
   try {
     const ids = await getSecretaryHospitalIds(req);
     const query = ids.length ? { _id: { $in: ids } } : { _id: null };
-    const hospitals = await Hospital.find(query).sort({ name: 1 });
-    res.json({ success: true, data: hospitals });
+    const hospitals = await Hospital.find(query).sort({ name: 1 }).lean();
+
+    const specialtyId = req.user.specialtyId;
+    const data = await Promise.all(hospitals.map(async h => {
+      const setting = (h.specialtySettings || []).find(s => sameId(s.specialtyId, specialtyId));
+      const annualCapacity = setting?.annualCapacity ?? null;
+      const capacity = {
+        specialtyId,
+        annualCapacity,
+        trainingDurationMonths: setting?.trainingDurationMonths ?? null,
+        used: null,
+        exceptionsUsed: null,
+        maxExtra: maxExtraFor(annualCapacity),
+      };
+      if (specialtyId && annualCapacity !== null && annualCapacity !== undefined) {
+        const usage = await computeCapacityUsage({ hospitalId: h._id, specialtyId, track: req.track });
+        capacity.used = usage.used;
+        capacity.exceptionsUsed = usage.exceptionsUsed;
+      }
+      return { ...h, capacity };
+    }));
+
+    res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

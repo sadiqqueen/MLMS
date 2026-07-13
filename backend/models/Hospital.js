@@ -20,6 +20,15 @@ const hospitalSchema = new mongoose.Schema(
     email:          { type: String, default: '' },
     isActive:       { type: Boolean, default: true },
 
+    // Per-specialty DIO settings, scoped to THIS hospital. Emergency Medicine at
+    // Hospital A has its own capacity/duration, independent of the same specialty
+    // at Hospital B. `null` means the DIO has not set that value yet.
+    specialtySettings: [{
+      specialtyId:            { type: mongoose.Schema.Types.ObjectId, ref: 'Specialty', required: true },
+      annualCapacity:         { type: Number, min: 0, default: null },   // null = not set
+      trainingDurationMonths: { type: Number, min: 0, default: null }    // null = not set
+    }],
+
     // Training portal this hospital belongs to (default 'advanced' incl. legacy).
     track:          { type: String, enum: ['basic', 'advanced'], default: 'advanced', index: true }
   },

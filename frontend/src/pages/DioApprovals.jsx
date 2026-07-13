@@ -11,7 +11,14 @@ const API_BASE = '';
 const STRINGS = {
   ar: {
     tabPromotions: 'تعديلات الحسابات',
+    tabCapacity: 'طلبات السعة',
     tabResearch: 'الأبحاث',
+    capTitle: 'طلبات تجاوز السعة السنوية',
+    capSubtitle: 'طلبات من السكرتارية لإضافة متدرب فوق السعة السنوية. عند الموافقة يُنشأ حساب المتدرب.',
+    capEmpty: 'لا توجد طلبات سعة معلّقة.',
+    capTrainee: 'المتدرب',
+    capHospital: 'المستشفى',
+    capSpecialty: 'التخصص',
     promoTitle: 'طلبات تعديل من السكرتارية',
     promoSubtitle: 'تعديلات على الحسابات تنتظر موافقتك. عند الموافقة تُطبَّق التعديلات.',
     promoEmpty: 'لا توجد طلبات تعديل معلّقة.',
@@ -30,7 +37,14 @@ const STRINGS = {
   },
   en: {
     tabPromotions: 'Account Changes',
+    tabCapacity: 'Capacity Requests',
     tabResearch: 'Research',
+    capTitle: 'Annual capacity exception requests',
+    capSubtitle: 'Requests from secretaries to add a trainee beyond the annual capacity. Approving creates the trainee account.',
+    capEmpty: 'No pending capacity requests.',
+    capTrainee: 'Trainee',
+    capHospital: 'Hospital',
+    capSpecialty: 'Specialty',
     promoTitle: 'Edit requests from secretaries',
     promoSubtitle: 'Account edits waiting for your approval. Approving applies the change.',
     promoEmpty: 'No pending edit requests.',
@@ -131,8 +145,13 @@ export default function DioApprovals() {
     } catch (err) { showToast(err.response?.data?.message || t('failed'), 'error'); }
   }
 
+  // One pending feed, two kinds: account edits vs capacity exception requests.
+  const accountChanges = promos.filter(x => x.requestType !== 'capacity_exception');
+  const capacityReqs   = promos.filter(x => x.requestType === 'capacity_exception');
+
   const tabs = [
-    { key: 'promotions', label: `${t('tabPromotions')} (${promos.length})` },
+    { key: 'promotions', label: `${t('tabPromotions')} (${accountChanges.length})` },
+    { key: 'capacity',   label: `${t('tabCapacity')} (${capacityReqs.length})` },
     { key: 'research',   label: `${t('tabResearch')} (${research.length})` },
   ];
 
@@ -157,14 +176,14 @@ export default function DioApprovals() {
               </div>
               {loading ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{[0, 1].map(i => <Sk key={i} h={90} r={10} />)}</div>
-              ) : promos.length === 0 ? (
+              ) : accountChanges.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
                   <div style={{ fontSize: 38, marginBottom: 10 }}>📝</div>
                   <div style={{ fontSize: 14, color: 'var(--text-2)' }}>{t('promoEmpty')}</div>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {promos.map(cr => (
+                  {accountChanges.map(cr => (
                     <div key={cr._id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', background: 'var(--surface-2)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
                         <div>
@@ -198,6 +217,62 @@ export default function DioApprovals() {
                           <FragmentRow key={i} label={d.label} from={d.from} to={d.to} />
                         ))}
                       </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : tab === 'capacity' ? (
+            <>
+              <div style={{ padding: '4px 2px 16px' }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--brand-secondary)' }}>{t('capTitle')}</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>{t('capSubtitle')}</div>
+              </div>
+              {loading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{[0, 1].map(i => <Sk key={i} h={90} r={10} />)}</div>
+              ) : capacityReqs.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: 38, marginBottom: 10 }}>🏥</div>
+                  <div style={{ fontSize: 14, color: 'var(--text-2)' }}>{t('capEmpty')}</div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {capacityReqs.map(cr => (
+                    <div key={cr._id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', background: 'var(--surface-2)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                            {t('capTrainee')}: {cr.targetLabel || '—'}
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                            {t('requestedBy')}: {cr.requestedBy?.name || '—'} · {fmt(cr.createdAt)}
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>
+                            🏥 {t('capHospital')}: {cr.hospitalId?.name || '—'} · {t('capSpecialty')}: {cr.specialtyId?.name || '—'}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                          <button type="button" onClick={() => approvePromo(cr._id)}
+                            style={{ padding: '8px 14px', fontSize: 13, fontWeight: 700, borderRadius: 8, border: 'none', cursor: 'pointer', background: 'var(--success-fg)', color: '#fff' }}>
+                            {t('approve')}
+                          </button>
+                          <button type="button" onClick={() => rejectPromo(cr._id)}
+                            style={{ padding: '8px 14px', fontSize: 13, fontWeight: 700, borderRadius: 8, cursor: 'pointer', background: 'var(--surface)', color: 'var(--danger-fg)', border: '1px solid var(--border)' }}>
+                            {t('reject')}
+                          </button>
+                        </div>
+                      </div>
+                      {/* Trainee / hospital / specialty / capacity details from the backend `display` rows */}
+                      {(cr.display || []).length > 0 && (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr', gap: '6px 12px', fontSize: 13 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('field')}</div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('from')}</div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('to')}</div>
+                          {cr.display.map((d, i) => (
+                            <FragmentRow key={i} label={d.label} from={showVal(d.from)} to={showVal(d.to)} />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

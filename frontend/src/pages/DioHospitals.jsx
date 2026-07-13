@@ -7,6 +7,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useBasePath from '../hooks/useBasePath';
+import { usePrefs } from '../context/PrefsContext';
 import Navbar from '../components/Navbar';
 import Toast from '../components/Toast';
 import SearchableSelect from '../components/SearchableSelect';
@@ -15,6 +16,111 @@ import Sk from '../components/Skeleton';
 import { IconPencil, IconPlus } from '../components/icons';
 
 function idOf(v) { return (v?._id || v || '').toString(); }
+
+// ── Capacity strings (bilingual — used here and in DioHospitalDetail) ────────
+const CAP_STRINGS = {
+  ar: {
+    annualCapacity: 'السعة السنوية', trainingDuration: 'مدة التدريب', months: 'أشهر',
+    notSet: 'غير محدد', thisYear: 'هذه السنة', traineesThisYear: 'متدرب هذه السنة',
+    exceptions: 'استثناءات', capacityTitle: 'السعة السنوية ومدة التدريب',
+    editCapacity: 'تعديل السعة', save: 'حفظ', cancel: 'إلغاء', saving: 'جارٍ الحفظ…',
+    capacitySaved: 'تم حفظ إعدادات السعة', capacitySaveFailed: 'فشل حفظ إعدادات السعة',
+    emptyClears: 'اترك الحقل فارغاً لإلغاء التحديد («غير محدد»).',
+    invalidNumber: 'أدخل رقماً صحيحاً موجباً',
+    specialty: 'التخصص',
+  },
+  en: {
+    annualCapacity: 'Annual Capacity', trainingDuration: 'Training Duration', months: 'Months',
+    notSet: 'Not set', thisYear: 'this year', traineesThisYear: 'trainees this year',
+    exceptions: 'exceptions', capacityTitle: 'Annual Capacity & Training Duration',
+    editCapacity: 'Edit Capacity', save: 'Save', cancel: 'Cancel', saving: 'Saving…',
+    capacitySaved: 'Capacity settings saved', capacitySaveFailed: 'Failed to save capacity settings',
+    emptyClears: 'Leave a field empty to clear it ("Not set").',
+    invalidNumber: 'Enter a valid non-negative number',
+    specialty: 'Specialty',
+  },
+};
+export const capT = (lang, k) => CAP_STRINGS[lang]?.[k] ?? CAP_STRINGS.en[k] ?? k;
+
+// ── Edit per-specialty capacity + training duration (DIO) ────────────────────
+export function CapacityModal({ hospital, specialty, entry, onClose, onSaved }) {
+  const { lang } = usePrefs();
+  const t = k => capT(lang, k);
+  const [cap, setCap] = useState(entry?.annualCapacity ?? '');
+  const [dur, setDur] = useState(entry?.trainingDurationMonths ?? '');
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [apiErr, setApiErr] = useState('');
+
+  useEffect(() => {
+    const h = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', h);
+    return () => document.removeEventListener('keydown', h);
+  }, [onClose]);
+
+  // '' clears the value (sent as null); otherwise it must be a non-negative number.
+  function parseVal(v) {
+    if (v === '' || v === null) return null;
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : undefined; // undefined = invalid
+  }
+
+  async function save() {
+    const capVal = parseVal(cap);
+    const durVal = parseVal(dur);
+    const e = {};
+    if (capVal === undefined) e.cap = true;
+    if (durVal === undefined) e.dur = true;
+    if (Object.keys(e).length) { setErrors(e); return; }
+    setSaving(true); setApiErr('');
+    try {
+      await api.patch(`/api/dio/hospitals/${hospital._id}/specialty-settings`, {
+        specialtyId: specialty._id,
+        annualCapacity: capVal,
+        trainingDurationMonths: durVal,
+      });
+      onSaved(t('capacitySaved'));
+      onClose();
+    } catch (err) { setApiErr(err.response?.data?.message || t('capacitySaveFailed')); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="admin-modal" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+        <div className="admin-modal-header">
+          <div className="admin-modal-title">{t('editCapacity')} · {specialty.name}</div>
+          <button className="admin-modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="admin-modal-body">
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>🏥 {hospital.name}</div>
+          <div className="admin-form-grid">
+            <div className="admin-field">
+              <label>{t('annualCapacity')}</label>
+              <input className={errors.cap ? 'invalid' : ''} type="number" min={0} value={cap}
+                onChange={e => { setCap(e.target.value); setErrors(x => ({ ...x, cap: false })); setApiErr(''); }}
+                placeholder={t('notSet')} />
+              {errors.cap && <span style={{ fontSize: 11, color: 'var(--danger)' }}>{t('invalidNumber')}</span>}
+            </div>
+            <div className="admin-field">
+              <label>{t('trainingDuration')} ({t('months')})</label>
+              <input className={errors.dur ? 'invalid' : ''} type="number" min={0} value={dur}
+                onChange={e => { setDur(e.target.value); setErrors(x => ({ ...x, dur: false })); setApiErr(''); }}
+                placeholder={t('notSet')} />
+              {errors.dur && <span style={{ fontSize: 11, color: 'var(--danger)' }}>{t('invalidNumber')}</span>}
+            </div>
+          </div>
+          <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)' }}>{t('emptyClears')}</div>
+          {apiErr && <div style={{ marginTop: 14, background: 'var(--danger-bg)', color: 'var(--danger-fg)', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>{apiErr}</div>}
+        </div>
+        <div className="admin-modal-footer">
+          <button className="btn-outline" onClick={onClose}>{t('cancel')}</button>
+          <button className="btn-purple" onClick={save} disabled={saving}>{saving ? t('saving') : t('save')}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Add / Edit hospital ────────────────────────────────────────────────────
 export function HospitalModal({ hospital, onClose, onSaved }) {
@@ -259,7 +365,21 @@ function Section({ title, count, children }) {
 }
 function Muted({ children }) { return <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{children}</div>; }
 
-function HospitalCard({ h, onAction, onOpen }) {
+// Compact one-line capacity summary for a specialty: "Annual Capacity: 10 · Training Duration: 6 Months · 7 / 10 this year"
+function capacitySummary(entry, lang) {
+  const t = k => capT(lang, k);
+  const capSet = entry != null && entry.annualCapacity != null;
+  const durSet = entry != null && entry.trainingDurationMonths != null;
+  const parts = [
+    `${t('annualCapacity')}: ${capSet ? entry.annualCapacity : t('notSet')}`,
+    `${t('trainingDuration')}: ${durSet ? `${entry.trainingDurationMonths} ${t('months')}` : t('notSet')}`,
+  ];
+  if (capSet && entry.used != null) parts.push(`${entry.used} / ${entry.annualCapacity} ${t('thisYear')}`);
+  return parts.join(' · ');
+}
+
+function HospitalCard({ h, caps, onAction, onOpen, onEditCapacity }) {
+  const { lang } = usePrefs();
   const location = [h.city, h.governorate].filter(Boolean).join(' · ') || '—';
   return (
     <div className="admin-card" style={{ padding: 0, display: 'flex', flexDirection: 'column' }}>
@@ -289,14 +409,34 @@ function HospitalCard({ h, onAction, onOpen }) {
           {h.specialties.length === 0
             ? <Muted>No specialties yet</Muted>
             : <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {h.specialties.map(sp => (
-                  <div key={sp._id || sp.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '7px 10px', border: '1px solid var(--border-soft, #F0F0F0)', borderRadius: 8, background: 'var(--surface-2, #FAFAFC)' }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)', whiteSpace: 'nowrap' }}>{sp.name}</span>
-                    <span style={{ fontSize: 12, color: sp.secretary ? 'var(--text-2)' : 'var(--text-muted)', textAlign: 'right' }}>
-                      {sp.secretary ? `📋 ${sp.secretary.name}` : 'No secretary'}
-                    </span>
-                  </div>
-                ))}
+                {h.specialties.map(sp => {
+                  const entry = sp._id ? caps?.[idOf(sp)] : null;
+                  return (
+                    <div key={sp._id || sp.name} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '7px 10px', border: '1px solid var(--border-soft, #F0F0F0)', borderRadius: 8, background: 'var(--surface-2, #FAFAFC)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)', whiteSpace: 'nowrap' }}>{sp.name}</span>
+                        <span style={{ fontSize: 12, color: sp.secretary ? 'var(--text-2)' : 'var(--text-muted)', textAlign: 'right' }}>
+                          {sp.secretary ? `📋 ${sp.secretary.name}` : 'No secretary'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                          {capacitySummary(entry, lang)}
+                          {entry?.exceptionsUsed > 0 && (
+                            <span style={{ color: 'var(--warning-fg)' }}> · +{entry.exceptionsUsed} {capT(lang, 'exceptions')}</span>
+                          )}
+                        </span>
+                        {sp._id && (
+                          <button className="btn-action edit" style={{ width: 24, height: 24, flexShrink: 0 }}
+                            title={capT(lang, 'editCapacity')} aria-label={`${capT(lang, 'editCapacity')} · ${sp.name}`}
+                            onClick={() => onEditCapacity(h, sp)}>
+                            <IconPencil size={12} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>}
         </Section>
 
@@ -328,9 +468,10 @@ export default function DioHospitals() {
   const bp = useBasePath();
   const [hospitals, setHospitals] = useState([]);
   const [specialties, setSpecialties] = useState([]);
+  const [caps, setCaps] = useState({}); // hospitalId → { specialtyId → capacity entry }
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [modal, setModal] = useState(null); // { type, hospital }
+  const [modal, setModal] = useState(null); // { type, hospital, specialty? }
   const [toasts, setToasts] = useState([]);
 
   function showToast(message, type = 'success') {
@@ -339,16 +480,32 @@ export default function DioHospitals() {
     setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3200);
   }
 
+  // Per-hospital capacity settings (small N — one call per hospital).
+  const loadCaps = useCallback(async (list) => {
+    if (!list?.length) { setCaps({}); return; }
+    const results = await Promise.allSettled(list.map(h => api.get(`/api/dio/hospitals/${h._id}/capacity`)));
+    const map = {};
+    results.forEach((r, i) => {
+      if (r.status !== 'fulfilled') return;
+      const specs = r.value.data?.data?.specialties || [];
+      map[list[i]._id] = Object.fromEntries(specs.map(s => [idOf(s.specialtyId), s]));
+    });
+    setCaps(map);
+  }, []);
+
   const load = useCallback(async () => {
     const [oRes, sRes] = await Promise.allSettled([
       api.get('/api/dio/hospitals-overview'),
       api.get('/api/specialties'),
     ]);
-    if (oRes.status === 'fulfilled') setHospitals(oRes.value.data?.data || oRes.value.data || []);
-    else showToast('Failed to load hospitals', 'error');
+    if (oRes.status === 'fulfilled') {
+      const hs = oRes.value.data?.data || oRes.value.data || [];
+      setHospitals(hs);
+      loadCaps(hs);
+    } else showToast('Failed to load hospitals', 'error');
     if (sRes.status === 'fulfilled') setSpecialties(sRes.value.data?.data || sRes.value.data || []);
     setLoading(false);
-  }, []);
+  }, [loadCaps]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -409,7 +566,9 @@ export default function DioHospitals() {
 
         <div key={search} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16, animation: 'fadeIn .18s ease-out' }}>
           {filtered.map(h => (
-            <HospitalCard key={h._id} h={h} onAction={handleAction} onOpen={() => navigate(bp + `/dio/hospitals/${h._id}`)} />
+            <HospitalCard key={h._id} h={h} caps={caps[h._id]} onAction={handleAction}
+              onOpen={() => navigate(bp + `/dio/hospitals/${h._id}`)}
+              onEditCapacity={(hosp, sp) => setModal({ type: 'capacity', hospital: hosp, specialty: sp })} />
           ))}
         </div>
 
@@ -421,6 +580,12 @@ export default function DioHospitals() {
         )}
         {modal?.type === 'staff' && (
           <StaffModal role={modal.role} hospital={modal.hospital} specialties={specialties} onClose={() => setModal(null)} onSaved={onSaved} />
+        )}
+        {modal?.type === 'capacity' && (
+          <CapacityModal hospital={modal.hospital} specialty={modal.specialty}
+            entry={caps[modal.hospital._id]?.[idOf(modal.specialty)]}
+            onClose={() => setModal(null)}
+            onSaved={msg => { showToast(msg); loadCaps(hospitals); }} />
         )}
 
         <Toast toasts={toasts} />
