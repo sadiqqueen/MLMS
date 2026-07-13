@@ -1447,65 +1447,33 @@
        MOBILE APP  (CPD Evaluation Form — Android APK)
   ════════════════════════════════════════════════════════════ -->
   <style>
-    #mobile-app .app-download-card {
+    #mobile-app .app-download-card,
+    #mobile-app .app-form-card {
       max-width: 640px; margin: 0 auto;
       flex-direction: row; flex-wrap: wrap;
       align-items: center; justify-content: center;
       gap: 20px; text-align: start;
     }
+    #mobile-app .app-form-card { margin-top: 20px; }
     #mobile-app .app-icon {
       width: 72px; height: 72px; flex: 0 0 auto;
       border-radius: 16px; box-shadow: 0 6px 20px rgba(12,68,124,0.15);
     }
-    #mobile-app .app-download-card .track-title { margin-bottom: 4px; }
-    #mobile-app .app-meta { margin: 0; font-size: 13px; max-width: none; }
-    #mobile-app .app-dl-btn { width: auto; padding: 0 22px; }
-    #mobile-app .app-note {
-      text-align: center; max-width: 640px; margin: 16px auto 0; font-size: 13px;
-    }
-    #mobile-app details.app-guide { max-width: 1000px; margin: 32px auto 0; text-align: center; }
-    #mobile-app .app-guide-summary {
-      display: inline-flex; align-items: center; gap: 8px;
-      cursor: pointer; list-style: none;
-      font-size: 14px; font-weight: 600; color: var(--blue);
-      background: var(--blue-light); padding: 10px 20px; border-radius: 22px;
-      transition: background 0.15s;
-    }
-    #mobile-app .app-guide-summary::-webkit-details-marker { display: none; }
-    #mobile-app .app-guide-summary:hover { background: #d5e8fb; }
-    #mobile-app .app-guide-summary .chev { transition: transform 0.2s ease; }
-    #mobile-app details[open] .app-guide-summary .chev { transform: rotate(180deg); }
-    #mobile-app .app-guide-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-      gap: 22px; margin-top: 24px; text-align: start;
-    }
-    #mobile-app .app-step-card {
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 20px 20px 22px;
-      display: flex; flex-direction: column; gap: 16px;
-    }
-    #mobile-app .app-step-head { display: flex; align-items: flex-start; gap: 12px; }
-    #mobile-app .app-step-num {
-      flex: 0 0 auto;
-      width: 34px; height: 34px; border-radius: 50%;
-      background: #fe9a16; color: #fff;
-      font-weight: 800; font-size: 16px;
+    #mobile-app .app-form-icon {
+      width: 60px; height: 60px; flex: 0 0 auto;
       display: flex; align-items: center; justify-content: center;
+      font-size: 30px; border-radius: 16px; background: var(--blue-light);
     }
-    #mobile-app .app-step-title { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.3; }
-    #mobile-app .app-step-desc { font-size: 12.5px; color: var(--muted); line-height: 1.55; margin-top: 5px; }
-    #mobile-app .app-phone {
-      margin-top: auto; align-self: center;
-      width: 100%; max-width: 220px;
-      background: #0e0f13; border-radius: 22px; padding: 7px;
-      box-shadow: 0 10px 28px rgba(12,68,124,0.13);
-    }
-    #mobile-app .app-phone img { width: 100%; height: auto; display: block; border-radius: 15px; }
-    @media (prefers-reduced-motion: reduce) {
-      #mobile-app .app-guide-summary .chev { transition: none; }
+    #mobile-app .app-download-card .track-title,
+    #mobile-app .app-form-card .track-title { margin-bottom: 4px; }
+    #mobile-app .app-meta { margin: 0; font-size: 13px; max-width: none; }
+    #mobile-app .app-form-dl { width: auto; padding: 0 22px; }
+    #mobile-app .app-soon-label {
+      flex: 0 0 auto; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 14px; font-weight: 700; color: var(--muted);
+      background: var(--blue-light); border: 1px dashed rgba(12,68,124,0.28);
+      padding: 9px 20px; border-radius: 22px;
     }
   </style>
   <section id="mobile-app" style="background:var(--bg);">
@@ -1514,123 +1482,35 @@
         <div class="section-tag" data-en="Mobile App" data-ar="تطبيق الجوال">Mobile App</div>
         <h2 class="section-title" data-en="Get the Mobile App" data-ar="حمّل تطبيق الجوال">Get the Mobile App</h2>
         <p class="section-sub"
-           data-en="Download the CPD Evaluation Form app for Android, then follow the quick guide to install it on your phone."
-           data-ar="حمّل تطبيق نموذج تقييم التطوير المهني المستمر لنظام أندرويد، ثم اتبع الدليل السريع لتثبيته على هاتفك.">
-          Download the CPD Evaluation Form app for Android, then follow the quick guide to install it on your phone.
+           data-en="The CPD Evaluation Form app for Android is coming soon. For now, you can download the evaluation form below."
+           data-ar="تطبيق نموذج تقييم التطوير المهني المستمر لنظام أندرويد قادم قريباً. يمكنك الآن تنزيل نموذج التقييم أدناه.">
+          The CPD Evaluation Form app for Android is coming soon. For now, you can download the evaluation form below.
         </p>
       </div>
 
       <div class="track-card app-download-card fade-up">
         <img class="app-icon" src="/app/icon.png" alt="CPD Evaluation Form app icon" width="72" height="72" loading="lazy">
         <div style="flex:1 1 200px;min-width:0;">
-          <div class="track-title" data-en="CPD Evaluation Form" data-ar="نموذج تقييم التطوير المهني المستمر">CPD Evaluation Form</div>
+          <div class="track-title" data-en="CPD Evaluation Form app" data-ar="تطبيق نموذج تقييم التطوير المهني المستمر">CPD Evaluation Form app</div>
           <div class="section-sub app-meta"
-               data-en="Android · Version 1.0.0 · 98 MB"
-               data-ar="أندرويد · الإصدار 1.0.0 · ٩٨ ميغابايت">Android · Version 1.0.0 · 98 MB</div>
+               data-en="Android · Coming soon"
+               data-ar="أندرويد · قادم قريباً">Android · Coming soon</div>
         </div>
-        <a href="/app/CPD-Evaluation-Form.apk" download style="text-decoration:none;flex:0 0 auto;">
-          <button class="btn-track app-dl-btn" type="button" data-en="Download APK" data-ar="تنزيل التطبيق">Download APK</button>
-        </a>
+        <span class="app-soon-label" data-en="Soon" data-ar="قريباً">Soon</span>
       </div>
 
-      <p class="section-sub app-note fade-up"
-         data-en="This app is installed manually (sideloaded), not from the Play Store. Follow the 6 steps below."
-         data-ar="يُثبَّت هذا التطبيق يدوياً (تنصيب جانبي) وليس من متجر Play. اتبع الخطوات الست أدناه.">
-        This app is installed manually (sideloaded), not from the Play Store. Follow the 6 steps below.
-      </p>
-
-      <details class="app-guide fade-up">
-        <summary class="app-guide-summary">
-          <span data-en="How to install (6 steps)" data-ar="طريقة التثبيت (٦ خطوات)">How to install (6 steps)</span>
-          <span class="chev" aria-hidden="true">▾</span>
-        </summary>
-        <div class="app-guide-grid">
-          <div class="app-step-card">
-            <div class="app-step-head">
-              <span class="app-step-num">1</span>
-              <div>
-                <div class="app-step-title" data-en="Find the APK file" data-ar="ابحث عن ملف التطبيق">Find the APK file</div>
-                <div class="app-step-desc"
-                     data-en="Open your File Manager, find CPD-Evaluation-Form.apk, and tap it."
-                     data-ar="افتح «مدير الملفات»، وابحث عن ملف CPD-Evaluation-Form.apk ثم اضغط عليه.">
-                  Open your File Manager, find CPD-Evaluation-Form.apk, and tap it.
-                </div>
-              </div>
-            </div>
-            <div class="app-phone"><img src="/app/guide/step_1.png" alt="Install step 1" width="720" height="1596" loading="lazy"></div>
-          </div>
-          <div class="app-step-card">
-            <div class="app-step-head">
-              <span class="app-step-num">2</span>
-              <div>
-                <div class="app-step-title" data-en="Choose Package Installer" data-ar="اختر «مثبّت الحِزم»">Choose Package Installer</div>
-                <div class="app-step-desc"
-                     data-en="In the 'Open with' menu, pick Package Installer, then tap 'Just once'."
-                     data-ar="من قائمة «فتح بواسطة»، اختر Package Installer ثم اضغط «لمرة واحدة».">
-                  In the 'Open with' menu, pick Package Installer, then tap 'Just once'.
-                </div>
-              </div>
-            </div>
-            <div class="app-phone"><img src="/app/guide/step_2.png" alt="Install step 2" width="720" height="1596" loading="lazy"></div>
-          </div>
-          <div class="app-step-card">
-            <div class="app-step-head">
-              <span class="app-step-num">3</span>
-              <div>
-                <div class="app-step-title" data-en="Tap Install" data-ar="اضغط «تثبيت»">Tap Install</div>
-                <div class="app-step-desc"
-                     data-en="When asked &quot;Do you want to install this app?&quot;, tap Install."
-                     data-ar="عند ظهور سؤال «هل تريد تثبيت هذا التطبيق؟» اضغط «تثبيت» (Install).">
-                  When asked "Do you want to install this app?", tap Install.
-                </div>
-              </div>
-            </div>
-            <div class="app-phone"><img src="/app/guide/step_3.png" alt="Install step 3" width="720" height="1596" loading="lazy"></div>
-          </div>
-          <div class="app-step-card">
-            <div class="app-step-head">
-              <span class="app-step-num">4</span>
-              <div>
-                <div class="app-step-title" data-en="Play Protect warning" data-ar="تحذير Play Protect">Play Protect warning</div>
-                <div class="app-step-desc"
-                     data-en="This is normal. Tap 'More details' to see the options."
-                     data-ar="هذا أمر طبيعي. اضغط «مزيد من التفاصيل» (More details) لعرض الخيارات.">
-                  This is normal. Tap 'More details' to see the options.
-                </div>
-              </div>
-            </div>
-            <div class="app-phone"><img src="/app/guide/step_4.png" alt="Install step 4" width="720" height="1596" loading="lazy"></div>
-          </div>
-          <div class="app-step-card">
-            <div class="app-step-head">
-              <span class="app-step-num">5</span>
-              <div>
-                <div class="app-step-title" data-en="Tap 'Install anyway'" data-ar="اضغط «التثبيت على أي حال»">Tap 'Install anyway'</div>
-                <div class="app-step-desc"
-                     data-en="Under the details, tap 'Install anyway' to continue."
-                     data-ar="أسفل التفاصيل، اضغط «التثبيت على أي حال» (Install anyway) للمتابعة.">
-                  Under the details, tap 'Install anyway' to continue.
-                </div>
-              </div>
-            </div>
-            <div class="app-phone"><img src="/app/guide/step_5.png" alt="Install step 5" width="720" height="1596" loading="lazy"></div>
-          </div>
-          <div class="app-step-card">
-            <div class="app-step-head">
-              <span class="app-step-num">6</span>
-              <div>
-                <div class="app-step-title" data-en="Done — tap Open" data-ar="تم — اضغط «فتح»">Done — tap Open</div>
-                <div class="app-step-desc"
-                     data-en="You'll see 'App installed.' Tap Open to launch the app."
-                     data-ar="ستظهر رسالة «تم تثبيت التطبيق». اضغط «فتح» (Open) لتشغيل التطبيق.">
-                  You'll see 'App installed.' Tap Open to launch the app.
-                </div>
-              </div>
-            </div>
-            <div class="app-phone"><img src="/app/guide/step_6.png" alt="Install step 6" width="720" height="1596" loading="lazy"></div>
-          </div>
+      <div class="track-card app-form-card fade-up">
+        <div class="app-form-icon" aria-hidden="true">📄</div>
+        <div style="flex:1 1 200px;min-width:0;">
+          <div class="track-title" data-en="CPD Evaluation Form" data-ar="نموذج تقييم التطوير المهني المستمر">CPD Evaluation Form</div>
+          <div class="section-sub app-meta"
+               data-en="Word document · Download and fill in"
+               data-ar="مستند وورد · نزّله واملأه">Word document · Download and fill in</div>
         </div>
-      </details>
+        <a href="/app/CPD-Evaluation-Form.docx" download style="text-decoration:none;flex:0 0 auto;">
+          <button class="btn-track app-form-dl" type="button" data-en="Download Form" data-ar="تنزيل النموذج">Download Form</button>
+        </a>
+      </div>
     </div>
   </section>
 
