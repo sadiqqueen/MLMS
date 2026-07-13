@@ -127,7 +127,10 @@ export function HospitalCapacityModal({ hospital, specialties, caps, secretaries
     onClose();
   }
 
-  const secOptions = (secretaries || []).map(s => ({ id: idOf(s), name: s.name }));
+  // A secretary belongs to one specialty — match by specialty name so each row
+  // only offers the secretaries assigned to that specialty.
+  const norm = v => String(v || '').trim().toLowerCase();
+  const secSpecName = s => s.specialtyId?.name || s.specialty || '';
 
   return (
     <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -141,49 +144,44 @@ export function HospitalCapacityModal({ hospital, specialties, caps, secretaries
           {rowsSpecs.length === 0 ? (
             <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '16px 0' }}>{t('noConfigurableSpecs')}</div>
           ) : (
-            <div className="admin-table-wrap">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>{t('specialty')}</th>
-                    <th style={{ width: 110 }}>{t('annualCapacity')}</th>
-                    <th style={{ width: 150 }}>{t('trainingDuration')} ({t('years')})</th>
-                    <th style={{ minWidth: 170 }}>{t('secretary')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rowsSpecs.map(sp => {
-                    const id = idOf(sp); const row = rows[id]; const err = errors[id] || {};
-                    const cur = row.secretaryId;
-                    const curInList = !cur || secOptions.some(o => o.id === cur);
-                    return (
-                      <tr key={id}>
-                        <td>
-                          <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)', whiteSpace: 'nowrap' }}>{sp.name}</span>
-                        </td>
-                        <td>
-                          <input className={err.cap ? 'invalid' : ''} type="number" min={0} value={row.cap}
-                            style={{ width: '100%' }} placeholder={t('notSet')}
-                            onChange={e => setRow(id, 'cap', e.target.value)} />
-                        </td>
-                        <td>
-                          <input className={err.dur ? 'invalid' : ''} type="number" min={0} value={row.dur}
-                            style={{ width: '100%' }} placeholder={t('notSet')}
-                            onChange={e => setRow(id, 'dur', e.target.value)} />
-                        </td>
-                        <td>
-                          <select value={row.secretaryId} style={{ width: '100%' }}
-                            onChange={e => setRow(id, 'secretaryId', e.target.value)}>
-                            <option value="">{t('unassigned')}</option>
-                            {!curInList && <option value={cur}>{sp.secretary?.name || cur}</option>}
-                            {secOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                          </select>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {rowsSpecs.map(sp => {
+                const id = idOf(sp); const row = rows[id]; const err = errors[id] || {};
+                // Only this specialty's own secretaries are selectable here.
+                const rowOpts = (secretaries || [])
+                  .filter(s => norm(secSpecName(s)) === norm(sp.name))
+                  .map(s => ({ id: idOf(s), name: s.name }));
+                const cur = row.secretaryId;
+                const curInList = !cur || rowOpts.some(o => o.id === cur);
+                return (
+                  <div key={id} style={{ border: '1px solid var(--border-soft, #F0F0F0)', borderRadius: 10, padding: '12px 14px', background: 'var(--surface-2, #FAFAFC)' }}>
+                    <span style={{ display: 'inline-block', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)', marginBottom: 10 }}>{sp.name}</span>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+                      <div className="admin-field">
+                        <label style={{ fontSize: 11 }}>{t('annualCapacity')}</label>
+                        <input className={err.cap ? 'invalid' : ''} type="number" min={0} value={row.cap}
+                          style={{ width: '100%' }} placeholder={t('notSet')}
+                          onChange={e => setRow(id, 'cap', e.target.value)} />
+                      </div>
+                      <div className="admin-field">
+                        <label style={{ fontSize: 11 }}>{t('trainingDuration')} ({t('years')})</label>
+                        <input className={err.dur ? 'invalid' : ''} type="number" min={0} value={row.dur}
+                          style={{ width: '100%' }} placeholder={t('notSet')}
+                          onChange={e => setRow(id, 'dur', e.target.value)} />
+                      </div>
+                      <div className="admin-field">
+                        <label style={{ fontSize: 11 }}>{t('secretary')}</label>
+                        <select value={row.secretaryId} style={{ width: '100%' }}
+                          onChange={e => setRow(id, 'secretaryId', e.target.value)}>
+                          <option value="">{t('unassigned')}</option>
+                          {!curInList && <option value={cur}>{sp.secretary?.name || cur}</option>}
+                          {rowOpts.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
           <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)' }}>{t('emptyClears')}</div>
