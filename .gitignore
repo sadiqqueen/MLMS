@@ -39,6 +39,9 @@ uploads/*
 backend/uploads/*
 !uploads/.gitkeep
 !backend/uploads/.gitkeep
+
+# Mobile app APK (large binary — hosted on the VPS, never committed)
+frontend/public/app/*.apk
 logs/
 *.log
 npm-debug.log*
