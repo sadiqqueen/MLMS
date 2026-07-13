@@ -1,4 +1,4 @@
-# MTMS Project Instructions for Codex
+# MTMS Project Instructions
 
 ## Project name
 MTMS web application.

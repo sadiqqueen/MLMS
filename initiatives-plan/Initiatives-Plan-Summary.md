@@ -89,7 +89,7 @@ Auth additions: `login` and `me` responses include `permissions: { initiatives: 
 ## 8. Build & branching
 
 - Work is based on the **`main`** branch (a `feature/initiatives` working branch off main).
-- Split by model: **frontend → Claude Code (default model)**, **backend/security/database → Codex (GPT‑5.5)**, sharing the one API contract above; outputs are reviewed/merged against that contract before applying.
+- All work is done in Claude Code against the one API contract above; the frontend and backend sides are reviewed/merged against that contract before applying.
 - The frontend agent must **inspect and confirm the correct files first, then wait for approval** before writing code.
 
 ## 9. Security notes
@@ -103,4 +103,4 @@ Auth additions: `login` and `me` responses include `permissions: { initiatives: 
 
 - Confirm the ASG emails to put in `INITIATIVE_ALLOWED_EMAILS` (set on the server, not committed).
 - Decide whether stage advancement should be **blocked until all current‑stage steps are Done** (currently allowed anytime).
-- Run the frontend (Claude Code) and backend (Codex) prompts → review/merge against the contract → run the test prompt → deploy.
+- Implement the frontend and backend against the contract → review/merge → run the test prompt → deploy.
