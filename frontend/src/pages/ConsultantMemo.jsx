@@ -6,6 +6,7 @@ import MemoNavbar from '../components/memo/MemoNavbar';
 import MemoPrint from '../components/memo/MemoPrint';
 import { useMemoToasts, MemoToasts, MemoModal, AutoTextarea } from '../components/memo/MemoUi';
 import { buildAttachmentPreviews } from '../components/memo/attachmentPreviews';
+import { waitForPrintAssets } from '../components/memo/printMemo';
 import CouncilSelect from '../components/memo/CouncilSelect';
 import { IconSave, IconPrinter, IconEye, IconPaperclip, IconTrash, IconCheck } from '../components/icons';
 import './ConsultantMemo.css';
@@ -228,6 +229,9 @@ function MemoForm() {
 
   async function handlePrint() {
     await previewsPromiseRef.current;   // make sure annex pages are rendered
+    // Wait for the print mount's images + fonts to paint before opening the
+    // dialog, or mobile Chrome prints blank pages.
+    await waitForPrintAssets(document.querySelector('.cmx-print-mount'));
     window.print();
   }
 

@@ -7,6 +7,7 @@ import MemoNavbar from '../components/memo/MemoNavbar';
 import MemoPrint from '../components/memo/MemoPrint';
 import { useMemoToasts, MemoToasts, MemoModal } from '../components/memo/MemoUi';
 import { buildAttachmentPreviews } from '../components/memo/attachmentPreviews';
+import { waitForPrintAssets } from '../components/memo/printMemo';
 import Sk from '../components/Skeleton';
 import { IconEye, IconPrinter, IconTrash } from '../components/icons';
 import './ConsultantMemo.css';
@@ -90,14 +91,19 @@ function MemoApprovedView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, openId, memos]);
 
-  // Print directly from a card (same flow as the All-memos page).
+  // Print directly from a card (same flow as the All-memos page). Wait for the
+  // print mount's images (logo, watermark, attachment pages) + fonts to paint
+  // before opening the dialog, or mobile Chrome prints blank pages.
   useEffect(() => {
     if (!printMemo || printingRef.current) return;
     printingRef.current = true;
+    let cancelled = false;
     const cleanup = () => { setPrintMemo(null); printingRef.current = false; };
     window.addEventListener('afterprint', cleanup, { once: true });
-    const raf = requestAnimationFrame(() => window.print());
-    return () => { cancelAnimationFrame(raf); window.removeEventListener('afterprint', cleanup); };
+    waitForPrintAssets(document.querySelector('.cmx-print-mount')).then(() => {
+      if (!cancelled) window.print();
+    });
+    return () => { cancelled = true; window.removeEventListener('afterprint', cleanup); };
   }, [printMemo]);
 
   async function printCard(memo) {

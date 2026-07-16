@@ -712,16 +712,21 @@
   body { background: #fff !important; }
   .cmx { background: #fff; }
   .cmx-screen { display: none !important; }
-  /* The app's certificate print rules set `body, body * { visibility: hidden
-     !important }` globally, which blanked our printout — re-assert visibility
-     on the print mount and everything inside it. */
-  .cmx-print-mount,
-  .cmx-print-mount * { visibility: visible !important; }
+  /* The app-wide certificate/modal print rules force
+     `body, body * { visibility: hidden !important }`. The on-screen UI is
+     already removed above with display:none, so re-assert visibility for the
+     whole memo subtree. Use a `.cmx`-scoped selector (specificity 0,1,1) that
+     beats the global `body *` (0,0,2) REGARDLESS of stylesheet order — the old
+     `.cmx-print-mount *` override was honored on desktop but left Android
+     Chrome / Safari printing blank pages. */
+  .cmx,
+  .cmx * { visibility: visible !important; }
   .cmx-print-mount {
     display: block !important;
-    position: absolute;
-    top: 0;
-    inset-inline-start: 0;
+    /* Normal flow — NOT position:absolute. An absolutely-positioned print root
+       taller than one page prints blank subsequent pages on Android Chrome and
+       fails to print in Safari. */
+    position: static;
     width: 100%;
   }
   .cmxp-sheet {
