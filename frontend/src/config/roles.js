@@ -38,7 +38,7 @@ const ADVANCED_HOME = {
   dio:              '/dio/dashboard',
   supervisor:       '/supervisor/trainees',
   trainee:          '/timeline',
-  president:        '/president/trainees',
+  president:        '/president/dashboard',
   program_director: '/program-director/trainees',
   asg1:             '/consultant-memo',
   asg2:             '/consultant-memo',
@@ -94,6 +94,7 @@ const ADVANCED_LINKS = {
     { to: '/notifications', key: 'notifications', label: 'Notifications' },
   ],
   president: [
+    { to: '/president/dashboard',         key: 'dashboard',         label: 'Dashboard'      },
     { to: '/president/trainees',          key: 'trainees',          label: 'Trainees'       },
     { to: '/president/supervisors',       key: 'supervisors',       label: 'Supervisors'    },
     { to: '/president/program-directors', key: 'program_directors', label: 'Prog.Directors' },

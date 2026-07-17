@@ -11,7 +11,7 @@ const ROLE_HOME = {
   dio:              '/dio/dashboard',
   supervisor:       '/supervisor/trainees',
   trainee:          '/timeline',
-  president:        '/president/trainees',
+  president:        '/president/dashboard',
   program_director: '/program-director/trainees',
   asg1:             '/consultant-memo',
   asg2:             '/consultant-memo',

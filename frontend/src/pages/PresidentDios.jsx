@@ -7,12 +7,27 @@ import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
 import ViewToggle from '../components/ViewToggle';
+import SearchableSelect from '../components/SearchableSelect';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 
 const API_BASE = '';
 
 const EMPTY = '—';
+
+// Build a de-duplicated, sorted dropdown option list from the already-loaded
+// rows (each option value is the display name, so filtering works across the
+// hospitalId/hospital/hospitalName data shapes without a second fetch).
+function uniqueOptions(rows, getter) {
+  const seen = new Set();
+  const names = [];
+  rows.forEach(r => {
+    const v = getter(r);
+    if (v && v !== EMPTY && !seen.has(v)) { seen.add(v); names.push(v); }
+  });
+  names.sort((a, b) => a.localeCompare(b));
+  return names.map(v => ({ value: v, label: v }));
+}
 
 function label(value) {
   if (value === null || value === undefined || value === '') return '';
@@ -86,6 +101,7 @@ export default function PresidentDios() {
   const [loading,  setLoading ] = useState(true);
   const [view,     setView    ] = useState('list');
   const [search,   setSearch  ] = useState('');
+  const [hospitalFilter, setHospitalFilter] = useState('');
   const [selected, setSelected] = useState(null);
   const [toasts,   setToasts  ] = useState([]);
 
@@ -102,8 +118,11 @@ export default function PresidentDios() {
       .finally(() => setLoading(false));
   }, []);
 
+  const hospitalOptions = [{ value:'', label:'All Hospitals' }, ...uniqueOptions(dios, getHospital)];
+
   const filtered = dios.filter(d => {
-    const q = search.toLowerCase();
+    if (hospitalFilter && getHospital(d) !== hospitalFilter) return false;
+    const q = search.trim().toLowerCase();
     return !q
       || d.name?.toLowerCase().includes(q)
       || d.email?.toLowerCase().includes(q)
@@ -139,10 +158,13 @@ export default function PresidentDios() {
       <main className="admin-main">
 
         <div className="admin-card">
-          <div className="admin-toolbar">
+          <div className="admin-toolbar" style={{ flexWrap:'wrap', gap:8 }}>
             <input className="admin-search" style={{ flex:1, minWidth:200 }}
               placeholder="Search by name, email, or hospital…"
               value={search} onChange={e => setSearch(e.target.value)} />
+            <div style={{ minWidth:170 }}>
+              <SearchableSelect value={hospitalFilter} onChange={setHospitalFilter} options={hospitalOptions} placeholder="All Hospitals" />
+            </div>
             <ViewToggle value={view} onChange={setView} />
             <span style={{ fontSize:13, color:'var(--text-muted)', flexShrink:0 }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
           </div>

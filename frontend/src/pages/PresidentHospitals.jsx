@@ -144,7 +144,7 @@ export default function PresidentHospitals() {
   }, []);
 
   const filtered = safeArr(hospitals).filter(h => {
-    const q = search.toLowerCase();
+    const q = search.trim().toLowerCase();
     return !q
       || h.name?.toLowerCase().includes(q)
       || h.city?.toLowerCase().includes(q)

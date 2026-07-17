@@ -289,6 +289,11 @@ export default function App() {
             </ProtectedRoute>
           } />
 
+          <Route path="/president/dashboard" element={
+            <ProtectedRoute allowedRoles={['president']}>
+              <DioDashboard />
+            </ProtectedRoute>
+          } />
           <Route path="/president/trainees" element={
             <ProtectedRoute allowedRoles={['president']}>
               <PresidentTrainees />
@@ -479,6 +484,9 @@ export default function App() {
           } />
 
           {/* Basic — president */}
+          <Route path="/basic/president/dashboard" element={
+            <ProtectedRoute allowedRoles={['b_president']}><DioDashboard /></ProtectedRoute>
+          } />
           <Route path="/basic/president/trainees" element={
             <ProtectedRoute allowedRoles={['b_president']}><PresidentTrainees /></ProtectedRoute>
           } />

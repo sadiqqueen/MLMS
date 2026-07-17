@@ -56,6 +56,7 @@ const nav = {
     'nav.trainee.notifications':         'إشعارات مدير البرنامج',
 
     // president
+    'nav.president.dashboard':           'لوحة التحكم',
     'nav.president.trainees':            'المتدربون',
     'nav.president.supervisors':         'المشرفون',
     'nav.president.program_directors':   'مديرو البرامج',
@@ -123,6 +124,7 @@ const nav = {
     'nav.trainee.notifications':         'PD Notifications',
 
     // president
+    'nav.president.dashboard':           'Dashboard',
     'nav.president.trainees':            'Trainees',
     'nav.president.supervisors':         'Supervisors',
     'nav.president.program_directors':   'Prog.Directors',
