@@ -102,6 +102,8 @@ function MemoForm() {
   const { toasts, showToast, dismiss } = useMemoToasts();
   const fileInputRef = useRef(null);
   const previewsPromiseRef = useRef(Promise.resolve());
+  const previewsKeyRef = useRef('');    // url-list key the current attachmentPreviews were built from
+  const printingRef = useRef(false);    // re-entrancy guard so double-click طباعة can't open two dialogs
   const otherActiveRef = useRef(false); otherActiveRef.current = otherActive;
   const otherNameRef = useRef('');      otherNameRef.current = otherName;
 
@@ -219,20 +221,38 @@ function MemoForm() {
   const attachmentFilesKey = JSON.stringify(form.attachmentFiles.map(f => f.url));
   useEffect(() => {
     let cancelled = false;
+    const key = attachmentFilesKey;
     const job = buildAttachmentPreviews(formRef.current.attachmentFiles)
-      .then(p => { if (!cancelled) setAttachmentPreviews(p); })
-      .catch(() => { if (!cancelled) setAttachmentPreviews([]); });
+      .then(p => { if (!cancelled) { setAttachmentPreviews(p); previewsKeyRef.current = key; } return p; })
+      .catch(() => { if (!cancelled) { setAttachmentPreviews([]); previewsKeyRef.current = key; } return []; });
     previewsPromiseRef.current = job;
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attachmentFilesKey]);
 
   async function handlePrint() {
-    await previewsPromiseRef.current;   // make sure annex pages are rendered
-    // Wait for the print mount's images + fonts to paint before opening the
-    // dialog, or mobile Chrome prints blank pages.
-    await waitForPrintAssets(document.querySelector('.cmx-print-mount'));
-    window.print();
+    if (printingRef.current) return;   // ignore a second click while a print is being prepared
+    printingRef.current = true;
+    try {
+      await previewsPromiseRef.current;   // let the last preview build finish
+      // If attachments changed since that build (removed/added before the effect
+      // re-ran), the mount would print STALE annexes — rebuild against the
+      // current files and show them before printing.
+      const currentKey = JSON.stringify(formRef.current.attachmentFiles.map(f => f.url));
+      if (previewsKeyRef.current !== currentKey) {
+        const fresh = await buildAttachmentPreviews(formRef.current.attachmentFiles);
+        previewsKeyRef.current = currentKey;
+        setAttachmentPreviews(fresh);
+        // let the mount paint the fresh annexes before window.print() snapshots
+        await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
+      }
+      // Wait for the print mount's images + fonts to paint before opening the
+      // dialog, or mobile Chrome prints blank pages.
+      await waitForPrintAssets(document.querySelector('.cmx-print-mount'));
+      window.print();
+    } finally {
+      printingRef.current = false;
+    }
   }
 
   // ── Approve (اعتماد) — permanent lock, then move to the Approved page ──

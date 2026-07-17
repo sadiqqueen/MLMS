@@ -73,12 +73,26 @@ function MemoAllView() {
     if (!printMemo || printingRef.current) return;
     printingRef.current = true;
     let cancelled = false;
-    const cleanup = () => { setPrintMemo(null); printingRef.current = false; };
+    // Idempotent cleanup — safe to call from BOTH afterprint and the print()
+    // return. iOS Safari / Android WebViews often never fire afterprint, so we
+    // cannot depend on it to reset the guard (that stranded every later print);
+    // afterprint stays as belt-and-braces only.
+    const cleanup = () => {
+      window.removeEventListener('afterprint', cleanup);
+      printingRef.current = false;
+      if (!cancelled) setPrintMemo(null);
+    };
     window.addEventListener('afterprint', cleanup, { once: true });
     waitForPrintAssets(document.querySelector('.cmx-print-mount')).then(() => {
-      if (!cancelled) window.print();
+      if (cancelled) return;
+      window.print();   // modally blocking in the browsers that matter
+      // Self-heal after print() returns — delayed a beat because iOS returns
+      // immediately and unmounting the print mount too early can blank the
+      // snapshot the print sheet is still rendering from.
+      setTimeout(cleanup, 500);
     });
-    return () => { cancelled = true; window.removeEventListener('afterprint', cleanup); };
+    // On target change / unmount always reset the guard so the next request re-arms.
+    return () => { cancelled = true; window.removeEventListener('afterprint', cleanup); printingRef.current = false; };
   }, [printMemo]);
 
   const savedCount = memos.filter(m => m.status === 'saved').length;

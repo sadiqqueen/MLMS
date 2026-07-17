@@ -54,7 +54,7 @@ function headerTable(form, fd) {
     .map(f => `
       <tr>
         <td class="lbl">${esc(f.label)}</td>
-        <td class="val">${esc(fd?.header?.[f.key]) || '&nbsp;'}</td>
+        <td class="val" dir="auto">${esc(fd?.header?.[f.key]) || '&nbsp;'}</td>
       </tr>`)
     .join('');
   return `<table class="kv"><tbody>${cells}</tbody></table>`;
@@ -90,7 +90,7 @@ function feedbackBlock(form, fd) {
   return (form.feedback || []).map(f => `
     <div class="fb">
       <div class="fb-lbl">${esc(f.label)}</div>
-      <div class="fb-txt">${esc(fd?.feedback?.[f.key]) || '&nbsp;'}</div>
+      <div class="fb-txt" dir="auto">${esc(fd?.feedback?.[f.key]) || '&nbsp;'}</div>
     </div>`).join('');
 }
 
@@ -112,7 +112,7 @@ export function printEvaluation(ev, ctx = {}) {
   const title = form ? `${form.title} — ${form.fullName}` : (type || 'Evaluation');
 
   const html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>${esc(title)}</title>
+<html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>
   * { box-sizing: border-box; }
   body { font-family: Arial, Helvetica, sans-serif; color: #1f2a37; margin: 28px; font-size: 12px; }
@@ -154,8 +154,8 @@ export function printEvaluation(ev, ctx = {}) {
   <div class="sub">Workplace-Based Assessment</div>
 
   <div class="idrow">
-    <div><span class="id-lbl">Trainee</span><span class="id-val">${esc(traineeName)}</span></div>
-    <div><span class="id-lbl">Assessor</span><span class="id-val">${esc(assessorName)}</span></div>
+    <div><span class="id-lbl">Trainee</span><span class="id-val" dir="auto">${esc(traineeName)}</span></div>
+    <div><span class="id-lbl">Assessor</span><span class="id-val" dir="auto">${esc(assessorName)}</span></div>
     <div><span class="id-lbl">Date of Evaluation</span><span class="id-val">${esc(fmtDate(when))}</span></div>
   </div>
 
@@ -202,12 +202,61 @@ export function printEvaluation(ev, ctx = {}) {
   </script>
 </body></html>`;
 
+  // Desktop path: a real popup shows a print preview and works reliably.
   const w = window.open('', '_blank', 'width=900,height=1000');
-  if (!w) {
-    alert('Please allow pop-ups to print the evaluation form.');
+  if (w) {
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
     return;
   }
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
+
+  // Mobile fallback: iOS Safari and many mobile browsers block the blank-URL
+  // popup (or open it as a background tab where print() never surfaces), so the
+  // popup path fails silently. Print via a hidden same-page iframe instead.
+  printViaIframe(html);
+}
+
+// Renders the same document inside an off-screen iframe and drives print from
+// the parent. The inline auto-print <script> is stripped for this path so print
+// is triggered once, by us, after the iframe has loaded (avoids a double dialog).
+function printViaIframe(html) {
+  const doc = html.replace(
+    /<script>[\s\S]*?<\/script>/i,
+    ''
+  );
+
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
+
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+  };
+
+  iframe.onload = () => {
+    const win = iframe.contentWindow;
+    if (!win) { cleanup(); return; }
+    // Remove the iframe once printing is done (or after a safety timeout for
+    // browsers that never fire afterprint, e.g. some mobile Safari versions).
+    win.addEventListener('afterprint', cleanup);
+    setTimeout(cleanup, 60000);
+    win.focus();
+    win.print();
+  };
+
+  const idoc = iframe.contentWindow?.document;
+  if (!idoc) { cleanup(); return; }
+  idoc.open();
+  idoc.write(doc);
+  idoc.close();
 }

@@ -555,8 +555,9 @@
 .cmx-modal-title { margin: 0 0 8px; font-size: 16px; }
 .cmx-modal-body { margin: 0 0 16px; font-size: 13.5px; color: var(--cmx-muted); }
 .cmx-modal-btns { display: flex; justify-content: flex-end; gap: 8px; }
-.cmx-modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.cmx-modal-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
 .cmx-modal-head h3 { margin: 0; font-size: 16px; }
+.cmx-modal-head-btns { display: flex; gap: 8px; flex: none; }
 .cmx-preview-scroll {
   overflow: auto;
   background: #888;
@@ -700,14 +701,14 @@
 .cmxp-annex-note { color: #555; font-size: 10.5pt; margin-bottom: 3mm; }
 
 @media print {
+  /* NOTE: global index.css also declares an @page rule. Per-property conflicts
+     (size / margin) resolve by CSS bundle order, which Vite does not guarantee
+     — the coordinator reconciles index.css separately. The @bottom-left
+     margin-box was dropped: no browser users print from renders it, and some
+     parsers choke on it. */
   @page {
     size: A4;
     margin: 12mm 10mm 16mm;
-    @bottom-left {
-      content: counter(page) " / " counter(pages);
-      font-size: 9pt;
-      color: #333;
-    }
   }
   body { background: #fff !important; }
   .cmx { background: #fff; }

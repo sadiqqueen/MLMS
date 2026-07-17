@@ -88,7 +88,9 @@ export default function MemoPrint({ memo, lang = 'ar', attachmentPreviews = [] }
         <section className={'cmxp-section' + (s.className ? ' ' + s.className : '')} key={i}>
           <div className="cmxp-bar">{s.title}</div>
           <div className="cmxp-body">{s.body}</div>
-          <div className="cmxp-dt">{t('dateTime')} {fmtDate(s.dt, lang)}</div>
+          {/* Omit the date row entirely when the section has no date — the
+              formal document must not show "التاريخ: —". */}
+          {s.dt && <div className="cmxp-dt">{t('dateTime')} {fmtDate(s.dt, lang)}</div>}
         </section>
       ))}
 

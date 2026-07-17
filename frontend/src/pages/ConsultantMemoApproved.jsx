@@ -98,12 +98,26 @@ function MemoApprovedView() {
     if (!printMemo || printingRef.current) return;
     printingRef.current = true;
     let cancelled = false;
-    const cleanup = () => { setPrintMemo(null); printingRef.current = false; };
+    // Idempotent cleanup — safe to call from BOTH afterprint and the print()
+    // return. iOS Safari / Android WebViews often never fire afterprint, so we
+    // cannot depend on it to reset the guard (that stranded every later print);
+    // afterprint stays as belt-and-braces only.
+    const cleanup = () => {
+      window.removeEventListener('afterprint', cleanup);
+      printingRef.current = false;
+      if (!cancelled) setPrintMemo(null);
+    };
     window.addEventListener('afterprint', cleanup, { once: true });
     waitForPrintAssets(document.querySelector('.cmx-print-mount')).then(() => {
-      if (!cancelled) window.print();
+      if (cancelled) return;
+      window.print();   // modally blocking in the browsers that matter
+      // Self-heal after print() returns — delayed a beat because iOS returns
+      // immediately and unmounting the print mount too early can blank the
+      // snapshot the print sheet is still rendering from.
+      setTimeout(cleanup, 500);
     });
-    return () => { cancelled = true; window.removeEventListener('afterprint', cleanup); };
+    // On target change / unmount always reset the guard so the next request re-arms.
+    return () => { cancelled = true; window.removeEventListener('afterprint', cleanup); printingRef.current = false; };
   }, [printMemo]);
 
   async function printCard(memo) {
@@ -134,6 +148,11 @@ function MemoApprovedView() {
       if (sort === 'name')   return (a.topicName || '').localeCompare(b.topicName || '', 'ar');
       return bd - ad;
     });
+
+  // The print mount also renders the currently-viewed memo (when no explicit
+  // card-print is in flight) so phone Share→Print / Mac Cmd+P from the open
+  // preview prints the viewed memo instead of blank pages. Both are { data, previews }.
+  const printSource = printMemo ?? viewMemo;
 
   return (
     <div className="cmx" data-theme={theme} dir={dir} lang={lang}>
@@ -220,7 +239,14 @@ function MemoApprovedView() {
           <MemoModal wide onClose={() => setViewMemo(null)} labelledBy="cmx-view-title">
             <div className="cmx-modal-head">
               <h3 id="cmx-view-title" dir="rtl" lang="ar">{viewMemo.data.topicName?.trim() || t('untitled')}</h3>
-              <button className="cmx-btn cmx-btn-outline" onClick={() => setViewMemo(null)}>{t('closePreview')}</button>
+              <div className="cmx-modal-head-btns">
+                {/* Print the viewed memo through the guarded flow — reuse the
+                    already-built previews, no re-fetch. */}
+                <button className="cmx-btn cmx-btn-outline" onClick={() => setPrintMemo(viewMemo)}>
+                  <IconPrinter /> <span>{t('print')}</span>
+                </button>
+                <button className="cmx-btn cmx-btn-outline" onClick={() => setViewMemo(null)}>{t('closePreview')}</button>
+              </div>
             </div>
             <div className="cmx-preview-scroll">
               <MemoPrint memo={viewMemo.data} lang={lang} attachmentPreviews={viewMemo.previews} />
@@ -242,10 +268,11 @@ function MemoApprovedView() {
         <MemoToasts toasts={toasts} dismiss={dismiss} />
       </div>
 
-      {/* Hidden print layout for printing directly from a card */}
-      {printMemo && (
+      {/* Hidden print layout — the card-print target, or the open preview so a
+          browser-menu print of the viewed memo isn't blank. */}
+      {printSource && (
         <div className="cmx-print-mount">
-          <MemoPrint memo={printMemo.data} lang={lang} attachmentPreviews={printMemo.previews} />
+          <MemoPrint memo={printSource.data} lang={lang} attachmentPreviews={printSource.previews} />
         </div>
       )}
     </div>
