@@ -91,8 +91,8 @@ function MemoApprovedView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, openId, memos]);
 
-  // Print directly from a card (same flow as the All-memos page). Wait for the
-  // print mount's images (logo, watermark, attachment pages) + fonts to paint
+  // Print the memo opened in the view modal (the modal's Print button). Wait for
+  // the print mount's images (logo, watermark, attachment pages) + fonts to paint
   // before opening the dialog, or mobile Chrome prints blank pages.
   useEffect(() => {
     if (!printMemo || printingRef.current) return;
@@ -119,14 +119,6 @@ function MemoApprovedView() {
     // On target change / unmount always reset the guard so the next request re-arms.
     return () => { cancelled = true; window.removeEventListener('afterprint', cleanup); printingRef.current = false; };
   }, [printMemo]);
-
-  async function printCard(memo) {
-    try {
-      const full = (await api.get(`/api/consultant-memo/${memo._id}`)).data;
-      const previews = await buildAttachmentPreviews(full.attachmentFiles);
-      setPrintMemo({ data: full, previews });
-    } catch { showToast(t('actionError'), 'error'); }
-  }
 
   // ASG.1-only: permanently delete an approved (locked) memo. The backend
   // enforces the same role check; the confirm dialog guards against accidents.
@@ -211,14 +203,6 @@ function MemoApprovedView() {
                       disabled={viewLoading}
                     >
                       <IconEye /> <span>{t('view')}</span>
-                    </button>
-                    <button
-                      className="cmx-btn cmx-btn-outline cmx-btn-sm"
-                      aria-label={t('print')}
-                      title={t('print')}
-                      onClick={() => printCard(m)}
-                    >
-                      <IconPrinter />
                     </button>
                     {canDelete && (
                       <button
