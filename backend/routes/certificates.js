@@ -5,8 +5,11 @@ const Notification = require('../models/Notification');
 const AuditLog    = require('../models/AuditLog');
 const auth        = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
+const { resolveCenterSet, traineeIdsForCenterSet } = require('../utils/centerScope');
 
-const CERT_READ  = ['program_director', 'president', 'super_admin', 'dio'];
+// dio_view / sub_dio may READ (open + print) certificates within their assigned
+// center set only — never WRITE (issue/revoke/delete stays with CERT_WRITE).
+const CERT_READ  = ['program_director', 'president', 'super_admin', 'dio', 'dio_view', 'sub_dio'];
 const CERT_WRITE = ['program_director', 'super_admin', 'dio'];
 
 const populate = q => q
@@ -91,8 +94,24 @@ function isCertificateOverseer(user) {
   return user.role === 'super_admin' || user.role === 'dio';
 }
 
-function scopedCertificateQuery(req, res) {
+// dio_view / sub_dio are center-scoped advanced readers: they may only see
+// advanced-track certificates of trainees in their assigned center set.
+function isCenterScopedReader(user) {
+  return user.role === 'dio_view' || user.role === 'sub_dio';
+}
+
+// Resolve the advanced trainee ids in the caller's assigned center set.
+async function centerScopedTraineeIds(user) {
+  const set = await resolveCenterSet(user);
+  return traineeIdsForCenterSet(set || []);
+}
+
+async function scopedCertificateQuery(req, res) {
   if (isCertificateOverseer(req.user)) return {};
+  if (isCenterScopedReader(req.user)) {
+    const ids = await centerScopedTraineeIds(req.user);
+    return { track: { $ne: 'basic' }, $or: [{ student: { $in: ids } }, { traineeId: { $in: ids } }] };
+  }
   const hospitalId = getHospital(req.user);
   if (!hospitalId) {
     res.status(403).json({ success: false, message: 'Account is not assigned to a hospital' });
@@ -113,18 +132,32 @@ function ensureCertificateScope(req, res, cert) {
   return false;
 }
 
-// READ scope: overseers (super_admin, dio) may open/print ANY certificate; other
-// roles fall back to hospital scoping. Used only by the GET read endpoints —
-// the WRITE guard (ensureCertificateScope) is intentionally left untouched.
-function ensureCertificateReadScope(req, res, cert) {
+// READ scope: overseers (super_admin, dio) may open/print ANY certificate; a
+// center-scoped reader (dio_view, sub_dio) may open/print an advanced-track cert
+// only when its trainee is in the caller's assigned center set; every other role
+// falls back to hospital scoping. Used only by the GET read endpoints — the
+// WRITE guard (ensureCertificateScope) is intentionally left untouched.
+async function ensureCertificateReadScope(req, res, cert) {
   if (isCertificateOverseer(req.user)) return true;
+  if (isCenterScopedReader(req.user)) {
+    if ((cert.track || 'advanced') === 'basic') {
+      res.status(403).json({ success: false, message: 'Access denied: certificate belongs to a different track' });
+      return false;
+    }
+    const ids = await centerScopedTraineeIds(req.user);
+    const idSet = new Set(ids.map(id => String(id)));
+    const traineeId = cert.student?._id || cert.student || cert.traineeId?._id || cert.traineeId;
+    if (traineeId && idSet.has(String(traineeId))) return true;
+    res.status(403).json({ success: false, message: 'Access denied: certificate is outside your assigned centers' });
+    return false;
+  }
   return ensureCertificateScope(req, res, cert);
 }
 
 // GET /api/certificates
 router.get('/', auth, allowRoles(...CERT_READ), async (req, res) => {
   try {
-    const query = scopedCertificateQuery(req, res);
+    const query = await scopedCertificateQuery(req, res);
     if (query === false) return;
     const certs = await populate(Certificate.find(query).sort({ createdAt: -1 }));
     res.json(certs);
@@ -141,7 +174,7 @@ router.get('/:id', auth, allowRoles(...CERT_READ), async (req, res) => {
     }
     const cert = await populate(Certificate.findById(req.params.id));
     if (!cert) return res.status(404).json({ success: false, message: 'Certificate not found' });
-    if (!ensureCertificateReadScope(req, res, cert)) return;
+    if (!(await ensureCertificateReadScope(req, res, cert))) return;
     res.json({ success: true, data: formatCertificateForPrint(req, cert) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -156,7 +189,7 @@ router.get('/:id/print', auth, allowRoles(...CERT_READ), async (req, res) => {
     }
     const cert = await populate(Certificate.findById(req.params.id));
     if (!cert) return res.status(404).json({ success: false, message: 'Certificate not found' });
-    if (!ensureCertificateReadScope(req, res, cert)) return;
+    if (!(await ensureCertificateReadScope(req, res, cert))) return;
     await audit(req, 'view_certificate_print', cert._id, { status: cert.revokedAt ? 'revoked' : 'valid' });
     res.json({ success: true, data: formatCertificateForPrint(req, cert) });
   } catch (err) {

@@ -104,7 +104,7 @@ const ADVANCED_LINKS = {
     { to: '/admin/dashboard',    key: 'dashboard',    label: 'Dashboard'    },
     { to: '/admin/users',        key: 'users',        label: 'Users'        },
     { to: '/admin/hospitals',    key: 'hospitals',    label: 'Hospitals'    },
-    { to: '/admin/certificates', key: 'certificates', label: 'Certificates' },
+    { to: '/admin/system',       key: 'system',       label: 'System'       },
     { to: '/admin/event-feedback', key: 'event_feedback', label: 'Event Feedback' },
     { to: '/admin/audit-log',    key: 'audit_log',    label: 'Audit Log'    },
   ],
@@ -129,18 +129,18 @@ const ADVANCED_LINKS = {
     { to: '/supervisor/trainees',    key: 'trainees',    label: 'My Trainees' },
     { to: '/supervisor/reports',     key: 'reports',     label: 'Reports'     },
     { to: '/supervisor/evaluations', key: 'evaluations', label: 'Evaluations' },
-    { to: '/supervisor/logbook',     key: 'logbook',     label: 'Log Book'    },
+    { to: '/supervisor/logbook',     key: 'logbook',     label: 'Log Book',    advancedOnly: true },
     { to: '/supervisor/research',    key: 'research',    label: 'Research'    },
-    { to: '/announcements',          key: 'announcements', label: 'Announcements' },
+    { to: '/announcements',          key: 'announcements', label: 'Announcements', advancedOnly: true },
   ],
   trainee: [
     { to: '/timeline', key: 'timeline', label: 'Timeline' },
     { to: '/reports',  key: 'reports',  label: 'Reports'  },
     { to: '/grades',   key: 'grades',   label: 'Portfolio' },
     { to: '/certificates-courses', key: 'courses', label: 'Certificates' },
-    { to: '/logbook',  key: 'logbook',  label: 'Log Book' },
+    { to: '/logbook',  key: 'logbook',  label: 'Log Book', advancedOnly: true },
     { to: '/research', key: 'research', label: 'Research' },
-    { to: '/announcements', key: 'announcements', label: 'Announcements' },
+    { to: '/announcements', key: 'announcements', label: 'Announcements', advancedOnly: true },
     { to: '/notifications', key: 'notifications', label: 'Notifications' },
   ],
   president: [
@@ -153,13 +153,13 @@ const ADVANCED_LINKS = {
     { to: '/president/hospitals',         key: 'hospitals',         label: 'Hospitals'      },
   ],
   program_director: [
-    { to: '/program-director/dashboard',   key: 'dashboard',   label: 'Dashboard'   },
-    { to: '/program-director/program',     key: 'program',     label: 'Program'     },
+    { to: '/program-director/dashboard',   key: 'dashboard',   label: 'Dashboard',   advancedOnly: true },
+    { to: '/program-director/program',     key: 'program',     label: 'Program',     advancedOnly: true },
     { to: '/program-director/trainees',    key: 'trainees',    label: 'Trainees'    },
     { to: '/program-director/supervisors', key: 'supervisors', label: 'Supervisors' },
     { to: '/program-director/evaluations', key: 'evaluations', label: 'Evaluations' },
     { to: '/program-director/reports',     key: 'reports',     label: 'Reports'     },
-    { to: '/announcements',                key: 'announcements', label: 'Announcements' },
+    { to: '/announcements',                key: 'announcements', label: 'Announcements', advancedOnly: true },
   ],
   data_entry: [
     { to: '/registry/centers',     key: 'centers',     label: 'Training Centers' },
@@ -171,6 +171,7 @@ const ADVANCED_LINKS = {
   data_analyzer: [
     { to: '/analyzer/dashboard', key: 'dashboard', label: 'Dashboard' },
     { to: '/analyzer/staff',     key: 'staff',     label: 'Staff' },
+    { to: '/analyzer/exports',   key: 'exports',   label: 'Exports & Reports' },
   ],
   central_secretary: [
     { to: '/central/trainees', key: 'trainees', label: 'Trainees' },
@@ -200,6 +201,7 @@ const ADVANCED_LINKS = {
     { to: '/sg/programs',    key: 'programs',    label: 'Programs'    },
     { to: '/sg/pds',         key: 'pds',         label: 'PDs'         },
     { to: '/sg/trainees',    key: 'trainees',    label: 'Trainees'    },
+    { to: '/sg/reports',     key: 'reports',     label: 'Reports'     },
   ],
   assistant_secretary: [
     { to: '/sg/dashboard',   key: 'dashboard',   label: 'Dashboard'   },
@@ -209,6 +211,7 @@ const ADVANCED_LINKS = {
     { to: '/sg/programs',    key: 'programs',    label: 'Programs'    },
     { to: '/sg/pds',         key: 'pds',         label: 'PDs'         },
     { to: '/sg/trainees',    key: 'trainees',    label: 'Trainees'    },
+    { to: '/sg/reports',     key: 'reports',     label: 'Reports'     },
   ],
   sub_pd: [
     { to: '/program-director/dashboard',   key: 'dashboard',   label: 'Dashboard'   },
@@ -220,7 +223,13 @@ const ADVANCED_LINKS = {
 
 export const ROLE_LINKS = {
   ...ADVANCED_LINKS,
+  // The Basic (b_*) mirror only prefixes links that have a real /basic route.
+  // Links flagged `advancedOnly` (logbook, announcements, PD dashboard/program)
+  // have no /basic counterpart, so they are dropped from the b_* navbars to
+  // avoid 404s — advanced navbars keep them (ADVANCED_LINKS is spread as-is).
   ...Object.fromEntries(
-    MIRRORED.map(base => ['b_' + base, ADVANCED_LINKS[base].map(l => ({ ...l, to: '/basic' + l.to }))]),
+    MIRRORED.map(base => ['b_' + base, ADVANCED_LINKS[base]
+      .filter(l => !l.advancedOnly)
+      .map(l => ({ ...l, to: '/basic' + l.to }))]),
   ),
 };

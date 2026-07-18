@@ -57,3 +57,22 @@
 - No `User` model change (`isActive`,`deletedAt` already exist). Auth already 403s deactivated users at login/refresh/every request.
 - `/permanent` suffix is deliberate — NEVER a `?hard=true` flag on the soft DELETE.
 - `GET /api/users` already returns inactive users → super_admin page renders them; no list change.
+
+---
+
+# API Contract — v2 Roles Rebuild (branch `AB`)
+
+New route mounts added in `server.js` (all `auth` → `allowRoles` → in-handler scoping; writes audited). One line each:
+
+- `GET/POST/PATCH/DELETE /api/countries` — country dropdown source (GET any-auth) + CRUD (`data_entry`, `super_admin`).
+- `/api/registry` (`data_entry`, `super_admin`, global) — training-center + specialty CRUD; DIO/ODIO/Sub-DIO and PD/Sub-PD account creation; the clerk's managed-accounts list.
+- `/api/programs` — program CRUD (max 70 active per center, one active program per PD) + scoped listing + `GET /pd-candidates`.
+- `/api/analyzer` (`data_analyzer`, `super_admin`) — filterable `GET /stats`; clerk/central-secretary staff CRUD; `GET /snapshots`, `GET /snapshots/:id/download`, `POST /snapshots/run {range}` (202); `POST /analysis-reports` (multer pdf/ppt/pptx → SG/AS notify) + `GET /analysis-reports` (own uploads).
+- `/api/central` (`central_secretary`, `super_admin`, global) — trainee/trainer creation (trainer OPTIONAL; capacity hard-block 409); edits queued as ChangeRequests to the person's ODIO.
+- `/api/sg` (`secretary_general`, `assistant_secretary`, `super_admin`, read-only) — stats/centers/dios/specialties/programs/pds/trainees + `GET /analysis-reports` (inbox) and `GET /analysis-reports/:id/download`.
+- `/api/dio-view` (`dio_view`, `sub_dio`, `dio`, `super_admin`) — read-only oversight scoped to the caller's training-center set.
+- `/api/announcements` — program announcements board (PD composes; role-scoped reads; fan-out Notifications).
+- `/api/logbook` — trainee log-book entries + supervisor review/sign-off.
+- `GET /api/admin/system` (`super_admin`) — country cards → each country's training centers + user count, plus an `unassigned` (null countryId) bucket. One aggregation set (no N+1).
+
+Snapshot/report file downloads always build the filesystem path from the stored `fileName`/`fileId` under a fixed `uploads/` dir — never from a client-supplied path.

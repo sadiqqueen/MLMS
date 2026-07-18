@@ -5,6 +5,8 @@
 // tier-0/3 accounts (super_admin, data_analyzer) — the role-scoped queries make
 // that inherent — and passwords are never selected.
 const router         = require('express').Router();
+const path           = require('path');
+const fs             = require('fs');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const { coerceRoleToTrack, trackFilter } = require('../utils/track');
@@ -15,6 +17,10 @@ const Hospital  = require('../models/Hospital');
 const Specialty = require('../models/Specialty');
 const Country   = require('../models/Country');
 const Program   = require('../models/Program');
+const AnalysisReport = require('../models/AnalysisReport');
+
+// Analysis-report files live here; downloads are served by stored fileId only.
+const reportsDir = path.join(__dirname, '../uploads/analysis-reports');
 
 const SG_ROLES = ['secretary_general', 'assistant_secretary', 'super_admin'];
 
@@ -180,6 +186,35 @@ router.get('/trainees', auth, allowRoles(...SG_ROLES), async (req, res) => {
     res.json({ success: true, data });
   } catch (err) {
     console.error('[sg] trainees:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/sg/analysis-reports — the inbox: every analyzer-uploaded report,
+// newest first, with the uploader's name.
+router.get('/analysis-reports', auth, allowRoles(...SG_ROLES), async (req, res) => {
+  try {
+    const reports = await AnalysisReport.find()
+      .populate('uploadedBy', 'name')
+      .sort({ createdAt: -1 });
+    res.json({ success: true, data: reports });
+  } catch (err) {
+    console.error('[sg] analysis-reports:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/sg/analysis-reports/:id/download — stream a report by its stored
+// fileId (server-built path only), delivered under its original filename.
+router.get('/analysis-reports/:id/download', auth, allowRoles(...SG_ROLES), async (req, res) => {
+  try {
+    const report = await AnalysisReport.findById(req.params.id);
+    if (!report) return res.status(404).json({ message: 'Report not found' });
+    const abs = path.join(reportsDir, path.basename(report.fileId));
+    if (!fs.existsSync(abs)) return res.status(404).json({ message: 'Report file missing on disk' });
+    res.download(abs, report.name || path.basename(report.fileId));
+  } catch (err) {
+    console.error('[sg] analysis-report download:', err.message);
     res.status(500).json({ message: err.message });
   }
 });

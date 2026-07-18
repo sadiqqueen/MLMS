@@ -18,7 +18,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import Users from './pages/Users';
 import HospitalsUniversities from './pages/HospitalsUniversities';
 import Distributions from './pages/Distributions';
-import Certificates from './pages/Certificates';
+import AdminSystem from './pages/AdminSystem';
 
 import SupervisorTrainees from './pages/SupervisorTrainees';
 import SupervisorReports from './pages/SupervisorReports';
@@ -77,6 +77,7 @@ import RegistryPds from './pages/RegistryPds';
 // Data Analyzer + Central Secretary — Phase 3b
 import AnalyzerDashboard from './pages/AnalyzerDashboard';
 import AnalyzerStaff from './pages/AnalyzerStaff';
+import AnalyzerExports from './pages/AnalyzerExports';
 import CentralTrainees from './pages/CentralTrainees';
 import CentralTrainers from './pages/CentralTrainers';
 
@@ -96,6 +97,7 @@ import SgSpecialties from './pages/SgSpecialties';
 import SgPrograms from './pages/SgPrograms';
 import SgPds from './pages/SgPds';
 import SgTrainees from './pages/SgTrainees';
+import SgReports from './pages/SgReports';
 import ProgramDirectorDashboard from './pages/ProgramDirectorDashboard';
 import ProgramDirectorProgram from './pages/ProgramDirectorProgram';
 
@@ -388,14 +390,9 @@ export default function App() {
               <Distributions />
             </ProtectedRoute>
           } />
-          <Route path="/admin/certificates" element={
+          <Route path="/admin/system" element={
             <ProtectedRoute allowedRoles={['super_admin']}>
-              <Certificates />
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/certificates/:id/print" element={
-            <ProtectedRoute allowedRoles={['super_admin']}>
-              <CertificatePrint />
+              <AdminSystem />
             </ProtectedRoute>
           } />
           <Route path="/admin/audit-log" element={
@@ -454,6 +451,11 @@ export default function App() {
           <Route path="/analyzer/staff" element={
             <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}>
               <AnalyzerStaff />
+            </ProtectedRoute>
+          } />
+          <Route path="/analyzer/exports" element={
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}>
+              <AnalyzerExports />
             </ProtectedRoute>
           } />
 
@@ -542,6 +544,11 @@ export default function App() {
           <Route path="/sg/trainees" element={
             <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'super_admin']}>
               <SgTrainees />
+            </ProtectedRoute>
+          } />
+          <Route path="/sg/reports" element={
+            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'super_admin']}>
+              <SgReports />
             </ProtectedRoute>
           } />
 

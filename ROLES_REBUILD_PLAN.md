@@ -115,7 +115,7 @@ dioId →User null                                // ODIO + Sub-DIO → their di
 pdId  →User null                                // Sub-PD → his program_director (scope mirrors PD)
 ```
 3. **email optional** + sparse unique + `migrations/relaxEmailIndex.js`. Capacity-exception CR flow keeps email REQUIRED and stays Basic/legacy-only (its dedup index keys on `changes.email`; advanced flow gets a hard block with NO exception request) — do not touch ChangeRequest indexes.
-4. **Training year computed** (Phase 3): advanced trainees with `programId` → `trainingYear = clamp(1 + floor(yearsSince(program.trainingStartDate)), 1..6)` via NEW `utils/trainingYear.js`, injected in route mappers; stored `year` stays for Basic. Nothing writes `year` in new flows.
+4. **Training year computed** (Phase 3): advanced trainees → `trainingYear = clamp(1 + floor(yearsSince(enrolledSince || createdAt)), 1..6)` via NEW `utils/trainingYear.js` (basis = the TRAINEE's own enrollment date, per owner intent "time of the trainee in the system" — not the program's start date), injected in route mappers; stored `year` stays for Basic. Nothing writes `year` in new flows.
 5. `researchSupervisorId` (existing) = research trainer; default to program's PD at trainee creation when absent.
 
 ### NEW `backend/models/Announcement.js`

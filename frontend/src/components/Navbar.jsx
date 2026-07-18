@@ -56,9 +56,12 @@ function notifLink(message = '', role) {
         if (has(/trainee|report|assign/))  return '/secretary/trainees';
         break;
       case 'super_admin':
-        if (has(/certificat/))           return '/admin/certificates';
         if (has(/user|account|locked/))  return '/admin/users';
         if (has(/hospital/))             return '/admin/hospitals';
+        break;
+      case 'secretary_general':
+      case 'assistant_secretary':
+        if (has(/report/))               return '/sg/reports';
         break;
       default:
         break;

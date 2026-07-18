@@ -3,15 +3,23 @@
 // Data analyzer (+ super_admin): a filterable dashboard over the advanced track
 // plus creation/management of Data-entry clerks and Central secretaries.
 const router         = require('express').Router();
+const multer         = require('multer');
+const path           = require('path');
+const fs             = require('fs');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const { coerceRoleToTrack, trackFilter } = require('../utils/track');
-const User      = require('../models/User');
-const Hospital  = require('../models/Hospital');
-const Specialty = require('../models/Specialty');
-const Country   = require('../models/Country');
-const Program   = require('../models/Program');
-const AuditLog  = require('../models/AuditLog');
+const { decodeOriginalName } = require('../utils/filename');
+const { runSnapshot, RANGES, SNAPSHOTS_DIR } = require('../jobs/snapshots');
+const User           = require('../models/User');
+const Hospital       = require('../models/Hospital');
+const Specialty      = require('../models/Specialty');
+const Country        = require('../models/Country');
+const Program        = require('../models/Program');
+const AuditLog       = require('../models/AuditLog');
+const DataSnapshot   = require('../models/DataSnapshot');
+const AnalysisReport = require('../models/AnalysisReport');
+const Notification   = require('../models/Notification');
 
 const ANALYZER_ROLES = ['data_analyzer', 'super_admin'];
 // The only account types a data analyzer creates/manages.
@@ -49,6 +57,29 @@ function handleDuplicate(err, res) {
   }
   return false;
 }
+
+// ── Analysis-report uploads (pdf / ppt / pptx) ─────────────────────────────
+// Same multer-in-handler rigor as routes/eventFeedback.js: ext AND mime are
+// both checked (octet-stream tolerated), 15MB cap, unique disk filename.
+const reportsDir = path.join(__dirname, '../uploads/analysis-reports');
+if (!fs.existsSync(reportsDir)) fs.mkdirSync(reportsDir, { recursive: true });
+
+const reportStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, reportsDir),
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, unique + path.extname(file.originalname).toLowerCase());
+  },
+});
+const uploadReport = multer({
+  storage: reportStorage,
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const okExt = /\.(pdf|ppt|pptx)$/i.test(path.extname(file.originalname).toLowerCase());
+    const okMime = /pdf|powerpoint|presentation|officedocument|octet-stream/.test(file.mimetype);
+    okExt && okMime ? cb(null, true) : cb(new Error('Only PDF or PowerPoint (ppt/pptx) files are allowed'));
+  },
+});
 
 // GET /api/analyzer/stats?countryId=&city=&specialtyId=
 router.get('/stats', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
@@ -185,6 +216,117 @@ router.patch('/staff/:id', auth, allowRoles(...ANALYZER_ROLES), async (req, res)
   } catch (err) {
     if (handleDuplicate(err, res)) return;
     console.error('[analyzer] update staff:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── SNAPSHOTS ──────────────────────────────────────────────────────────────
+
+// GET /api/analyzer/snapshots — the generated snapshot files, newest first.
+router.get('/snapshots', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const snapshots = await DataSnapshot.find().sort({ createdAt: -1 }).limit(1000);
+    res.json({ success: true, data: snapshots });
+  } catch (err) {
+    console.error('[analyzer] snapshots list:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/analyzer/snapshots/:id/download — stream a stored CSV. The path is
+// built ONLY from the stored fileName joined under uploads/snapshots; no
+// client-supplied path is ever used, and the resolved path must stay inside it.
+router.get('/snapshots/:id/download', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const snap = await DataSnapshot.findById(req.params.id);
+    if (!snap) return res.status(404).json({ message: 'Snapshot not found' });
+    const baseDir = path.resolve(SNAPSHOTS_DIR);
+    const abs = path.resolve(baseDir, snap.fileName);
+    if (abs !== baseDir && !abs.startsWith(baseDir + path.sep)) {
+      return res.status(400).json({ message: 'Invalid snapshot path' });
+    }
+    if (!fs.existsSync(abs)) return res.status(404).json({ message: 'Snapshot file missing on disk' });
+    res.download(abs, path.basename(snap.fileName));
+  } catch (err) {
+    console.error('[analyzer] snapshot download:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/analyzer/snapshots/run  { range } — run a snapshot now (first-run /
+// testing). Returns 202 with the created DataSnapshot documents.
+router.post('/snapshots/run', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const { range } = req.body || {};
+    if (!RANGES.includes(range)) {
+      return res.status(400).json({ message: 'range must be weekly, monthly, or yearly' });
+    }
+    const created = await runSnapshot(range);
+    await writeAudit(req, 'analyzer_run_snapshot', 'DataSnapshot', null, { range, files: created.length });
+    res.status(202).json({ success: true, data: created });
+  } catch (err) {
+    console.error('[analyzer] run snapshot:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── ANALYSIS REPORTS ───────────────────────────────────────────────────────
+
+// POST /api/analyzer/analysis-reports — upload a PDF/PPTX report for the
+// Secretary General + Assistant Secretary inbox. Multer runs inside the handler
+// so filter/size errors surface as 400 (never 500).
+router.post('/analysis-reports', auth, allowRoles(...ANALYZER_ROLES), (req, res) => {
+  uploadReport.single('file')(req, res, async err => {
+    if (err) return res.status(400).json({ message: err.message });
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+    try {
+      const range = req.body && req.body.range;
+      if (!RANGES.includes(range)) {
+        fs.promises.unlink(req.file.path).catch(() => {});
+        return res.status(400).json({ message: 'range must be weekly, monthly, or yearly' });
+      }
+
+      const report = await AnalysisReport.create({
+        range,
+        name: decodeOriginalName(req.file),
+        url: `/uploads/analysis-reports/${req.file.filename}`,
+        fileId: req.file.filename,
+        mimeType: req.file.mimetype,
+        sizeBytes: req.file.size,
+        uploadedBy: req.user._id,
+      });
+
+      // Notify every active Secretary General + Assistant Secretary. The message
+      // contains the word 'report' so Navbar's notifLink can route it.
+      const recipients = await User.find({
+        role: { $in: ['secretary_general', 'assistant_secretary'] },
+        isActive: { $ne: false },
+      }).select('_id');
+      await Promise.all(recipients.map(u =>
+        Notification.create({
+          user: u._id,
+          message: `New analysis report uploaded: ${report.name}`,
+          category: 'reports',
+        }).catch(() => {})
+      ));
+
+      await writeAudit(req, 'analyzer_upload_report', 'AnalysisReport', report._id, { range, name: report.name });
+      res.status(201).json({ success: true, data: report });
+    } catch (e) {
+      fs.promises.unlink(req.file.path).catch(() => {});
+      console.error('[analyzer] upload report:', e.message);
+      res.status(500).json({ message: e.message });
+    }
+  });
+});
+
+// GET /api/analyzer/analysis-reports — the analyzer's own uploads, newest first.
+router.get('/analysis-reports', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const reports = await AnalysisReport.find({ uploadedBy: req.user._id }).sort({ createdAt: -1 });
+    res.json({ success: true, data: reports });
+  } catch (err) {
+    console.error('[analyzer] list reports:', err.message);
     res.status(500).json({ message: err.message });
   }
 });

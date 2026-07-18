@@ -228,7 +228,26 @@ pending ──research supervisor Approve & Sign──▶ supervisor_approved
 
 ---
 
-## 8. Change history — this session (2026‑07‑12 / 2026‑07‑13)
+## 8. Change history
+
+### v2 Roles Rebuild — branch `AB` (2026‑07‑18), Phases 1–5 — NOT on `main`; do not push without owner sign‑off
+
+A full role‑model v2 rebuild (see `ROLES_REBUILD_PLAN.md`) landed on branch `AB` across five phases. Summary:
+
+- **Phase 1 — role model.** 8 new role enum strings (`secretary_general, assistant_secretary, data_analyzer, data_entry, central_secretary, dio_view, sub_dio, sub_pd`); central `ROLE_LABELS`/`roleLabel`/`READ_ONLY_ROLES` in `config/roles.js`; landing‑page cleanup. Renamed labels: super_admin→"Developer", dio→"ODIO", supervisor→"Trainer".
+- **Phase 2 — registry + login.** New models `Country`, `Program`, Hospital/User extensions (`idNumber`, `countryId`, `programId`, `assignedCenterIds`, `dioId`, `pdId`); `User.email` made optional + sparse‑unique (`migrations/relaxEmailIndex.js`); login accepts email OR ID number; `routes/countries.js`, `registry.js`, `programs.js` + `/registry/*` pages; `utils/accreditation.js`.
+- **Phase 3 — people flows.** `routes/analyzer.js` (staff creation) + `/analyzer/*`; `routes/centralSecretary.js` (trainer‑optional trainee/trainer creation, capacity hard‑block, edits queued as ChangeRequests to the ODIO) + `/central/*`; `utils/trainingYear.js` + computed year in mappers; ODIO lockdown + center‑set guards (`utils/centerScope.js`).
+- **Phase 4 — role pages.** `routes/dioView.js` + `/dio-view/*` suite (certificates reuse the existing `/api/dio/certificates` paths); Announcements (model/route/board); Log Book (model/route + `utils/assignedTrainees.js`); `routes/sg.js` + `/sg/*` read‑only suite; PD dashboard/program pages + Sub‑PD GET grants.
+- **Phase 5 — data ops + hardening.** `utils/csv.js` (extracted from `eventFeedback.js`, byte‑identical); `jobs/snapshots.js` + `models/DataSnapshot` + `node-cron` schedules (opt‑in `SNAPSHOTS_ENABLED`); analyzer snapshot list/download/run + analysis‑report upload → SG/AS inbox (`models/AnalysisReport`, `/analyzer/exports`, `/sg/reports`); Developer System page (`GET /api/admin/system` + `/admin/system`); removed the super_admin `/admin/certificates` page (route/nav/page — certificates still exist for DIO/DIO‑view/PD/president + public verify); `scripts/assertExportSafety.js` (`npm run check:exports`); the only new dependency is `node-cron` (backend).
+
+**Pending / at‑deploy items:**
+- Run `migrations/relaxEmailIndex.js` (DRY_RUN → CONFIRM) **before/at deploy** so ID‑number‑only accounts work without an email.
+- `SNAPSHOTS_ENABLED` is opt‑in — enable it on exactly one persistent instance (PM2 fork / a durable disk).
+- **Legacy advanced `dio` accounts without a `dioId`/center set lose write access** under the new ODIO lockdown until recreated via the registry (DIO → ODIO). Basic `b_dio` untouched.
+- **Trainer‑evaluation form criteria still pending from the owner** — `SUPERVISOR_EVAL_FORMS` stays `[]` (feature dormant until populated). Sub‑DIO / Sub‑PD exact powers also TBD (view‑only placeholders).
+- **No automated test suite** (`test:e2e:trainee` is fictional). Verification = `npm run build:frontend` + `npm run check:backend` + `npm run check:exports` + `node --check` per backend file + manual click‑throughs.
+
+### Prior session (2026‑07‑12 / 2026‑07‑13)
 
 All on `main`, pushed. Newest → oldest. (Prior sessions are in `git log` and earlier HANDOFF revisions; the immediately previous session — 2026‑07‑11/12 trainee portfolio + research pipeline + secretary "Promotions" — is now folded into §5c as established architecture.)
 

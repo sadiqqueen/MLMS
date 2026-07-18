@@ -9,6 +9,7 @@ const Hospital       = require('../models/Hospital');
 const Specialty      = require('../models/Specialty');
 const User           = require('../models/User');
 const { accreditationExpiry, accreditationStatus } = require('../utils/accreditation');
+const { resolveCenterSet } = require('../utils/centerScope');
 
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -36,11 +37,6 @@ router.get('/', auth, allowRoles(...READ_ROLES), async (req, res) => {
   try {
     const role = req.user.role;
 
-    // Center-set scoping for DIO roles lands in Phase 4 — return nothing for now.
-    if (role === 'dio' || role === 'dio_view' || role === 'sub_dio') {
-      return res.json({ success: true, data: [] });
-    }
-
     const filter = { isActive: { $ne: false } };
     if (role === 'program_director') {
       filter.programDirectorId = req.user._id;
@@ -62,6 +58,14 @@ router.get('/', auth, allowRoles(...READ_ROLES), async (req, res) => {
       } else {
         filter.trainingCenterId = { $in: ids };
       }
+    }
+
+    // Center-set scoping for DIO roles: restrict to the caller's assigned
+    // centers. This is authoritative — an empty set naturally returns nothing,
+    // and it overrides any center/country param so scope cannot be widened.
+    if (role === 'dio' || role === 'dio_view' || role === 'sub_dio') {
+      const set = await resolveCenterSet(req.user);
+      if (Array.isArray(set)) filter.trainingCenterId = { $in: set };
     }
 
     const programs = await Program.find(filter)
@@ -203,6 +207,16 @@ router.patch('/:id',
       if (fields.name !== undefined) {
         fields.name = String(fields.name).trim();
         if (!fields.name) return res.status(400).json({ message: 'Program name cannot be empty' });
+      }
+
+      // Moving the program to a DIFFERENT center re-checks that center's 70-cap
+      // (same limit/logic as POST) so a move can't overfill the destination.
+      if (fields.trainingCenterId !== undefined
+          && String(fields.trainingCenterId) !== String(existing.trainingCenterId)) {
+        const count = await Program.countDocuments({ trainingCenterId: fields.trainingCenterId, isActive: { $ne: false } });
+        if (count >= MAX_PROGRAMS_PER_CENTER) {
+          return res.status(409).json({ message: `This training center already has the maximum of ${MAX_PROGRAMS_PER_CENTER} programs`, count });
+        }
       }
 
       // Re-validate the PD whenever the PD (or the specialty behind it) changes.

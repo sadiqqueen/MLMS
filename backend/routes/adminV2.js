@@ -19,6 +19,7 @@ const Evaluation     = require('../models/Evaluation');
 const Report         = require('../models/Report');
 const ConsultantMemo = require('../models/ConsultantMemo');
 const Notification   = require('../models/Notification');
+const Country        = require('../models/Country');
 
 const ADMIN = ['super_admin'];
 const USER_CREATE_FIELDS = ['name', 'email', 'password', 'role', 'phone', 'gender',
@@ -65,6 +66,63 @@ router.get('/stats', auth, allowRoles(...ADMIN), async (req, res) => {
       ]);
 
     res.json({ success: true, data: { users, hospitals, specialties, activeRotations, certificates, trainees, supervisors } });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── SYSTEM (Developer overview) ─────────────────────────────────────────────
+
+// GET /api/admin/system — every country with its training centers and user
+// count, plus an 'unassigned' bucket (null countryId). One efficient
+// aggregation set (no N+1): centers + users grouped in memory by countryId.
+router.get('/system', auth, allowRoles(...ADMIN), async (req, res) => {
+  try {
+    const [countries, centers, userGroups] = await Promise.all([
+      Country.find({ isActive: { $ne: false } }).sort({ name: 1 }).lean(),
+      Hospital.find().select('name city countryId').sort({ name: 1 }).lean(),
+      User.aggregate([
+        { $match: { isActive: { $ne: false } } },
+        { $group: { _id: '$countryId', count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    // Rows whose countryId is missing OR points at a soft-deleted (inactive)
+    // country fold into the 'unassigned' bucket — otherwise they would vanish,
+    // since only ACTIVE countries are rendered below.
+    const activeCountryIds = new Set(countries.map(co => String(co._id)));
+    const isUnassigned = id => id == null || !activeCountryIds.has(String(id));
+
+    const userCountByCountry = {};
+    let unassignedUsers = 0;
+    userGroups.forEach(g => {
+      if (isUnassigned(g._id)) unassignedUsers += g.count;
+      else userCountByCountry[String(g._id)] = g.count;
+    });
+
+    const centersByCountry = {};
+    const unassignedCenters = [];
+    centers.forEach(c => {
+      const entry = { _id: c._id, name: c.name, city: c.city || '' };
+      if (isUnassigned(c.countryId)) unassignedCenters.push(entry);
+      else (centersByCountry[String(c.countryId)] ||= []).push(entry);
+    });
+
+    const data = countries.map(co => ({
+      _id: co._id,
+      country: co.name,
+      code: co.code,
+      centers: centersByCountry[String(co._id)] || [],
+      userCount: userCountByCountry[String(co._id)] || 0,
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        countries: data,
+        unassigned: { centers: unassignedCenters, userCount: unassignedUsers },
+      },
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

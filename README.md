@@ -37,18 +37,28 @@ midlearn_LMS/
 
 ## Roles
 
-| Role | Home Page | Capabilities |
-|------|-----------|--------------|
-| super_admin | /admin/dashboard | System-wide administration, users, hospitals, specialties, certificates, audit logs |
-| dio | /dio/dashboard | Hospital-scoped DIO dashboard, trainees, supervisors, program directors, secretaries, certificates |
-| president | /president/trainees | Read-only hospital/program oversight |
-| program_director | /program-director/trainees | Hospital-scoped trainees, supervisors, final reports, evaluations |
-| secretary | /secretary/trainees | Specialty-scoped trainee, supervisor, program director, hospital, and distribution management |
-| supervisor | /supervisor/trainees | Assigned trainees, reports, evaluations |
-| trainee | /timeline | Timeline, report submission, grades, profile |
+Advanced-track hierarchy (v2). The Basic portal (`b_*` roles under `/basic/*`) and `president` / `asg1` / `asg2` are unchanged.
 
-Legacy roles removed from active code: `doctor`, `student`, `professor`, `director`, and `admin`.
-Run `npm --prefix backend run migrate:legacy-roles` before deploying the tightened enum to a database that may still contain old role values.
+| Role (label) | Internal string | Home Page | Capabilities |
+|------|------|-----------|--------------|
+| Developer | `super_admin` | /admin/dashboard | Full access: dashboard, users, hospitals, System page, event feedback, audit logs |
+| Secretary General | `secretary_general` | /sg/dashboard | Read-only oversight (centers, DIOs, specialties, programs, PDs, trainees) + analysis-report inbox |
+| Assistant Secretary | `assistant_secretary` | /sg/dashboard | Same read-only view set as the Secretary General |
+| Data Analyzer | `data_analyzer` | /analyzer/dashboard | Filterable stats; creates Data-entry + Central-secretary accounts; data snapshots + PDF/PPTX report upload |
+| Data Entry | `data_entry` | /registry/centers | Global registry: countries, training centers, specialties, DIO/ODIO/Sub-DIO + PD/Sub-PD accounts, programs |
+| Central Secretary | `central_secretary` | /central/trainees | Global: add trainees (trainer optional) + trainers; edits queued for ODIO approval |
+| DIO | `dio_view` | /dio-view/dashboard | View-only over an assigned center subset + issues/views certificates |
+| ODIO | `dio` | /dio/dashboard | View + edit trainees/trainers in the DIO's center set; approves change requests; issues certificates |
+| Sub-DIO | `sub_dio` | /dio-view/dashboard | View-only, mirrors the DIO's reads (linked via `dioId`) |
+| Program Director | `program_director` | /program-director/trainees | One program: trainees/trainers, dashboard, announcements, final-report grading, evaluations, research |
+| Sub-PD | `sub_pd` | /program-director/dashboard | View-only, mirrors the PD's reads (linked via `pdId`) |
+| Trainer | `supervisor` | /supervisor/trainees | Assigned trainees, weekly/monthly report grading, WPBA evaluations, log-book sign-off, research |
+| Trainee | `trainee` | /timeline | Timeline, reports, log book, portfolio, certificates & courses, announcements, research |
+| President | `president` | /president/dashboard | Read-only hospital/program oversight (unchanged) |
+| ASG.1 / ASG.2 | `asg1` / `asg2` | /consultant-memo | Consultant memos + initiatives (unchanged) |
+
+Legacy roles removed from active code: `doctor`, `student`, `professor`, `director`, and `admin`. The old `secretary` role remains for the Basic track and legacy accounts.
+Run `npm --prefix backend run migrate:legacy-roles` before deploying the tightened enum to a database that may still contain old role values. The v2 rebuild also adds `migrations/relaxEmailIndex.js` (make `User.email` sparse-unique so accounts can log in by ID number) — run it at deploy.
 
 ---
 

@@ -14,7 +14,7 @@ const nav = {
     'nav.super_admin.users':             'المستخدمون',
     'nav.super_admin.hospitals':         'المستشفيات',
     'nav.super_admin.specialties':       'التخصصات',
-    'nav.super_admin.certificates':      'الشهادات',
+    'nav.super_admin.system':            'النظام',
     'nav.super_admin.event_feedback':    'تقييم الفعاليات',
     'nav.super_admin.audit_log':         'سجل التدقيق',
 
@@ -87,6 +87,7 @@ const nav = {
     // data_analyzer
     'nav.data_analyzer.dashboard':       'لوحة التحكم',
     'nav.data_analyzer.staff':           'الموظفون',
+    'nav.data_analyzer.exports':         'التصدير والتقارير',
 
     // central_secretary
     'nav.central_secretary.trainees':    'المتدربون',
@@ -116,6 +117,7 @@ const nav = {
     'nav.secretary_general.programs':    'البرامج',
     'nav.secretary_general.pds':         'مدراء البرامج',
     'nav.secretary_general.trainees':    'المتدربون',
+    'nav.secretary_general.reports':     'التقارير',
 
     // assistant_secretary
     'nav.assistant_secretary.dashboard':   'لوحة التحكم',
@@ -125,6 +127,7 @@ const nav = {
     'nav.assistant_secretary.programs':    'البرامج',
     'nav.assistant_secretary.pds':         'مدراء البرامج',
     'nav.assistant_secretary.trainees':    'المتدربون',
+    'nav.assistant_secretary.reports':     'التقارير',
 
     // sub_pd (Sub-PD)
     'nav.sub_pd.dashboard':              'لوحة التحكم',
@@ -144,7 +147,7 @@ const nav = {
     'nav.super_admin.users':             'Users',
     'nav.super_admin.hospitals':         'Hospitals',
     'nav.super_admin.specialties':       'Specialties',
-    'nav.super_admin.certificates':      'Certificates',
+    'nav.super_admin.system':            'System',
     'nav.super_admin.event_feedback':    'Event Feedback',
     'nav.super_admin.audit_log':         'Audit Log',
 
@@ -217,6 +220,7 @@ const nav = {
     // data_analyzer
     'nav.data_analyzer.dashboard':       'Dashboard',
     'nav.data_analyzer.staff':           'Staff',
+    'nav.data_analyzer.exports':         'Exports & Reports',
 
     // central_secretary
     'nav.central_secretary.trainees':    'Trainees',
@@ -246,6 +250,7 @@ const nav = {
     'nav.secretary_general.programs':    'Programs',
     'nav.secretary_general.pds':         'PDs',
     'nav.secretary_general.trainees':    'Trainees',
+    'nav.secretary_general.reports':     'Reports',
 
     // assistant_secretary
     'nav.assistant_secretary.dashboard':   'Dashboard',
@@ -255,6 +260,7 @@ const nav = {
     'nav.assistant_secretary.programs':    'Programs',
     'nav.assistant_secretary.pds':         'PDs',
     'nav.assistant_secretary.trainees':    'Trainees',
+    'nav.assistant_secretary.reports':     'Reports',
 
     // sub_pd (Sub-PD)
     'nav.sub_pd.dashboard':              'Dashboard',

@@ -95,26 +95,83 @@ async function applyChangeRequest(cr) {
     throw err;
   }
 
-  // Re-validate supervisor references. Basic keeps specialty-membership; Advanced
-  // assigns trainers per program, so a reference need only be an active
-  // supervisor (its specialty may legitimately differ).
-  for (const key of ['supervisorId', 'researchSupervisorId']) {
-    if (fields[key]) {
-      const match = {
-        _id: fields[key],
-        role: coerceRoleToTrack('supervisor', cr.track),
+  // Re-validate supervisor references. Basic-track keeps the original
+  // specialty-membership rule (unchanged). Advanced-track scopes trainers PER
+  // PROGRAM (v2): a program-based trainee's trainer must be in the trainee's
+  // program, while a legacy advanced trainee (no programId) keeps the original
+  // specialty-membership check that predates the Phase-3 relaxation.
+  const supRole = coerceRoleToTrack('supervisor', cr.track);
+  if (cr.track === 'basic') {
+    for (const key of ['supervisorId', 'researchSupervisorId']) {
+      if (fields[key]) {
+        const sup = await User.findOne({
+          _id: fields[key],
+          role: supRole,
+          specialtyId: cr.specialtyId,
+          isActive: { $ne: false },
+        }).select('_id');
+        if (!sup) {
+          const label = key === 'supervisorId' ? 'Supervisor' : 'Research supervisor';
+          const err = new Error(`${label} is no longer valid in this specialty`);
+          err.status = 400;
+          throw err;
+        }
+        // Keep the legacy alias in sync with the validated value (never the raw input).
+        if (key === 'supervisorId') fields.supervisor = fields.supervisorId;
+      }
+    }
+  } else {
+    const pdRole = coerceRoleToTrack('program_director', cr.track);
+    const targetProgramId = target.programId || null;
+
+    // supervisorId (the trainer): an active supervisor of this track. For a
+    // program-based target, the trainer must share the trainee's program; for a
+    // legacy target (no programId), fall back to the original specialty check.
+    if (fields.supervisorId) {
+      const sup = await User.findOne({
+        _id: fields.supervisorId,
+        role: supRole,
         isActive: { $ne: false },
-      };
-      if (cr.track === 'basic') match.specialtyId = cr.specialtyId;
-      const sup = await User.findOne(match).select('_id');
+      }).select('programId specialtyId');
       if (!sup) {
-        const label = key === 'supervisorId' ? 'Supervisor' : 'Research supervisor';
-        const err = new Error(cr.track === 'basic' ? `${label} is no longer valid in this specialty` : `${label} is no longer valid`);
+        const err = new Error('Supervisor is no longer valid');
         err.status = 400;
         throw err;
       }
-      // Keep the legacy alias in sync with the validated value (never the raw input).
-      if (key === 'supervisorId') fields.supervisor = fields.supervisorId;
+      if (targetProgramId) {
+        if (String(sup.programId || '') !== String(targetProgramId)) {
+          const err = new Error("Selected trainer is not in the trainee's program");
+          err.status = 400;
+          throw err;
+        }
+      } else if (String(sup.specialtyId || '') !== String(cr.specialtyId || '')) {
+        const err = new Error('Supervisor is no longer valid in this specialty');
+        err.status = 400;
+        throw err;
+      }
+      fields.supervisor = fields.supervisorId;
+    }
+
+    // researchSupervisorId: an active supervisor OR program_director of this
+    // track. A supervisor choice must share a program-based trainee's program; a
+    // program_director needs no program check.
+    if (fields.researchSupervisorId) {
+      const rs = await User.findOne({
+        _id: fields.researchSupervisorId,
+        role: { $in: [supRole, pdRole] },
+        isActive: { $ne: false },
+      }).select('role programId');
+      if (!rs) {
+        const err = new Error('Research supervisor is no longer valid');
+        err.status = 400;
+        throw err;
+      }
+      if (rs.role === supRole && targetProgramId
+          && String(rs.programId || '') !== String(targetProgramId)) {
+        const err = new Error("Selected trainer is not in the trainee's program");
+        err.status = 400;
+        throw err;
+      }
     }
   }
 

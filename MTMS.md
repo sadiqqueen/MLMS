@@ -83,6 +83,12 @@
 | `Certificate.js` | Issued training certificates (with verification) |
 | `Research.js` | Trainee research/publications (approval workflow) |
 | `TraineeCourse.js` | Trainee-uploaded courses/certificates (self-reported portfolio) |
+| `Country.js` | Country records (name + code); dropdown source that auto-fills country-code fields; managed by Data-entry clerks |
+| `Program.js` | Training program (center + specialty + PD, accreditation type/dates, yearly capacity); expiry/status computed in `utils/accreditation.js` |
+| `Announcement.js` | Program-Director announcement; posting fans out `Notification`s (category `announcement`) to the program's trainees + trainers |
+| `LogBookEntry.js` | Trainee log-book procedure entry (pending → supervisor sign-off/reject) |
+| `DataSnapshot.js` | One record per snapshot CSV file (range, relative fileName, size, datasets) written by `jobs/snapshots.js` |
+| `AnalysisReport.js` | Analyzer-uploaded PDF/PPTX report for the SG/AS inbox (range, name, fileId, uploader) |
 | `ChangeRequest.js` | Queued secretary edits + `capacity_exception` trainee-creation requests awaiting DIO approval |
 | `Notification.js` | Per-user notifications (message, read flag, category) |
 | `AuditLog.js` | Immutable audit trail of privileged actions |
@@ -127,6 +133,15 @@
 | `notifications.js` | List/mark-read notifications |
 | `eventFeedback.js` | **Authenticated** admin API for Event Feedback (single admin) |
 | `eventFeedbackPublic.js` | **Public** attendee endpoints, gated only by a valid event code |
+| `countries.js` | Country dropdown source (GET any-auth) + CRUD (`data_entry`, `super_admin`) |
+| `registry.js` | Data-entry clerk registry: centers, specialties, DIO/ODIO/Sub-DIO + PD/Sub-PD account creation (global, unscoped) |
+| `programs.js` | Program CRUD (70-per-center cap, one-program-per-PD) + scoped listing + PD candidates |
+| `analyzer.js` | Data Analyzer: filterable stats, clerk/central-secretary accounts, data snapshots (list/download/run), analysis-report upload → SG/AS inbox |
+| `centralSecretary.js` | Central Secretary: global trainee/trainer creation (trainer optional, capacity hard-block); edits queued as ChangeRequests to the ODIO |
+| `sg.js` | Secretary General + Assistant Secretary: strictly read-only oversight suite + analysis-report inbox downloads |
+| `dioView.js` | DIO/Sub-DIO/ODIO read-only oversight scoped to the caller's training-center set (`utils/centerScope.js`) |
+| `announcements.js` | Program announcements board + fan-out (PD composes; role-scoped reads) |
+| `logbook.js` | Trainee log-book entries + supervisor review/sign-off |
 
 ### Utils (`backend/utils/`)
 
@@ -142,6 +157,11 @@
 | `eventCode.js` | Generates short human-enterable public event codes |
 | `feedbackValidateResponse.js` | Server-side validation of a feedback submission against a published form |
 | `initiativeCheckpoints.js` | Canonical approval-checkpoint keys per initiative stage |
+| `accreditation.js` | Computed accreditation expiry + traffic-light status (green/yellow/red/black) for programs & centers |
+| `trainingYear.js` | Computed training year for advanced trainees (clamped from the program's start date) |
+| `centerScope.js` | Resolve a DIO/ODIO/Sub-DIO caller's training-center set for scoped reads |
+| `assignedTrainees.js` | Resolve a supervisor's assigned trainee ids (extracted from `routes/supervisor.js`) |
+| `csv.js` | Shared CSV helpers (`csvCell`, `buildCsv`) — UTF-8 BOM + CRLF + always-quoted cells |
 
 ### Migrations / seeds / scripts
 
@@ -152,6 +172,9 @@
 | `migrations/fixDataRealism.js` | Clean up/realism-fix seeded data |
 | `migrations/reseedProfessionalData.js` / `reseedBasicTrainingData.js` | Reseed a full demo dataset for Advanced / Basic track |
 | `migrations/reconcileChangeRequestIndexes.js` | Drop/rebuild the ChangeRequest partial-unique indexes after the capacity feature (DRY_RUN-gated) |
+| `migrations/relaxEmailIndex.js` | Make `User.email` sparse-unique so accounts can log in by ID number without an email (DRY_RUN/CONFIRM-gated) |
+| `jobs/snapshots.js` | Scheduled weekly/monthly/yearly data-export job (whitelisted collections → per-dataset CSV under `uploads/snapshots/`); opt-in via `SNAPSHOTS_ENABLED` |
+| `scripts/assertExportSafety.js` | Build guard (`npm run check:exports`): fails if the snapshot whitelist would leak ChangeRequest/SecurityEvent/Feedback* or User credentials |
 | `seeds/specialties.seed.js` | Seed specialties |
 | `seeds/superadmin.seed.js` | Seed the super-admin account |
 | `seeds/feedback.seed.js` | Seed + publish the AMETI CPD Activity Evaluation feedback form |
@@ -200,6 +223,7 @@
 | `Skeleton.jsx` | Loading skeleton placeholder |
 | `SearchableSelect.jsx` | Searchable dropdown used across forms |
 | `ViewToggle.jsx` | Grid/list (or similar) view switcher |
+| `AccreditationBadge.jsx` | Traffic-light accreditation chip (green/yellow/red/black) for programs & centers |
 | `ReportModal.jsx` | Modal for viewing/grading a report |
 | `ErrorBoundary.jsx` | Catches render errors, shows a fallback |
 | `icons.jsx` | Single source of truth for inline SVG icons |
@@ -240,7 +264,7 @@
 | `HospitalsUniversities.jsx` | Manage hospitals & universities |
 | `Distributions.jsx` | Manage rotations/distributions |
 | `Reports.jsx` | All reports |
-| `Certificates.jsx` | All certificates |
+| `AdminSystem.jsx` | Developer system overview: country cards → their centers + user counts (`GET /api/admin/system`) |
 | `AuditLog.jsx` | Audit trail viewer |
 
 **President**
@@ -316,6 +340,25 @@
 | `ConsultantMemoApproved.jsx` | Approved/signed memos |
 | `Initiatives.jsx` | Training Program Initiatives board (staged approval) |
 | `EventFeedback.jsx` | Admin Event Feedback management (build forms, view responses) |
+
+**V2 role suites (Registry / Analyzer / Central / DIO-view / SG / PD / shared)**
+
+| File | Job |
+|---|---|
+| `RegistryCenters.jsx` / `RegistryCenterDetail.jsx` | Data-entry: training-center list + card (accreditation chip, programs `X / 70`, add-program modal) |
+| `RegistryCountries.jsx` / `RegistrySpecialties.jsx` | Data-entry: country + specialty CRUD |
+| `RegistryDios.jsx` | Data-entry: create DIO (country → center multi-select) + ODIO + Sub-DIO; list |
+| `RegistryPds.jsx` | Data-entry: create PD (+ Sub-PD) with specialty; list |
+| `AnalyzerDashboard.jsx` | Data Analyzer: filterable stats (country/city/specialty) |
+| `AnalyzerStaff.jsx` | Data Analyzer: create/list/edit Data-entry clerks + Central secretaries |
+| `AnalyzerExports.jsx` | Data Analyzer: snapshot list + blob download, run-now, analysis-report upload + own list |
+| `CentralTrainees.jsx` / `CentralTrainers.jsx` | Central Secretary: global trainee/trainer add + list (trainer optional; capacity block; CR edits) |
+| `DioViewDashboard.jsx` / `DioViewCenters.jsx` / `DioViewPds.jsx` / `DioViewTrainees.jsx` / `DioViewTrainers.jsx` | DIO/Sub-DIO read-only suite scoped to the center set (certificates reuse `DioCertificates.jsx`) |
+| `SgDashboard.jsx` / `SgCenters.jsx` / `SgDios.jsx` / `SgSpecialties.jsx` / `SgPrograms.jsx` / `SgPds.jsx` / `SgTrainees.jsx` | Secretary General + Assistant Secretary read-only oversight suite |
+| `SgReports.jsx` | SG/AS analysis-report inbox (blob downloads) |
+| `ProgramDirectorDashboard.jsx` / `ProgramDirectorProgram.jsx` | PD + Sub-PD dashboard (stats) + program card (accreditation, capacity, dates) |
+| `Announcements.jsx` | Program announcements board + PD composer (trainee/supervisor/PD/Sub-PD) |
+| `LogBook.jsx` / `SupervisorLogBook.jsx` | Trainee log-book entry form + list / supervisor review queue |
 
 ### i18n, data, theme, utils
 

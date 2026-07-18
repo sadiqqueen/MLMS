@@ -36,13 +36,25 @@ function viewChangeRequest(doc) {
   return o;
 }
 
-// ── Advanced-track ODIO center lockdown ─────────────────────────────────────
-// An advanced ODIO (role 'dio', req.track === 'advanced') may only edit/approve
-// within its linked DIO's assigned center set, and may not create or delete
-// accounts at all. super_admin and Basic b_dio (role 'dio' but req.track ===
-// 'basic') are unaffected — every guard checks req.track === 'advanced'.
+// ── Advanced-track ODIO lockdowns ───────────────────────────────────────────
+// Two distinct guards for an advanced ODIO (role 'dio', req.track === 'advanced'):
+//
+//  • isAdvancedOdio — creation/deletion of accounts moved to the registry by
+//    owner decision, so POST/DELETE are locked for EVERY advanced ODIO (with or
+//    without a dioId).
+//  • isCenterScopedOdio — edit/approve/reject are center-scoped ONLY for a v2
+//    ODIO linked to a dio_view via dioId. A legacy advanced ODIO (no dioId)
+//    would resolve an empty center set and be 403'd on every managed-user PATCH
+//    and change-request approve/reject, breaking the legacy secretary→DIO
+//    approval round-trip — so it keeps today's track-scoped behavior there.
+//
+// super_admin and Basic b_dio (req.track === 'basic') are unaffected by either.
 function isAdvancedOdio(req) {
   return req.track === 'advanced' && req.user.role === 'dio';
+}
+
+function isCenterScopedOdio(req) {
+  return req.track === 'advanced' && req.user.role === 'dio' && !!req.user.dioId;
 }
 
 // The center a managed user belongs to: direct hospitalId/hospital, else the
@@ -310,7 +322,7 @@ function populateManagedUser(query) {
 
 // GET /api/dio/stats
 // Dashboard statistics — scoped to this DIO's whole training track.
-router.get('/stats', auth, allowRoles(...DIO, 'president', 'dio_view'), async (req, res) => {
+router.get('/stats', auth, allowRoles(...DIO, 'president'), async (req, res) => {
   try {
     const roleTrack = { isActive: { $ne: false } };
     const trackQ = trackFilter(req.track); // { track:'basic' } | { track:{ $ne:'basic' } }
@@ -505,7 +517,7 @@ function registerManagedUserRoutes(routeName, role) {
 
   router.patch(`/${routeName}/:id`, auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
     try {
-      if (isAdvancedOdio(req)) {
+      if (isCenterScopedOdio(req)) {
         if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid user id' });
         const target = await User.findById(req.params.id).select('hospitalId hospital programId');
         if (!target) return res.status(404).json({ success: false, message: 'User not found' });
@@ -1164,7 +1176,7 @@ router.patch('/change-requests/:id/approve', auth, allowRoles(...DIO, 'super_adm
     const cr = await ChangeRequest.findOne(query);
     if (!cr) return res.status(404).json({ success: false, message: 'Pending request not found' });
 
-    if (isAdvancedOdio(req)) {
+    if (isCenterScopedOdio(req)) {
       let hospitalId = cr.hospitalId || null;
       if (cr.requestType === 'edit' && cr.targetId) {
         const target = await User.findById(cr.targetId).select('hospitalId hospital programId');
@@ -1207,7 +1219,7 @@ router.patch('/change-requests/:id/reject', auth, allowRoles(...DIO, 'super_admi
     const cr = await ChangeRequest.findOne(query);
     if (!cr) return res.status(404).json({ success: false, message: 'Pending request not found' });
 
-    if (isAdvancedOdio(req)) {
+    if (isCenterScopedOdio(req)) {
       let hospitalId = cr.hospitalId || null;
       if (cr.requestType === 'edit' && cr.targetId) {
         const target = await User.findById(cr.targetId).select('hospitalId hospital programId');

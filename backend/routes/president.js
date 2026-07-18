@@ -11,7 +11,7 @@ const Evaluation     = require('../models/Evaluation');
 const Certificate    = require('../models/Certificate');
 const { trackFilter } = require('../utils/track');
 
-const PRESIDENT = ['president', 'dio_view'];
+const PRESIDENT = ['president'];
 
 const USER_SELECT = 'name email phone role hospitalId hospital specialtyId specialty department studentId year isActive initials photoUrl createdAt updatedAt';
 

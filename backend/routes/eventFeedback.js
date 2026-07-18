@@ -17,6 +17,7 @@ const FeedbackFormVersion = require('../models/FeedbackFormVersion');
 const FeedbackEvent       = require('../models/FeedbackEvent');
 const FeedbackResponse    = require('../models/FeedbackResponse');
 const { generateUniqueCode } = require('../utils/eventCode');
+const { buildCsv }           = require('../utils/csv');
 
 // Every route in this file requires a logged-in super_admin.
 router.use(auth, allowRoles('super_admin'));
@@ -55,12 +56,6 @@ function sanitizeFields(fields) {
     if (Array.isArray(out.options)) out.options = out.options.map(o => ({ ...o, id: o.id || uuidv4() }));
     return out;
   });
-}
-
-function csvCell(v) {
-  if (v == null) return '';
-  const s = Array.isArray(v) ? v.join('; ') : String(v);
-  return '"' + s.replace(/"/g, '""') + '"';
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -420,9 +415,9 @@ router.get('/events/:id/responses/export', async (req, res) => {
         r.participantName || '', r.participantEmail || '', r.lang || '',
       ];
       const answers = fields.map(f => (r.answers ? r.answers[f.id] : ''));
-      return [...base, ...answers].map(csvCell).join(',');
+      return [...base, ...answers];
     });
-    const csv = '﻿' + [header.map(csvCell).join(','), ...rows].join('\r\n');
+    const csv = buildCsv(header, rows);
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="event-${event._id}-responses.csv"`);

@@ -90,6 +90,10 @@ app.use('/api/reports', writeMethodsOnly);
 app.use('/api/certificates', writeMethodsOnly);
 app.use('/api/trainee-courses', writeMethodsOnly);
 app.use('/api/research', writeMethodsOnly);
+app.use('/api/logbook', writeMethodsOnly);
+app.use('/api/central', writeMethodsOnly);
+app.use('/api/registry', writeMethodsOnly);
+app.use('/api/announcements', writeMethodsOnly);
 
 // ── HEALTH CHECK ─────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date() }));
@@ -161,6 +165,12 @@ if (require.main === module) {
     .connect(process.env.MONGO_URI)
     .then(() => {
       console.log('✅ MongoDB connected');
+      // Opt-in scheduled data snapshots (weekly/monthly/yearly CSV exports).
+      // Off by default — PM2 fork runs a single instance and Railway may lack a
+      // persistent disk. See jobs/snapshots.js + SNAPSHOTS_ENABLED in .env.example.
+      if (process.env.SNAPSHOTS_ENABLED === 'true') {
+        require('./jobs/snapshots').scheduleSnapshots();
+      }
       app.listen(PORT, () => console.log(`✅ MTMS V2 Server running on port ${PORT}`));
     })
     .catch(err => {

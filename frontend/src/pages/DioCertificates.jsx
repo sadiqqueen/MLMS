@@ -324,7 +324,7 @@ export default function DioCertificates() {
         {totalCount === 0 ? (
           <div style={{ textAlign: 'center', padding: 56, color: 'var(--text-muted)' }}>
             <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>No certificates issued yet</div>
-            <div style={{ fontSize: 13 }}>Click "+ Issue Certificate" to issue the first certificate.</div>
+            {canIssue && <div style={{ fontSize: 13 }}>Click "+ Issue Certificate" to issue the first certificate.</div>}
           </div>
         ) : (
           <div className="admin-card">
