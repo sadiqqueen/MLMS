@@ -17,16 +17,18 @@ import ViewToggle from '../components/ViewToggle';
 import api from '../api/axios';
 import Sk from '../components/Skeleton';
 import { IconEye, IconPencil, IconBan } from '../components/icons';
+import { roleLabel } from '../config/roles';
 
 const API_BASE = '';
 
-// ── Role config: display, badge colours, list endpoint, table empty icon ──
+// ── Role config: badge colours, list endpoint, table empty icon (labels come
+// from the central roleLabel helper) ──
 const ROLE_META = {
-  trainee:          { label: 'Trainee',          api: 'trainees',          icon: '🎓', badge: { bg: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)' } },
-  supervisor:       { label: 'Supervisor',       api: 'supervisors',       icon: '👨‍⚕️', badge: { bg: 'var(--info-bg)', color: 'var(--info-fg)' } },
-  program_director: { label: 'Program Director', api: 'program-directors', icon: '⭐', badge: { bg: 'var(--warning-bg)', color: 'var(--warning-fg)' } },
-  secretary:        { label: 'Secretary',        api: 'secretaries',       icon: '📋', badge: { bg: '#FCE7F3', color: '#9D174D' } },
-  president:        { label: 'President',        api: 'presidents',        icon: '🏛️', badge: { bg: '#E0E7FF', color: '#3730A3' } },
+  trainee:          { api: 'trainees',          icon: '🎓', badge: { bg: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)' } },
+  supervisor:       { api: 'supervisors',       icon: '👨‍⚕️', badge: { bg: 'var(--info-bg)', color: 'var(--info-fg)' } },
+  program_director: { api: 'program-directors', icon: '⭐', badge: { bg: 'var(--warning-bg)', color: 'var(--warning-fg)' } },
+  secretary:        { api: 'secretaries',       icon: '📋', badge: { bg: '#FCE7F3', color: '#9D174D' } },
+  president:        { api: 'presidents',        icon: '🏛️', badge: { bg: '#E0E7FF', color: '#3730A3' } },
 };
 // Display/filter order (president is read-only — see CREATABLE_ROLES).
 const ROLE_ORDER = ['trainee', 'supervisor', 'program_director', 'secretary', 'president'];
@@ -217,7 +219,7 @@ function UserFormModal({ user, initialRole, hospitals, specialties, supervisors,
     <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="admin-modal admin-modal-lg">
         <div className="admin-modal-header">
-          <div className="admin-modal-title">{isEdit ? `Edit ${ROLE_META[role].label}` : `Add ${ROLE_META[role].label}`}</div>
+          <div className="admin-modal-title">{isEdit ? `Edit ${roleLabel(role)}` : `Add ${roleLabel(role)}`}</div>
           <button className="admin-modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="admin-modal-body">
@@ -225,7 +227,7 @@ function UserFormModal({ user, initialRole, hospitals, specialties, supervisors,
             <div className="admin-field" style={{ marginBottom: 14 }}>
               <label>User Type *</label>
               <select value={role} onChange={e => setRole(e.target.value)}>
-                {CREATABLE_ROLES.map(r => <option key={r} value={r}>{ROLE_META[r].label}</option>)}
+                {CREATABLE_ROLES.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
               </select>
             </div>
           )}
@@ -241,7 +243,7 @@ function UserFormModal({ user, initialRole, hospitals, specialties, supervisors,
         <div className="admin-modal-footer">
           <button className="btn-outline" onClick={onClose}>Cancel</button>
           <button className="btn-purple" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : isEdit ? 'Save Changes' : `Create ${ROLE_META[role].label}`}
+            {saving ? 'Saving…' : isEdit ? 'Save Changes' : `Create ${roleLabel(role)}`}
           </button>
         </div>
       </div>
@@ -262,7 +264,7 @@ function UserViewModal({ user, trainees, onTraineeClick, onBack, onClose, onFull
     return () => document.removeEventListener('keydown', h);
   }, [onClose, onBack]);
 
-  const meta = ROLE_META[user.role] || { label: user.role, badge: { bg: 'var(--border-soft)', color: 'var(--text-2)' } };
+  const meta = ROLE_META[user.role] || { badge: { bg: 'var(--border-soft)', color: 'var(--text-2)' } };
   const active = user.isActive !== false;
   const rows = [
     ['Email', user.email],
@@ -288,7 +290,7 @@ function UserViewModal({ user, trainees, onTraineeClick, onBack, onClose, onFull
             <div>
               <div className="admin-modal-title" style={{ marginBottom: 3 }}>{user.name}</div>
               <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 20, background: meta.badge.bg, color: meta.badge.color }}>
-                {meta.label}
+                {roleLabel(user.role)}
               </span>
             </div>
           </div>
@@ -512,7 +514,7 @@ export default function DioUsers() {
           </button>
           {ROLE_ORDER.map(r => (
             <button key={r} className={`filter-tab${roleFilter === r ? ' active' : ''}`} onClick={() => setRoleFilter(r)}>
-              {ROLE_META[r].label}s ({roleCounts[r] || 0})
+              {roleLabel(r)}s ({roleCounts[r] || 0})
             </button>
           ))}
         </div>
@@ -562,7 +564,7 @@ export default function DioUsers() {
                   )}
                   {filtered.map((u, i) => {
                     const active = u.isActive !== false;
-                    const meta = ROLE_META[u.role] || { label: u.role, badge: { bg: 'var(--border-soft)', color: 'var(--text-2)' } };
+                    const meta = ROLE_META[u.role] || { badge: { bg: 'var(--border-soft)', color: 'var(--text-2)' } };
                     return (
                       <tr key={u._id} style={{ opacity: active ? 1 : 0.65 }}>
                         <td style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
@@ -579,7 +581,7 @@ export default function DioUsers() {
                         </td>
                         <td data-label="Role">
                           <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: meta.badge.bg, color: meta.badge.color }}>
-                            {meta.label}
+                            {roleLabel(u.role)}
                           </span>
                         </td>
                         <td data-label="Specialty">
@@ -621,7 +623,7 @@ export default function DioUsers() {
               )}
               {filtered.map(u => {
                 const active = u.isActive !== false;
-                const meta = ROLE_META[u.role] || { label: u.role, badge: { bg: 'var(--border-soft)', color: 'var(--text-2)' } };
+                const meta = ROLE_META[u.role] || { badge: { bg: 'var(--border-soft)', color: 'var(--text-2)' } };
                 return (
                   <div className="management-card" key={u._id} style={{ opacity: active ? 1 : 0.65 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -629,7 +631,7 @@ export default function DioUsers() {
                       <div><div className="management-card-title">{u.name}</div><div className="management-card-sub">{u.email}</div></div>
                     </div>
                     <div className="management-card-meta">
-                      <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: meta.badge.bg, color: meta.badge.color }}>{meta.label}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: meta.badge.bg, color: meta.badge.color }}>{roleLabel(u.role)}</span>
                       <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, background: active ? 'var(--success-bg)' : 'var(--danger-bg)', color: active ? 'var(--success-fg)' : 'var(--danger-fg)' }}>{active ? 'Active' : 'Inactive'}</span>
                     </div>
                     <div className="management-card-sub">{specialtyName(u)} · {hospitalName(u)}</div>
@@ -677,7 +679,7 @@ export default function DioUsers() {
         )}
         {confirmDeact && (
           <ConfirmModal
-            title={`Deactivate ${ROLE_META[confirmDeact.role]?.label || 'User'}`}
+            title={`Deactivate ${confirmDeact.role ? roleLabel(confirmDeact.role) : 'User'}`}
             message={`Deactivate ${confirmDeact.name}? They will lose portal access but their data is preserved.`}
             confirmLabel="Deactivate"
             onConfirm={handleDeactivate}

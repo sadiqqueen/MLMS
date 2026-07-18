@@ -290,37 +290,37 @@ export default function App() {
           } />
 
           <Route path="/president/dashboard" element={
-            <ProtectedRoute allowedRoles={['president']}>
+            <ProtectedRoute allowedRoles={['president', 'dio_view']}>
               <DioDashboard />
             </ProtectedRoute>
           } />
           <Route path="/president/trainees" element={
-            <ProtectedRoute allowedRoles={['president']}>
+            <ProtectedRoute allowedRoles={['president', 'dio_view']}>
               <PresidentTrainees />
             </ProtectedRoute>
           } />
           <Route path="/president/supervisors" element={
-            <ProtectedRoute allowedRoles={['president']}>
+            <ProtectedRoute allowedRoles={['president', 'dio_view']}>
               <PresidentSupervisors />
             </ProtectedRoute>
           } />
           <Route path="/president/program-directors" element={
-            <ProtectedRoute allowedRoles={['president']}>
+            <ProtectedRoute allowedRoles={['president', 'dio_view']}>
               <PresidentProgramDirectors />
             </ProtectedRoute>
           } />
           <Route path="/president/secretaries" element={
-            <ProtectedRoute allowedRoles={['president']}>
+            <ProtectedRoute allowedRoles={['president', 'dio_view']}>
               <PresidentSecretaries />
             </ProtectedRoute>
           } />
           <Route path="/president/dios" element={
-            <ProtectedRoute allowedRoles={['president']}>
+            <ProtectedRoute allowedRoles={['president', 'dio_view']}>
               <PresidentDios />
             </ProtectedRoute>
           } />
           <Route path="/president/hospitals" element={
-            <ProtectedRoute allowedRoles={['president']}>
+            <ProtectedRoute allowedRoles={['president', 'dio_view']}>
               <PresidentHospitals />
             </ProtectedRoute>
           } />
@@ -507,7 +507,7 @@ export default function App() {
           } />
 
           <Route path="/profile" element={
-            <ProtectedRoute allowedRoles={['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president', 'super_admin', 'b_trainee', 'b_supervisor', 'b_program_director', 'b_secretary', 'b_dio', 'b_president']}>
+            <ProtectedRoute allowedRoles={['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president', 'super_admin', 'b_trainee', 'b_supervisor', 'b_program_director', 'b_secretary', 'b_dio', 'b_president', 'secretary_general', 'assistant_secretary', 'data_analyzer', 'data_entry', 'central_secretary', 'dio_view', 'sub_dio', 'sub_pd']}>
               <Profile />
             </ProtectedRoute>
           } />

@@ -7,9 +7,14 @@ import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 import { IconEdit, IconDelete, IconPassword, IconLock, IconUnlock, IconBan, IconUserCheck } from '../components/icons';
-import { baseRole } from '../config/roles';
+import { baseRole, roleLabel } from '../config/roles';
 
-const ROLES = ['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president', 'asg1', 'asg2', 'super_admin'];
+const ROLES = [
+  'trainee', 'supervisor', 'program_director', 'sub_pd',
+  'secretary', 'data_entry', 'central_secretary',
+  'dio', 'dio_view', 'sub_dio', 'president', 'asg1', 'asg2',
+  'data_analyzer', 'assistant_secretary', 'secretary_general', 'super_admin',
+];
 
 // Roles that exist in both portals (Advanced + Basic).
 const BASIC_CAPABLE = ['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president'];
@@ -22,11 +27,19 @@ const ROLE_BADGE = {
   trainee:          'badge-role badge-student',
   supervisor:       'badge-role badge-doctor',
   program_director: 'badge-role badge-professor',
+  sub_pd:           'badge-role badge-professor',
   secretary:        'badge-role badge-admin',
+  data_entry:       'badge-role badge-admin',
+  central_secretary:'badge-role badge-admin',
   dio:              'badge-role badge-super_admin',
+  dio_view:         'badge-role badge-super_admin',
+  sub_dio:          'badge-role badge-super_admin',
   president:        'badge-role badge-super_admin',
   asg1:             'badge-role badge-super_admin',
   asg2:             'badge-role badge-super_admin',
+  data_analyzer:    'badge-role badge-super_admin',
+  assistant_secretary: 'badge-role badge-super_admin',
+  secretary_general:   'badge-role badge-super_admin',
   super_admin:      'badge-role badge-super_admin',
   b_trainee:          'badge-role badge-student',
   b_supervisor:       'badge-role badge-doctor',
@@ -40,23 +53,24 @@ const ROLE_FIELDS = {
   trainee:          ['studentId', 'year', 'hospitalId', 'supervisorId', 'specialtyId', 'phone', 'gender', 'city'],
   supervisor:       ['hospitalId', 'specialtyId', 'department', 'phone', 'gender', 'city'],
   program_director: ['hospitalId', 'department', 'phone'],
+  sub_pd:           ['phone'],
   secretary:        ['specialtyId', 'phone'],
+  data_entry:       ['phone'],
+  central_secretary:['phone'],
   dio:              ['phone'],
+  dio_view:         ['phone'],
+  sub_dio:          ['phone'],
   president:        ['phone'],
   asg1:             ['phone'],
   asg2:             ['phone'],
+  data_analyzer:    ['phone'],
+  assistant_secretary: ['phone'],
+  secretary_general:   ['phone'],
   super_admin:      [],
 };
 
 function showField(role, field) {
   return (ROLE_FIELDS[role] || []).includes(field);
-}
-
-const ROLE_DISPLAY = { asg1: 'ASG.1', asg2: 'ASG.2' };
-
-function roleLabel(r) {
-  if (typeof r === 'string' && r.startsWith('b_')) return 'Basic ' + roleLabel(r.slice(2));
-  return ROLE_DISPLAY[r] || r.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 const ROWS_OPT = [8, 16, 32];

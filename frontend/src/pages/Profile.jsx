@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import Navbar from '../components/Navbar';
 import Sk from '../components/Skeleton';
+import { roleLabel } from '../config/roles';
 
 export default function Profile() {
   const { user } = useAuth();
@@ -85,11 +86,6 @@ export default function Profile() {
 
   function hospitalName() {
     return p?.hospitalId?.name || p?.hospital?.name || currentHospital || '—';
-  }
-
-  function roleLabel(role) {
-    if (!role) return '—';
-    return role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   }
 
   function roleExtra() {

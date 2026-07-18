@@ -8,9 +8,7 @@ import { useInitiativeAccess } from './useInitiativeAccess';
 import { INIT_STRINGS } from './initiativeStrings';
 import { MemoModal } from './MemoUi';
 import { IconMoon, IconSun, IconFolder, IconPlus, IconChevron, IconBoard, IconCheck } from '../icons';
-
-const roleLabel = (role) =>
-  role === 'asg1' ? 'ASG.1' : role === 'asg2' ? 'ASG.2' : (role || '').toUpperCase();
+import { roleLabel } from '../../config/roles';
 
 // The dedicated navbar for the consultant-memo pages.
 // `guardNavigation` (optional) is asked before leaving — the form page uses

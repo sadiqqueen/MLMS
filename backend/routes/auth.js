@@ -25,12 +25,18 @@ const uploadPhoto = multer({
   }
 });
 
-function denyPresidentMutations(req, res, next) {
-  if (req.user?.role === 'president') {
-    return res.status(403).json({ message: 'President is read-only' });
-  }
-  next();
+function denyMutationsFor(roles, message = 'This account is read-only') {
+  return (req, res, next) => {
+    if (roles.includes(req.user?.role)) {
+      return res.status(403).json({ message });
+    }
+    next();
+  };
 }
+
+const READ_ONLY_SELF_ROLES = ['president', 'dio_view', 'sub_dio', 'sub_pd', 'secretary_general', 'assistant_secretary'];
+const denyReadOnlyMutations = denyMutationsFor(READ_ONLY_SELF_ROLES);
+const denyPresidentMutations = denyMutationsFor(['president'], 'President is read-only');
 
 // ── POST /api/auth/login ──────────────────────────────────────────────────
 router.post('/login', loginLimiter, async (req, res) => {
@@ -174,7 +180,7 @@ router.get('/me', auth, async (req, res) => {
 });
 
 // ── PATCH /api/auth/me ────────────────────────────────────────────────────
-router.patch('/me', auth, denyPresidentMutations, async (req, res) => {
+router.patch('/me', auth, denyReadOnlyMutations, async (req, res) => {
   try {
     const { name } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ message: 'Name is required' });
@@ -193,7 +199,7 @@ router.patch('/me', auth, denyPresidentMutations, async (req, res) => {
 });
 
 // ── PUT /api/auth/upload-photo ────────────────────────────────────────────
-router.put('/upload-photo', auth, denyPresidentMutations, uploadPhoto.single('photo'), async (req, res) => {
+router.put('/upload-photo', auth, denyReadOnlyMutations, uploadPhoto.single('photo'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded.' });
     const photoUrl = `/uploads/${req.file.filename}`;

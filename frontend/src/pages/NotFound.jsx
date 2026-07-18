@@ -2,20 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth }  from '../context/AuthContext';
 import { usePrefs } from '../context/PrefsContext';
 import Navbar       from '../components/Navbar';
-
-// Role → home route. Mirrors ROLE_HOME in App.jsx so the "Go to home" button
-// lands each role on their own landing page (falls back to "/").
-const ROLE_HOME = {
-  super_admin:      '/admin/dashboard',
-  secretary:        '/secretary/trainees',
-  dio:              '/dio/dashboard',
-  supervisor:       '/supervisor/trainees',
-  trainee:          '/timeline',
-  president:        '/president/dashboard',
-  program_director: '/program-director/trainees',
-  asg1:             '/consultant-memo',
-  asg2:             '/consultant-memo',
-};
+import { ROLE_HOME } from '../config/roles';
 
 // Page-chrome translations (Arabic + English).
 const STRINGS = {

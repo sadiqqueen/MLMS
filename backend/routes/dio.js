@@ -255,7 +255,7 @@ function populateManagedUser(query) {
 
 // GET /api/dio/stats
 // Dashboard statistics — scoped to this DIO's whole training track.
-router.get('/stats', auth, allowRoles(...DIO, 'president'), async (req, res) => {
+router.get('/stats', auth, allowRoles(...DIO, 'president', 'dio_view'), async (req, res) => {
   try {
     const roleTrack = { isActive: { $ne: false } };
     const trackQ = trackFilter(req.track); // { track:'basic' } | { track:{ $ne:'basic' } }

@@ -6,6 +6,7 @@ import Toast from '../components/Toast';
 import api from '../api/axios';
 import Sk from '../components/Skeleton';
 import { IconPencil, IconPlus, IconPrinter, IconBack } from '../components/icons';
+import { roleLabel } from '../config/roles';
 
 const API_BASE = '';
 const REPORT_TYPES = ['weekly', 'monthly', 'final'];
@@ -35,18 +36,6 @@ function isGraded(report) {
 
 function nameOf(value) {
   return value?.name || '-';
-}
-
-function roleLabel(role) {
-  const labels = {
-    dio: 'DIO',
-    super_admin: 'Super Admin',
-    supervisor: 'Supervisor',
-    program_director: 'Program Director',
-    president: 'President',
-    trainee: 'Trainee',
-  };
-  return labels[role] || role || '-';
 }
 
 function StatCard({ label, value, tone = 'blue' }) {

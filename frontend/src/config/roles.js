@@ -31,6 +31,43 @@ export function basePathForRole(role) {
   return isBasicRole(role) ? '/basic' : '';
 }
 
+// ── Display labels ───────────────────────────────────────────────────────────
+// One source of truth for role → { en, ar }. Basic (b_*) roles are labelled by
+// prefixing "Basic "/"أساسي " to their Advanced counterpart via roleLabel().
+export const ROLE_LABELS = {
+  super_admin:         { en: 'Developer',            ar: 'مطور النظام' },
+  secretary_general:   { en: 'Secretary General',    ar: 'الأمين العام' },
+  assistant_secretary: { en: 'Assistant Secretary',  ar: 'مساعد الأمين العام' },
+  data_analyzer:       { en: 'Data Analyzer',        ar: 'محلل البيانات' },
+  data_entry:          { en: 'Data Entry',           ar: 'مدخل البيانات' },
+  central_secretary:   { en: 'Central Secretary',    ar: 'السكرتير المركزي' },
+  dio_view:            { en: 'DIO',                  ar: 'DIO' },
+  dio:                 { en: 'ODIO',                 ar: 'ODIO' },
+  sub_dio:             { en: 'Sub-DIO',              ar: 'Sub-DIO' },
+  program_director:    { en: 'Program Director',     ar: 'مدير البرنامج' },
+  sub_pd:              { en: 'Sub-PD',               ar: 'نائب مدير البرنامج' },
+  supervisor:          { en: 'Trainer',             ar: 'مدرب' },
+  trainee:             { en: 'Trainee',             ar: 'متدرب' },
+  secretary:           { en: 'Secretary',           ar: 'سكرتير' },
+  president:           { en: 'President',            ar: 'الرئيس' },
+  asg1:                { en: 'ASG.1',               ar: 'ASG.1' },
+  asg2:                { en: 'ASG.2',               ar: 'ASG.2' },
+};
+
+// Resolve a role's display label in the given language. Basic roles get a
+// "Basic "/"أساسي " prefix on their base label; unknown roles fall back to the
+// raw role string so legacy accounts still render something sensible.
+export function roleLabel(role, lang = 'en') {
+  if (isBasicRole(role)) {
+    return (lang === 'ar' ? 'أساسي ' : 'Basic ') + roleLabel(baseRole(role), lang);
+  }
+  return ROLE_LABELS[role]?.[lang] ?? ROLE_LABELS[role]?.en ?? (role || '');
+}
+
+// Roles that cannot mutate their own profile/self-service (mirrors the backend
+// read-only gate on /api/auth/me + /upload-photo).
+export const READ_ONLY_ROLES = ['president', 'dio_view', 'sub_dio', 'sub_pd', 'secretary_general', 'assistant_secretary'];
+
 // ── Landing route per role ───────────────────────────────────────────────────
 const ADVANCED_HOME = {
   super_admin:      '/admin/dashboard',
@@ -42,6 +79,15 @@ const ADVANCED_HOME = {
   program_director: '/program-director/trainees',
   asg1:             '/consultant-memo',
   asg2:             '/consultant-memo',
+  // v2 roles — Phase-1 temporary homes (final homes ship with their pages).
+  dio_view:            '/president/dashboard',
+  secretary_general:   '/profile',
+  assistant_secretary: '/profile',
+  data_analyzer:       '/profile',
+  data_entry:          '/profile',
+  central_secretary:   '/profile',
+  sub_dio:             '/profile',
+  sub_pd:              '/profile',
 };
 
 export const ROLE_HOME = {

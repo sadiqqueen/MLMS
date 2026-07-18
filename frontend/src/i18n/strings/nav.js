@@ -100,7 +100,7 @@ const nav = {
     'nav.dio.assignments':               'Assignments',
     'nav.dio.evaluations':               'Evaluations',
     'nav.dio.certificates':              'Certificates',
-    'nav.dio.approvals':                 'Promotions',
+    'nav.dio.approvals':                 'Approvals',
     // legacy keys (routes kept for deep links / super_admin)
     'nav.dio.trainees':                  'Trainees',
     'nav.dio.supervisors':               'Supervisors',

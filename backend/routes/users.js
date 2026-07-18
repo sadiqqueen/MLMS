@@ -54,9 +54,17 @@ const ROLE_RANK = {
   trainee: 10,
   supervisor: 30,
   secretary: 40,
+  data_entry: 45,
+  central_secretary: 45,
   program_director: 50,
+  sub_pd: 55,
+  sub_dio: 60,
   dio: 60,
+  dio_view: 65,
   president: 70,
+  data_analyzer: 85,
+  assistant_secretary: 88,
+  secretary_general: 90,
   // ASG.1 / ASG.2 sit just below super_admin so ONLY super_admin can
   // edit, lock, or delete them.
   asg1: 90,
@@ -65,7 +73,7 @@ const ROLE_RANK = {
 };
 
 // ASG accounts are visible to super_admin only.
-const HIDDEN_FROM_NON_ADMIN = ['asg1', 'asg2'];
+const HIDDEN_FROM_NON_ADMIN = ['asg1', 'asg2', 'secretary_general', 'assistant_secretary', 'data_analyzer'];
 
 // A DIO oversees its whole training track (Advanced for `dio`, Basic for
 // `b_dio`). On the generic /api/users reads it sees every user in that track —
