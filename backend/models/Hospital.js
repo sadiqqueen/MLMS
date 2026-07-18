@@ -14,6 +14,15 @@ const hospitalSchema = new mongoose.Schema(
     governorate:    { type: String, default: '' },
     dioId:          { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     presidentId:    { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
+    // Registry v2 — training-center country + accreditation (expiry may be stored
+    // directly for centers; status computed in utils/accreditation.js).
+    countryId:              { type: mongoose.Schema.Types.ObjectId, ref: 'Country', default: null, index: true },
+    accreditationNumber:    { type: String, default: '' },
+    accreditationGrantDate: { type: Date, default: null },
+    accreditationExpiry:    { type: Date, default: null },
+    accreditationWithdrawn: { type: Boolean, default: false },
+
     programDirector:{ type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     supervisors:    [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     phone:          { type: String, default: '' },

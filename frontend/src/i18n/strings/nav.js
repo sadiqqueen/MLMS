@@ -70,6 +70,13 @@ const nav = {
     'nav.program_director.evaluations':  'التقييمات',
     'nav.program_director.reports':      'التقارير',
 
+    // data_entry (registry)
+    'nav.data_entry.centers':            'المراكز التدريبية',
+    'nav.data_entry.countries':          'الدول',
+    'nav.data_entry.specialties':        'الاختصاصات',
+    'nav.data_entry.dios':               'DIOs',
+    'nav.data_entry.pds':                'مدراء البرامج',
+
     // toggle aria-labels
     'nav.toggle.theme.dark':             'تفعيل الوضع الداكن',
     'nav.toggle.theme.light':            'تفعيل الوضع الفاتح',
@@ -137,6 +144,13 @@ const nav = {
     'nav.program_director.supervisors':  'Supervisors',
     'nav.program_director.evaluations':  'Evaluations',
     'nav.program_director.reports':      'Reports',
+
+    // data_entry (registry)
+    'nav.data_entry.centers':            'Training Centers',
+    'nav.data_entry.countries':          'Countries',
+    'nav.data_entry.specialties':        'Specialties',
+    'nav.data_entry.dios':               'DIOs',
+    'nav.data_entry.pds':                'PDs',
 
     // toggle aria-labels
     'nav.toggle.theme.dark':             'Switch to dark mode',

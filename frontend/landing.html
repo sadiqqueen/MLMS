@@ -1820,14 +1820,16 @@
         "></div>
 
         <div style="display:flex;flex-direction:column;gap:6px;">
-          <label style="font-size:12px;font-weight:600;color:#4B5563;text-transform:uppercase;letter-spacing:0.05em;font-family:Inter,Arial,sans-serif;">
-            Email Address
+          <label data-en="Email or ID number" data-ar="البريد الإلكتروني أو رقم الهوية" style="font-size:12px;font-weight:600;color:#4B5563;text-transform:uppercase;letter-spacing:0.05em;font-family:Inter,Arial,sans-serif;">
+            Email or ID number
           </label>
           <input
             id="loginEmail"
-            type="email"
+            type="text"
             placeholder="your@email.com"
-            autocomplete="email"
+            data-placeholder-en="your@email.com"
+            data-placeholder-ar="البريد الإلكتروني أو رقم الهوية"
+            autocomplete="username"
             onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()"
             style="
               height:46px;
@@ -1939,7 +1941,7 @@
       secretary_general:   '/profile',
       assistant_secretary: '/profile',
       data_analyzer:       '/profile',
-      data_entry:          '/profile',
+      data_entry:          '/registry/centers',
       central_secretary:   '/profile',
       sub_dio:             '/profile',
       sub_pd:              '/profile',
@@ -2052,7 +2054,7 @@
     }
 
     async function handleLogin() {
-      const email = (document.getElementById('loginEmail').value || '').trim();
+      const identifier = (document.getElementById('loginEmail').value || '').trim();
       const password = document.getElementById('loginPass').value || '';
       const errorDiv = document.getElementById('loginError');
       const warnDiv = document.getElementById('loginAttemptsWarn');
@@ -2061,8 +2063,8 @@
       errorDiv.style.display = 'none';
       warnDiv.style.display = 'none';
 
-      if (!email || !password) {
-        errorDiv.textContent = 'Please enter your email and password.';
+      if (!identifier || !password) {
+        errorDiv.textContent = 'Please enter your email or ID number and password.';
         errorDiv.style.display = 'block';
         return;
       }
@@ -2077,7 +2079,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ identifier, password }),
         });
 
         const data = await res.json();

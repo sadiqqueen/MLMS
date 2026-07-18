@@ -5,7 +5,7 @@ const bcrypt   = require('bcryptjs');
 const userSchema = new mongoose.Schema(
   {
     name:     { type: String, required: true, trim: true },
-    email:    { type: String, required: true, unique: true, lowercase: true, trim: true },
+    email:    { type: String, required: false, unique: true, sparse: true, lowercase: true, trim: true },
     password: { type: String, required: true },
 
     // V2: updated role enum — 7 app roles + ASG.1/ASG.2 (consultant memo)
@@ -52,6 +52,15 @@ const userSchema = new mongoose.Schema(
     // V2 NEW FIELDS
     hospitalId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital', default: null, index: true },
     specialtyId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Specialty', default: null },
+
+    // Registry v2 — login identifier + org scoping.
+    idNumber:        { type: String, unique: true, sparse: true, trim: true, index: true },
+    countryId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Country', default: null, index: true },
+    programId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Program', default: null, index: true },
+    assignedCenterIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Hospital' }],
+    dioId:           { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    pdId:            { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+
     universityId:  { type: mongoose.Schema.Types.ObjectId, ref: 'University' },
     isActive:      { type: Boolean, default: true },
     deletedAt:     { type: Date, default: null },

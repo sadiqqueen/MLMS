@@ -84,7 +84,7 @@ const ADVANCED_HOME = {
   secretary_general:   '/profile',
   assistant_secretary: '/profile',
   data_analyzer:       '/profile',
-  data_entry:          '/profile',
+  data_entry:          '/registry/centers',
   central_secretary:   '/profile',
   sub_dio:             '/profile',
   sub_pd:              '/profile',
@@ -153,6 +153,13 @@ const ADVANCED_LINKS = {
     { to: '/program-director/supervisors', key: 'supervisors', label: 'Supervisors' },
     { to: '/program-director/evaluations', key: 'evaluations', label: 'Evaluations' },
     { to: '/program-director/reports',     key: 'reports',     label: 'Reports'     },
+  ],
+  data_entry: [
+    { to: '/registry/centers',     key: 'centers',     label: 'Training Centers' },
+    { to: '/registry/countries',   key: 'countries',   label: 'Countries' },
+    { to: '/registry/specialties', key: 'specialties', label: 'Specialties' },
+    { to: '/registry/dios',        key: 'dios',        label: 'DIOs' },
+    { to: '/registry/pds',         key: 'pds',         label: 'PDs' },
   ],
 };
 

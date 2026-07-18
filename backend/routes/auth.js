@@ -41,11 +41,15 @@ const denyPresidentMutations = denyMutationsFor(['president'], 'President is rea
 // ── POST /api/auth/login ──────────────────────────────────────────────────
 router.post('/login', loginLimiter, async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password)
-      return res.status(400).json({ message: 'Email and password are required' });
+    const { identifier, email, password } = req.body;
+    const id = (identifier ?? email);
+    if (!id || !password)
+      return res.status(400).json({ message: 'Email or ID number and password are required' });
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const trimmed = String(id).trim();
+    const user = await User.findOne({
+      $or: [{ email: trimmed.toLowerCase() }, { idNumber: trimmed }]
+    });
     if (!user) return res.status(401).json({ message: 'Invalid email or password' });
     if (user.isActive === false) return res.status(403).json({ message: 'Account deactivated' });
     if (user.locked === true) return res.status(423).json({ message: 'Account locked. Contact an administrator.' });

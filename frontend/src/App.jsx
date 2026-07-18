@@ -66,6 +66,14 @@ import AuditLog from './pages/AuditLog';
 import VerifyCertificate from './pages/VerifyCertificate';
 import EventFeedback from './pages/EventFeedback';
 
+// Registry (Data-entry clerk) — Phase 2b
+import RegistryCenters from './pages/RegistryCenters';
+import RegistryCenterDetail from './pages/RegistryCenterDetail';
+import RegistryCountries from './pages/RegistryCountries';
+import RegistrySpecialties from './pages/RegistrySpecialties';
+import RegistryDios from './pages/RegistryDios';
+import RegistryPds from './pages/RegistryPds';
+
 function RootRedirect() {
   const { user, loading } = useAuth();
   if (loading) return null;
@@ -363,6 +371,40 @@ export default function App() {
           <Route path="/admin/event-feedback" element={
             <ProtectedRoute allowedRoles={['super_admin']}>
               <EventFeedback />
+            </ProtectedRoute>
+          } />
+
+          {/* ══════════════════════════════════════════════════════════
+              REGISTRY — Data-entry clerk (+ Developer). Global, unscoped.
+          ══════════════════════════════════════════════════════════ */}
+          <Route path="/registry/centers" element={
+            <ProtectedRoute allowedRoles={['data_entry', 'super_admin']}>
+              <RegistryCenters />
+            </ProtectedRoute>
+          } />
+          <Route path="/registry/centers/:id" element={
+            <ProtectedRoute allowedRoles={['data_entry', 'super_admin']}>
+              <RegistryCenterDetail />
+            </ProtectedRoute>
+          } />
+          <Route path="/registry/countries" element={
+            <ProtectedRoute allowedRoles={['data_entry', 'super_admin']}>
+              <RegistryCountries />
+            </ProtectedRoute>
+          } />
+          <Route path="/registry/specialties" element={
+            <ProtectedRoute allowedRoles={['data_entry', 'super_admin']}>
+              <RegistrySpecialties />
+            </ProtectedRoute>
+          } />
+          <Route path="/registry/dios" element={
+            <ProtectedRoute allowedRoles={['data_entry', 'super_admin']}>
+              <RegistryDios />
+            </ProtectedRoute>
+          } />
+          <Route path="/registry/pds" element={
+            <ProtectedRoute allowedRoles={['data_entry', 'super_admin']}>
+              <RegistryPds />
             </ProtectedRoute>
           } />
 
