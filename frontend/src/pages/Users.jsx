@@ -73,6 +73,13 @@ function showField(role, field) {
   return (ROLE_FIELDS[role] || []).includes(field);
 }
 
+// Friendly labels for permanent-delete blocker counts returned by the server.
+const BLOCKER_LABELS = {
+  odios:   'ODIO accounts',
+  subDios: 'Sub-DIO accounts',
+  subPds:  'Sub-PD accounts',
+};
+
 const ROWS_OPT = [8, 16, 32];
 const API_BASE = '';
 
@@ -565,8 +572,12 @@ export default function Users() {
     } catch (err) {
       const msg = err.response?.data?.message || 'Permanent delete failed';
       const blockers = err.response?.data?.blockers;
-      const detail = blockers ? `${msg} (${Object.entries(blockers).map(([k, v]) => `${k}: ${v}`).join(', ')})` : msg;
-      showToast(detail, 'error');
+      const parts = blockers
+        ? Object.entries(blockers)
+            .filter(([, v]) => v > 0)
+            .map(([k, v]) => `${BLOCKER_LABELS[k] || k}: ${v}`)
+        : [];
+      showToast(parts.length ? `${msg} (${parts.join(', ')})` : msg, 'error');
     }
     finally  { setPurgeUser(null); }
   }

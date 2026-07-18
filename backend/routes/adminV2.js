@@ -20,6 +20,9 @@ const Report         = require('../models/Report');
 const ConsultantMemo = require('../models/ConsultantMemo');
 const Notification   = require('../models/Notification');
 const Country        = require('../models/Country');
+const Program        = require('../models/Program');
+const LogBookEntry   = require('../models/LogBookEntry');
+const ChangeRequest  = require('../models/ChangeRequest');
 
 const ADMIN = ['super_admin'];
 const USER_CREATE_FIELDS = ['name', 'email', 'password', 'role', 'phone', 'gender',
@@ -284,6 +287,34 @@ router.delete('/users/:id/permanent',
         if (count <= 1) return res.status(409).json({ message: 'Cannot delete the last super_admin' });
       }
 
+      // Blockers (409, NO mutation): structural children that reference this
+      // account must be removed/replaced first. Nulling a child's dioId would
+      // PROMOTE an ODIO/Sub-DIO to legacy track-wide scope (see the carve-out in
+      // utils/centerScope.js — resolveCenterSet returns [] only when dioId is
+      // falsy), while leaving it dangling makes a dead account. Blocking is the
+      // only safe path. Counts include active AND inactive children alike.
+      if (target.role === 'dio_view') {
+        const [odios, subDios] = await Promise.all([
+          User.countDocuments({ dioId: target._id, role: 'dio' }),
+          User.countDocuments({ dioId: target._id, role: 'sub_dio' })
+        ]);
+        if (odios + subDios > 0) {
+          return res.status(409).json({
+            message: "Delete or replace this DIO's ODIO/Sub-DIO accounts first",
+            blockers: { odios, subDios }
+          });
+        }
+      }
+      if (target.role === 'program_director') {
+        const subPds = await User.countDocuments({ pdId: target._id });
+        if (subPds > 0) {
+          return res.status(409).json({
+            message: "Delete this PD's Sub-PD accounts first",
+            blockers: { subPds }
+          });
+        }
+      }
+
       // Cascade policy: deleting a user removes their scheduling data (rotations +
       // distributions/"durations") and notifications, and PRESERVES academic records
       // (evaluations, reports, certificates, memos). Optionally, a replacement
@@ -352,12 +383,58 @@ router.delete('/users/:id/permanent',
         Specialty.updateMany({ secretaryId: userId },    { $set: { secretaryId: null } })
       ]);
 
+      // Additional structural cleanup (v2 refs that must not dangle):
+      //  • Programs lose this PD — a program with no PD is valid; the Data Entry
+      //    clerk assigns a new one.
+      //  • Trainee → trainer pointers move to the replacement (reassignTo), or null
+      //    out when none — the trainer link is optional in the v2 advanced flow.
+      //  • The user's own log-book entries are removed (owned as a trainee);
+      //    reviewedBy refs on OTHER trainees' entries are left as historical record.
+      //  • Pending change requests touching this account are cancelled as stale.
+      const progDetach = await Program.updateMany(
+        { programDirectorId: userId },
+        { $set: { programDirectorId: null } }
+      );
+      const detachedPrograms = progDetach.modifiedCount || 0;
+
+      let repointedTrainees = 0;
+      let detachedTrainees  = 0;
+      if (reassignTo) {
+        const [t1, t2, t3] = await Promise.all([
+          User.updateMany({ supervisorId: userId },         { $set: { supervisorId: reassignTo } }),
+          User.updateMany({ supervisor: userId },           { $set: { supervisor: reassignTo } }),
+          User.updateMany({ researchSupervisorId: userId }, { $set: { researchSupervisorId: reassignTo } })
+        ]);
+        repointedTrainees = (t1.modifiedCount || 0) + (t2.modifiedCount || 0) + (t3.modifiedCount || 0);
+      } else {
+        const [t1, t2, t3] = await Promise.all([
+          User.updateMany({ supervisorId: userId },         { $set: { supervisorId: null } }),
+          User.updateMany({ supervisor: userId },           { $set: { supervisor: null } }),
+          User.updateMany({ researchSupervisorId: userId }, { $set: { researchSupervisorId: null } })
+        ]);
+        detachedTrainees = (t1.modifiedCount || 0) + (t2.modifiedCount || 0) + (t3.modifiedCount || 0);
+      }
+
+      const delLogbook = await LogBookEntry.deleteMany({ traineeId: userId });
+      const logbookEntries = delLogbook.deletedCount || 0;
+
+      const cancelReqs = await ChangeRequest.updateMany(
+        { status: 'pending', $or: [{ targetId: userId }, { requestedBy: userId }] },
+        { $set: { status: 'cancelled', reviewNote: 'Cancelled: account permanently deleted' } }
+      );
+      const cancelledChangeRequests = cancelReqs.modifiedCount || 0;
+
       const deletedCounts = {
         rotations: deletedRotations,
         distributions: deletedDistributions,
         reassignedRotations,
         reassignedDistributions,
-        notifications: delNotif.deletedCount
+        notifications: delNotif.deletedCount,
+        detachedPrograms,
+        repointedTrainees,
+        detachedTrainees,
+        logbookEntries,
+        cancelledChangeRequests
       };
 
       // Snapshot BEFORE deletion so the audit record survives the hard delete.
@@ -376,9 +453,13 @@ router.delete('/users/:id/permanent',
 
       await User.findByIdAndDelete(req.params.id);
 
+      const message = detachedTrainees > 0
+        ? `User permanently deleted — ${detachedTrainees} trainee pointer(s) detached (no replacement supervisor)`
+        : 'User permanently deleted';
+
       res.json({
         success: true,
-        message: 'User permanently deleted',
+        message,
         data: { _id: req.params.id, deletedCounts }
       });
     } catch (err) {
