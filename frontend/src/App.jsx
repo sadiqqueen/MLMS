@@ -74,6 +74,12 @@ import RegistrySpecialties from './pages/RegistrySpecialties';
 import RegistryDios from './pages/RegistryDios';
 import RegistryPds from './pages/RegistryPds';
 
+// Data Analyzer + Central Secretary — Phase 3b
+import AnalyzerDashboard from './pages/AnalyzerDashboard';
+import AnalyzerStaff from './pages/AnalyzerStaff';
+import CentralTrainees from './pages/CentralTrainees';
+import CentralTrainers from './pages/CentralTrainers';
+
 function RootRedirect() {
   const { user, loading } = useAuth();
   if (loading) return null;
@@ -405,6 +411,34 @@ export default function App() {
           <Route path="/registry/pds" element={
             <ProtectedRoute allowedRoles={['data_entry', 'super_admin']}>
               <RegistryPds />
+            </ProtectedRoute>
+          } />
+
+          {/* ══════════════════════════════════════════════════════════
+              DATA ANALYZER — filterable dashboard + staff management.
+          ══════════════════════════════════════════════════════════ */}
+          <Route path="/analyzer/dashboard" element={
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}>
+              <AnalyzerDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/analyzer/staff" element={
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}>
+              <AnalyzerStaff />
+            </ProtectedRoute>
+          } />
+
+          {/* ══════════════════════════════════════════════════════════
+              CENTRAL SECRETARY — global trainee/trainer management.
+          ══════════════════════════════════════════════════════════ */}
+          <Route path="/central/trainees" element={
+            <ProtectedRoute allowedRoles={['central_secretary', 'super_admin']}>
+              <CentralTrainees />
+            </ProtectedRoute>
+          } />
+          <Route path="/central/trainers" element={
+            <ProtectedRoute allowedRoles={['central_secretary', 'super_admin']}>
+              <CentralTrainers />
             </ProtectedRoute>
           } />
 

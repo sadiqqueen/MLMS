@@ -19,8 +19,10 @@ const Certificate    = require('../models/Certificate');
 const Notification   = require('../models/Notification');
 const AuditLog       = require('../models/AuditLog');
 const ChangeRequest  = require('../models/ChangeRequest');
+const Program        = require('../models/Program');
 const { applyChangeRequest } = require('../utils/applyChangeRequest');
 const { computeCapacityUsage, maxExtraFor, settingFor } = require('../utils/capacity');
+const { resolveCenterSet, inCenterSet } = require('../utils/centerScope');
 
 // Return a ChangeRequest as a plain object with the sensitive fields of a queued
 // capacity payload removed (never expose a stored password hash to any client).
@@ -32,6 +34,39 @@ function viewChangeRequest(doc) {
     o.changes = c;
   }
   return o;
+}
+
+// ── Advanced-track ODIO center lockdown ─────────────────────────────────────
+// An advanced ODIO (role 'dio', req.track === 'advanced') may only edit/approve
+// within its linked DIO's assigned center set, and may not create or delete
+// accounts at all. super_admin and Basic b_dio (role 'dio' but req.track ===
+// 'basic') are unaffected — every guard checks req.track === 'advanced'.
+function isAdvancedOdio(req) {
+  return req.track === 'advanced' && req.user.role === 'dio';
+}
+
+// The center a managed user belongs to: direct hospitalId/hospital, else the
+// training center of its program.
+async function targetCenterId(target) {
+  if (!target) return null;
+  const direct = target.hospitalId || target.hospital || null;
+  if (direct) return direct._id || direct;
+  if (target.programId) {
+    const program = await Program.findById(target.programId).select('trainingCenterId');
+    return program?.trainingCenterId || null;
+  }
+  return null;
+}
+
+// Send 403 + return true when an advanced ODIO acts outside its center set
+// (an empty set is always outside).
+async function blockedOutsideCenters(req, res, hospitalId) {
+  const set = await resolveCenterSet(req.user);
+  if (!set || set.length === 0 || !inCenterSet(set, hospitalId)) {
+    res.status(403).json({ success: false, message: 'Outside your assigned centers' });
+    return true;
+  }
+  return false;
 }
 
 // ── DIO scope = TRAINING TRACK (not hospital) ────────────────────────────────
@@ -429,6 +464,9 @@ async function updateManagedUser(req, res, role, id) {
 function registerManagedUserRoutes(routeName, role) {
   router.post(`/${routeName}`, auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
     try {
+      if (isAdvancedOdio(req)) {
+        return res.status(403).json({ success: false, message: 'Creation moved to the registry' });
+      }
       const user = await createManagedUser(req, res, role);
       if (!user) return;
       res.status(201).json({ success: true, data: user });
@@ -440,6 +478,12 @@ function registerManagedUserRoutes(routeName, role) {
 
   router.patch(`/${routeName}/:id`, auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
     try {
+      if (isAdvancedOdio(req)) {
+        if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid user id' });
+        const target = await User.findById(req.params.id).select('hospitalId hospital programId');
+        if (!target) return res.status(404).json({ success: false, message: 'User not found' });
+        if (await blockedOutsideCenters(req, res, await targetCenterId(target))) return;
+      }
       const user = await updateManagedUser(req, res, role, req.params.id);
       if (!user) return;
       res.json({ success: true, data: user });
@@ -450,6 +494,9 @@ function registerManagedUserRoutes(routeName, role) {
 
   router.delete(`/${routeName}/:id`, auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
     try {
+      if (isAdvancedOdio(req)) {
+        return res.status(403).json({ success: false, message: 'Deletion is not available for ODIO accounts' });
+      }
       if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid user id' });
       if (req.params.id === (req.user._id || req.user.id).toString()) {
         return res.status(403).json({ success: false, message: 'You cannot deactivate your own account' });
@@ -1090,6 +1137,15 @@ router.patch('/change-requests/:id/approve', auth, allowRoles(...DIO, 'super_adm
     const cr = await ChangeRequest.findOne(query);
     if (!cr) return res.status(404).json({ success: false, message: 'Pending request not found' });
 
+    if (isAdvancedOdio(req)) {
+      let hospitalId = cr.hospitalId || null;
+      if (cr.requestType === 'edit' && cr.targetId) {
+        const target = await User.findById(cr.targetId).select('hospitalId hospital programId');
+        hospitalId = await targetCenterId(target);
+      }
+      if (await blockedOutsideCenters(req, res, hospitalId)) return;
+    }
+
     let updated;
     try {
       updated = await applyChangeRequest(cr);
@@ -1123,6 +1179,16 @@ router.patch('/change-requests/:id/reject', auth, allowRoles(...DIO, 'super_admi
     const query = { _id: req.params.id, status: 'pending', ...trackFilter(req.track) };
     const cr = await ChangeRequest.findOne(query);
     if (!cr) return res.status(404).json({ success: false, message: 'Pending request not found' });
+
+    if (isAdvancedOdio(req)) {
+      let hospitalId = cr.hospitalId || null;
+      if (cr.requestType === 'edit' && cr.targetId) {
+        const target = await User.findById(cr.targetId).select('hospitalId hospital programId');
+        hospitalId = await targetCenterId(target);
+      }
+      if (await blockedOutsideCenters(req, res, hospitalId)) return;
+    }
+
     cr.status = 'rejected';
     cr.reviewedBy = req.user._id;
     cr.reviewedAt = new Date();

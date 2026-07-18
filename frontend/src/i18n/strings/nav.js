@@ -77,6 +77,14 @@ const nav = {
     'nav.data_entry.dios':               'DIOs',
     'nav.data_entry.pds':                'مدراء البرامج',
 
+    // data_analyzer
+    'nav.data_analyzer.dashboard':       'لوحة التحكم',
+    'nav.data_analyzer.staff':           'الموظفون',
+
+    // central_secretary
+    'nav.central_secretary.trainees':    'المتدربون',
+    'nav.central_secretary.trainers':    'المدربون',
+
     // toggle aria-labels
     'nav.toggle.theme.dark':             'تفعيل الوضع الداكن',
     'nav.toggle.theme.light':            'تفعيل الوضع الفاتح',
@@ -151,6 +159,14 @@ const nav = {
     'nav.data_entry.specialties':        'Specialties',
     'nav.data_entry.dios':               'DIOs',
     'nav.data_entry.pds':                'PDs',
+
+    // data_analyzer
+    'nav.data_analyzer.dashboard':       'Dashboard',
+    'nav.data_analyzer.staff':           'Staff',
+
+    // central_secretary
+    'nav.central_secretary.trainees':    'Trainees',
+    'nav.central_secretary.trainers':    'Trainers',
 
     // toggle aria-labels
     'nav.toggle.theme.dark':             'Switch to dark mode',

@@ -83,9 +83,9 @@ const ADVANCED_HOME = {
   dio_view:            '/president/dashboard',
   secretary_general:   '/profile',
   assistant_secretary: '/profile',
-  data_analyzer:       '/profile',
+  data_analyzer:       '/analyzer/dashboard',
   data_entry:          '/registry/centers',
-  central_secretary:   '/profile',
+  central_secretary:   '/central/trainees',
   sub_dio:             '/profile',
   sub_pd:              '/profile',
 };
@@ -160,6 +160,14 @@ const ADVANCED_LINKS = {
     { to: '/registry/specialties', key: 'specialties', label: 'Specialties' },
     { to: '/registry/dios',        key: 'dios',        label: 'DIOs' },
     { to: '/registry/pds',         key: 'pds',         label: 'PDs' },
+  ],
+  data_analyzer: [
+    { to: '/analyzer/dashboard', key: 'dashboard', label: 'Dashboard' },
+    { to: '/analyzer/staff',     key: 'staff',     label: 'Staff' },
+  ],
+  central_secretary: [
+    { to: '/central/trainees', key: 'trainees', label: 'Trainees' },
+    { to: '/central/trainers', key: 'trainers', label: 'Trainers' },
   ],
 };
 

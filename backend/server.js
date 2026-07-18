@@ -122,6 +122,8 @@ app.use('/api/admin',             require('./routes/adminV2'));
 app.use('/api/countries',         require('./routes/countries'));
 app.use('/api/registry',          require('./routes/registry'));
 app.use('/api/programs',          require('./routes/programs'));
+app.use('/api/analyzer',          require('./routes/analyzer'));
+app.use('/api/central',           require('./routes/centralSecretary'));
 app.use('/api/consultant-memo',   require('./routes/consultantMemo'));
 app.use('/api/scientific-councils', require('./routes/scientificCouncils'));
 app.use('/api/initiatives',       require('./routes/initiatives'));

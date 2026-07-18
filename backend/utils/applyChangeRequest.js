@@ -83,8 +83,11 @@ async function applyChangeRequest(cr) {
   // through validation below — it must never be persisted unchecked.
   if (fields.supervisor && !fields.supervisorId) fields.supervisorId = fields.supervisor;
 
-  // A trainee must keep a supervisor — never let an approval clear it.
-  if (cr.routeKey === 'trainees'
+  // A trainee must keep a supervisor — never let an approval clear it. In the
+  // Advanced track a trainee's trainer is optional (v2), so this rule applies
+  // only to Basic-track requests.
+  if (cr.track === 'basic'
+      && cr.routeKey === 'trainees'
       && ('supervisorId' in fields || 'supervisor' in fields)
       && !fields.supervisorId && !fields.supervisor) {
     const err = new Error('A trainee must have a supervisor');
@@ -92,17 +95,21 @@ async function applyChangeRequest(cr) {
     throw err;
   }
 
-  // Re-validate supervisor references still belong to the request's specialty.
+  // Re-validate supervisor references. Basic keeps specialty-membership; Advanced
+  // assigns trainers per program, so a reference need only be an active
+  // supervisor (its specialty may legitimately differ).
   for (const key of ['supervisorId', 'researchSupervisorId']) {
     if (fields[key]) {
-      const sup = await User.findOne({
+      const match = {
         _id: fields[key],
         role: coerceRoleToTrack('supervisor', cr.track),
-        specialtyId: cr.specialtyId,
         isActive: { $ne: false },
-      }).select('_id');
+      };
+      if (cr.track === 'basic') match.specialtyId = cr.specialtyId;
+      const sup = await User.findOne(match).select('_id');
       if (!sup) {
-        const err = new Error(`${key === 'supervisorId' ? 'Supervisor' : 'Research supervisor'} is no longer valid in this specialty`);
+        const label = key === 'supervisorId' ? 'Supervisor' : 'Research supervisor';
+        const err = new Error(cr.track === 'basic' ? `${label} is no longer valid in this specialty` : `${label} is no longer valid`);
         err.status = 400;
         throw err;
       }

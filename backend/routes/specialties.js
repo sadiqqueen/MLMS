@@ -11,7 +11,7 @@ const auditLog       = require('../middleware/auditLogger');
 const Specialty      = require('../models/Specialty');
 
 // Any authenticated user may list specialties (needed for dropdowns)
-const READ_ROLES  = ['super_admin', 'secretary', 'dio', 'supervisor', 'trainee', 'president', 'program_director'];
+const READ_ROLES  = ['super_admin', 'secretary', 'dio', 'supervisor', 'trainee', 'president', 'program_director', 'data_analyzer'];
 const WRITE_ROLES = ['super_admin', 'dio'];
 const SPECIALTY_FIELDS = ['name', 'hospitalId', 'secretaryId', 'weeklyReportPdf',
   'monthlyReportPdf', 'finalReportPdf', 'evaluationPdf1', 'evaluationPdf2',
