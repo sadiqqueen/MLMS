@@ -4,6 +4,7 @@
 // (role 'dio') or Sub-DIO (role 'sub_dio') resolves the set THROUGH its linked
 // dio_view via dioId. Any other role is not center-scoped (returns null).
 const User = require('../models/User');
+const Program = require('../models/Program');
 
 // Returns an array of ObjectId strings, or null when the role is not
 // center-scoped. An empty array means "center-scoped but no centers".
@@ -28,4 +29,18 @@ function inCenterSet(set, hospitalId) {
   return set.includes(String(hospitalId._id || hospitalId));
 }
 
-module.exports = { resolveCenterSet, inCenterSet };
+// The advanced trainee ids belonging to a set of training centers — matched
+// directly by hospitalId, or indirectly through a program whose trainingCenterId
+// is in the set. Returns an array of ObjectIds (empty for a null/empty set), so
+// callers can filter certificates/records by student/traineeId ∈ result.
+async function traineeIdsForCenterSet(set) {
+  if (!Array.isArray(set) || set.length === 0) return [];
+  const programs = await Program.find({ trainingCenterId: { $in: set } }).select('_id');
+  const programIds = programs.map(p => p._id);
+  const or = [{ hospitalId: { $in: set } }];
+  if (programIds.length) or.push({ programId: { $in: programIds } });
+  const trainees = await User.find({ role: 'trainee', $or: or }).select('_id');
+  return trainees.map(t => t._id);
+}
+
+module.exports = { resolveCenterSet, inCenterSet, traineeIdsForCenterSet };

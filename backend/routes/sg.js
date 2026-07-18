@@ -1,0 +1,187 @@
+// backend/routes/sg.js
+// Mounted at /api/sg in server.js.
+// Secretary General + Assistant Secretary (+ super_admin): a STRICTLY read-only
+// (GET only) oversight suite over the advanced track. No user list ever returns
+// tier-0/3 accounts (super_admin, data_analyzer) — the role-scoped queries make
+// that inherent — and passwords are never selected.
+const router         = require('express').Router();
+const auth           = require('../middleware/auth');
+const { allowRoles } = require('../middleware/roles');
+const { coerceRoleToTrack, trackFilter } = require('../utils/track');
+const { accreditationExpiry, accreditationStatus } = require('../utils/accreditation');
+const { trainingYear } = require('../utils/trainingYear');
+const User      = require('../models/User');
+const Hospital  = require('../models/Hospital');
+const Specialty = require('../models/Specialty');
+const Country   = require('../models/Country');
+const Program   = require('../models/Program');
+
+const SG_ROLES = ['secretary_general', 'assistant_secretary', 'super_admin'];
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Inject computed accreditation fields (never stored for programs; centers may
+// carry a stored expiry).
+function withAccreditation(doc) {
+  const o = typeof doc.toObject === 'function' ? doc.toObject() : doc;
+  return { ...o, accreditationExpiry: accreditationExpiry(o), accreditationStatus: accreditationStatus(o) };
+}
+
+// Same aggregate shape as /api/analyzer/stats. Factored here (not shared with
+// analyzer.js by design) so this read-only suite never depends on that route.
+async function buildStats(req) {
+  const { countryId, city, specialtyId } = req.query;
+
+  let programCenterIds = null;
+  if (countryId) {
+    programCenterIds = (await Hospital.find({ countryId }).select('_id')).map(c => c._id);
+  }
+
+  const traineeMatch = { role: coerceRoleToTrack('trainee', req.track), isActive: { $ne: false } };
+  const trainerMatch = { role: coerceRoleToTrack('supervisor', req.track), isActive: { $ne: false } };
+  const pdMatch      = { role: coerceRoleToTrack('program_director', req.track), isActive: { $ne: false } };
+  if (countryId) { traineeMatch.countryId = countryId; trainerMatch.countryId = countryId; }
+  if (specialtyId) { traineeMatch.specialtyId = specialtyId; trainerMatch.specialtyId = specialtyId; pdMatch.specialtyId = specialtyId; }
+
+  const dioMatch = { role: 'dio_view', isActive: { $ne: false } };
+  if (countryId) dioMatch.countryId = countryId;
+  const odioMatch = { role: coerceRoleToTrack('dio', req.track), ...trackFilter(req.track), isActive: { $ne: false } };
+  if (countryId) odioMatch.countryId = countryId;
+
+  const centerMatch = { ...trackFilter(req.track) };
+  if (countryId) centerMatch.countryId = countryId;
+  if (city && String(city).trim()) {
+    centerMatch.city = new RegExp('^' + escapeRegex(String(city).trim()) + '$', 'i');
+  }
+
+  const programMatch = { isActive: { $ne: false } };
+  if (specialtyId) programMatch.specialtyId = specialtyId;
+  if (countryId) programMatch.trainingCenterId = { $in: programCenterIds };
+
+  const [
+    trainees, trainers, programDirectors, dios, odios,
+    centers, programs, specialties, countries
+  ] = await Promise.all([
+    User.countDocuments(traineeMatch),
+    User.countDocuments(trainerMatch),
+    User.countDocuments(pdMatch),
+    User.countDocuments(dioMatch),
+    User.countDocuments(odioMatch),
+    Hospital.countDocuments(centerMatch),
+    Program.countDocuments(programMatch),
+    Specialty.countDocuments({ ...trackFilter(req.track), isActive: { $ne: false } }),
+    Country.countDocuments({ isActive: { $ne: false } }),
+  ]);
+
+  return { trainees, trainers, programDirectors, dios, odios, centers, programs, specialties, countries };
+}
+
+// GET /api/sg/stats?countryId=&city=&specialtyId=
+router.get('/stats', auth, allowRoles(...SG_ROLES), async (req, res) => {
+  try {
+    res.json({ success: true, data: await buildStats(req) });
+  } catch (err) {
+    console.error('[sg] stats:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/sg/centers — all advanced training centers with computed accreditation.
+router.get('/centers', auth, allowRoles(...SG_ROLES), async (req, res) => {
+  try {
+    const centers = await Hospital.find({ ...trackFilter(req.track), isActive: { $ne: false } })
+      .populate('countryId', 'name code')
+      .sort({ name: 1 });
+    res.json({ success: true, data: centers.map(withAccreditation) });
+  } catch (err) {
+    console.error('[sg] centers:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/sg/dios — DIOs (dio_view) plus their ODIOs (dio) and Sub-DIOs (sub_dio).
+router.get('/dios', auth, allowRoles(...SG_ROLES), async (req, res) => {
+  try {
+    const [dios, odios, subDios] = await Promise.all([
+      User.find({ role: 'dio_view', isActive: { $ne: false } })
+        .select('-password')
+        .populate('countryId', 'name code')
+        .populate('assignedCenterIds', 'name')
+        .sort({ name: 1 }),
+      User.find({ role: 'dio', dioId: { $ne: null }, isActive: { $ne: false } })
+        .select('-password').populate('dioId', 'name').sort({ name: 1 }),
+      User.find({ role: 'sub_dio', dioId: { $ne: null }, isActive: { $ne: false } })
+        .select('-password').populate('dioId', 'name').sort({ name: 1 }),
+    ]);
+    res.json({ success: true, data: { dios, odios, subDios } });
+  } catch (err) {
+    console.error('[sg] dios:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/sg/specialties — advanced specialties.
+router.get('/specialties', auth, allowRoles(...SG_ROLES), async (req, res) => {
+  try {
+    const specialties = await Specialty.find({ ...trackFilter(req.track), isActive: { $ne: false } }).sort({ name: 1 });
+    res.json({ success: true, data: specialties });
+  } catch (err) {
+    console.error('[sg] specialties:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/sg/programs — all programs with center/specialty/PD + computed accreditation.
+router.get('/programs', auth, allowRoles(...SG_ROLES), async (req, res) => {
+  try {
+    const programs = await Program.find({ isActive: { $ne: false } })
+      .populate('trainingCenterId', 'name accreditationNumber countryId')
+      .populate('specialtyId', 'name')
+      .populate('programDirectorId', 'name')
+      .sort({ createdAt: -1 });
+    res.json({ success: true, data: programs.map(withAccreditation) });
+  } catch (err) {
+    console.error('[sg] programs:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/sg/pds — Program Directors plus their Sub-PDs.
+router.get('/pds', auth, allowRoles(...SG_ROLES), async (req, res) => {
+  try {
+    const [pds, subPds] = await Promise.all([
+      User.find({ role: 'program_director', isActive: { $ne: false } })
+        .select('-password').populate('specialtyId', 'name').sort({ name: 1 }),
+      User.find({ role: 'sub_pd', pdId: { $ne: null }, isActive: { $ne: false } })
+        .select('-password').populate('specialtyId', 'name').populate('pdId', 'name').sort({ name: 1 }),
+    ]);
+    res.json({ success: true, data: { pds, subPds } });
+  } catch (err) {
+    console.error('[sg] pds:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/sg/trainees?search= — advanced trainees with injected trainingYear.
+router.get('/trainees', auth, allowRoles(...SG_ROLES), async (req, res) => {
+  try {
+    const query = { role: coerceRoleToTrack('trainee', req.track), isActive: { $ne: false } };
+    if (req.query.search) {
+      const rx = new RegExp(escapeRegex(String(req.query.search).slice(0, 100)), 'i');
+      query.$or = [{ name: rx }, { idNumber: rx }];
+    }
+    const trainees = await User.find(query).select('-password')
+      .populate('programId', 'name')
+      .sort({ name: 1 })
+      .limit(500);
+    const data = trainees.map(t => ({ ...t.toObject(), trainingYear: trainingYear(t) }));
+    res.json({ success: true, data });
+  } catch (err) {
+    console.error('[sg] trainees:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+module.exports = router;

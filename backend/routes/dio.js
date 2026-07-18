@@ -22,7 +22,7 @@ const ChangeRequest  = require('../models/ChangeRequest');
 const Program        = require('../models/Program');
 const { applyChangeRequest } = require('../utils/applyChangeRequest');
 const { computeCapacityUsage, maxExtraFor, settingFor } = require('../utils/capacity');
-const { resolveCenterSet, inCenterSet } = require('../utils/centerScope');
+const { resolveCenterSet, inCenterSet, traineeIdsForCenterSet } = require('../utils/centerScope');
 
 // Return a ChangeRequest as a plain object with the sensitive fields of a queued
 // capacity payload removed (never expose a stored password hash to any client).
@@ -67,6 +67,26 @@ async function blockedOutsideCenters(req, res, hospitalId) {
     return true;
   }
   return false;
+}
+
+// ── Center-scoped certificate access (v2) ───────────────────────────────────
+// A caller is center-scoped for certificates when — on the advanced track — it
+// is a DIO (dio_view), a Sub-DIO (sub_dio), or an ODIO (role 'dio') LINKED to a
+// dio_view via dioId. Basic b_dio, super_admin, and legacy advanced ODIOs
+// without a dioId are NOT center-scoped and keep their current (all-track) view.
+// Returns { scoped:true, ids:[trainee ObjectIds] } for a scoped caller, else
+// { scoped:false }.
+function isCenterScopedForCertificates(req) {
+  if (req.track !== 'advanced') return false;
+  const role = req.user.role;
+  return role === 'dio_view' || role === 'sub_dio' || (role === 'dio' && !!req.user.dioId);
+}
+
+async function certificateCenterScope(req) {
+  if (!isCenterScopedForCertificates(req)) return { scoped: false };
+  const set = await resolveCenterSet(req.user);
+  const ids = await traineeIdsForCenterSet(set || []);
+  return { scoped: true, ids };
 }
 
 // ── DIO scope = TRAINING TRACK (not hospital) ────────────────────────────────
@@ -374,7 +394,9 @@ router.get('/stats', auth, allowRoles(...DIO, 'president', 'dio_view'), async (r
 });
 
 // GET /api/dio/trainees
-router.get('/trainees', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+// The certificate-issue form's trainee search. dio_view is scoped to the
+// trainees of its assigned center set; DIO/super_admin keep the full-track view.
+router.get('/trainees', auth, allowRoles(...DIO, 'dio_view', 'super_admin'), async (req, res) => {
   try {
     const { search, includeInactive } = req.query;
     const query = { role: coerceRoleToTrack('trainee', req.track) };
@@ -382,6 +404,11 @@ router.get('/trainees', auth, allowRoles(...DIO, 'super_admin'), async (req, res
     if (search) {
       const rx = new RegExp(escapeRegex(search.slice(0, 100)), 'i');
       query.$or = [{ name: rx }, { studentId: rx }];
+    }
+    // A dio_view only ever sees trainees of its own center set.
+    if (req.user.role === 'dio_view') {
+      const set = await resolveCenterSet(req.user);
+      query._id = { $in: await traineeIdsForCenterSet(set || []) };
     }
 
     const trainees = await populateManagedUser(User.find(query)).sort({ name: 1 });
@@ -1536,12 +1563,16 @@ router.get('/hospitals-overview', auth, allowRoles(...DIO, 'super_admin'), async
 });
 
 // GET /api/dio/certificates
-// The DIO is a system-wide certificate overseer: it lists EVERY certificate
-// (all tracks, all hospitals), so a DIO can see and open any certificate.
-// Write actions (issue/revoke/delete) below remain track-scoped.
-router.get('/certificates', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+// The DIO/ODIO is a system-wide certificate overseer: it lists EVERY certificate
+// (all tracks, all hospitals). A center-scoped caller (dio_view / sub_dio, or an
+// ODIO linked via dioId) instead sees only certificates of trainees in its
+// assigned center set. Write actions (issue/revoke/delete) below remain scoped.
+router.get('/certificates', auth, allowRoles(...DIO, 'dio_view', 'sub_dio', 'super_admin'), async (req, res) => {
   try {
-    const query = {};
+    const scope = await certificateCenterScope(req);
+    const query = scope.scoped
+      ? { $or: [{ student: { $in: scope.ids } }, { traineeId: { $in: scope.ids } }] }
+      : {};
 
     const certs = await Certificate.find(query)
       .populate('student',   'name email initials photoUrl studentId year')
@@ -1558,10 +1589,12 @@ router.get('/certificates', auth, allowRoles(...DIO, 'super_admin'), async (req,
 });
 
 // POST /api/dio/certificates
-// DIO issues a certificate for a trainee
+// DIO / DIO-view issues a certificate for a trainee. A center-scoped issuer
+// (dio_view, or an ODIO linked via dioId) may only issue for a trainee in its
+// assigned center set.
 router.post('/certificates',
   auth,
-  allowRoles(...DIO, 'super_admin'),
+  allowRoles(...DIO, 'dio_view', 'super_admin'),
   auditLog('issue_certificate', 'Certificate'),
   async (req, res) => {
     try {
@@ -1580,6 +1613,18 @@ router.post('/certificates',
         .populate('specialtyId', 'name');
 
       if (!trainee) return res.status(404).json({ success: false, message: 'Trainee not found' });
+
+      // Center-set guard for the new center-scoped issuers (dio_view, or an ODIO
+      // linked via dioId). Legacy advanced ODIOs without a dioId, b_dio, and
+      // super_admin keep their current behavior.
+      if (req.track === 'advanced'
+          && (req.user.role === 'dio_view' || (req.user.role === 'dio' && !!req.user.dioId))) {
+        const set = await resolveCenterSet(req.user);
+        if (!inCenterSet(set || [], await targetCenterId(trainee))) {
+          return res.status(403).json({ success: false, message: 'Trainee is outside your assigned centers' });
+        }
+      }
+
       const traineeHospital = trainee.hospitalId?._id || trainee.hospital;
 
       const cert = await Certificate.create({

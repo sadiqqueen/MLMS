@@ -7,14 +7,41 @@ const auditLog       = require('../middleware/auditLogger');
 const { coerceRoleToTrack } = require('../utils/track');
 const { specialtyIdsForName, specialtyUserMatch } = require('../utils/pdScope');
 const { averageScore, isWpbaForm, wpbaAlreadyThisMonth } = require('../utils/evalScoring');
+const { accreditationExpiry, accreditationStatus } = require('../utils/accreditation');
+const { currentYearRange, inYear } = require('../utils/capacity');
 const User           = require('../models/User');
 const Rotation       = require('../models/Rotation');
 const Report         = require('../models/Report');
 const Evaluation     = require('../models/Evaluation');
 const Notification   = require('../models/Notification');
 const AuditLog       = require('../models/AuditLog');
+const Program        = require('../models/Program');
 
+// GET endpoints are shared by the Program Director and the read-only Sub-PD.
 const PD = ['program_director'];
+const PD_READ = ['program_director', 'sub_pd'];
+
+// The PD identity to scope read queries by. A Sub-PD mirrors its PD (pdId); a PD
+// is itself. Author-keyed reads (evaluations) and program lookups use this so a
+// Sub-PD sees exactly what its PD would.
+function effectivePdId(req) {
+  return req.user.role === 'sub_pd' ? (req.user.pdId || req.user._id) : req.user._id;
+}
+
+// Inject computed accreditation fields (never stored for programs).
+function withAccreditation(doc) {
+  const o = typeof doc.toObject === 'function' ? doc.toObject() : doc;
+  return { ...o, accreditationExpiry: accreditationExpiry(o), accreditationStatus: accreditationStatus(o) };
+}
+
+// Current-year active-trainee count on one program (mirrors utils/capacity.js:
+// a trainee counts toward the year of its enrolledSince, falling back to createdAt).
+async function capacityUsedFor(programId) {
+  const { yr } = currentYearRange();
+  const trainees = await User.find({ role: 'trainee', programId, isActive: { $ne: false } })
+    .select('enrolledSince createdAt');
+  return trainees.filter(t => inYear(t.enrolledSince || t.createdAt, yr)).length;
+}
 
 // Resolve the PD's specialty scope (all same-named Specialty rows in this track).
 // A Program Director oversees ONE specialty across every hospital that offers it.
@@ -30,7 +57,7 @@ async function requirePdSpecialty(req, res) {
 
 // GET /api/program-director/trainees
 // All trainees in this program director's specialty, across all hospitals.
-router.get('/trainees', auth, allowRoles(...PD), async (req, res) => {
+router.get('/trainees', auth, allowRoles(...PD_READ), async (req, res) => {
   try {
     const info = await requirePdSpecialty(req, res);
     if (!info) return;
@@ -71,7 +98,7 @@ router.get('/trainees', auth, allowRoles(...PD), async (req, res) => {
 
 // GET /api/program-director/supervisors
 // All supervisors in this program director's specialty, across all hospitals.
-router.get('/supervisors', auth, allowRoles(...PD), async (req, res) => {
+router.get('/supervisors', auth, allowRoles(...PD_READ), async (req, res) => {
   try {
     const info = await requirePdSpecialty(req, res);
     if (!info) return;
@@ -112,7 +139,7 @@ router.get('/supervisors', auth, allowRoles(...PD), async (req, res) => {
 
 // GET /api/program-director/reports
 // Final reports only — for grading by program director (specialty-scoped).
-router.get('/reports', auth, allowRoles(...PD), async (req, res) => {
+router.get('/reports', auth, allowRoles(...PD_READ), async (req, res) => {
   try {
     const info = await requirePdSpecialty(req, res);
     if (!info) return;
@@ -146,10 +173,11 @@ router.get('/reports', auth, allowRoles(...PD), async (req, res) => {
 // The client splits rows by evaluateeRole (a missing value is treated as
 // 'trainee'). Author-scoping is inherently specialty-safe: a PD can only create
 // evaluations for subjects in its own specialty (enforced on create below).
-router.get('/evaluations', auth, allowRoles(...PD), async (req, res) => {
+router.get('/evaluations', auth, allowRoles(...PD_READ), async (req, res) => {
   try {
+    const pdId = effectivePdId(req);
     const query = {
-      $or: [{ evaluatorId: req.user._id }, { doctor: req.user._id }, { createdBy: req.user._id }]
+      $or: [{ evaluatorId: pdId }, { doctor: pdId }, { createdBy: pdId }]
     };
     if (req.query.evaluateeRole === 'trainee' || req.query.evaluateeRole === 'supervisor') {
       query.evaluateeRole = req.query.evaluateeRole;
@@ -161,6 +189,56 @@ router.get('/evaluations', auth, allowRoles(...PD), async (req, res) => {
       .populate('hospital',    'name')
       .sort({ createdAt: -1 });
     res.json({ success: true, data: evaluations });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/program-director/stats
+// Dashboard for the PD's ONE program (Sub-PD mirrors its PD via effectivePdId).
+// Counts: specialty-scoped trainees (matches the /trainees page), program
+// trainers, pending final reports (specialty scope), evaluations authored, and
+// program capacity usage (current-year trainees vs yearlyCapacity).
+router.get('/stats', auth, allowRoles(...PD_READ), async (req, res) => {
+  try {
+    const pdId = effectivePdId(req);
+    const program = await Program.findOne({ programDirectorId: pdId, isActive: { $ne: false } })
+      .populate('trainingCenterId', 'name city accreditationNumber countryId')
+      .populate('specialtyId', 'name')
+      .populate('programDirectorId', 'name');
+    if (!program) return res.status(403).json({ success: false, message: 'No program assigned' });
+
+    const info = await requirePdSpecialty(req, res);
+    if (!info) return;
+
+    const specialtyTrainees = await User.find({
+      role: coerceRoleToTrack('trainee', req.track),
+      isActive: { $ne: false },
+      ...specialtyUserMatch(info)
+    }).select('_id');
+    const specialtyTraineeIds = specialtyTrainees.map(t => t._id);
+
+    const [trainers, pendingFinalReports, evaluationsAuthored, capacityUsed] = await Promise.all([
+      User.countDocuments({ role: coerceRoleToTrack('supervisor', req.track), isActive: { $ne: false }, programId: program._id }),
+      Report.countDocuments({ student: { $in: specialtyTraineeIds }, type: 'final', status: 'pending' }),
+      Evaluation.countDocuments({ $or: [{ evaluatorId: pdId }, { doctor: pdId }, { createdBy: pdId }] }),
+      capacityUsedFor(program._id),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        program: withAccreditation(program),
+        counts: {
+          trainees: specialtyTraineeIds.length,
+          trainers,
+          pendingFinalReports,
+          evaluationsAuthored,
+          capacityUsed,
+          yearlyCapacity: program.yearlyCapacity
+        }
+      }
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

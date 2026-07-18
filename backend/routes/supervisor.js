@@ -10,39 +10,9 @@ const Report         = require('../models/Report');
 const Evaluation     = require('../models/Evaluation');
 const Notification   = require('../models/Notification');
 const User           = require('../models/User');
+const { getAssignedTraineeIds } = require('../utils/assignedTrainees');
 
 const SUPERVISOR = ['supervisor'];
-
-async function getAssignedTraineeIds(supervisorId) {
-  const directTrainees = await User.find({
-    supervisorId,
-    role: 'trainee',
-    isActive: { $ne: false }
-  }).select('_id');
-
-  const distributions = await Distribution.find({
-    $or: [
-      { supervisorId, traineeId: { $ne: null } },
-      { doctor: supervisorId, student: { $ne: null } }
-    ]
-  }).select('traineeId student');
-
-  const rotations = await Rotation.find({
-    $or: [
-      { supervisorId },
-      { doctor: supervisorId }
-    ],
-    status: { $in: ['current', 'upcoming'] }
-  }).select('traineeId student');
-
-  return [...new Set([
-    ...directTrainees.map(t => t._id),
-    ...distributions.map(d => d.traineeId).filter(Boolean),
-    ...distributions.map(d => d.student).filter(Boolean),
-    ...rotations.map(r => r.traineeId).filter(Boolean),
-    ...rotations.map(r => r.student).filter(Boolean)
-  ].map(id => id.toString()))];
-}
 
 async function isAssignedTrainee(supervisorId, traineeId) {
   if (!traineeId) return false;

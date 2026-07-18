@@ -13,7 +13,9 @@ function textValue(value, fallback = '—') {
   return fallback;
 }
 
-function SupervisorModal({ supervisor, onClose }) {
+function idOf(v) { return v?._id || v || ''; }
+
+function SupervisorModal({ supervisor, trainees = [], onClose }) {
   useEffect(() => {
     const h = e => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', h);
@@ -78,6 +80,32 @@ function SupervisorModal({ supervisor, onClose }) {
               </div>
             ))}
           </div>
+
+          {/* Drill-down: this trainer's trainees (matched by supervisorId) */}
+          <div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>
+              Trainees ({trainees.length})
+            </div>
+            {trainees.length === 0 ? (
+              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>No trainees assigned to this trainer.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
+                {trainees.map(tr => (
+                  <div key={tr._id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface-2)', borderRadius: 8, padding: '7px 10px' }}>
+                    {tr.photoUrl
+                      ? <img src={`${API_BASE}${tr.photoUrl}`} alt="" className="cell-photo" />
+                      : <div className="cell-initials">{tr.initials || tr.name?.[0] || '?'}</div>}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{tr.name}</div>
+                      {(tr.studentId || tr.idNumber) && (
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{tr.studentId || tr.idNumber}</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div style={{
@@ -99,6 +127,7 @@ function SupervisorModal({ supervisor, onClose }) {
 
 export default function ProgramDirectorSupervisors() {
   const [supervisors, setSupervisors] = useState([]);
+  const [trainees,    setTrainees   ] = useState([]);
   const [loading,     setLoading    ] = useState(true);
   const [search,      setSearch     ] = useState('');
   const [selected,    setSelected   ] = useState(null);
@@ -118,7 +147,20 @@ export default function ProgramDirectorSupervisors() {
       })
       .catch(() => showToast('Failed to load supervisors'))
       .finally(() => setLoading(false));
+    // Load the PD's trainees once so a trainer card can drill down to its
+    // trainees (matched client-side by supervisorId).
+    api.get('/api/program-director/trainees')
+      .then(r => {
+        const list = r.data?.data?.trainees || r.data?.trainees || [];
+        setTrainees(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {});
   }, []);
+
+  function traineesForSupervisor(s) {
+    if (!s) return [];
+    return trainees.filter(tr => idOf(tr.supervisorId) === s._id);
+  }
 
   const filtered = supervisors.filter(s => {
     const q = search.toLowerCase();
@@ -286,7 +328,7 @@ export default function ProgramDirectorSupervisors() {
         </div>
 
         {selected && (
-          <SupervisorModal supervisor={selected} onClose={() => setSelected(null)} />
+          <SupervisorModal supervisor={selected} trainees={traineesForSupervisor(selected)} onClose={() => setSelected(null)} />
         )}
 
         <Toast toasts={toasts} />

@@ -80,6 +80,25 @@ import AnalyzerStaff from './pages/AnalyzerStaff';
 import CentralTrainees from './pages/CentralTrainees';
 import CentralTrainers from './pages/CentralTrainers';
 
+// Role pages — Phase 4b (DIO-view suite, SG suite, Announcements, Log Book, PD dashboard/program)
+import DioViewDashboard from './pages/DioViewDashboard';
+import DioViewCenters from './pages/DioViewCenters';
+import DioViewPds from './pages/DioViewPds';
+import DioViewTrainees from './pages/DioViewTrainees';
+import DioViewTrainers from './pages/DioViewTrainers';
+import Announcements from './pages/Announcements';
+import LogBook from './pages/LogBook';
+import SupervisorLogBook from './pages/SupervisorLogBook';
+import SgDashboard from './pages/SgDashboard';
+import SgCenters from './pages/SgCenters';
+import SgDios from './pages/SgDios';
+import SgSpecialties from './pages/SgSpecialties';
+import SgPrograms from './pages/SgPrograms';
+import SgPds from './pages/SgPds';
+import SgTrainees from './pages/SgTrainees';
+import ProgramDirectorDashboard from './pages/ProgramDirectorDashboard';
+import ProgramDirectorProgram from './pages/ProgramDirectorProgram';
+
 function RootRedirect() {
   const { user, loading } = useAuth();
   if (loading) return null;
@@ -160,13 +179,23 @@ export default function App() {
             </ProtectedRoute>
           } />
 
+          <Route path="/program-director/dashboard" element={
+            <ProtectedRoute allowedRoles={['program_director', 'sub_pd', 'super_admin']}>
+              <ProgramDirectorDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/program-director/program" element={
+            <ProtectedRoute allowedRoles={['program_director', 'sub_pd', 'super_admin']}>
+              <ProgramDirectorProgram />
+            </ProtectedRoute>
+          } />
           <Route path="/program-director/trainees" element={
-            <ProtectedRoute allowedRoles={['program_director']}>
+            <ProtectedRoute allowedRoles={['program_director', 'sub_pd']}>
               <ProgramDirectorTrainees />
             </ProtectedRoute>
           } />
           <Route path="/program-director/supervisors" element={
-            <ProtectedRoute allowedRoles={['program_director']}>
+            <ProtectedRoute allowedRoles={['program_director', 'sub_pd']}>
               <ProgramDirectorSupervisors />
             </ProtectedRoute>
           } />
@@ -251,7 +280,7 @@ export default function App() {
             </ProtectedRoute>
           } />
           <Route path="/dio/certificates/:id/print" element={
-            <ProtectedRoute allowedRoles={['dio', 'super_admin', 'program_director', 'president']}>
+            <ProtectedRoute allowedRoles={['dio', 'super_admin', 'program_director', 'president', 'dio_view', 'sub_dio']}>
               <CertificatePrint />
             </ProtectedRoute>
           } />
@@ -304,37 +333,37 @@ export default function App() {
           } />
 
           <Route path="/president/dashboard" element={
-            <ProtectedRoute allowedRoles={['president', 'dio_view']}>
+            <ProtectedRoute allowedRoles={['president']}>
               <DioDashboard />
             </ProtectedRoute>
           } />
           <Route path="/president/trainees" element={
-            <ProtectedRoute allowedRoles={['president', 'dio_view']}>
+            <ProtectedRoute allowedRoles={['president']}>
               <PresidentTrainees />
             </ProtectedRoute>
           } />
           <Route path="/president/supervisors" element={
-            <ProtectedRoute allowedRoles={['president', 'dio_view']}>
+            <ProtectedRoute allowedRoles={['president']}>
               <PresidentSupervisors />
             </ProtectedRoute>
           } />
           <Route path="/president/program-directors" element={
-            <ProtectedRoute allowedRoles={['president', 'dio_view']}>
+            <ProtectedRoute allowedRoles={['president']}>
               <PresidentProgramDirectors />
             </ProtectedRoute>
           } />
           <Route path="/president/secretaries" element={
-            <ProtectedRoute allowedRoles={['president', 'dio_view']}>
+            <ProtectedRoute allowedRoles={['president']}>
               <PresidentSecretaries />
             </ProtectedRoute>
           } />
           <Route path="/president/dios" element={
-            <ProtectedRoute allowedRoles={['president', 'dio_view']}>
+            <ProtectedRoute allowedRoles={['president']}>
               <PresidentDios />
             </ProtectedRoute>
           } />
           <Route path="/president/hospitals" element={
-            <ProtectedRoute allowedRoles={['president', 'dio_view']}>
+            <ProtectedRoute allowedRoles={['president']}>
               <PresidentHospitals />
             </ProtectedRoute>
           } />
@@ -439,6 +468,99 @@ export default function App() {
           <Route path="/central/trainers" element={
             <ProtectedRoute allowedRoles={['central_secretary', 'super_admin']}>
               <CentralTrainers />
+            </ProtectedRoute>
+          } />
+
+          {/* ══════════════════════════════════════════════════════════
+              DIO-VIEW SUITE — DIO (dio_view) + Sub-DIO (sub_dio) read-only
+              oversight scoped to the caller's center set.
+          ══════════════════════════════════════════════════════════ */}
+          <Route path="/dio-view/dashboard" element={
+            <ProtectedRoute allowedRoles={['dio_view', 'sub_dio', 'super_admin']}>
+              <DioViewDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/dio-view/centers" element={
+            <ProtectedRoute allowedRoles={['dio_view', 'sub_dio', 'super_admin']}>
+              <DioViewCenters />
+            </ProtectedRoute>
+          } />
+          <Route path="/dio-view/program-directors" element={
+            <ProtectedRoute allowedRoles={['dio_view', 'sub_dio', 'super_admin']}>
+              <DioViewPds />
+            </ProtectedRoute>
+          } />
+          <Route path="/dio-view/trainees" element={
+            <ProtectedRoute allowedRoles={['dio_view', 'sub_dio', 'super_admin']}>
+              <DioViewTrainees />
+            </ProtectedRoute>
+          } />
+          <Route path="/dio-view/trainers" element={
+            <ProtectedRoute allowedRoles={['dio_view', 'sub_dio', 'super_admin']}>
+              <DioViewTrainers />
+            </ProtectedRoute>
+          } />
+          <Route path="/dio-view/certificates" element={
+            <ProtectedRoute allowedRoles={['dio_view', 'sub_dio', 'super_admin']}>
+              <DioCertificates />
+            </ProtectedRoute>
+          } />
+
+          {/* ══════════════════════════════════════════════════════════
+              SECRETARY GENERAL / ASSISTANT SECRETARY — read-only suite.
+          ══════════════════════════════════════════════════════════ */}
+          <Route path="/sg/dashboard" element={
+            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'super_admin']}>
+              <SgDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/sg/centers" element={
+            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'super_admin']}>
+              <SgCenters />
+            </ProtectedRoute>
+          } />
+          <Route path="/sg/dios" element={
+            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'super_admin']}>
+              <SgDios />
+            </ProtectedRoute>
+          } />
+          <Route path="/sg/specialties" element={
+            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'super_admin']}>
+              <SgSpecialties />
+            </ProtectedRoute>
+          } />
+          <Route path="/sg/programs" element={
+            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'super_admin']}>
+              <SgPrograms />
+            </ProtectedRoute>
+          } />
+          <Route path="/sg/pds" element={
+            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'super_admin']}>
+              <SgPds />
+            </ProtectedRoute>
+          } />
+          <Route path="/sg/trainees" element={
+            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'super_admin']}>
+              <SgTrainees />
+            </ProtectedRoute>
+          } />
+
+          {/* ══════════════════════════════════════════════════════════
+              ANNOUNCEMENTS + LOG BOOK — shared board + trainee/trainer logs.
+          ══════════════════════════════════════════════════════════ */}
+          <Route path="/announcements" element={
+            <ProtectedRoute allowedRoles={['trainee', 'supervisor', 'program_director', 'sub_pd', 'super_admin']}>
+              <Announcements />
+            </ProtectedRoute>
+          } />
+          <Route path="/logbook" element={
+            <ProtectedRoute allowedRoles={['trainee', 'super_admin']}>
+              <LogBook />
+            </ProtectedRoute>
+          } />
+          <Route path="/supervisor/logbook" element={
+            <ProtectedRoute allowedRoles={['supervisor', 'super_admin']}>
+              <SupervisorLogBook />
             </ProtectedRoute>
           } />
 

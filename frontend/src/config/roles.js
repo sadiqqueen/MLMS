@@ -79,15 +79,15 @@ const ADVANCED_HOME = {
   program_director: '/program-director/trainees',
   asg1:             '/consultant-memo',
   asg2:             '/consultant-memo',
-  // v2 roles — Phase-1 temporary homes (final homes ship with their pages).
-  dio_view:            '/president/dashboard',
-  secretary_general:   '/profile',
-  assistant_secretary: '/profile',
+  // v2 roles — final homes.
+  dio_view:            '/dio-view/dashboard',
+  secretary_general:   '/sg/dashboard',
+  assistant_secretary: '/sg/dashboard',
   data_analyzer:       '/analyzer/dashboard',
   data_entry:          '/registry/centers',
   central_secretary:   '/central/trainees',
-  sub_dio:             '/profile',
-  sub_pd:              '/profile',
+  sub_dio:             '/dio-view/dashboard',
+  sub_pd:              '/program-director/dashboard',
 };
 
 export const ROLE_HOME = {
@@ -129,14 +129,18 @@ const ADVANCED_LINKS = {
     { to: '/supervisor/trainees',    key: 'trainees',    label: 'My Trainees' },
     { to: '/supervisor/reports',     key: 'reports',     label: 'Reports'     },
     { to: '/supervisor/evaluations', key: 'evaluations', label: 'Evaluations' },
+    { to: '/supervisor/logbook',     key: 'logbook',     label: 'Log Book'    },
     { to: '/supervisor/research',    key: 'research',    label: 'Research'    },
+    { to: '/announcements',          key: 'announcements', label: 'Announcements' },
   ],
   trainee: [
     { to: '/timeline', key: 'timeline', label: 'Timeline' },
     { to: '/reports',  key: 'reports',  label: 'Reports'  },
     { to: '/grades',   key: 'grades',   label: 'Portfolio' },
     { to: '/certificates-courses', key: 'courses', label: 'Certificates' },
+    { to: '/logbook',  key: 'logbook',  label: 'Log Book' },
     { to: '/research', key: 'research', label: 'Research' },
+    { to: '/announcements', key: 'announcements', label: 'Announcements' },
     { to: '/notifications', key: 'notifications', label: 'Notifications' },
   ],
   president: [
@@ -149,10 +153,13 @@ const ADVANCED_LINKS = {
     { to: '/president/hospitals',         key: 'hospitals',         label: 'Hospitals'      },
   ],
   program_director: [
+    { to: '/program-director/dashboard',   key: 'dashboard',   label: 'Dashboard'   },
+    { to: '/program-director/program',     key: 'program',     label: 'Program'     },
     { to: '/program-director/trainees',    key: 'trainees',    label: 'Trainees'    },
     { to: '/program-director/supervisors', key: 'supervisors', label: 'Supervisors' },
     { to: '/program-director/evaluations', key: 'evaluations', label: 'Evaluations' },
     { to: '/program-director/reports',     key: 'reports',     label: 'Reports'     },
+    { to: '/announcements',                key: 'announcements', label: 'Announcements' },
   ],
   data_entry: [
     { to: '/registry/centers',     key: 'centers',     label: 'Training Centers' },
@@ -168,6 +175,46 @@ const ADVANCED_LINKS = {
   central_secretary: [
     { to: '/central/trainees', key: 'trainees', label: 'Trainees' },
     { to: '/central/trainers', key: 'trainers', label: 'Trainers' },
+  ],
+  dio_view: [
+    { to: '/dio-view/dashboard',         key: 'dashboard',    label: 'Dashboard'         },
+    { to: '/dio-view/centers',           key: 'centers',      label: 'Centers'           },
+    { to: '/dio-view/program-directors', key: 'pds',          label: 'Program Directors' },
+    { to: '/dio-view/trainees',          key: 'trainees',     label: 'Trainees'          },
+    { to: '/dio-view/trainers',          key: 'trainers',     label: 'Trainers'          },
+    { to: '/dio-view/certificates',      key: 'certificates', label: 'Certificates'      },
+  ],
+  sub_dio: [
+    { to: '/dio-view/dashboard',         key: 'dashboard',    label: 'Dashboard'         },
+    { to: '/dio-view/centers',           key: 'centers',      label: 'Centers'           },
+    { to: '/dio-view/program-directors', key: 'pds',          label: 'Program Directors' },
+    { to: '/dio-view/trainees',          key: 'trainees',     label: 'Trainees'          },
+    { to: '/dio-view/trainers',          key: 'trainers',     label: 'Trainers'          },
+    { to: '/dio-view/certificates',      key: 'certificates', label: 'Certificates'      },
+  ],
+  secretary_general: [
+    { to: '/sg/dashboard',   key: 'dashboard',   label: 'Dashboard'   },
+    { to: '/sg/centers',     key: 'centers',     label: 'Centers'     },
+    { to: '/sg/dios',        key: 'dios',        label: 'DIOs'        },
+    { to: '/sg/specialties', key: 'specialties', label: 'Specialties' },
+    { to: '/sg/programs',    key: 'programs',    label: 'Programs'    },
+    { to: '/sg/pds',         key: 'pds',         label: 'PDs'         },
+    { to: '/sg/trainees',    key: 'trainees',    label: 'Trainees'    },
+  ],
+  assistant_secretary: [
+    { to: '/sg/dashboard',   key: 'dashboard',   label: 'Dashboard'   },
+    { to: '/sg/centers',     key: 'centers',     label: 'Centers'     },
+    { to: '/sg/dios',        key: 'dios',        label: 'DIOs'        },
+    { to: '/sg/specialties', key: 'specialties', label: 'Specialties' },
+    { to: '/sg/programs',    key: 'programs',    label: 'Programs'    },
+    { to: '/sg/pds',         key: 'pds',         label: 'PDs'         },
+    { to: '/sg/trainees',    key: 'trainees',    label: 'Trainees'    },
+  ],
+  sub_pd: [
+    { to: '/program-director/dashboard',   key: 'dashboard',   label: 'Dashboard'   },
+    { to: '/program-director/program',     key: 'program',     label: 'Program'     },
+    { to: '/program-director/trainees',    key: 'trainees',    label: 'Trainees'    },
+    { to: '/program-director/supervisors', key: 'supervisors', label: 'Supervisors' },
   ],
 };
 

@@ -1,6 +1,7 @@
 // frontend/src/pages/DioCertificates.jsx
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import useBasePath from '../hooks/useBasePath';
 import Navbar from '../components/Navbar';
 import Toast from '../components/Toast';
@@ -58,12 +59,18 @@ function traineeFromCertificate(cert) {
 export default function DioCertificates() {
   const navigate = useNavigate();
   const bp = useBasePath();
+  const { user } = useAuth();
+  // View-only oversight roles: a DIO-view (dio_view) and Sub-DIO (sub_dio) may
+  // list + print certificates but never revoke/delete; a Sub-DIO additionally
+  // cannot issue. ODIO ('dio')/super_admin keep full management.
+  const canRevokeDelete = user?.role !== 'dio_view' && user?.role !== 'sub_dio';
+  const canIssue = user?.role !== 'sub_dio';
   // The DIO now lists certificates from BOTH tracks (system-wide read). Revoke/
   // delete stay track-scoped on the backend, so only same-track rows expose those
   // buttons; a Track badge marks each row's portal. Print works for every cert.
   const currentTrack = bp === '/basic' ? 'basic' : 'advanced';
   const certTrack = c => (c?.track || 'advanced');
-  const canManageCert = c => certTrack(c) === currentTrack;
+  const canManageCert = c => certTrack(c) === currentTrack && canRevokeDelete;
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('list');
@@ -307,9 +314,11 @@ export default function DioCertificates() {
             <div className="admin-page-title">Certificates</div>
             <div className="admin-page-sub">{validCount} valid · {revokedCount} revoked · {totalCount} total</div>
           </div>
-          <button className="btn-purple" onClick={openIssueForm}>
-            + Issue Certificate
-          </button>
+          {canIssue && (
+            <button className="btn-purple" onClick={openIssueForm}>
+              + Issue Certificate
+            </button>
+          )}
         </div>
 
         {totalCount === 0 ? (
@@ -503,7 +512,7 @@ export default function DioCertificates() {
           </div>
         )}
 
-        {showForm && (
+        {canIssue && showForm && (
           <div
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
             onClick={e => e.target === e.currentTarget && closeIssueForm()}

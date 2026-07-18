@@ -21,18 +21,23 @@ function notifLink(message = '', role) {
   const advancedDest = () => {
     switch (baseRole(role)) {
       case 'trainee':
+        if (has(/announcement|إعلان/))                    return '/announcements';
+        if (has(/log book|logbook|سجل/))                  return '/logbook';
         if (has(/research|publication|publish/))          return '/research';
         if (has(/evaluat|assess|competent|grade|score/)) return '/grades';
         if (has(/report/))                                return '/reports';
         if (has(/rotation|distribut|assign|specialt|hospital/)) return '/timeline';
         break;
       case 'supervisor':
+        if (has(/announcement|إعلان/)) return '/announcements';
+        if (has(/log book|logbook|سجل/)) return '/supervisor/logbook';
         if (has(/research/))         return '/supervisor/trainees';
         if (has(/evaluat|assess/))   return '/supervisor/evaluations';
         if (has(/report|grade/))     return '/supervisor/reports';
         if (has(/trainee|assign/))   return '/supervisor/trainees';
         break;
       case 'program_director':
+        if (has(/announcement|إعلان/)) return '/announcements';
         if (has(/report|grade/))  return '/program-director/reports';
         if (has(/supervisor/))    return '/program-director/supervisors';
         if (has(/trainee/))       return '/program-director/trainees';
