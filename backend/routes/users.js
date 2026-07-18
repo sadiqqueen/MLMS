@@ -86,7 +86,11 @@ function dioVisibleRoles(req) {
 
 // Compare by BASE role so Basic-track targets aren't treated as rank 0 (which
 // would let any write-staff out-rank e.g. b_president / b_dio).
+// A super_admin (Developer) outranks everyone, including other super_admins —
+// peer Developers must be manageable (deactivate/lock/edit/reset); self-actions
+// stay blocked by the per-route self guards.
 function hasHigherRole(actorRole, targetRole) {
+  if (baseRole(actorRole) === 'super_admin') return true;
   return (ROLE_RANK[baseRole(actorRole)] || 0) > (ROLE_RANK[baseRole(targetRole)] || 0);
 }
 
