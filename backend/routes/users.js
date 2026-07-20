@@ -35,7 +35,9 @@ const SELF_EDITABLE = ['name', 'phone', 'city', 'gender', 'photoUrl'];
 const ADMIN_EDITABLE = ['name', 'phone', 'city', 'gender', 'photoUrl',
                         'isActive', 'department', 'specialty', 'year',
                         'studentId', 'hospitalId', 'specialtyId', 'supervisorId',
-                        'hospital', 'supervisor'];
+                        'hospital', 'supervisor',
+                        // HOC / central-secretary Scientific Council assignment.
+                        'councilId'];
 const ALLOWED_CREATE_FIELDS = ['name', 'email', 'password', 'role', 'phone',
   'gender', 'city', 'department', 'specialty', 'year', 'studentId',
   'enrolledSince', 'hospitalId', 'specialtyId', 'supervisorId',

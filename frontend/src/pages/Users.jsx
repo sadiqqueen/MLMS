@@ -35,7 +35,7 @@ const ROLE_FIELDS = {
   supervisor: ['hospitalId', 'specialtyId', 'department', 'phone', 'gender', 'city'],
   program_director: ['hospitalId', 'department', 'phone'],
   sub_pd: ['phone'], secretary: ['specialtyId', 'phone'], data_entry: ['phone'],
-  central_secretary: ['phone'], hoc: ['phone'], dio: ['phone'], dio_view: ['phone'], sub_dio: ['phone'],
+  central_secretary: ['phone'], hoc: ['councilId', 'phone'], dio: ['phone'], dio_view: ['phone'], sub_dio: ['phone'],
   president: ['phone'], asg1: ['phone'], asg2: ['phone'], data_analyzer: ['phone'],
   assistant_secretary: ['phone'], secretary_general: ['phone'], super_admin: [],
 };
@@ -46,7 +46,7 @@ const photoSrc = (url) => (url ? `${url}` : null);
 const councilLabel = (c) => `${c.name}${c.nameEn ? ` — ${c.nameEn}` : ''}`;
 
 // ── generic Add / Edit user modal ────────────────────────────────────────────
-function UserModal({ editUser, hospitals, supervisors, specialties, onSave, onClose, saving }) {
+function UserModal({ editUser, hospitals, supervisors, specialties, councils = [], onSave, onClose, saving }) {
   const [form, setForm] = useState(editUser ? {
     name: editUser.name || '', email: editUser.email || '', password: '',
     role: baseRole(editUser.role || 'trainee'), track: (editUser.role || '').startsWith('b_') ? 'basic' : 'advanced',
@@ -55,9 +55,10 @@ function UserModal({ editUser, hospitals, supervisors, specialties, onSave, onCl
     hospitalId: editUser.hospitalId?._id || editUser.hospitalId || editUser.hospital?._id || editUser.hospital || '',
     supervisorId: editUser.supervisorId?._id || editUser.supervisorId || '',
     specialtyId: editUser.specialtyId?._id || editUser.specialtyId || '', department: editUser.department || '',
+    councilId: editUser.councilId?._id || editUser.councilId || '',
   } : {
     name: '', email: '', password: '', role: 'trainee', track: 'advanced', phone: '', gender: '', city: '',
-    studentId: '', year: '', hospitalId: '', supervisorId: '', specialtyId: '', department: '',
+    studentId: '', year: '', hospitalId: '', supervisorId: '', specialtyId: '', department: '', councilId: '',
   });
   const [photo, setPhoto] = useState(null);
   const [preview, setPreview] = useState(editUser?.photoUrl ? photoSrc(editUser.photoUrl) : null);
@@ -137,6 +138,13 @@ function UserModal({ editUser, hospitals, supervisors, specialties, onSave, onCl
         {showField(role, 'specialtyId') && (
           <div className="mt-field"><label className="mt-label">Specialty</label>
             <SearchableSelect value={form.specialtyId} onChange={(v) => set('specialtyId', v)} options={specialtyOptions} placeholder="Search specialty…" /></div>
+        )}
+        {showField(role, 'councilId') && (
+          <div className="mt-field mt-field-full"><label className="mt-label">Specialty (council)</label>
+            <select className="mt-select" value={form.councilId} onChange={(e) => set('councilId', e.target.value)}>
+              <option value="">— Select council —</option>
+              {councils.map((c) => <option key={c._id} value={c._id}>{councilLabel(c)}</option>)}
+            </select></div>
         )}
         {showField(role, 'hospitalId') && (
           <div className="mt-field"><label className="mt-label">Hospital</label>
@@ -570,7 +578,7 @@ export default function Users() {
         )}
 
         {modal === 'user' && (
-          <UserModal editUser={editUser} hospitals={hospitals} supervisors={supervisors} specialties={specialties}
+          <UserModal editUser={editUser} hospitals={hospitals} supervisors={supervisors} specialties={specialties} councils={councils}
             onSave={handleSaveUser} onClose={() => { setModal(null); setEditUser(null); }} saving={saving} />
         )}
         {modal === 'hoc' && <HocModal councils={councils} onCreate={handleCreateHoc} onClose={() => setModal(null)} saving={saving} />}
