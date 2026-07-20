@@ -12,7 +12,7 @@ const nav = {
     // super_admin
     'nav.super_admin.dashboard':         'لوحة التحكم',
     'nav.super_admin.users':             'المستخدمون',
-    'nav.super_admin.hospitals':         'المستشفيات',
+    'nav.super_admin.hospitals':         'مراكز التدريب',
     'nav.super_admin.specialties':       'التخصصات',
     'nav.super_admin.system':            'النظام',
     'nav.super_admin.event_feedback':    'تقييم الفعاليات',
@@ -173,7 +173,7 @@ const nav = {
     // super_admin
     'nav.super_admin.dashboard':         'Dashboard',
     'nav.super_admin.users':             'Users',
-    'nav.super_admin.hospitals':         'Hospitals',
+    'nav.super_admin.hospitals':         'Training Centers',
     'nav.super_admin.specialties':       'Specialties',
     'nav.super_admin.system':            'System',
     'nav.super_admin.event_feedback':    'Event Feedback',

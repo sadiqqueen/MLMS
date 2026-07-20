@@ -43,15 +43,15 @@ function HospitalModal({ item, programDirectors, supervisors, onSave, onClose, s
   const selectedSupObjs = supervisors.filter((s) => form.supervisors.includes(s._id));
 
   return (
-    <MtModal open title={item ? 'Edit hospital' : 'Add hospital'} sub="Training center record" onClose={onClose}
+    <MtModal open title={item ? 'Edit training center' : 'Add training center'} sub="Training center record" onClose={onClose}
       footer={<>
         <button type="button" className="mt-btn--cancel" onClick={onClose}>Cancel</button>
         <button type="button" className="mt-btn" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
       </>}>
       <div className="mt-field-grid">
         <div className="mt-field mt-field-full">
-          <label className="mt-label">Hospital name <span className="mt-label-req">*</span></label>
-          <input className={`mt-input${errors.name ? ' dev-invalid' : ''}`} value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Hospital name" />
+          <label className="mt-label">Training center name <span className="mt-label-req">*</span></label>
+          <input className={`mt-input${errors.name ? ' dev-invalid' : ''}`} value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Training center name" />
         </div>
         <div className="mt-field"><label className="mt-label">City</label><input className="mt-input" value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="City" /></div>
         <div className="mt-field"><label className="mt-label">Governorate</label><input className="mt-input" value={form.governorate} onChange={(e) => set('governorate', e.target.value)} placeholder="Governorate" /></div>
@@ -209,7 +209,7 @@ export default function HospitalsUniversities() {
 
   return (
     <>
-      <Navbar title={isHospital ? 'Hospitals' : 'Universities'} subtitle="Developer" />
+      <Navbar title={isHospital ? 'Training Centers' : 'Universities'} subtitle="Developer" />
       <main className="mt-content">
         {!isAdmin && (
           <div className="dev-tabs">
@@ -224,12 +224,12 @@ export default function HospitalsUniversities() {
             <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search by name or city…" aria-label="Search" />
           </div>
           <span className="mt-filterbar-spacer" />
-          {canManage && <button className="mt-btn" onClick={() => { setEditItem(null); setShowModal(true); }}>+ {isHospital ? 'Add hospital' : 'Add university'}</button>}
+          {canManage && <button className="mt-btn" onClick={() => { setEditItem(null); setShowModal(true); }}>+ {isHospital ? 'Add training center' : 'Add university'}</button>}
           <ViewToggle value={view} onChange={setView} listValue="table" />
           <select className="mt-filter" value={rows} onChange={(e) => { setRows(+e.target.value); setPage(1); }} aria-label="Rows per page">
             {ROWS_OPT.map((r) => <option key={r} value={r}>{r} / page</option>)}
           </select>
-          <span className="mt-count">{filtered.length} {isHospital ? 'hospitals' : 'universities'}</span>
+          <span className="mt-count">{filtered.length} {isHospital ? 'training centers' : 'universities'}</span>
         </div>
 
         {loading ? <div className="skeleton mt-skel" style={{ height: 320 }} /> : view === 'table' ? (
