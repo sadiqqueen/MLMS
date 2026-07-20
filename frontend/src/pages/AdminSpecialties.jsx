@@ -130,6 +130,7 @@ export default function AdminSpecialties() {
   const [saving, setSaving] = useState(false);
   const [tplSpecialty, setTplSpecialty] = useState(null);
   const [delItem, setDelItem] = useState(null);
+  const [delErr, setDelErr] = useState('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -163,25 +164,19 @@ export default function AdminSpecialties() {
     } catch (err) { showToast(err.response?.data?.message || 'Failed to create specialty', 'dng'); } finally { setSaving(false); }
   }
 
-  // Delete = soft delete (deactivate) via DELETE /api/specialties/:id (super_admin).
-  // The row stays visible marked Inactive and can be restored.
+  // Permanent hard delete via DELETE /api/specialties/:id (super_admin). Blocked
+  // (409) if the specialty is still referenced — the reason is shown in-modal.
   async function handleDelete() {
     if (!delItem) return;
-    setBusy(true);
+    setBusy(true); setDelErr('');
     try {
       await api.delete(`/api/specialties/${delItem._id}`);
-      setSpecialties((prev) => prev.map((x) => (x._id === delItem._id ? { ...x, isActive: false } : x)));
-      showToast('Specialty deleted', 'ok');
+      setSpecialties((prev) => prev.filter((x) => x._id !== delItem._id));
+      showToast('Specialty permanently deleted', 'ok');
       setDelItem(null);
-    } catch (err) { showToast(err.response?.data?.message || 'Failed to delete specialty', 'dng'); } finally { setBusy(false); }
-  }
-
-  async function handleRestore(s) {
-    try {
-      await api.patch(`/api/specialties/${s._id}`, { isActive: true });
-      setSpecialties((prev) => prev.map((x) => (x._id === s._id ? { ...x, isActive: true } : x)));
-      showToast('Specialty restored', 'ok');
-    } catch (err) { showToast(err.response?.data?.message || 'Failed to restore specialty', 'dng'); }
+    } catch (err) {
+      setDelErr(err.response?.data?.message || 'Failed to delete specialty');
+    } finally { setBusy(false); }
   }
 
   const q = search.trim().toLowerCase();
@@ -261,13 +256,9 @@ export default function AdminSpecialties() {
                               <button className="mt-btn--small-outline" onClick={() => setTplSpecialty(s)} title="Manage report & evaluation templates">
                                 <IconFileText size={13} /> Templates
                               </button>
-                              {s.isActive !== false ? (
-                                <button className="mt-icon-action dev-act-danger" onClick={() => setDelItem(s)} title="Delete specialty" aria-label={`Delete ${s.name}`}>
-                                  <IconDelete size={15} />
-                                </button>
-                              ) : (
-                                <button className="mt-btn--small-outline" onClick={() => handleRestore(s)} title="Restore specialty">Restore</button>
-                              )}
+                              <button className="mt-icon-action dev-act-danger" onClick={() => { setDelErr(''); setDelItem(s); }} title="Delete specialty" aria-label={`Delete ${s.name}`}>
+                                <IconDelete size={15} />
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -289,14 +280,19 @@ export default function AdminSpecialties() {
         )}
 
         {delItem && (
-          <MtModal open title="Delete specialty" sub={`${delItem.type === 'main' ? 'Specialty' : 'Sub-specialty'} · ${delItem.name}`} meta="Developer" onClose={() => setDelItem(null)}
+          <MtModal open title="Delete specialty" sub={`${delItem.type === 'main' ? 'Specialty' : 'Sub-specialty'} · ${delItem.name}`} meta="Developer" onClose={() => { setDelItem(null); setDelErr(''); }}
             footer={<>
-              <button type="button" className="mt-btn--cancel" onClick={() => setDelItem(null)}>Cancel</button>
-              <button type="button" className="mt-btn mt-btn--danger" onClick={handleDelete} disabled={busy}>{busy ? 'Deleting…' : 'Delete'}</button>
+              <button type="button" className="mt-btn--cancel" onClick={() => { setDelItem(null); setDelErr(''); }}>Cancel</button>
+              <button type="button" className="mt-btn mt-btn--danger" onClick={handleDelete} disabled={busy}>{busy ? 'Deleting…' : 'Delete permanently'}</button>
             </>}>
             <div className="mt-banner" style={{ background: 'var(--danger-bg)', borderInlineStartColor: 'var(--danger)', color: 'var(--danger-fg)' }}>
-              This deactivates “{delItem.name}”. It stays in the registry (existing programs and trainees keep their link) but is hidden from new assignments. You can restore it here.
+              Permanently delete “{delItem.name}”? This cannot be undone. If it is still used by any program, trainee, PD, rotation, or training center, the delete will be blocked.
             </div>
+            {delErr && (
+              <div className="mt-banner" style={{ marginBlockStart: 12, background: 'var(--danger-bg)', borderInlineStartColor: 'var(--danger)', color: 'var(--danger-fg)' }}>
+                {delErr}
+              </div>
+            )}
           </MtModal>
         )}
         {showAdd && <AddSpecialtyModal councils={councils} onCreate={handleCreate} onClose={() => setShowAdd(false)} saving={saving} />}

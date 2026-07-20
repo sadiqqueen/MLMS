@@ -9,6 +9,11 @@ const { allowRoles } = require('../middleware/roles');
 const { trackFilter } = require('../utils/track');
 const auditLog       = require('../middleware/auditLogger');
 const Specialty      = require('../models/Specialty');
+const Program        = require('../models/Program');
+const User           = require('../models/User');
+const Rotation       = require('../models/Rotation');
+const Hospital       = require('../models/Hospital');
+const Distribution   = require('../models/Distribution');
 
 // Any authenticated user may list specialties (needed for dropdowns)
 const READ_ROLES  = ['super_admin', 'secretary', 'dio', 'supervisor', 'trainee', 'president', 'program_director', 'data_analyzer'];
@@ -221,20 +226,45 @@ router.post('/:id/upload-eval5', auth, allowRoles(...WRITE_ROLES), upload.single
   uploadSpecialtyPdf(req, res, 'evaluationPdf5');
 });
 
-// DELETE /api/specialties/:id — soft delete (super_admin only)
+// DELETE /api/specialties/:id — PERMANENT hard delete (super_admin only).
+// Blocked (409, no mutation) when anything still references the specialty, so the
+// delete can never orphan a program, trainee, PD, rotation, distribution, or a
+// training-center's per-specialty settings.
 router.delete('/:id',
   auth,
   allowRoles('super_admin'),
-  auditLog('deactivate_specialty', 'Specialty'),
+  auditLog('delete_specialty', 'Specialty'),
   async (req, res) => {
     try {
-      const specialty = await Specialty.findByIdAndUpdate(
-        req.params.id,
-        { isActive: false },
-        { new: true }
-      );
+      const specialty = await Specialty.findById(req.params.id).select('name');
       if (!specialty) return res.status(404).json({ message: 'Specialty not found' });
-      res.json({ success: true, message: 'Specialty deactivated', data: specialty });
+
+      const id = req.params.id;
+      const [programs, users, rotations, distributions, centers] = await Promise.all([
+        Program.countDocuments({ specialtyId: id }),
+        User.countDocuments({ specialtyId: id }),
+        Rotation.countDocuments({ specialtyId: id }),
+        Distribution.countDocuments({ specialtyId: id }),
+        Hospital.countDocuments({ 'specialtySettings.specialtyId': id }),
+      ]);
+
+      const blockers = {};
+      if (programs)      blockers.programs = programs;
+      if (users)         blockers.accounts = users;
+      if (rotations)     blockers.rotations = rotations;
+      if (distributions) blockers.distributions = distributions;
+      if (centers)       blockers.trainingCenters = centers;
+
+      if (Object.keys(blockers).length) {
+        const parts = Object.entries(blockers).map(([k, n]) => `${n} ${k}`);
+        return res.status(409).json({
+          message: `Cannot delete “${specialty.name}” — it is still referenced by ${parts.join(', ')}. Reassign or remove those first.`,
+          blockers,
+        });
+      }
+
+      await Specialty.findByIdAndDelete(id);
+      res.json({ success: true, message: 'Specialty permanently deleted' });
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
