@@ -13,7 +13,7 @@ import Navbar from '../components/Navbar';
 import MtModal from '../components/MtModal';
 import RevealOnScroll from '../components/RevealOnScroll';
 import { MtToastHost, useMtToast } from '../components/MtToast';
-import { IconBook, IconFileText } from '../components/icons';
+import { IconBook, IconFileText, IconDelete } from '../components/icons';
 import api from '../api/axios';
 import { MagnifierIcon } from './devkit';
 import './developer.css';
@@ -129,6 +129,8 @@ export default function AdminSpecialties() {
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState(false);
   const [tplSpecialty, setTplSpecialty] = useState(null);
+  const [delItem, setDelItem] = useState(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -159,6 +161,27 @@ export default function AdminSpecialties() {
       showToast('Specialty added', 'ok');
       setShowAdd(false);
     } catch (err) { showToast(err.response?.data?.message || 'Failed to create specialty', 'dng'); } finally { setSaving(false); }
+  }
+
+  // Delete = soft delete (deactivate) via DELETE /api/specialties/:id (super_admin).
+  // The row stays visible marked Inactive and can be restored.
+  async function handleDelete() {
+    if (!delItem) return;
+    setBusy(true);
+    try {
+      await api.delete(`/api/specialties/${delItem._id}`);
+      setSpecialties((prev) => prev.map((x) => (x._id === delItem._id ? { ...x, isActive: false } : x)));
+      showToast('Specialty deleted', 'ok');
+      setDelItem(null);
+    } catch (err) { showToast(err.response?.data?.message || 'Failed to delete specialty', 'dng'); } finally { setBusy(false); }
+  }
+
+  async function handleRestore(s) {
+    try {
+      await api.patch(`/api/specialties/${s._id}`, { isActive: true });
+      setSpecialties((prev) => prev.map((x) => (x._id === s._id ? { ...x, isActive: true } : x)));
+      showToast('Specialty restored', 'ok');
+    } catch (err) { showToast(err.response?.data?.message || 'Failed to restore specialty', 'dng'); }
   }
 
   const q = search.trim().toLowerCase();
@@ -234,9 +257,18 @@ export default function AdminSpecialties() {
                           <td className="mt-td mt-td--muted">{(cid && hocByCouncil[String(cid)]) || '—'}</td>
                           <td className="mt-td">{s.isActive !== false ? <span className="mt-pill mt-pill--active">Active</span> : <span className="mt-pill mt-pill--rejected">Inactive</span>}</td>
                           <td className="mt-td mt-td--actions">
-                            <button className="mt-btn--small-outline" onClick={() => setTplSpecialty(s)} title="Manage report & evaluation templates">
-                              <IconFileText size={13} /> Templates
-                            </button>
+                            <div className="mt-row-actions">
+                              <button className="mt-btn--small-outline" onClick={() => setTplSpecialty(s)} title="Manage report & evaluation templates">
+                                <IconFileText size={13} /> Templates
+                              </button>
+                              {s.isActive !== false ? (
+                                <button className="mt-icon-action dev-act-danger" onClick={() => setDelItem(s)} title="Delete specialty" aria-label={`Delete ${s.name}`}>
+                                  <IconDelete size={15} />
+                                </button>
+                              ) : (
+                                <button className="mt-btn--small-outline" onClick={() => handleRestore(s)} title="Restore specialty">Restore</button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -256,6 +288,17 @@ export default function AdminSpecialties() {
           </div>
         )}
 
+        {delItem && (
+          <MtModal open title="Delete specialty" sub={`${delItem.type === 'main' ? 'Specialty' : 'Sub-specialty'} · ${delItem.name}`} meta="Developer" onClose={() => setDelItem(null)}
+            footer={<>
+              <button type="button" className="mt-btn--cancel" onClick={() => setDelItem(null)}>Cancel</button>
+              <button type="button" className="mt-btn mt-btn--danger" onClick={handleDelete} disabled={busy}>{busy ? 'Deleting…' : 'Delete'}</button>
+            </>}>
+            <div className="mt-banner" style={{ background: 'var(--danger-bg)', borderInlineStartColor: 'var(--danger)', color: 'var(--danger-fg)' }}>
+              This deactivates “{delItem.name}”. It stays in the registry (existing programs and trainees keep their link) but is hidden from new assignments. You can restore it here.
+            </div>
+          </MtModal>
+        )}
         {showAdd && <AddSpecialtyModal councils={councils} onCreate={handleCreate} onClose={() => setShowAdd(false)} saving={saving} />}
         {tplSpecialty && (
           <TemplatesModal specialty={tplSpecialty} onClose={() => setTplSpecialty(null)} showToast={showToast}
