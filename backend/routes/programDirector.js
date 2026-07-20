@@ -203,9 +203,10 @@ router.get('/stats', auth, allowRoles(...PD_READ), async (req, res) => {
   try {
     const pdId = effectivePdId(req);
     const program = await Program.findOne({ programDirectorId: pdId, isActive: { $ne: false } })
-      .populate('trainingCenterId', 'name city accreditationNumber countryId')
+      .populate({ path: 'trainingCenterId', select: 'name city accreditationNumber countryId dioId', populate: { path: 'dioId', select: 'name' } })
       .populate('specialtyId', 'name')
-      .populate('programDirectorId', 'name');
+      .populate('programDirectorId', 'name')
+      .populate('subProgramDirectorId', 'name');
     if (!program) return res.status(403).json({ success: false, message: 'No program assigned' });
 
     const info = await requirePdSpecialty(req, res);

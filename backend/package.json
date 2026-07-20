@@ -10,6 +10,7 @@
     "seed:superadmin": "node seeds/superadmin.seed.js",
     "seed:feedback": "node seeds/feedback.seed.js",
     "seed:all": "npm run seed:specialties && npm run seed:superadmin",
+    "seed:councils": "node migrations/seedCouncilsSpecialties.js",
     "migrate:legacy-roles": "node migrations/migrateLegacyRoles.js",
     "security-events": "node scripts/showSecurityEvents.js",
     "check:exports": "node scripts/assertExportSafety.js"

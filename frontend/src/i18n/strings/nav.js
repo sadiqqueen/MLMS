@@ -51,13 +51,13 @@ const nav = {
 
     // trainee
     'nav.trainee.timeline':              'الجدول الزمني',
-    'nav.trainee.reports':               'تقاريري',
-    'nav.trainee.grades':                'ملف الإنجاز',
+    'nav.trainee.reports':               'التقارير',
+    'nav.trainee.grades':                'الدرجات',
     'nav.trainee.courses':               'الشهادات والدورات',
     'nav.trainee.logbook':               'سجل الإجراءات',
     'nav.trainee.research':              'الأبحاث والمنشورات',
     'nav.trainee.announcements':         'الإعلانات',
-    'nav.trainee.notifications':         'إشعارات مدير البرنامج',
+    'nav.trainee.notifications':         'الإشعارات',
 
     // president
     'nav.president.dashboard':           'لوحة التحكم',
@@ -70,7 +70,7 @@ const nav = {
 
     // program_director
     'nav.program_director.dashboard':    'لوحة التحكم',
-    'nav.program_director.program':      'البرنامج',
+    'nav.program_director.program':      'برنامجي',
     'nav.program_director.trainees':     'المتدربون',
     'nav.program_director.supervisors':  'المشرفون',
     'nav.program_director.evaluations':  'التقييمات',
@@ -95,7 +95,7 @@ const nav = {
 
     // dio_view (DIO)
     'nav.dio_view.dashboard':            'لوحة التحكم',
-    'nav.dio_view.centers':              'المراكز',
+    'nav.dio_view.centers':              'المراكز التدريبية',
     'nav.dio_view.pds':                  'مدراء البرامج',
     'nav.dio_view.trainees':             'المتدربون',
     'nav.dio_view.trainers':             'المدربون',
@@ -103,7 +103,7 @@ const nav = {
 
     // sub_dio (Sub-DIO)
     'nav.sub_dio.dashboard':             'لوحة التحكم',
-    'nav.sub_dio.centers':               'المراكز',
+    'nav.sub_dio.centers':               'المراكز التدريبية',
     'nav.sub_dio.pds':                   'مدراء البرامج',
     'nav.sub_dio.trainees':              'المتدربون',
     'nav.sub_dio.trainers':              'المدربون',
@@ -111,7 +111,7 @@ const nav = {
 
     // secretary_general
     'nav.secretary_general.dashboard':   'لوحة التحكم',
-    'nav.secretary_general.centers':     'المراكز',
+    'nav.secretary_general.centers':     'المراكز التدريبية',
     'nav.secretary_general.dios':        'DIOs',
     'nav.secretary_general.specialties': 'الاختصاصات',
     'nav.secretary_general.programs':    'البرامج',
@@ -121,7 +121,7 @@ const nav = {
 
     // assistant_secretary
     'nav.assistant_secretary.dashboard':   'لوحة التحكم',
-    'nav.assistant_secretary.centers':     'المراكز',
+    'nav.assistant_secretary.centers':     'المراكز التدريبية',
     'nav.assistant_secretary.dios':        'DIOs',
     'nav.assistant_secretary.specialties': 'الاختصاصات',
     'nav.assistant_secretary.programs':    'البرامج',
@@ -131,9 +131,37 @@ const nav = {
 
     // sub_pd (Sub-PD)
     'nav.sub_pd.dashboard':              'لوحة التحكم',
-    'nav.sub_pd.program':                'البرنامج',
+    'nav.sub_pd.program':                'برنامجي',
     'nav.sub_pd.trainees':               'المتدربون',
     'nav.sub_pd.supervisors':            'المدربون',
+
+    // ── mt- redesign: new nav keys (Agent F) ──
+    'nav.hoc.dashboard':                 'لوحة التحكم',
+    'nav.hoc.centers':                   'المراكز التدريبية',
+    'nav.hoc.programs':                  'البرامج',
+    'nav.central_secretary.dashboard':   'لوحة التحكم',
+    'nav.central_secretary.countries':   'الدول',
+    'nav.central_secretary.centers':     'المراكز التدريبية',
+    'nav.central_secretary.programs':    'البرامج',
+    'nav.data_entry.dashboard':          'لوحة التحكم',
+    'nav.data_entry.programs':           'البرامج',
+    'nav.data_analyzer.countries':       'الدول',
+    'nav.data_analyzer.centers':         'المراكز التدريبية',
+    'nav.data_analyzer.dios':            'DIOs',
+    'nav.data_analyzer.programs':        'البرامج',
+    'nav.data_analyzer.pds':             'مدراء البرامج',
+    'nav.data_analyzer.clerks':          'مدخلو البيانات',
+    'nav.data_analyzer.hocs':            'رؤساء المجالس',
+    'nav.data_analyzer.specialties':     'الاختصاصات',
+    'nav.data_analyzer.central_secretaries': 'السكرتارية المركزية',
+    'nav.data_analyzer.trainees':        'المتدربون',
+    'nav.data_analyzer.pending':         'التغييرات المعلقة',
+    'nav.dio.pd_assignment':             'إسناد مدير البرنامج',
+    'nav.dio.training_centers':          'المراكز التدريبية',
+    'nav.dio_view.odios':                'ODIOs',
+    'nav.sub_dio.odios':                 'ODIOs',
+    'nav.program_director.log_book':     'سجل الإجراءات',
+    'nav.trainee.profile':               'الملف الشخصي',
 
     // toggle aria-labels
     'nav.toggle.theme.dark':             'تفعيل الوضع الداكن',
@@ -184,13 +212,13 @@ const nav = {
 
     // trainee
     'nav.trainee.timeline':              'Timeline',
-    'nav.trainee.reports':               'My Reports',
-    'nav.trainee.grades':                'Portfolio',
-    'nav.trainee.courses':               'Certificates',
+    'nav.trainee.reports':               'Reports',
+    'nav.trainee.grades':                'Grades',
+    'nav.trainee.courses':               'Certificates & Courses',
     'nav.trainee.logbook':               'Log Book',
     'nav.trainee.research':              'Research',
     'nav.trainee.announcements':         'Announcements',
-    'nav.trainee.notifications':         'PD Notifications',
+    'nav.trainee.notifications':         'Notifications',
 
     // president
     'nav.president.dashboard':           'Dashboard',
@@ -203,7 +231,7 @@ const nav = {
 
     // program_director
     'nav.program_director.dashboard':    'Dashboard',
-    'nav.program_director.program':      'Program',
+    'nav.program_director.program':      'My Program',
     'nav.program_director.trainees':     'Trainees',
     'nav.program_director.supervisors':  'Supervisors',
     'nav.program_director.evaluations':  'Evaluations',
@@ -228,23 +256,23 @@ const nav = {
 
     // dio_view (DIO)
     'nav.dio_view.dashboard':            'Dashboard',
-    'nav.dio_view.centers':              'Centers',
-    'nav.dio_view.pds':                  'Program Directors',
+    'nav.dio_view.centers':              'Training Centers',
+    'nav.dio_view.pds':                  'PDs',
     'nav.dio_view.trainees':             'Trainees',
     'nav.dio_view.trainers':             'Trainers',
     'nav.dio_view.certificates':         'Certificates',
 
     // sub_dio (Sub-DIO)
     'nav.sub_dio.dashboard':             'Dashboard',
-    'nav.sub_dio.centers':               'Centers',
-    'nav.sub_dio.pds':                   'Program Directors',
+    'nav.sub_dio.centers':               'Training Centers',
+    'nav.sub_dio.pds':                   'PDs',
     'nav.sub_dio.trainees':              'Trainees',
     'nav.sub_dio.trainers':              'Trainers',
     'nav.sub_dio.certificates':          'Certificates',
 
     // secretary_general
     'nav.secretary_general.dashboard':   'Dashboard',
-    'nav.secretary_general.centers':     'Centers',
+    'nav.secretary_general.centers':     'Training Centers',
     'nav.secretary_general.dios':        'DIOs',
     'nav.secretary_general.specialties': 'Specialties',
     'nav.secretary_general.programs':    'Programs',
@@ -254,7 +282,7 @@ const nav = {
 
     // assistant_secretary
     'nav.assistant_secretary.dashboard':   'Dashboard',
-    'nav.assistant_secretary.centers':     'Centers',
+    'nav.assistant_secretary.centers':     'Training Centers',
     'nav.assistant_secretary.dios':        'DIOs',
     'nav.assistant_secretary.specialties': 'Specialties',
     'nav.assistant_secretary.programs':    'Programs',
@@ -264,9 +292,37 @@ const nav = {
 
     // sub_pd (Sub-PD)
     'nav.sub_pd.dashboard':              'Dashboard',
-    'nav.sub_pd.program':                'Program',
+    'nav.sub_pd.program':                'My Program',
     'nav.sub_pd.trainees':               'Trainees',
     'nav.sub_pd.supervisors':            'Trainers',
+
+    // ── mt- redesign: new nav keys (Agent F) ──
+    'nav.hoc.dashboard':                 'Dashboard',
+    'nav.hoc.centers':                   'Training Centers',
+    'nav.hoc.programs':                  'Programs',
+    'nav.central_secretary.dashboard':   'Dashboard',
+    'nav.central_secretary.countries':   'Countries',
+    'nav.central_secretary.centers':     'Training Centers',
+    'nav.central_secretary.programs':    'Programs',
+    'nav.data_entry.dashboard':          'Dashboard',
+    'nav.data_entry.programs':           'Programs',
+    'nav.data_analyzer.countries':       'Countries',
+    'nav.data_analyzer.centers':         'Training Centers',
+    'nav.data_analyzer.dios':            'DIOs',
+    'nav.data_analyzer.programs':        'Programs',
+    'nav.data_analyzer.pds':             'PDs',
+    'nav.data_analyzer.clerks':          'Data Entry Clerks',
+    'nav.data_analyzer.hocs':            'HOCs',
+    'nav.data_analyzer.specialties':     'Specialties',
+    'nav.data_analyzer.central_secretaries': 'Central Secretaries',
+    'nav.data_analyzer.trainees':        'Trainees',
+    'nav.data_analyzer.pending':         'Pending Changes',
+    'nav.dio.pd_assignment':             'PD Assignment',
+    'nav.dio.training_centers':          'Training Centers',
+    'nav.dio_view.odios':                'ODIOs',
+    'nav.sub_dio.odios':                 'ODIOs',
+    'nav.program_director.log_book':     'Log Book',
+    'nav.trainee.profile':               'Profile',
 
     // toggle aria-labels
     'nav.toggle.theme.dark':             'Switch to dark mode',

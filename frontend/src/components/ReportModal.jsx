@@ -27,11 +27,14 @@ const ASR_CRITERIA = [
   'Time Management',
 ];
 
+// Tokenized rating colors (was hardcoded hex): na→muted, below→danger,
+// meets→warning(amber), above→success. Kept as CSS custom-property references so
+// the ASR matrix theming stays consistent in light + dark.
 const RATINGS = [
-  { key:'na',    label:'N/A',            color:'#b2bec3' },
-  { key:'below', label:'Below Standard', color:'#FF4757' },
-  { key:'meets', label:'Meets Standard', color:'#f39c12' },
-  { key:'above', label:'Above Standard', color:'#00B894' },
+  { key:'na',    label:'N/A',            color:'var(--text-2)' },
+  { key:'below', label:'Below Standard', color:'var(--danger)' },
+  { key:'meets', label:'Meets Standard', color:'var(--warning-fg)' },
+  { key:'above', label:'Above Standard', color:'var(--success)' },
 ];
 
 // ── REPORT DETAIL MODAL ────────────────────────────────────────────────────
@@ -268,8 +271,8 @@ export default function ReportModal({ report, student, onClose }) {
         )}
 
         <div className="modal-actions no-print">
-          <button className="btn-secondary" onClick={onClose}>Close</button>
-          <button className="btn-primary" onClick={() => window.print()}>🖨 Print as PDF</button>
+          <button className="mt-btn--cancel" onClick={onClose}>Close</button>
+          <button className="mt-btn" onClick={() => window.print()}>Print as PDF</button>
         </div>
 
       </div>

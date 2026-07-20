@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import useBasePath from '../hooks/useBasePath';
 import Navbar from '../components/Navbar';
-import Toast from '../components/Toast';
+import { useMtToast, MtToastHost } from '../components/MtToast';
+import MtModal from '../components/MtModal';
+import StatCard from '../components/StatCard';
 import api from '../api/axios';
 import Sk from '../components/Skeleton';
 import { IconPencil, IconPlus, IconPrinter, IconBack } from '../components/icons';
 import { roleLabel } from '../config/roles';
+import './dio.css';
 
 const API_BASE = '';
 const REPORT_TYPES = ['weekly', 'monthly', 'final'];
@@ -38,36 +41,34 @@ function nameOf(value) {
   return value?.name || '-';
 }
 
-function StatCard({ label, value, tone = 'blue' }) {
-  const colors = {
-    blue: ['var(--info-bg)', 'var(--info-fg)'],
-    amber: ['var(--warning-bg)', 'var(--warning-fg)'],
-    green: ['var(--success-bg)', 'var(--success-fg)'],
-    red: ['var(--danger-bg)', 'var(--danger-fg)'],
-  }[tone] || ['#EEF2FF', '#3730A3'];
-
-  return (
-    <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:'16px 18px', display:'flex', alignItems:'center', gap:12 }}>
-      <div style={{ width:44, height:44, borderRadius:10, background:colors[0], color:colors[1], display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:18 }}>
-        {value}
-      </div>
-      <div style={{ fontSize:13, color:'var(--text-2)', fontWeight:600 }}>{label}</div>
-    </div>
-  );
-}
-
 function InfoCard({ title, rows }) {
   return (
-    <section style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:18 }}>
-      <div style={{ fontSize:14, fontWeight:800, color:'var(--brand-secondary)', marginBottom:12 }}>{title}</div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:'12px 18px' }}>
+    <section className="mt-card">
+      <div className="mt-card-head mt-card-head--tight" style={{ marginBlockEnd: 12 }}>
+        <div className="mt-card-title">{title}</div>
+        <div className="mt-divider" />
+      </div>
+      <div className="dio-kv-grid">
         {rows.map(([label, value]) => (
           <div key={label}>
-            <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:700, textTransform:'uppercase', letterSpacing:'.04em', marginBottom:3 }}>{label}</div>
-            <div style={{ fontSize:13, color:'var(--brand-secondary)', fontWeight:600 }}>{value || '-'}</div>
+            <div className="mt-acct-k">{label}</div>
+            <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{value || '-'}</div>
           </div>
         ))}
       </div>
+    </section>
+  );
+}
+
+function SectionCard({ title, action, children }) {
+  return (
+    <section className="mt-card dio-section">
+      <div className="mt-card-head">
+        <div className="mt-card-title">{title}</div>
+        <div className="mt-divider" />
+        {action}
+      </div>
+      {children}
     </section>
   );
 }
@@ -83,12 +84,6 @@ function EvaluationModal({ trainee, currentRotation, hospital, specialty, onClos
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    const h = e => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [onClose]);
 
   function setField(key, value) {
     setForm(f => ({ ...f, [key]: value }));
@@ -148,58 +143,45 @@ function EvaluationModal({ trainee, currentRotation, hospital, specialty, onClos
   }
 
   return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:2500, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background:'var(--surface)', borderRadius:14, width:'100%', maxWidth:560, boxShadow:'0 20px 60px rgba(0,0,0,.2)', overflow:'hidden' }}>
-        <div style={{ padding:'18px 22px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', gap:12 }}>
-          <div>
-            <div style={{ fontSize:16, fontWeight:800, color:'var(--brand-secondary)' }}>Add Evaluation</div>
-            <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:3 }}>{trainee?.name || 'Trainee'}</div>
-          </div>
-          <button onClick={onClose} style={{ width:30, height:30, borderRadius:'50%', border:'none', background:'var(--surface-2)', color:'var(--text-muted)', cursor:'pointer', fontSize:18 }}>x</button>
+    <MtModal open title="Add Evaluation" sub={trainee?.name || 'Trainee'} onClose={onClose}
+      footer={(
+        <>
+          <button className="mt-btn--cancel" onClick={onClose}>Cancel</button>
+          <button className="mt-btn" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save Evaluation'}</button>
+        </>
+      )}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="mt-field">
+          <label className="mt-label">Evaluation Type</label>
+          <select className="mt-select" value={form.evaluationType} onChange={e => setField('evaluationType', e.target.value)}>
+            {EVAL_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+          </select>
         </div>
-
-        <div style={{ padding:22, display:'flex', flexDirection:'column', gap:16 }}>
-          <div>
-            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'var(--text-2)', marginBottom:7 }}>Evaluation Type</label>
-            <select className="admin-search" style={{ width:'100%', boxSizing:'border-box', height:42 }} value={form.evaluationType} onChange={e => setField('evaluationType', e.target.value)}>
-              {EVAL_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'var(--text-2)', marginBottom:7 }}>Overall Rating</label>
-            <select className="admin-search" style={{ width:'100%', boxSizing:'border-box', height:42 }} value={form.overall} onChange={e => setField('overall', e.target.value)}>
-              {RATING_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-          </div>
-
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:12 }}>
-            {[
-              ['knowledge', 'Knowledge'],
-              ['clinicalSkills', 'Clinical Skills'],
-              ['professionalism', 'Professionalism'],
-            ].map(([key, label]) => (
-              <div key={key}>
-                <label style={{ display:'block', fontSize:12, fontWeight:700, color:'var(--text-2)', marginBottom:7 }}>{label} (0-100)</label>
-                <input className="admin-search" style={{ width:'100%', boxSizing:'border-box', height:42 }} type="number" min="0" max="100" value={form[key]} onChange={e => setField(key, e.target.value)} />
-              </div>
-            ))}
-          </div>
-
-          <div>
-            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'var(--text-2)', marginBottom:7 }}>Comments / Feedback</label>
-            <textarea className="admin-search" style={{ width:'100%', minHeight:100, boxSizing:'border-box', padding:'10px 12px', resize:'vertical', fontFamily:'inherit' }} value={form.comments} onChange={e => setField('comments', e.target.value)} />
-          </div>
-
-          {error && <div style={{ background:'var(--danger-bg)', color:'var(--danger-fg)', borderRadius:8, padding:'10px 12px', fontSize:13 }}>{error}</div>}
-
-          <div style={{ display:'flex', justifyContent:'flex-end', gap:10 }}>
-            <button className="btn-outline" onClick={onClose}>Cancel</button>
-            <button className="btn-purple" onClick={save} disabled={saving}>{saving ? 'Saving...' : 'Save Evaluation'}</button>
-          </div>
+        <div className="mt-field">
+          <label className="mt-label">Overall Rating</label>
+          <select className="mt-select" value={form.overall} onChange={e => setField('overall', e.target.value)}>
+            {RATING_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
         </div>
+        <div className="mt-field-grid">
+          {[
+            ['knowledge', 'Knowledge'],
+            ['clinicalSkills', 'Clinical Skills'],
+            ['professionalism', 'Professionalism'],
+          ].map(([key, label]) => (
+            <div className="mt-field" key={key}>
+              <label className="mt-label">{label} (0-100)</label>
+              <input className="mt-input" type="number" min="0" max="100" value={form[key]} onChange={e => setField(key, e.target.value)} />
+            </div>
+          ))}
+        </div>
+        <div className="mt-field">
+          <label className="mt-label">Comments / Feedback</label>
+          <textarea className="mt-textarea" value={form.comments} onChange={e => setField('comments', e.target.value)} />
+        </div>
+        {error && <div className="mt-banner" style={{ background: 'var(--danger-bg)', borderInlineStartColor: 'var(--danger)', color: 'var(--danger)', margin: 0 }}>{error}</div>}
       </div>
-    </div>
+    </MtModal>
   );
 }
 
@@ -210,12 +192,6 @@ function GradeModal({ report, onClose, onSaved }) {
   const [feedback, setFeedback] = useState(report?.assessorComments || report?.reviewNote || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    const h = e => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [onClose]);
 
   async function save() {
     setError('');
@@ -246,77 +222,64 @@ function GradeModal({ report, onClose, onSaved }) {
   }
 
   return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:2500, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background:'var(--surface)', borderRadius:14, width:'100%', maxWidth:520, boxShadow:'0 20px 60px rgba(0,0,0,.2)', overflow:'hidden' }}>
-        <div style={{ padding:'18px 22px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', gap:12 }}>
-          <div>
-            <div style={{ fontSize:16, fontWeight:800, color:'var(--brand-secondary)' }}>{overriding ? 'Override Grade' : 'Grade Report'}</div>
-            <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:3 }}>{report?.title || 'Report'} - {report?.type}</div>
+    <MtModal open title={overriding ? 'Override Grade' : 'Grade Report'} sub={`${report?.title || 'Report'} · ${report?.type}`} onClose={onClose}
+      footer={(
+        <>
+          <button className="mt-btn--cancel" onClick={onClose}>Cancel</button>
+          <button className="mt-btn" onClick={save} disabled={saving}>{saving ? 'Saving…' : overriding ? 'Override Grade' : 'Save Grade'}</button>
+        </>
+      )}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {overriding && (
+          <div className="mt-banner" style={{ background: 'var(--warning-bg)', borderInlineStartColor: 'var(--accent)', color: 'var(--warning-fg)', margin: 0 }}>
+            You are overriding an existing grade. Previous grade: <strong>{report.grade || '-'}</strong>{report.score !== null && report.score !== undefined ? `, score ${report.score}` : ''}.
           </div>
-          <button onClick={onClose} style={{ width:30, height:30, borderRadius:'50%', border:'none', background:'var(--surface-2)', color:'var(--text-muted)', cursor:'pointer', fontSize:18 }}>x</button>
+        )}
+        <div className="mt-field">
+          <label className="mt-label">Grade</label>
+          <select className="mt-select" value={grade} onChange={e => setGrade(e.target.value)}>
+            <option value="">Select grade…</option>
+            {GRADE_OPTIONS.map(g => <option key={g} value={g}>{g}</option>)}
+          </select>
         </div>
-
-        <div style={{ padding:22, display:'flex', flexDirection:'column', gap:16 }}>
-          {overriding && (
-            <div style={{ background:'var(--warning-bg)', border:'1px solid #FCD34D', color:'var(--warning-fg)', borderRadius:10, padding:'11px 13px', fontSize:13, lineHeight:1.5 }}>
-              You are overriding an existing grade. Previous grade: <strong>{report.grade || '-'}</strong>{report.score !== null && report.score !== undefined ? `, score ${report.score}` : ''}.
-            </div>
-          )}
-
-          <div>
-            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'var(--text-2)', marginBottom:7 }}>Grade</label>
-            <select className="admin-search" style={{ width:'100%', boxSizing:'border-box', height:42 }} value={grade} onChange={e => setGrade(e.target.value)}>
-              <option value="">Select grade...</option>
-              {GRADE_OPTIONS.map(g => <option key={g} value={g}>{g}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'var(--text-2)', marginBottom:7 }}>Score (0-100)</label>
-            <input className="admin-search" style={{ width:'100%', boxSizing:'border-box', height:42 }} type="number" min="0" max="100" value={score} onChange={e => setScore(e.target.value)} />
-          </div>
-
-          <div>
-            <label style={{ display:'block', fontSize:12, fontWeight:700, color:'var(--text-2)', marginBottom:7 }}>Feedback / Comment</label>
-            <textarea className="admin-search" style={{ width:'100%', minHeight:90, boxSizing:'border-box', padding:'10px 12px', resize:'vertical', fontFamily:'inherit' }} value={feedback} onChange={e => setFeedback(e.target.value)} />
-          </div>
-
-          {error && <div style={{ background:'var(--danger-bg)', color:'var(--danger-fg)', borderRadius:8, padding:'10px 12px', fontSize:13 }}>{error}</div>}
-
-          <div style={{ display:'flex', justifyContent:'flex-end', gap:10 }}>
-            <button className="btn-outline" onClick={onClose}>Cancel</button>
-            <button className="btn-purple" onClick={save} disabled={saving}>{saving ? 'Saving...' : overriding ? 'Override Grade' : 'Save Grade'}</button>
-          </div>
+        <div className="mt-field">
+          <label className="mt-label">Score (0-100)</label>
+          <input className="mt-input" type="number" min="0" max="100" value={score} onChange={e => setScore(e.target.value)} />
         </div>
+        <div className="mt-field">
+          <label className="mt-label">Feedback / Comment</label>
+          <textarea className="mt-textarea" value={feedback} onChange={e => setFeedback(e.target.value)} />
+        </div>
+        {error && <div className="mt-banner" style={{ background: 'var(--danger-bg)', borderInlineStartColor: 'var(--danger)', color: 'var(--danger)', margin: 0 }}>{error}</div>}
       </div>
-    </div>
+    </MtModal>
   );
+}
+
+function FileLink({ url }) {
+  return url
+    ? <a href={`${API_BASE}${url}`} target="_blank" rel="noreferrer" style={{ color: 'var(--brand-primary)', fontWeight: 600, fontSize: 12 }}>Open</a>
+    : <span className="mt-td--muted">-</span>;
 }
 
 function ReportRow({ report, onGrade }) {
   const graded = isGraded(report);
   return (
     <tr>
-      <td>
-        <div style={{ fontWeight:700, color:'var(--brand-secondary)' }}>{report.title || '-'}</div>
-        <div style={{ fontSize:11, color:'var(--text-muted)' }}>{report.type} report</div>
+      <td className="mt-td mt-td--name">
+        <div>{report.title || '-'}</div>
+        <div className="mt-acct-id">{report.type} report</div>
       </td>
-      <td>{fmtDate(report.date || report.createdAt)}</td>
-      <td>{nameOf(report.hospital)}</td>
-      <td>
-        <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:graded ? 'var(--success-bg)' : 'var(--warning-bg)', color:graded ? 'var(--success-fg)' : 'var(--warning-fg)' }}>
-          {graded ? 'Graded' : 'Ungraded'}
-        </span>
-      </td>
-      <td>{report.grade || '-'}</td>
-      <td>{report.score ?? '-'}</td>
-      <td>{report.gradedBy?.name || '-'}</td>
-      <td>{report.gradedByRole || report.gradedBy?.role || '-'}</td>
-      <td>
-        {report.fileUrl ? <a href={`${API_BASE}${report.fileUrl}`} target="_blank" rel="noreferrer" style={{ color:'var(--link)', fontWeight:700, fontSize:12 }}>Open</a> : <span style={{ color:'var(--text-muted)' }}>-</span>}
-      </td>
-      <td>
-        <button className={graded ? 'btn-action edit' : 'btn-purple'} style={{ fontSize:12, padding:graded ? undefined : '6px 12px' }} onClick={() => onGrade(report)}>
+      <td className="mt-td mt-td--mono">{fmtDate(report.date || report.createdAt)}</td>
+      <td className="mt-td mt-td--muted">{nameOf(report.hospital)}</td>
+      <td className="mt-td"><span className={`mt-pill ${graded ? 'mt-pill--active' : 'mt-pill--warn'}`}>{graded ? 'Graded' : 'Ungraded'}</span></td>
+      <td className="mt-td">{report.grade || '-'}</td>
+      <td className="mt-td">{report.score ?? '-'}</td>
+      <td className="mt-td mt-td--muted">{report.gradedBy?.name || '-'}</td>
+      <td className="mt-td mt-td--muted">{report.gradedByRole || report.gradedBy?.role || '-'}</td>
+      <td className="mt-td"><FileLink url={report.fileUrl} /></td>
+      <td className="mt-td">
+        <button className={graded ? 'mt-btn--small-outline' : 'mt-btn mt-btn--small'} onClick={() => onGrade(report)}>
           {graded ? 'Override' : 'Grade'}
         </button>
       </td>
@@ -326,71 +289,58 @@ function ReportRow({ report, onGrade }) {
 
 function ReportsTable({ title, reports, onGrade }) {
   return (
-    <section className="admin-card">
-      <div className="admin-card-header">
-        <div className="admin-card-title">{title}</div>
-      </div>
-      <div className="admin-table-wrap">
-        <table className="admin-table">
+    <SectionCard title={title}>
+      <div className="mt-table-wrap">
+        <table className="mt-table">
           <thead>
             <tr>
-              <th>Report</th><th>Submitted</th><th>Hospital</th><th>Status</th><th>Grade</th><th>Score</th><th>Graded By</th><th>Role</th><th>File</th><th>Action</th>
+              {['Report', 'Submitted', 'Hospital', 'Status', 'Grade', 'Score', 'Graded By', 'Role', 'File', 'Action'].map(h => <th key={h} className="mt-th">{h}</th>)}
             </tr>
           </thead>
           <tbody>
             {reports.length === 0 ? (
-              <tr><td colSpan={10} className="admin-empty">No reports in this section</td></tr>
+              <tr><td colSpan={10} className="mt-td mt-td--muted" style={{ textAlign: 'center', padding: 28 }}>No reports in this section</td></tr>
             ) : reports.map(r => <ReportRow key={r._id} report={r} onGrade={onGrade} />)}
           </tbody>
         </table>
       </div>
-    </section>
+    </SectionCard>
   );
 }
 
 function EvaluationsTable({ evaluations, onAdd }) {
   const rows = safeArr(evaluations);
   return (
-    <section className="admin-card">
-      <div className="admin-card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12 }}>
-        <div className="admin-card-title">Evaluations</div>
-        <button className="btn-purple" style={{ display:'inline-flex', alignItems:'center', gap:6 }} onClick={onAdd}><IconPlus size={15} /> Add Evaluation</button>
-      </div>
-      <div className="admin-table-wrap">
-        <table className="admin-table">
+    <SectionCard title="Evaluations" action={<button className="mt-btn mt-btn--small" onClick={onAdd}><IconPlus size={14} /> Add Evaluation</button>}>
+      <div className="mt-table-wrap">
+        <table className="mt-table">
           <thead>
-            <tr>
-              <th>Date</th><th>Evaluator</th><th>Role</th><th>Type</th><th>Status</th><th>Score</th><th>Grade</th><th>Comments</th>
-            </tr>
+            <tr>{['Date', 'Evaluator', 'Role', 'Type', 'Status', 'Score', 'Grade', 'Comments'].map(h => <th key={h} className="mt-th">{h}</th>)}</tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={8} className="admin-empty">No evaluations found</td></tr>
+              <tr><td colSpan={8} className="mt-td mt-td--muted" style={{ textAlign: 'center', padding: 28 }}>No evaluations found</td></tr>
             ) : rows.map((evaluation, index) => {
               const evaluator = evaluation?.evaluatorId || evaluation?.createdBy || evaluation?.supervisorId || evaluation?.doctor || {};
               const evaluatorRole = evaluation?.evaluatorRole || evaluation?.createdByRole || evaluator?.role || (evaluation?.supervisorId ? 'supervisor' : '');
               const finalized = evaluation?.isFinalized || evaluation?.status === 'completed';
               return (
                 <tr key={evaluation?._id || index}>
-                  <td>{fmtDate(evaluation?.sentToTraineeAt || evaluation?.createdAt)}</td>
-                  <td>{evaluator?.name || '-'}</td>
-                  <td>{roleLabel(evaluatorRole)}</td>
-                  <td>{evaluation?.evaluationType || evaluation?.type || '-'}</td>
-                  <td>
-                    <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:finalized ? 'var(--success-bg)' : 'var(--warning-bg)', color:finalized ? 'var(--success-fg)' : 'var(--warning-fg)' }}>
-                      {finalized ? 'Finalized' : 'Pending'}
-                    </span>
-                  </td>
-                  <td>{evaluation?.totalScore ?? '-'}</td>
-                  <td>{evaluation?.grade || evaluation?.scores?.overall || '-'}</td>
-                  <td style={{ maxWidth:260 }}>{evaluation?.comments || evaluation?.notes || '-'}</td>
+                  <td className="mt-td mt-td--mono">{fmtDate(evaluation?.sentToTraineeAt || evaluation?.createdAt)}</td>
+                  <td className="mt-td">{evaluator?.name || '-'}</td>
+                  <td className="mt-td mt-td--muted">{roleLabel(evaluatorRole)}</td>
+                  <td className="mt-td">{evaluation?.evaluationType || evaluation?.type || '-'}</td>
+                  <td className="mt-td"><span className={`mt-pill ${finalized ? 'mt-pill--active' : 'mt-pill--warn'}`}>{finalized ? 'Finalized' : 'Pending'}</span></td>
+                  <td className="mt-td">{evaluation?.totalScore ?? '-'}</td>
+                  <td className="mt-td">{evaluation?.grade || evaluation?.scores?.overall || '-'}</td>
+                  <td className="mt-td mt-td--muted" style={{ maxWidth: 260 }}>{evaluation?.comments || evaluation?.notes || '-'}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
-    </section>
+    </SectionCard>
   );
 }
 
@@ -399,44 +349,34 @@ function CertificatesTable({ certificates }) {
   const navigate = useNavigate();
   const bp = useBasePath();
   return (
-    <section className="admin-card">
-      <div className="admin-card-header">
-        <div className="admin-card-title">Certificates</div>
-      </div>
-      <div className="admin-table-wrap">
-        <table className="admin-table">
+    <SectionCard title="Certificates">
+      <div className="mt-table-wrap">
+        <table className="mt-table">
           <thead>
-            <tr>
-              <th>Type</th><th>Issue Date</th><th>Hospital</th><th>Status</th><th>Issued By</th><th>Notes</th><th>Action</th>
-            </tr>
+            <tr>{['Type', 'Issue Date', 'Hospital', 'Status', 'Issued By', 'Notes', 'Action'].map(h => <th key={h} className="mt-th">{h}</th>)}</tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={7} className="admin-empty">No certificates found</td></tr>
+              <tr><td colSpan={7} className="mt-td mt-td--muted" style={{ textAlign: 'center', padding: 28 }}>No certificates found</td></tr>
             ) : rows.map((certificate, index) => {
               const revoked = !!certificate?.revokedAt;
               return (
                 <tr key={certificate?._id || index} style={{ opacity: revoked ? 0.65 : 1 }}>
-                  <td>{certificate?.type || 'Completion'}</td>
-                  <td>{fmtDate(certificate?.issueDate || certificate?.issuedAt || certificate?.createdAt)}</td>
-                  <td>{certificate?.hospital?.name || '-'}</td>
-                  <td>
-                    <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:revoked ? 'var(--danger-bg)' : 'var(--success-bg)', color:revoked ? 'var(--danger-fg)' : 'var(--success-fg)' }}>
+                  <td className="mt-td">{certificate?.type || 'Completion'}</td>
+                  <td className="mt-td mt-td--mono">{fmtDate(certificate?.issueDate || certificate?.issuedAt || certificate?.createdAt)}</td>
+                  <td className="mt-td mt-td--muted">{certificate?.hospital?.name || '-'}</td>
+                  <td className="mt-td">
+                    <span className={`mt-pill ${revoked ? 'mt-pill--rejected' : 'mt-pill--active'}`}>
                       {revoked ? `Revoked ${fmtDate(certificate.revokedAt)}` : 'Valid'}
                     </span>
                   </td>
-                  <td>{certificate?.issuedBy?.name || '-'}</td>
-                  <td style={{ maxWidth:200 }}>{certificate?.notes || '-'}</td>
-                  <td>
+                  <td className="mt-td mt-td--muted">{certificate?.issuedBy?.name || '-'}</td>
+                  <td className="mt-td mt-td--muted" style={{ maxWidth: 200 }}>{certificate?.notes || '-'}</td>
+                  <td className="mt-td">
                     {!revoked && certificate?._id && (
-                      <button
-                        className="btn-action edit"
-                        style={{ fontSize:11, background:'var(--warning-bg)', color:'var(--warning-fg)', width:'auto', padding:'0 10px', display:'inline-flex', alignItems:'center', gap:5 }}
-                        title="Print Certificate"
-                        aria-label="Print Certificate"
-                        onClick={() => navigate(bp + `/dio/certificates/${certificate._id}/print`)}
-                      >
-                        <IconPrinter size={13} /> Print Certificate
+                      <button className="mt-btn--small-outline" title="Print Certificate" aria-label="Print Certificate"
+                        onClick={() => navigate(bp + `/dio/certificates/${certificate._id}/print`)}>
+                        <IconPrinter size={13} /> Print
                       </button>
                     )}
                   </td>
@@ -446,7 +386,7 @@ function CertificatesTable({ certificates }) {
           </tbody>
         </table>
       </div>
-    </section>
+    </SectionCard>
   );
 }
 
@@ -454,37 +394,28 @@ function CertificatesTable({ certificates }) {
 function CoursesTable({ courses }) {
   const rows = safeArr(courses);
   return (
-    <section className="admin-card">
-      <div className="admin-card-header">
-        <div className="admin-card-title">Courses & Certificates (uploaded by trainee)</div>
-      </div>
-      <div className="admin-table-wrap">
-        <table className="admin-table">
+    <SectionCard title="Courses & Certificates (uploaded by trainee)">
+      <div className="mt-table-wrap">
+        <table className="mt-table">
           <thead>
-            <tr>
-              <th>Title</th><th>Type</th><th>Issuer</th><th>Date</th><th>File</th>
-            </tr>
+            <tr>{['Title', 'Type', 'Issuer', 'Date', 'File'].map(h => <th key={h} className="mt-th">{h}</th>)}</tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={5} className="admin-empty">No uploaded courses or certificates</td></tr>
+              <tr><td colSpan={5} className="mt-td mt-td--muted" style={{ textAlign: 'center', padding: 28 }}>No uploaded courses or certificates</td></tr>
             ) : rows.map((c, index) => (
               <tr key={c?._id || index}>
-                <td style={{ fontWeight:700, color:'var(--brand-secondary)' }}>{c?.title || '-'}</td>
-                <td>{c?.kind === 'course' ? 'Course' : 'Certificate'}</td>
-                <td>{c?.issuer || '-'}</td>
-                <td>{fmtDate(c?.completedDate || c?.createdAt)}</td>
-                <td>
-                  {c?.fileUrl
-                    ? <a href={`${API_BASE}${c.fileUrl}`} target="_blank" rel="noreferrer" style={{ color:'var(--link)', fontWeight:700, fontSize:12 }}>Open</a>
-                    : <span style={{ color:'var(--text-muted)' }}>-</span>}
-                </td>
+                <td className="mt-td mt-td--name">{c?.title || '-'}</td>
+                <td className="mt-td">{c?.kind === 'course' ? 'Course' : 'Certificate'}</td>
+                <td className="mt-td mt-td--muted">{c?.issuer || '-'}</td>
+                <td className="mt-td mt-td--mono">{fmtDate(c?.completedDate || c?.createdAt)}</td>
+                <td className="mt-td"><FileLink url={c?.fileUrl} /></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-    </section>
+    </SectionCard>
   );
 }
 
@@ -492,136 +423,97 @@ function CoursesTable({ courses }) {
 function PublicationsTable({ publications }) {
   const rows = safeArr(publications);
   return (
-    <section className="admin-card">
-      <div className="admin-card-header">
-        <div className="admin-card-title">Publications (public)</div>
-      </div>
-      <div className="admin-table-wrap">
-        <table className="admin-table">
+    <SectionCard title="Publications (public)">
+      <div className="mt-table-wrap">
+        <table className="mt-table">
           <thead>
-            <tr>
-              <th>Title</th><th>Authors</th><th>Journal / Venue</th><th>Date</th><th>File</th>
-            </tr>
+            <tr>{['Title', 'Authors', 'Journal / Venue', 'Date', 'File'].map(h => <th key={h} className="mt-th">{h}</th>)}</tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={5} className="admin-empty">No public publications</td></tr>
+              <tr><td colSpan={5} className="mt-td mt-td--muted" style={{ textAlign: 'center', padding: 28 }}>No public publications</td></tr>
             ) : rows.map((p, index) => (
               <tr key={p?._id || index}>
-                <td style={{ fontWeight:700, color:'var(--brand-secondary)' }}>{p?.title || '-'}</td>
-                <td>{p?.authors || '-'}</td>
-                <td>{p?.journal || '-'}</td>
-                <td>{fmtDate(p?.reviewedAt || p?.createdAt)}</td>
-                <td>
-                  {p?.fileUrl
-                    ? <a href={`${API_BASE}${p.fileUrl}`} target="_blank" rel="noreferrer" style={{ color:'var(--link)', fontWeight:700, fontSize:12 }}>Open</a>
-                    : <span style={{ color:'var(--text-muted)' }}>-</span>}
-                </td>
+                <td className="mt-td mt-td--name">{p?.title || '-'}</td>
+                <td className="mt-td mt-td--muted">{p?.authors || '-'}</td>
+                <td className="mt-td mt-td--muted">{p?.journal || '-'}</td>
+                <td className="mt-td mt-td--mono">{fmtDate(p?.reviewedAt || p?.createdAt)}</td>
+                <td className="mt-td"><FileLink url={p?.fileUrl} /></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-    </section>
+    </SectionCard>
   );
 }
 
 // ── Rotation Timeline section ────────────────────────────────────────────
-const ROT_STATUS_STYLE = {
-  upcoming:  { bg:'var(--info-bg)', color:'var(--info-fg)', label:'Upcoming' },
-  current:   { bg:'var(--success-bg)', color:'var(--success-fg)', label:'Current'  },
-  completed: { bg:'var(--border)', color:'var(--text-2)', label:'Completed'},
-  cancelled: { bg:'var(--danger-bg)', color:'var(--danger-fg)', label:'Cancelled'},
+const ROT_STATUS = {
+  upcoming:  { pill: 'mt-pill--warn',    label: 'Upcoming' },
+  current:   { pill: 'mt-pill--active',  label: 'Current' },
+  completed: { pill: 'mt-pill--neutral', label: 'Completed' },
+  cancelled: { pill: 'mt-pill--rejected',label: 'Cancelled' },
 };
 
-function RotationTimeline({ rotations, traineeId, navigate }) {
+function RotationTimeline({ rotations, navigate }) {
   const bp = useBasePath();
+  const addBtn = (
+    <button className="mt-btn--small-outline" title="Add rotation for this trainee"
+      onClick={() => navigate(bp + '/dio/assignments?tab=rotations&new=1')}>
+      <IconPlus size={14} /> Add Rotation
+    </button>
+  );
+
   if (!rotations || rotations.length === 0) return (
-    <section className="admin-card" style={{ marginBottom:16 }}>
-      <div className="admin-card-header">
-        <div className="admin-card-title">Rotation Timeline</div>
-        <button className="btn-action edit" title="Add rotation"
-          style={{ display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
-          onClick={() => navigate(bp + '/dio/assignments?tab=rotations&new=1')}><IconPlus size={15} /> Add Rotation</button>
-      </div>
-      <div className="admin-empty">No rotations found for this trainee.</div>
-    </section>
+    <SectionCard title="Rotation Timeline" action={addBtn}>
+      <div className="mt-empty"><div className="mt-empty-sub">No rotations found for this trainee.</div></div>
+    </SectionCard>
   );
 
   const buckets = [
-    { key:'current',   label:'Current Rotation',    icon:'🔵', items: rotations.filter(r => r.status === 'current') },
-    { key:'upcoming',  label:'Upcoming Rotations',   icon:'🔜', items: rotations.filter(r => r.status === 'upcoming') },
-    { key:'completed', label:'Completed Rotations',  icon:'✅', items: rotations.filter(r => r.status === 'completed') },
-    { key:'cancelled', label:'Cancelled Rotations',  icon:'🚫', items: rotations.filter(r => r.status === 'cancelled') },
+    { key: 'current',   label: 'Current Rotation',   items: rotations.filter(r => r.status === 'current') },
+    { key: 'upcoming',  label: 'Upcoming Rotations', items: rotations.filter(r => r.status === 'upcoming') },
+    { key: 'completed', label: 'Completed Rotations',items: rotations.filter(r => r.status === 'completed') },
+    { key: 'cancelled', label: 'Cancelled Rotations',items: rotations.filter(r => r.status === 'cancelled') },
   ].filter(b => b.items.length > 0);
 
   return (
-    <section className="admin-card" style={{ marginBottom:16 }}>
-      <div className="admin-card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <div className="admin-card-title">Rotation Timeline</div>
-        <button className="btn-action edit" style={{ fontSize:12, width:'auto', padding:'0 12px', height:36, display:'inline-flex', alignItems:'center', gap:6 }}
-          title="Add rotation for this trainee"
-          onClick={() => navigate(bp + '/dio/assignments?tab=rotations&new=1')}>
-          <IconPlus size={15} /> Add Rotation
-        </button>
-      </div>
-
-      <div style={{ padding:'0 0 4px' }}>
-        {buckets.map(bucket => (
-          <div key={bucket.key} style={{ marginBottom:16 }}>
-            <div style={{ fontSize:12, fontWeight:700, color:'var(--text-2)', textTransform:'uppercase', letterSpacing:'.05em', padding:'0 18px', marginBottom:8 }}>
-              {bucket.icon} {bucket.label} ({bucket.items.length})
-            </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:8, padding:'0 18px' }}>
-              {bucket.items.map(r => {
-                const hospital   = r.hospitalId  || r.hospital   || {};
-                const supervisor = r.supervisorId || r.doctor    || {};
-                const specialty  = r.specialtyId?.name || r.specialty || null;
-                const st         = ROT_STATUS_STYLE[r.status] || { bg:'var(--border-soft)', color:'var(--text-2)', label: r.status };
-                const canCancel  = r.status === 'upcoming';
-                const canEdit    = r.status === 'upcoming' || r.status === 'current';
-                return (
-                  <div key={r._id} style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, border:'1px solid var(--border-soft)', borderRadius:10, padding:'12px 14px', background:'var(--surface-2)', flexWrap:'wrap' }}>
-                    <div style={{ flex:1, minWidth:200 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:5 }}>
-                        <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:20, background:st.bg, color:st.color }}>
-                          {st.label}
-                        </span>
-                        {specialty && (
-                          <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'var(--chip-spec-bg)', color:'var(--chip-spec-fg)' }}>
-                            {specialty}
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontWeight:700, fontSize:14, color:'var(--brand-secondary)', marginBottom:3 }}>
-                        {hospital?.name || '—'}
-                      </div>
-                      <div style={{ fontSize:12, color:'var(--text-2)' }}>
-                        {supervisor?.name ? `Supervisor: ${supervisor.name}` : 'No supervisor assigned'}
-                      </div>
-                      <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
-                        {fmtDate(r.startDate)} → {fmtDate(r.endDate)}
-                      </div>
+    <SectionCard title="Rotation Timeline" action={addBtn}>
+      {buckets.map(bucket => (
+        <div key={bucket.key} style={{ marginBlockEnd: 16 }}>
+          <div className="mt-acct-k" style={{ marginBlockEnd: 8 }}>{bucket.label} ({bucket.items.length})</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {bucket.items.map(r => {
+              const hospital   = r.hospitalId  || r.hospital   || {};
+              const supervisor = r.supervisorId || r.doctor    || {};
+              const specialty  = r.specialtyId?.name || r.specialty || null;
+              const st         = ROT_STATUS[r.status] || { pill: 'mt-pill--neutral', label: r.status };
+              const canEdit    = r.status === 'upcoming' || r.status === 'current';
+              return (
+                <div key={r._id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', background: 'var(--surface-2)', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div className="dio-chip-row" style={{ marginBlockEnd: 5 }}>
+                      <span className={`mt-pill ${st.pill}`}>{st.label}</span>
+                      {specialty && <span className="mt-pill mt-pill--neutral">{specialty}</span>}
                     </div>
-                    {(canEdit || canCancel) && (
-                      <div style={{ display:'flex', gap:5, flexShrink:0 }}>
-                        {canEdit && (
-                          <button className="btn-action edit"
-                            title="Edit rotation" aria-label="Edit rotation"
-                            onClick={() => navigate(bp + '/dio/assignments?tab=rotations')}>
-                            <IconPencil />
-                          </button>
-                        )}
-                      </div>
-                    )}
+                    <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBlockEnd: 3 }}>{hospital?.name || '—'}</div>
+                    <div className="mt-card-sub">{supervisor?.name ? `Supervisor: ${supervisor.name}` : 'No supervisor assigned'}</div>
+                    <div className="mt-card-sub" style={{ marginBlockStart: 2 }}>{fmtDate(r.startDate)} → {fmtDate(r.endDate)}</div>
                   </div>
-                );
-              })}
-            </div>
+                  {canEdit && (
+                    <button className="mt-icon-action" title="Edit rotation" aria-label="Edit rotation"
+                      onClick={() => navigate(bp + '/dio/assignments?tab=rotations')}>
+                      <IconPencil size={15} />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
-    </section>
+        </div>
+      ))}
+    </SectionCard>
   );
 }
 
@@ -637,13 +529,7 @@ export default function DioTraineeDetail() {
   const [error, setError] = useState('');
   const [gradeModal, setGradeModal] = useState(null);
   const [evaluationModal, setEvaluationModal] = useState(false);
-  const [toasts, setToasts] = useState([]);
-
-  function showToast(message, type = 'success') {
-    const toastId = Date.now();
-    setToasts(p => [...p, { id: toastId, message, type }]);
-    setTimeout(() => setToasts(p => p.filter(t => t.id !== toastId)), 3500);
-  }
+  const { toasts, showToast } = useMtToast();
 
   function load(options = {}) {
     const showPageLoading = options.showPageLoading !== false;
@@ -658,7 +544,7 @@ export default function DioTraineeDetail() {
       setData(detailsRes.data?.data || detailsRes.data);
       const rots = Array.isArray(rotationsRes.data) ? rotationsRes.data : [];
       // Sort: current first, then upcoming, then completed, then cancelled
-      const order = { current:0, upcoming:1, completed:2, cancelled:3 };
+      const order = { current: 0, upcoming: 1, completed: 2, cancelled: 3 };
       setRotations([...rots].sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9)));
       setCourses(safeArr(coursesRes.data?.data || coursesRes.data));
       setPublications(safeArr(pubsRes.data?.data || pubsRes.data));
@@ -670,6 +556,7 @@ export default function DioTraineeDetail() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   function handleSaved(updated) {
@@ -688,21 +575,21 @@ export default function DioTraineeDetail() {
         pendingUngradedCount: ungradedReports.length,
       };
     });
-    showToast('Report grade saved');
+    showToast('Report grade saved', 'ok');
   }
 
   async function handleEvaluationSaved() {
     await load({ showPageLoading: false });
-    showToast('Evaluation added successfully');
+    showToast('Evaluation added successfully', 'ok');
   }
 
   if (loading) return (
     <>
       <Navbar />
-      <main className="admin-main">
-        <Sk h={44} r={10} style={{ marginBottom:18 }} />
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:12 }}>
-          {[0, 1, 2].map(i => <Sk key={i} h={90} r={12} />)}
+      <main className="mt-content">
+        <Sk h={44} r={10} style={{ marginBottom: 18 }} />
+        <div className="mt-stat-grid">
+          {[0, 1, 2, 3].map(i => <Sk key={i} h={104} r={12} />)}
         </div>
       </main>
     </>
@@ -711,9 +598,9 @@ export default function DioTraineeDetail() {
   if (error) return (
     <>
       <Navbar />
-      <main className="admin-main">
-        <button className="btn-outline" onClick={() => navigate(bp + '/dio/users')} style={{ marginBottom:16, display:'inline-flex', alignItems:'center', gap:6 }}><IconBack size={15} /> Back</button>
-        <div style={{ background:'var(--danger-bg)', color:'var(--danger-fg)', borderRadius:12, padding:18 }}>{error}</div>
+      <main className="mt-content">
+        <button className="mt-btn--outline" onClick={() => navigate(bp + '/dio/users')} style={{ marginBlockEnd: 16 }}><IconBack size={15} /> Back</button>
+        <div className="mt-banner" style={{ background: 'var(--danger-bg)', borderInlineStartColor: 'var(--danger)', color: 'var(--danger)' }}>{error}</div>
       </main>
     </>
   );
@@ -729,62 +616,43 @@ export default function DioTraineeDetail() {
   return (
     <>
       <Navbar />
-      <main className="admin-main">
+      <main className="mt-content">
         {/* Header row */}
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap', marginBottom:18 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <button className="btn-outline" style={{ display:'inline-flex', alignItems:'center', gap:6 }} onClick={() => navigate(bp + '/dio/users')}><IconBack size={15} /> Back</button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBlockEnd: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button className="mt-btn--outline" onClick={() => navigate(bp + '/dio/users')}><IconBack size={15} /> Back</button>
             <div>
-              <div style={{ fontSize:22, fontWeight:900, color:'var(--brand-secondary)' }}>{trainee.name || 'Trainee'}</div>
-              <div style={{ fontSize:13, color:'var(--text-muted)' }}>{trainee.studentId || '-'} · {trainee.email || '-'}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)' }}>{trainee.name || 'Trainee'}</div>
+              <div className="mt-card-sub">{trainee.studentId || '-'} · {trainee.email || '-'}</div>
             </div>
           </div>
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-            <span style={{ background:ungraded.length ? 'var(--danger-bg)' : 'var(--success-bg)', color:ungraded.length ? 'var(--danger-fg)' : 'var(--success-fg)', borderRadius:20, padding:'6px 12px', fontSize:12, fontWeight:800 }}>
-              {ungraded.length} ungraded report{ungraded.length !== 1 ? 's' : ''}
-            </span>
-          </div>
+          <span className={`mt-pill ${ungraded.length ? 'mt-pill--rejected' : 'mt-pill--active'}`}>
+            {ungraded.length} ungraded report{ungraded.length !== 1 ? 's' : ''}
+          </span>
         </div>
 
         {/* Quick-action buttons */}
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:18, padding:'14px 16px', background:'var(--surface-2)', borderRadius:12, border:'1px solid var(--border)' }}>
-          <div style={{ fontSize:12, fontWeight:700, color:'var(--text-2)', textTransform:'uppercase', letterSpacing:'.05em', alignSelf:'center', marginRight:4 }}>
-            Quick Actions:
-          </div>
-          <button className="btn-action edit"
-            style={{ display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
-            onClick={() => navigate(bp + `/dio/users?edit=${trainee._id}`)}>
-            <IconPencil size={15} /> Edit Trainee
-          </button>
-          <button className="btn-action edit"
-            style={{ background:'var(--info-bg)', color:'var(--info-fg)', display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
-            onClick={() => navigate(bp + '/dio/assignments?tab=distributions&new=1')}>
-            <IconPlus size={15} /> Create Distribution
-          </button>
-          <button className="btn-action edit"
-            style={{ background:'var(--success-bg)', color:'var(--success-fg)', display:'inline-flex', alignItems:'center', gap:6, width:'auto', padding:'0 12px' }}
-            onClick={() => navigate(bp + '/dio/assignments?tab=rotations&new=1')}>
-            <IconPlus size={15} /> Create Rotation
-          </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBlockEnd: 18, padding: '14px 16px', background: 'var(--surface-2)', borderRadius: 12, border: '1px solid var(--border)', alignItems: 'center' }}>
+          <div className="mt-acct-k" style={{ marginInlineEnd: 4 }}>Quick Actions:</div>
+          <button className="mt-btn--small-outline" onClick={() => navigate(bp + `/dio/users?edit=${trainee._id}`)}><IconPencil size={14} /> Edit Trainee</button>
+          <button className="mt-btn--small-outline" onClick={() => navigate(bp + '/dio/assignments?tab=distributions&new=1')}><IconPlus size={14} /> Create Distribution</button>
+          <button className="mt-btn--small-outline" onClick={() => navigate(bp + '/dio/assignments?tab=rotations&new=1')}><IconPlus size={14} /> Create Rotation</button>
           {certificates.length > 0 && !certificates[0]?.revokedAt && (
-            <button className="btn-action edit"
-              style={{ background:'var(--warning-bg)', color:'var(--warning-fg)', width:'auto', padding:'0 12px', display:'inline-flex', alignItems:'center', gap:6 }}
-              title="Print Certificate"
-              aria-label="Print latest certificate"
+            <button className="mt-btn--small-outline" title="Print latest certificate" aria-label="Print latest certificate"
               onClick={() => navigate(bp + `/dio/certificates/${certificates[0]._id}/print`)}>
-              <IconPrinter size={15} /> Print Latest Certificate
+              <IconPrinter size={14} /> Print Latest Certificate
             </button>
           )}
         </div>
 
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(210px, 1fr))', gap:12, marginBottom:16 }}>
-          <StatCard label="All Reports" value={reports.length} />
-          <StatCard label="Ungraded Reports" value={ungraded.length} tone={ungraded.length ? 'red' : 'green'} />
-          <StatCard label="Evaluations" value={data?.evaluationsSummary?.total || 0} tone="amber" />
-          <StatCard label="Valid Certificates" value={data?.certificatesSummary?.valid || 0} tone="green" />
+        <div className="mt-stat-grid" style={{ marginBlockEnd: 16 }}>
+          <StatCard label="All Reports" value={reports.length} icon="doc" />
+          <StatCard label="Ungraded Reports" value={ungraded.length} icon="doc" tone={ungraded.length ? 'dng' : 'ok'} />
+          <StatCard label="Evaluations" value={data?.evaluationsSummary?.total || 0} icon="check" tone="warn" />
+          <StatCard label="Valid Certificates" value={data?.certificatesSummary?.valid || 0} icon="award" />
         </div>
 
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:14, marginBottom:16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14, marginBlockEnd: 16 }}>
           <InfoCard title="Basic Information" rows={[
             ['Name', trainee.name],
             ['Student ID', trainee.studentId],
@@ -803,32 +671,27 @@ export default function DioTraineeDetail() {
         </div>
 
         {/* ─── Rotation Timeline ─────────────────────────────────────── */}
-        <RotationTimeline rotations={rotations} traineeId={trainee._id} navigate={navigate} />
+        <RotationTimeline rotations={rotations} navigate={navigate} />
 
-        <section style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, padding:18, marginBottom:16 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, marginBottom:12 }}>
-            <div>
-              <div style={{ fontSize:16, fontWeight:900, color:'var(--brand-secondary)' }}>Ungraded Reports</div>
-              <div style={{ fontSize:12, color:'var(--text-muted)' }}>DIO can grade weekly, monthly, and final reports from here.</div>
-            </div>
-            <span style={{ fontSize:12, fontWeight:800, background:'var(--warning-bg)', color:'var(--warning-fg)', padding:'4px 10px', borderRadius:20 }}>{ungraded.length} pending</span>
-          </div>
+        <SectionCard title="Ungraded Reports"
+          action={<span className="mt-pill mt-pill--warn">{ungraded.length} pending</span>}>
+          <div className="mt-card-sub" style={{ marginBlockEnd: 12 }}>DIO can grade weekly, monthly, and final reports from here.</div>
           {ungraded.length === 0 ? (
-            <div className="admin-empty">No ungraded reports. Everything is caught up.</div>
+            <div className="mt-empty"><div className="mt-empty-sub">No ungraded reports. Everything is caught up.</div></div>
           ) : (
-            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {ungraded.map(report => (
-                <div key={report._id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, border:'1px solid var(--border-soft)', borderRadius:10, padding:'10px 12px', flexWrap:'wrap' }}>
+                <div key={report._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px', flexWrap: 'wrap' }}>
                   <div>
-                    <div style={{ fontWeight:800, color:'var(--brand-secondary)' }}>{report.title}</div>
-                    <div style={{ fontSize:12, color:'var(--text-muted)' }}>{report.type} - submitted {fmtDate(report.date || report.createdAt)}</div>
+                    <div style={{ fontWeight: 700, color: 'var(--text)' }}>{report.title}</div>
+                    <div className="mt-card-sub">{report.type} · submitted {fmtDate(report.date || report.createdAt)}</div>
                   </div>
-                  <button className="btn-purple" onClick={() => setGradeModal(report)}>Grade</button>
+                  <button className="mt-btn mt-btn--small" onClick={() => setGradeModal(report)}>Grade</button>
                 </div>
               ))}
             </div>
           )}
-        </section>
+        </SectionCard>
 
         <EvaluationsTable evaluations={evaluations} onAdd={() => setEvaluationModal(true)} />
         <CertificatesTable certificates={certificates} />
@@ -861,7 +724,7 @@ export default function DioTraineeDetail() {
             onSaved={handleEvaluationSaved}
           />
         )}
-        <Toast toasts={toasts} />
+        <MtToastHost toasts={toasts} />
       </main>
     </>
   );

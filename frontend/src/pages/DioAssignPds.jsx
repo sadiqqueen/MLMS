@@ -5,15 +5,22 @@
 // specialty across every hospital that offers it, and each specialty may have
 // only one PD (the backend enforces uniqueness → 409, surfaced here as a toast).
 //
-// Rendered as a tab body inside DioAssignments (which owns the Navbar + <main>),
-// so this component renders only its own card — no Navbar/main wrapper.
+// Rendered as a tab body inside DioAssignments and as the standalone ODIO
+// "PD Assignment" screen (DioPdAssignment) — both own the Navbar + <main>, so
+// this component renders only its own card.
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import Toast            from '../components/Toast';
+import { useMtToast, MtToastHost } from '../components/MtToast';
 import SearchableSelect from '../components/SearchableSelect';
 import Sk               from '../components/Skeleton';
+import { IconBriefcase } from '../components/icons';
 import api              from '../api/axios';
+import './dio.css';
 
 const API_BASE = '';
+
+function initialsOf(p) {
+  return p.initials || p.name?.trim()?.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?';
+}
 
 export function ProgramDirectorsPanel() {
   const [pds,         setPds        ] = useState([]);
@@ -21,13 +28,7 @@ export function ProgramDirectorsPanel() {
   const [loading,     setLoading    ] = useState(true);
   const [search,      setSearch     ] = useState('');
   const [savingId,    setSavingId   ] = useState(null);
-  const [toasts,      setToasts     ] = useState([]);
-
-  function showToast(message, type = 'success') {
-    const id = Date.now();
-    setToasts(p => [...p, { id, message, type }]);
-    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3200);
-  }
+  const { toasts, showToast } = useMtToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -38,8 +39,9 @@ export function ProgramDirectorsPanel() {
       ]);
       setPds(pRes.data?.data || pRes.data || []);
       setSpecialties((sRes.data?.data || sRes.data || []).filter(s => s.isActive !== false));
-    } catch { showToast('Failed to load program directors', 'error'); }
+    } catch { showToast('Failed to load program directors', 'dng'); }
     finally { setLoading(false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -72,9 +74,9 @@ export function ProgramDirectorsPanel() {
       const res = await api.patch(`/api/dio/program-directors/${pd._id}`, { specialtyId });
       const saved = res.data?.data || res.data;
       setPds(prev => prev.map(p => p._id === pd._id ? { ...p, ...saved } : p));
-      showToast(`${pd.name} assigned to ${saved.specialtyId?.name || 'specialty'}`);
+      showToast(`${pd.name} assigned to ${saved.specialtyId?.name || 'specialty'}`, 'ok');
     } catch (err) {
-      showToast(err.response?.data?.message || 'Assignment failed', 'error');
+      showToast(err.response?.data?.message || 'Assignment failed', 'dng');
     } finally { setSavingId(null); }
   }
 
@@ -87,68 +89,53 @@ export function ProgramDirectorsPanel() {
   });
 
   if (loading) return (
-    <div className="admin-card">
-      <div className="admin-toolbar"><Sk h={36} r={8} style={{ flex: 1 }} /></div>
-      <div className="admin-table-wrap">
-        <table className="admin-table"><tbody>
-          {[...Array(5)].map((_, i) => (
-            <tr key={i}>
-              <td><Sk w={20} h={13} /></td>
-              <td><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Sk w={36} h={36} r="50%" /><Sk w={140} h={13} /></div></td>
-              <td><Sk w={220} h={34} r={8} /></td>
-            </tr>
-          ))}
-        </tbody></table>
-      </div>
+    <div className="mt-card">
+      <div className="mt-filterbar"><Sk h={38} r={8} style={{ flex: 1 }} /></div>
+      {[...Array(5)].map((_, i) => <Sk key={i} h={44} r={8} style={{ marginBottom: 8 }} />)}
     </div>
   );
 
   return (
-    <div className="admin-card">
-      <div className="admin-toolbar" style={{ flexWrap: 'wrap', gap: 10 }}>
-        <input
-          className="admin-search"
-          style={{ flex: 1, minWidth: 200 }}
-          placeholder="Search by name, email, specialty…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        <span style={{ fontSize: 13, color: 'var(--text-muted, #8B8FA8)', flexShrink: 0 }}>
-          {filtered.length} program director{filtered.length !== 1 ? 's' : ''}
-        </span>
+    <div className="mt-card">
+      <div className="mt-filterbar">
+        <div className="mt-search">
+          <input placeholder="Search by name, email, specialty…" value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <div className="mt-filterbar-spacer" />
+        <span className="mt-count">{filtered.length} program director{filtered.length !== 1 ? 's' : ''}</span>
       </div>
 
-      <div className="admin-table-wrap">
-        <table className="admin-table admin-table--stack">
+      <div className="mt-table-wrap">
+        <table className="mt-table mt-table--stack">
           <thead>
-            <tr><th>#</th><th>Program Director</th><th>Assigned Specialty</th></tr>
+            <tr><th className="mt-th">#</th><th className="mt-th">Program Director</th><th className="mt-th">Assigned Specialty</th></tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={3} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>⭐</div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)' }}>
-                    {pds.length === 0 ? 'No program directors yet.' : 'No match.'}
+                <td className="mt-td" colSpan={3} style={{ padding: 0 }}>
+                  <div className="mt-empty" style={{ margin: 12 }}>
+                    <div className="mt-empty-icon"><IconBriefcase size={22} /></div>
+                    <div className="mt-empty-title">{pds.length === 0 ? 'No program directors yet.' : 'No match.'}</div>
                   </div>
                 </td>
               </tr>
             )}
             {filtered.map((p, i) => (
               <tr key={p._id}>
-                <td style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
-                <td data-label="Program Director">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <td className="mt-td mt-td--muted">{i + 1}</td>
+                <td className="mt-td" data-label="Program Director">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                     {p.photoUrl
-                      ? <img src={`${API_BASE}${p.photoUrl}`} alt="" className="cell-photo" />
-                      : <div className="cell-initials">{p.initials || p.name?.[0] || '?'}</div>}
+                      ? <img src={`${API_BASE}${p.photoUrl}`} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} />
+                      : <span className="mt-acct-avatar" style={{ width: 34, height: 34, fontSize: 13 }}>{initialsOf(p)}</span>}
                     <div>
-                      <strong>{p.name}</strong>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.email}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--text)' }}>{p.name}</div>
+                      {p.email && <div className="mt-acct-id">{p.email}</div>}
                     </div>
                   </div>
                 </td>
-                <td data-label="Assigned Specialty" style={{ minWidth: 240, maxWidth: 320 }}>
+                <td className="mt-td" data-label="Assigned Specialty" style={{ minWidth: 240, maxWidth: 320 }}>
                   <SearchableSelect
                     value={currentValue(p)}
                     onChange={v => assignSpecialty(p, v)}
@@ -163,7 +150,7 @@ export function ProgramDirectorsPanel() {
         </table>
       </div>
 
-      <Toast toasts={toasts} />
+      <MtToastHost toasts={toasts} />
     </div>
   );
 }

@@ -15,7 +15,11 @@ const READ_ROLES  = ['super_admin', 'secretary', 'dio', 'supervisor', 'trainee',
 const WRITE_ROLES = ['super_admin', 'dio'];
 const SPECIALTY_FIELDS = ['name', 'hospitalId', 'secretaryId', 'weeklyReportPdf',
   'monthlyReportPdf', 'finalReportPdf', 'evaluationPdf1', 'evaluationPdf2',
-  'evaluationPdf3', 'evaluationPdf4', 'evaluationPdf5', 'isActive'];
+  'evaluationPdf3', 'evaluationPdf4', 'evaluationPdf5', 'isActive',
+  // Global council-taxonomy fields (super_admin only, enforced below).
+  'nameEn', 'type', 'code', 'councilId'];
+// Fields only super_admin may set (dio is limited to legacy per-hospital specialty fields).
+const SUPER_ADMIN_ONLY_FIELDS = ['nameEn', 'type', 'code', 'councilId'];
 
 function pick(body, allowed) {
   const data = {};
@@ -122,12 +126,18 @@ router.post('/',
   async (req, res) => {
     try {
       const data = pick(req.body, SPECIALTY_FIELDS);
+      if (req.user.role !== 'super_admin') {
+        SUPER_ADMIN_ONLY_FIELDS.forEach(k => delete data[k]);
+      }
       data.track = req.track; // specialty belongs to the creator's training track
       const specialty = await Specialty.create(data);
       res.status(201).json({ success: true, data: specialty });
     } catch (err) {
       if (err.name === 'ValidationError') {
         return res.status(400).json({ message: err.message });
+      }
+      if (err.code === 11000) {
+        return res.status(400).json({ message: 'A specialty with this code already exists.' });
       }
       res.status(500).json({ message: err.message });
     }
@@ -142,14 +152,22 @@ router.patch('/:id',
   async (req, res) => {
     try {
       if (!(await ensureSpecialtyInTrack(req, res, req.params.id))) return;
-      const specialty = await Specialty.findByIdAndUpdate(req.params.id, pick(req.body, SPECIALTY_FIELDS), { new: true, runValidators: true })
+      const updateData = pick(req.body, SPECIALTY_FIELDS);
+      if (req.user.role !== 'super_admin') {
+        SUPER_ADMIN_ONLY_FIELDS.forEach(k => delete updateData[k]);
+      }
+      const specialty = await Specialty.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true })
         .populate('hospitalId',  'name city')
-        .populate('secretaryId', 'name email');
+        .populate('secretaryId', 'name email')
+        .populate('councilId', 'name nameEn');
       if (!specialty) return res.status(404).json({ message: 'Specialty not found' });
       res.json({ success: true, data: specialty });
     } catch (err) {
       if (err.name === 'ValidationError') {
         return res.status(400).json({ message: err.message });
+      }
+      if (err.code === 11000) {
+        return res.status(400).json({ message: 'A specialty with this code already exists.' });
       }
       res.status(500).json({ message: err.message });
     }

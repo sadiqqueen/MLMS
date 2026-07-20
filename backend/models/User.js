@@ -15,6 +15,7 @@ const userSchema = new mongoose.Schema(
       enum: [
         'super_admin', 'secretary', 'dio', 'supervisor', 'trainee', 'president', 'program_director', 'asg1', 'asg2',
         'secretary_general', 'assistant_secretary', 'data_analyzer', 'data_entry', 'central_secretary', 'dio_view', 'sub_dio', 'sub_pd',
+        'hoc',
         'b_secretary', 'b_dio', 'b_supervisor', 'b_trainee', 'b_president', 'b_program_director'
       ],
       required: true,
@@ -62,6 +63,17 @@ const userSchema = new mongoose.Schema(
     pdId:            { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
     universityId:  { type: mongoose.Schema.Types.ObjectId, ref: 'University' },
+
+    // Redesign v2 — Scientific-Council oversight scoping.
+    //  • `hoc` (Head of Council): assigned to ONE ScientificCouncil (councilId);
+    //    read-only oversight of every specialty (main + precise) under it.
+    //  • `central_secretary`: secretaryType 'main' carries a councilId and is
+    //    scoped to that council's specialties (both types); secretaryType
+    //    'precise' has NO councilId and covers every type:'precise' specialty
+    //    across all councils. Legacy central secretaries have both fields null.
+    councilId:     { type: mongoose.Schema.Types.ObjectId, ref: 'ScientificCouncil', default: null, index: true },
+    secretaryType: { type: String, enum: ['main', 'precise'], default: null },
+
     isActive:      { type: Boolean, default: true },
     deletedAt:     { type: Date, default: null },
     lastLogin:     { type: Date },

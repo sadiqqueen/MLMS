@@ -1,0 +1,98 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   W1-Analyzer — page-local layout (co-located, owned by W1-Analyzer).
+   Only NEW mt-az-* classes; never restyles shared mt-/existing classes.
+   Token-only colors, logical properties (RTL-safe), reduced-motion inherited
+   from the global kill-switch + .mt-reveal.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── DASHBOARD: charts grid (dashboards.md §1) ─────────────────────────────── */
+.mt-az-charts {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-block-start: 16px;
+}
+.mt-az-charts > .mt-az-chart-full { grid-column: 1 / -1; }
+@media (max-width: 1100px) { .mt-az-charts { grid-template-columns: 1fr; } }
+
+/* ── DASHBOARD: section heading (Pending changes / Latest decisions) ───────── */
+.mt-az-section {
+  display: flex; align-items: center; gap: 10px;
+  margin-block: 24px 12px; flex-wrap: wrap;
+}
+.mt-az-section-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.mt-az-section-spacer { flex: 1; }
+.mt-az-viewall {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 600; color: var(--brand-primary);
+}
+.mt-az-viewall:hover { text-decoration: underline; }
+
+/* ── DASHBOARD: pending-change preview cards (dashboards.md §5.2) ───────────── */
+.mt-az-preview-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;
+}
+.mt-az-preview {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; box-shadow: var(--card-shadow);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.mt-az-preview-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px 8px; }
+.mt-az-preview-body { padding: 0 16px 12px; font-size: 13px; color: var(--text-2); }
+.mt-az-preview-target { color: var(--text-2); margin-block-end: 10px; }
+.mt-az-preview-target b { color: var(--text); }
+.mt-az-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.mt-az-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+  background: var(--accent-t); color: var(--accent-t-fg); max-width: 100%;
+}
+.mt-az-chip--file {
+  background: var(--surface-2); color: var(--text-2);
+  border: 1px solid var(--border); font-weight: 500;
+}
+.mt-az-chip--file svg { flex: none; }
+.mt-az-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mt-az-preview-foot {
+  display: flex; gap: 8px; padding: 11px 16px;
+  border-block-start: 1px solid var(--border); background: var(--surface-2);
+}
+
+/* Avatar reused across preview + inbox (38px navy, white initials) */
+.mt-az-avatar {
+  width: 38px; height: 38px; flex: none; border-radius: 50%;
+  background: var(--brand-primary); color: #fff; font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+}
+.mt-az-who { min-width: 0; }
+.mt-az-who-name { font-size: 13.5px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mt-az-who-sub { font-size: 11.5px; color: var(--text-2); }
+.mt-az-head-spacer { flex: 1; }
+
+/* ── PENDING CHANGES INBOX (lists_views §6) ────────────────────────────────── */
+.mt-az-inbox { max-width: 920px; display: flex; flex-direction: column; gap: 16px; }
+.mt-az-req {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; box-shadow: var(--card-shadow); overflow: hidden;
+}
+.mt-az-req-head { display: flex; align-items: center; gap: 11px; padding: 15px 18px 10px; flex-wrap: wrap; }
+.mt-az-req-target { padding: 0 18px 10px; font-size: 13px; color: var(--text-2); }
+.mt-az-req-target b { color: var(--text); }
+.mt-az-req-diff { margin: 0 18px 12px; }
+.mt-az-pdf {
+  display: flex; align-items: center; gap: 11px; margin: 0 18px 12px;
+  padding: 10px 13px; border: 1px solid var(--border); border-radius: 9px;
+  background: var(--surface-2);
+}
+.mt-az-pdf-ic {
+  width: 34px; height: 34px; flex: none; border-radius: 8px;
+  background: var(--accent-t); color: var(--accent-hover);
+  display: flex; align-items: center; justify-content: center;
+}
+.mt-az-pdf-meta { min-width: 0; }
+.mt-az-pdf-name { font-size: 12.5px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mt-az-pdf-sub { font-size: 11px; color: var(--text-2); }
+.mt-az-pdf-actions { margin-inline-start: auto; display: flex; gap: 6px; flex: none; }
+.mt-az-req-foot {
+  display: flex; gap: 9px; align-items: center; flex-wrap: wrap;
+  padding: 12px 18px; border-block-start: 1px solid var(--border); background: var(--surface-2);
+}
+.mt-az-note { flex: 1; min-width: 180px; height: 38px; }
+.mt-az-req-decided { padding: 12px 18px; border-block-start: 1px solid var(--border); }

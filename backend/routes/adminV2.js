@@ -23,16 +23,28 @@ const Country        = require('../models/Country');
 const Program        = require('../models/Program');
 const LogBookEntry   = require('../models/LogBookEntry');
 const ChangeRequest  = require('../models/ChangeRequest');
+const ScientificCouncil = require('../models/ScientificCouncil');
 
 const ADMIN = ['super_admin'];
 const USER_CREATE_FIELDS = ['name', 'email', 'password', 'role', 'phone', 'gender',
   'city', 'department', 'specialty', 'year', 'studentId', 'enrolledSince',
   'hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'supervisor',
+  'idNumber', 'countryId', 'councilId', 'secretaryType',
   'isActive', 'locked', 'lockUntil'];
 const USER_UPDATE_FIELDS = ['name', 'email', 'role', 'phone', 'gender',
   'city', 'department', 'specialty', 'year', 'studentId', 'enrolledSince',
   'hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'supervisor',
+  'idNumber', 'countryId', 'councilId', 'secretaryType',
   'isActive', 'locked', 'lockUntil', 'loginAttempts'];
+
+function handleDuplicate(err, res) {
+  if (err && err.code === 11000) {
+    if (err.keyPattern && err.keyPattern.idNumber) { res.status(409).json({ message: 'ID number already exists' }); return true; }
+    if (err.keyPattern && err.keyPattern.email)    { res.status(409).json({ message: 'Email already exists' }); return true; }
+    res.status(409).json({ message: 'Duplicate value' }); return true;
+  }
+  return false;
+}
 const HOSPITAL_FIELDS = ['name', 'city', 'address', 'specialties', 'assignedDoctor',
   'governorate', 'dioId', 'presidentId', 'programDirector', 'supervisors',
   'phone', 'email', 'isActive'];
@@ -156,6 +168,7 @@ router.get('/users', auth, allowRoles(...ADMIN), async (req, res) => {
         .populate('hospitalId',  'name city')
         .populate('hospital',    'name city')
         .populate('specialtyId', 'name')
+        .populate('councilId',   'name nameEn')
         .sort({ createdAt: -1 })
         .skip((pageNumber - 1) * limitNumber)
         .limit(limitNumber),
@@ -467,6 +480,89 @@ router.delete('/users/:id/permanent',
     }
   }
 );
+
+// ── COUNCIL ROLES (HOC / Central Secretary) ─────────────────────────────────
+// Developer-only creation of Head-of-Council and Central-Secretary accounts
+// (RULINGS §12, §17, §37). Both log in by idNumber; email/phone are optional.
+
+// GET /api/admin/councils — the Scientific Councils (the "main specialty" list).
+router.get('/councils', auth, allowRoles(...ADMIN), async (req, res) => {
+  try {
+    const councils = await ScientificCouncil.find().select('name nameEn isDefault').sort({ name: 1 });
+    res.json({ success: true, data: councils });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/admin/hocs — create a Head of Council. One HOC per council is a soft
+// rule (warn, do not block — RULINGS §39).
+router.post('/hocs', auth, allowRoles(...ADMIN), auditLog('create_hoc', 'User'), async (req, res) => {
+  try {
+    const { name, idNumber, phone, email, password, councilId } = req.body;
+    if (!name || !String(name).trim()) return res.status(400).json({ message: 'Name is required' });
+    if (!idNumber || !String(idNumber).trim()) return res.status(400).json({ message: 'ID number is required' });
+    if (!password || String(password).length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    if (!councilId) return res.status(400).json({ message: 'A council is required' });
+    const council = await ScientificCouncil.findById(councilId).select('_id');
+    if (!council) return res.status(400).json({ message: 'Council not found' });
+
+    const clash = await User.findOne({ role: 'hoc', councilId, isActive: { $ne: false } }).select('name');
+
+    const payload = { name: String(name).trim(), idNumber: String(idNumber).trim(), password: String(password), role: 'hoc', councilId };
+    if (email && String(email).trim()) payload.email = String(email).trim();
+    if (phone !== undefined) payload.phone = String(phone).trim();
+
+    const user = new User(payload);
+    await user.save();
+    const saved = await User.findById(user._id).select('-password').populate('councilId', 'name nameEn');
+    res.status(201).json({
+      success: true,
+      data: saved,
+      warning: clash ? `This council already has an active Head of Council (${clash.name}).` : undefined,
+    });
+  } catch (err) {
+    if (handleDuplicate(err, res)) return;
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/admin/central-secretaries — create a Central Secretary.
+//   secretaryType 'main'    → councilId REQUIRED (scoped to that council)
+//   secretaryType 'precise' → no council (covers every precise specialty; the
+//                             single precise CS — warn if one already exists)
+router.post('/central-secretaries', auth, allowRoles(...ADMIN), auditLog('create_central_secretary', 'User'), async (req, res) => {
+  try {
+    const { name, idNumber, phone, email, password, secretaryType, councilId } = req.body;
+    if (!name || !String(name).trim()) return res.status(400).json({ message: 'Name is required' });
+    if (!idNumber || !String(idNumber).trim()) return res.status(400).json({ message: 'ID number is required' });
+    if (!password || String(password).length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' });
+
+    const st = secretaryType === 'precise' ? 'precise' : 'main';
+    const payload = { name: String(name).trim(), idNumber: String(idNumber).trim(), password: String(password), role: 'central_secretary', secretaryType: st };
+    if (email && String(email).trim()) payload.email = String(email).trim();
+    if (phone !== undefined) payload.phone = String(phone).trim();
+
+    let warning;
+    if (st === 'main') {
+      if (!councilId) return res.status(400).json({ message: 'A main central secretary requires a council' });
+      const council = await ScientificCouncil.findById(councilId).select('_id');
+      if (!council) return res.status(400).json({ message: 'Council not found' });
+      payload.councilId = councilId;
+    } else {
+      const clash = await User.findOne({ role: 'central_secretary', secretaryType: 'precise', isActive: { $ne: false } }).select('name');
+      if (clash) warning = `A precise central secretary already exists (${clash.name}).`;
+    }
+
+    const user = new User(payload);
+    await user.save();
+    const saved = await User.findById(user._id).select('-password').populate('councilId', 'name nameEn');
+    res.status(201).json({ success: true, data: saved, warning });
+  } catch (err) {
+    if (handleDuplicate(err, res)) return;
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // ── HOSPITALS ─────────────────────────────────────────────────────────────
 

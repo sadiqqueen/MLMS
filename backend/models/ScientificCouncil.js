@@ -8,6 +8,10 @@ const { normalizeArabic } = require('../utils/arabic');
 const scientificCouncilSchema = new mongoose.Schema(
   {
     name:           { type: String, required: true, trim: true },
+    // English council name (redesign v2). Optional so the Arabic-only
+    // consultant-memo seed rows are never broken; set by the councils/specialties
+    // seed for the 20 real councils.
+    nameEn:         { type: String, default: '' },
     normalizedName: { type: String, required: true, unique: true, index: true },
     isDefault:      { type: Boolean, default: false },
     createdBy:      { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

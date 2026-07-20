@@ -3,6 +3,7 @@
 // (state may have drifted between request and approval).
 const User = require('../models/User');
 const { coerceRoleToTrack } = require('./track');
+const { applyRegistryChange } = require('./registryChanges');
 
 // Confirm a supervisor id is still an active supervisor in the request's
 // specialty/track (state may have drifted since the request was made).
@@ -63,6 +64,14 @@ async function createTraineeFromCapacityRequest(cr) {
 async function applyChangeRequest(cr) {
   if (cr.requestType === 'capacity_exception') {
     return createTraineeFromCapacityRequest(cr);
+  }
+
+  // Redesign clerk/CS registry edits/deletes are reviewed by the Data Analyzer
+  // and applied by the dedicated registry engine (Hospital/Program/Country and
+  // every account role). The legacy DIO-reviewed trainee/supervisor path below
+  // is unchanged.
+  if (cr.reviewerRole === 'data_analyzer') {
+    return applyRegistryChange(cr);
   }
 
   const targetRole = cr.routeKey === 'supervisors' ? 'supervisor' : 'trainee';

@@ -3,7 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import Navbar from '../components/Navbar';
 import Sk from '../components/Skeleton';
-import { IconEye, IconTrash, IconPlus } from '../components/icons';
+import { IconEye, IconTrash, IconPlus, NavIcon } from '../components/icons';
+import './trainee.css';
 
 const API_BASE = '';
 
@@ -15,16 +16,17 @@ function fmt(d) {
 }
 function safeArr(v) { return Array.isArray(v) ? v : []; }
 
+// Approval pipeline labels. "Evaluator" is a neutral label for the reviewing
+// clinician (the underlying data field is still `supervisorId`/`signedByName`).
 const STATUS_STYLE = {
-  pending:             { bg: 'var(--warning-bg)', color: 'var(--warning-fg)', label: 'With supervisor' },
-  supervisor_approved: { bg: 'var(--info-bg)',    color: 'var(--info-fg)',    label: 'Signed — with secretary' },
-  forwarded_dio:       { bg: 'var(--info-bg)',    color: 'var(--info-fg)',    label: 'With DIO' },
-  approved:            { bg: 'var(--success-bg)', color: 'var(--success-fg)', label: 'Published' },
-  rejected:            { bg: 'var(--danger-bg)',  color: 'var(--danger-fg)',  label: 'Not approved' },
+  pending:             { pill: 'mt-pill--warn',     accent: 'var(--accent)',     label: 'With evaluator' },
+  supervisor_approved: { pill: 'mt-pill--capacity', accent: 'var(--brand-primary)', label: 'Signed — with secretary' },
+  forwarded_dio:       { pill: 'mt-pill--capacity', accent: 'var(--brand-primary)', label: 'With DIO' },
+  approved:            { pill: 'mt-pill--active',   accent: 'var(--success)',    label: 'Published' },
+  rejected:            { pill: 'mt-pill--rejected', accent: 'var(--danger)',     label: 'Not approved' },
 };
 
-// Approval progress: which step index a status sits at (for the stepper).
-const STEPS = ['Supervisor', 'Secretary', 'DIO', 'Published'];
+const STEPS = ['Evaluator', 'Secretary', 'DIO', 'Published'];
 function stepIndex(status) {
   if (status === 'pending') return 0;
   if (status === 'supervisor_approved') return 1;
@@ -37,17 +39,13 @@ function Stepper({ status }) {
   const active = stepIndex(status);
   if (active < 0) return null;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBlockStart: 8, flexWrap: 'wrap' }}>
       {STEPS.map((label, i) => {
         const done = i <= active;
         return (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{
-              fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
-              background: done ? 'var(--success-bg)' : 'var(--surface-3)',
-              color: done ? 'var(--success-fg)' : 'var(--text-muted)',
-            }}>{label}</span>
-            {i < STEPS.length - 1 && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>›</span>}
+            <span className={`mt-pill ${done ? 'mt-pill--active' : 'mt-pill--neutral'}`} style={{ fontSize: 10, padding: '2px 8px' }}>{label}</span>
+            {i < STEPS.length - 1 && <span style={{ fontSize: 11, color: 'var(--text-2)' }}>›</span>}
           </div>
         );
       })}
@@ -57,23 +55,15 @@ function Stepper({ status }) {
 
 function StatusBadge({ status }) {
   const s = STATUS_STYLE[status] || STATUS_STYLE.pending;
-  return (
-    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: s.bg, color: s.color }}>
-      {s.label}
-    </span>
-  );
+  return <span className={`mt-pill ${s.pill}`}>{s.label}</span>;
 }
 
 function FileLink({ url }) {
   if (!url) return null;
   return (
-    <a href={`${API_BASE}${url}`} target="_blank" rel="noreferrer"
+    <a href={`${API_BASE}${url}`} target="_blank" rel="noreferrer" className="mt-icon-action"
       title="Open file" aria-label="Open file"
-      style={{
-        width: 34, height: 34, borderRadius: 8, background: 'var(--surface)',
-        border: '1px solid var(--border)', color: 'var(--link)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', flexShrink: 0,
-      }}>
+      style={{ width: 34, height: 34, border: '1px solid var(--border)', background: 'var(--surface)' }}>
       <IconEye size={16} />
     </a>
   );
@@ -145,112 +135,92 @@ export default function Research() {
   const submissions  = items.filter(i => i.status !== 'approved');
   const publications = items.filter(i => i.status === 'approved');
 
-  const fieldStyle = {
-    width: '100%', boxSizing: 'border-box', height: 42, padding: '0 12px',
-    borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)',
-    color: 'var(--text)', fontSize: 14,
-  };
-  const labelStyle = { display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 6 };
-
   return (
     <>
       <Navbar />
-      <main className="main">
-        {/* Submit form */}
-        <div className="card" style={{ marginBottom: 18 }}>
-          <div className="card-title" style={{ marginBottom: 4 }}>Submit a Research</div>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
-            Your submission is sent to your supervisor for approval. Once approved, it moves to Publications,
-            where you choose whether it is Public or Private.
+      <main className="mt-content">
+
+        {/* Register research */}
+        <div className="mt-card" style={{ marginBlockEnd: 18 }}>
+          <div className="mt-card-head mt-card-head--tight">
+            <div style={{ minWidth: 0 }}>
+              <div className="mt-card-title">Register research</div>
+              <div className="mt-card-sub">
+                Your submission is sent to your evaluator for approval. Once approved it moves to Publications, where you choose Public or Private.
+              </div>
+            </div>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, alignItems: 'end' }}>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={labelStyle}>Title *</label>
-              <input style={fieldStyle} value={form.title} placeholder="Research title"
-                onChange={e => setField('title', e.target.value)} />
+          <form onSubmit={handleSubmit} className="mt-field-grid" style={{ marginBlockStart: 16, alignItems: 'end' }}>
+            <div className="mt-field mt-field-full">
+              <label className="mt-label">Title <span className="mt-label-req">*</span></label>
+              <input className="mt-input" value={form.title} placeholder="Research title" onChange={e => setField('title', e.target.value)} />
             </div>
-            <div>
-              <label style={labelStyle}>Authors</label>
-              <input style={fieldStyle} value={form.authors} placeholder="e.g. You, A. Colleague"
-                onChange={e => setField('authors', e.target.value)} />
+            <div className="mt-field">
+              <label className="mt-label">Authors</label>
+              <input className="mt-input" value={form.authors} placeholder="e.g. You, A. Colleague" onChange={e => setField('authors', e.target.value)} />
             </div>
-            <div>
-              <label style={labelStyle}>Journal / Venue</label>
-              <input style={fieldStyle} value={form.journal} placeholder="e.g. BMJ"
-                onChange={e => setField('journal', e.target.value)} />
+            <div className="mt-field">
+              <label className="mt-label">Journal / Venue</label>
+              <input className="mt-input" value={form.journal} placeholder="e.g. BMJ" onChange={e => setField('journal', e.target.value)} />
             </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={labelStyle}>Abstract</label>
-              <textarea style={{ ...fieldStyle, height: 'auto', minHeight: 90, padding: '10px 12px', resize: 'vertical', fontFamily: 'inherit' }}
-                value={form.abstract} placeholder="Short summary (optional)"
-                onChange={e => setField('abstract', e.target.value)} />
+            <div className="mt-field mt-field-full">
+              <label className="mt-label">Abstract</label>
+              <textarea className="mt-textarea" value={form.abstract} placeholder="Short summary (optional)" onChange={e => setField('abstract', e.target.value)} />
             </div>
-            <div>
-              <label style={labelStyle}>File (PDF or image)</label>
-              <input id="research-file-input" style={{ ...fieldStyle, height: 'auto', padding: 8 }} type="file"
+            <div className="mt-field">
+              <label className="mt-label">File (PDF or image)</label>
+              <input id="research-file-input" className="mt-input" style={{ height: 'auto', padding: 8 }} type="file"
                 accept=".pdf,.jpg,.jpeg,.png" onChange={e => setFile(e.target.files?.[0] || null)} />
             </div>
-            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 14 }}>
-              <button type="submit" className="btn-purple" disabled={saving}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <div className="mt-field-full" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <button type="submit" className="mt-btn" disabled={saving}>
                 <IconPlus size={15} /> {saving ? 'Submitting…' : 'Submit for approval'}
               </button>
-              {error && <span style={{ color: 'var(--danger-fg)', fontSize: 13 }}>{error}</span>}
+              {error && <span style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</span>}
             </div>
           </form>
         </div>
 
         {/* My submissions (pending / rejected) */}
-        <div className="card" style={{ marginBottom: 18 }}>
-          <div className="card-title" style={{ marginBottom: 14 }}>
-            My Researches
-            <span className="badge badge-blue" style={{ marginInlineStart: 8 }}>{submissions.length}</span>
+        <div className="mt-card" style={{ marginBlockEnd: 18 }}>
+          <div className="mt-card-head mt-card-head--tight" style={{ marginBlockEnd: 14 }}>
+            <div className="mt-card-title">My researches</div>
+            <span className="mt-count">{submissions.length}</span>
           </div>
           {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {[0, 1].map(i => <Sk key={i} h={64} r={10} />)}
-            </div>
+            <div className="tr-rows">{[0, 1].map(i => <Sk key={i} h={64} r={10} />)}</div>
           ) : submissions.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: 34, marginBottom: 8 }}>🔬</div>
-              <div style={{ fontSize: 14, color: 'var(--text-2)' }}>No researches submitted yet.</div>
+            <div className="mt-empty">
+              <span className="mt-empty-icon"><NavIcon name="flask" size={24} /></span>
+              <div className="mt-empty-title">No researches submitted yet.</div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="tr-rows">
               {submissions.map(r => (
-                <div key={r._id} style={{
-                  border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px',
-                  background: 'var(--surface-2)', borderLeft: `4px solid ${STATUS_STYLE[r.status]?.color || 'var(--accent)'}`,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                    <div style={{ flex: 1, minWidth: 180 }}>
+                <div key={r._id} className="tr-row" style={{ borderInlineStartColor: STATUS_STYLE[r.status]?.accent || 'var(--accent)', flexDirection: 'column', gap: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', width: '100%' }}>
+                    <div className="tr-row-main">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{r.title}</span>
+                        <span className="tr-row-title">{r.title}</span>
                         <StatusBadge status={r.status} />
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                        {r.journal ? `${r.journal} · ` : ''}Submitted {fmt(r.createdAt)}
-                      </div>
+                      <div className="tr-row-meta">{r.journal ? `${r.journal} · ` : ''}Submitted {fmt(r.createdAt)}</div>
                       {r.signedByName && r.status !== 'rejected' && (
-                        <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>
-                          ✍ Signed by {r.signedByName}{r.signedAt ? ` · ${fmt(r.signedAt)}` : ''}
+                        <div style={{ fontSize: 12, color: 'var(--text-2)', marginBlockStart: 4 }}>
+                          Signed by {r.signedByName}{r.signedAt ? ` · ${fmt(r.signedAt)}` : ''}
                         </div>
                       )}
                       <Stepper status={r.status} />
                       {r.status === 'rejected' && r.reviewNote && (
-                        <div style={{ fontSize: 12, color: 'var(--danger-fg)', marginTop: 6 }}>Reason: {r.reviewNote}</div>
+                        <div style={{ fontSize: 12, color: 'var(--danger)', marginBlockStart: 6 }}>Reason: {r.reviewNote}</div>
                       )}
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                       <FileLink url={r.fileUrl} />
-                      <button type="button" onClick={() => handleDelete(r._id)}
+                      <button type="button" className="mt-icon-action mt-icon-action--danger" onClick={() => handleDelete(r._id)}
                         title="Delete" aria-label="Delete"
-                        style={{
-                          width: 34, height: 34, borderRadius: 8, background: 'var(--surface)',
-                          border: '1px solid var(--border)', color: 'var(--danger-fg)', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
+                        style={{ width: 34, height: 34, border: '1px solid var(--border)', background: 'var(--surface)' }}>
                         <IconTrash size={16} />
                       </button>
                     </div>
@@ -262,60 +232,49 @@ export default function Research() {
         </div>
 
         {/* Publications (approved) */}
-        <div className="card">
-          <div className="card-title" style={{ marginBottom: 14 }}>
-            Publications
-            <span className="badge" style={{ marginInlineStart: 8, background: 'var(--success-bg)', color: 'var(--success-fg)' }}>{publications.length}</span>
+        <div className="mt-card">
+          <div className="mt-card-head mt-card-head--tight" style={{ marginBlockEnd: 14 }}>
+            <div className="mt-card-title">Publications</div>
+            <span className="mt-count">{publications.length}</span>
           </div>
           {loading ? (
             <Sk h={64} r={10} />
           ) : publications.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: 34, marginBottom: 8 }}>📚</div>
-              <div style={{ fontSize: 14, color: 'var(--text-2)' }}>Approved researches appear here as publications.</div>
+            <div className="mt-empty">
+              <span className="mt-empty-icon"><NavIcon name="book" size={24} /></span>
+              <div className="mt-empty-title">Approved researches appear here as publications.</div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="tr-rows">
               {publications.map(r => {
                 const isPublic = r.visibility === 'public';
                 return (
-                  <div key={r._id} style={{
-                    border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px',
-                    background: 'var(--surface-2)', borderLeft: '4px solid var(--success-fg)',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1, minWidth: 180 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{r.title}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                          {r.authors ? `${r.authors} · ` : ''}{r.journal || 'Publication'}
-                        </div>
+                  <div key={r._id} className="tr-row" style={{ borderInlineStartColor: 'var(--success)', flexDirection: 'column', gap: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', width: '100%' }}>
+                      <div className="tr-row-main">
+                        <div className="tr-row-title">{r.title}</div>
+                        <div className="tr-row-meta">{r.authors ? `${r.authors} · ` : ''}{r.journal || 'Publication'}</div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                         <FileLink url={r.fileUrl} />
                         <div style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
                           <button type="button" onClick={() => setVisibility(r._id, 'private')}
-                            style={{
-                              padding: '7px 12px', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer',
-                              background: !isPublic ? 'var(--accent)' : 'var(--surface)',
-                              color: !isPublic ? '#fff' : 'var(--text-2)',
-                            }}>
+                            style={{ padding: '7px 12px', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer',
+                              background: !isPublic ? 'var(--accent)' : 'var(--surface)', color: !isPublic ? '#010c37' : 'var(--text-2)' }}>
                             Private
                           </button>
                           <button type="button" onClick={() => setVisibility(r._id, 'public')}
-                            style={{
-                              padding: '7px 12px', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer',
-                              background: isPublic ? 'var(--accent)' : 'var(--surface)',
-                              color: isPublic ? '#fff' : 'var(--text-2)',
-                            }}>
+                            style={{ padding: '7px 12px', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer',
+                              background: isPublic ? 'var(--accent)' : 'var(--surface)', color: isPublic ? '#010c37' : 'var(--text-2)' }}>
                             Public
                           </button>
                         </div>
                       </div>
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-2)', marginBlockStart: 8 }}>
                       {isPublic
-                        ? 'Public — visible to your supervisor, Program Directors and DIOs.'
-                        : 'Private — visible to you and your supervisor only.'}
+                        ? 'Public — visible to your evaluator, Program Directors and DIOs.'
+                        : 'Private — visible to you and your evaluator only.'}
                     </div>
                   </div>
                 );

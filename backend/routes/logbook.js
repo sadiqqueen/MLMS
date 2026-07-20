@@ -7,11 +7,36 @@ const mongoose       = require('mongoose');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const { getAssignedTraineeIds } = require('../utils/assignedTrainees');
+const { coerceRoleToTrack } = require('../utils/track');
+const { specialtyIdsForName, specialtyUserMatch } = require('../utils/pdScope');
+const User           = require('../models/User');
 const LogBookEntry   = require('../models/LogBookEntry');
 const Notification   = require('../models/Notification');
 const AuditLog       = require('../models/AuditLog');
 
 const REVIEW_STATUSES = ['signed_off', 'rejected'];
+// Roles that can view the sign-off queue: the trainee's supervisor (legacy) and
+// the Program Director (redesign, RULINGS §D20). Sub-PD sees it read-only.
+const REVIEW_QUEUE_ROLES = ['supervisor', 'program_director', 'sub_pd'];
+// Roles that can act (sign-off / reject): supervisor + program_director.
+const REVIEW_ACTION_ROLES = ['supervisor', 'program_director'];
+
+// The trainee-id set a reviewer may sign off. A supervisor keeps its assigned
+// trainees (utils/assignedTrainees). A Program Director / Sub-PD oversees a whole
+// specialty, so it reviews every trainee in that specialty across all hospitals.
+async function reviewTraineeIds(req) {
+  if (req.user.role === 'supervisor') {
+    return getAssignedTraineeIds(req.user._id);
+  }
+  const info = await specialtyIdsForName(req.user.specialtyId, req.track);
+  if (!info) return [];
+  const trainees = await User.find({
+    role: coerceRoleToTrack('trainee', req.track),
+    isActive: { $ne: false },
+    ...specialtyUserMatch(info),
+  }).select('_id');
+  return trainees.map(t => String(t._id));
+}
 
 function isValidObjectId(id) {
   return mongoose.Types.ObjectId.isValid(id);
@@ -88,11 +113,12 @@ router.delete('/:id', auth, allowRoles('trainee'), async (req, res) => {
   }
 });
 
-// GET /api/logbook/review?status= — a supervisor's review queue (his trainees).
-// Defaults to status 'pending'; ?status=all lifts the status filter.
-router.get('/review', auth, allowRoles('supervisor'), async (req, res) => {
+// GET /api/logbook/review?status= — the reviewer's queue (supervisor: assigned
+// trainees; PD/Sub-PD: the specialty's trainees). Defaults to status 'pending';
+// ?status=all lifts the status filter.
+router.get('/review', auth, allowRoles(...REVIEW_QUEUE_ROLES), async (req, res) => {
   try {
-    const traineeIds = await getAssignedTraineeIds(req.user._id);
+    const traineeIds = await reviewTraineeIds(req);
     const query = { traineeId: { $in: traineeIds } };
 
     const status = req.query.status || 'pending';
@@ -112,9 +138,9 @@ router.get('/review', auth, allowRoles('supervisor'), async (req, res) => {
   }
 });
 
-// PATCH /api/logbook/:id/review — a supervisor signs off or rejects an entry
-// of one of his assigned trainees.
-router.patch('/:id/review', auth, allowRoles('supervisor'), async (req, res) => {
+// PATCH /api/logbook/:id/review — a supervisor OR Program Director signs off or
+// rejects an entry of a trainee within their scope.
+router.patch('/:id/review', auth, allowRoles(...REVIEW_ACTION_ROLES), async (req, res) => {
   try {
     if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid id' });
     const { status, reviewNote } = req.body;
@@ -125,9 +151,9 @@ router.patch('/:id/review', auth, allowRoles('supervisor'), async (req, res) => 
     const entry = await LogBookEntry.findById(req.params.id);
     if (!entry) return res.status(404).json({ success: false, message: 'Log book entry not found' });
 
-    const assigned = await getAssignedTraineeIds(req.user._id);
-    if (!assigned.includes(String(entry.traineeId))) {
-      return res.status(403).json({ success: false, message: 'This trainee is not assigned to you' });
+    const scoped = await reviewTraineeIds(req);
+    if (!scoped.includes(String(entry.traineeId))) {
+      return res.status(403).json({ success: false, message: 'This trainee is not within your scope' });
     }
 
     entry.status     = status;
@@ -136,14 +162,15 @@ router.patch('/:id/review', auth, allowRoles('supervisor'), async (req, res) => 
     entry.reviewedAt = new Date();
     await entry.save();
 
+    const reviewerLabel = req.user.role === 'program_director' ? 'Program Director' : 'trainer';
     await Notification.create({
       user: entry.traineeId,
       message: status === 'signed_off'
-        ? 'Your log book entry has been signed off by your trainer.'
-        : 'Your log book entry was rejected by your trainer.',
+        ? `Your log book entry has been signed off by your ${reviewerLabel}.`
+        : `Your log book entry was rejected by your ${reviewerLabel}.`,
       category: 'logbook'
     }).catch(() => {});
-    await writeAudit(req, 'trainer_review_logbook', 'LogBookEntry', entry._id, { status });
+    await writeAudit(req, `${req.user.role}_review_logbook`, 'LogBookEntry', entry._id, { status });
 
     res.json({ success: true, data: entry });
   } catch (err) {

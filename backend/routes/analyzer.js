@@ -10,7 +10,11 @@ const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const { coerceRoleToTrack, trackFilter } = require('../utils/track');
 const { decodeOriginalName } = require('../utils/filename');
+const { accreditationExpiry, accreditationStatus } = require('../utils/accreditation');
+const { changeHistoryFor } = require('../utils/changeHistory');
+const { applyChangeRequest } = require('../utils/applyChangeRequest');
 const { runSnapshot, RANGES, SNAPSHOTS_DIR } = require('../jobs/snapshots');
+const { trainingYear } = require('../utils/trainingYear');
 const User           = require('../models/User');
 const Hospital       = require('../models/Hospital');
 const Specialty      = require('../models/Specialty');
@@ -20,10 +24,22 @@ const AuditLog       = require('../models/AuditLog');
 const DataSnapshot   = require('../models/DataSnapshot');
 const AnalysisReport = require('../models/AnalysisReport');
 const Notification   = require('../models/Notification');
+const ChangeRequest  = require('../models/ChangeRequest');
+const Certificate    = require('../models/Certificate');
+const Evaluation     = require('../models/Evaluation');
+const Research       = require('../models/Research');
+const ScientificCouncil = require('../models/ScientificCouncil');
 
 const ANALYZER_ROLES = ['data_analyzer', 'super_admin'];
-// The only account types a data analyzer creates/manages.
+// The only account types the legacy /staff endpoint creates/manages. Creation of
+// clerks/CS is also a developer (adminV2) capability in the redesign (RULINGS §37);
+// this endpoint is retained and now persists CS council/type when present.
 const STAFF_ROLES = ['data_entry', 'central_secretary'];
+
+function withAccreditation(doc) {
+  const o = typeof doc.toObject === 'function' ? doc.toObject() : doc;
+  return { ...o, accreditationExpiry: accreditationExpiry(o), accreditationStatus: accreditationStatus(o) };
+}
 
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -115,7 +131,9 @@ router.get('/stats', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
 
     const [
       trainees, trainers, programDirectors, dios, odios,
-      centers, programs, specialties, countries
+      centers, programs, specialties, countries,
+      clerks, centralSecretaries, hocs,
+      certificates, evaluations, researches, pendingChangeRequests
     ] = await Promise.all([
       User.countDocuments(traineeMatch),
       User.countDocuments(trainerMatch),
@@ -126,11 +144,21 @@ router.get('/stats', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
       Program.countDocuments(programMatch),
       Specialty.countDocuments({ ...trackFilter(req.track), isActive: { $ne: false } }),
       Country.countDocuments({ isActive: { $ne: false } }),
+      User.countDocuments({ role: 'data_entry', isActive: { $ne: false } }),
+      User.countDocuments({ role: 'central_secretary', isActive: { $ne: false } }),
+      User.countDocuments({ role: 'hoc', isActive: { $ne: false } }),
+      Certificate.countDocuments({ ...trackFilter(req.track), revokedAt: null }),
+      Evaluation.countDocuments({ ...trackFilter(req.track) }),
+      Research.countDocuments({}),
+      ChangeRequest.countDocuments({ reviewerRole: 'data_analyzer', status: 'pending' }),
     ]);
 
     res.json({
       success: true,
-      data: { trainees, trainers, programDirectors, dios, odios, centers, programs, specialties, countries }
+      data: {
+        trainees, trainers, programDirectors, dios, odios, centers, programs, specialties, countries,
+        clerks, centralSecretaries, hocs, certificates, evaluations, researches, pendingChangeRequests,
+      }
     });
   } catch (err) {
     console.error('[analyzer] stats:', err.message);
@@ -141,7 +169,7 @@ router.get('/stats', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
 // POST /api/analyzer/staff — create a Data-entry clerk or Central secretary.
 router.post('/staff', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
   try {
-    const { name, idNumber, password, email, phone, role } = req.body;
+    const { name, idNumber, password, email, phone, role, secretaryType, councilId } = req.body;
     if (!name || !String(name).trim()) return res.status(400).json({ message: 'Name is required' });
     if (!idNumber || !String(idNumber).trim()) return res.status(400).json({ message: 'ID number is required' });
     if (!password || String(password).length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' });
@@ -157,6 +185,20 @@ router.post('/staff', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
     };
     if (email && String(email).trim()) payload.email = String(email).trim();
     if (phone !== undefined) payload.phone = String(phone).trim();
+
+    // Central secretary council assignment (RULINGS §40): 'main' → councilId
+    // required; 'precise' → covers every precise specialty, no council.
+    if (role === 'central_secretary') {
+      const st = secretaryType === 'precise' ? 'precise' : 'main';
+      payload.secretaryType = st;
+      if (st === 'main') {
+        if (!councilId) return res.status(400).json({ message: 'A main central secretary requires a council' });
+        if (!(await ScientificCouncil.findById(councilId).select('_id'))) {
+          return res.status(400).json({ message: 'Council not found' });
+        }
+        payload.councilId = councilId;
+      }
+    }
 
     const user = new User(payload);
     await user.save();
@@ -218,6 +260,294 @@ router.patch('/staff/:id', auth, allowRoles(...ANALYZER_ROLES), async (req, res)
     console.error('[analyzer] update staff:', err.message);
     res.status(500).json({ message: err.message });
   }
+});
+
+// ── READ-ONLY REGISTRY LISTS ────────────────────────────────────────────────
+// Every list below is READ-ONLY (RULINGS §37). Creation/edits stay with the
+// developer/clerk/CS; the analyzer only observes + approves.
+
+function cityFilter(city) {
+  return city && String(city).trim()
+    ? new RegExp('^' + escapeRegex(String(city).trim()) + '$', 'i')
+    : null;
+}
+
+// GET /api/analyzer/countries
+router.get('/countries', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const countries = await Country.find({ isActive: { $ne: false } }).sort({ name: 1 });
+    const centerCounts = await Hospital.aggregate([
+      { $match: { isActive: { $ne: false } } },
+      { $group: { _id: '$countryId', count: { $sum: 1 } } },
+    ]);
+    const byCountry = new Map(centerCounts.map(c => [String(c._id), c.count]));
+    const data = countries.map(c => ({ ...c.toObject(), centersCount: byCountry.get(String(c._id)) || 0 }));
+    res.json({ success: true, data });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// GET /api/analyzer/centers?countryId=&city=&search=
+router.get('/centers', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const query = { ...trackFilter(req.track) };
+    if (req.query.countryId) query.countryId = req.query.countryId;
+    const city = cityFilter(req.query.city);
+    if (city) query.city = city;
+    if (req.query.search) query.name = new RegExp(escapeRegex(String(req.query.search).slice(0, 100)), 'i');
+    const centers = await Hospital.find(query)
+      .populate('countryId', 'name code').populate('dioId', 'name').populate('subDioId', 'name')
+      .sort({ name: 1 });
+    const centerIds = centers.map(c => c._id);
+    const [hist, programCounts, traineeCounts] = await Promise.all([
+      changeHistoryFor(centerIds),
+      Program.aggregate([
+        { $match: { trainingCenterId: { $in: centerIds }, isActive: { $ne: false } } },
+        { $group: { _id: '$trainingCenterId', count: { $sum: 1 } } },
+      ]),
+      User.aggregate([
+        { $match: { role: 'trainee', isActive: { $ne: false }, hospitalId: { $in: centerIds } } },
+        { $group: { _id: '$hospitalId', count: { $sum: 1 } } },
+      ]),
+    ]);
+    const progByCenter = new Map(programCounts.map(p => [String(p._id), p.count]));
+    const traineeByCenter = new Map(traineeCounts.map(t => [String(t._id), t.count]));
+    res.json({
+      success: true,
+      data: centers.map(c => ({
+        ...withAccreditation(c),
+        changeHistory: hist[String(c._id)] || [],
+        programsCount: progByCenter.get(String(c._id)) || 0,
+        traineesCount: traineeByCenter.get(String(c._id)) || 0,
+      })),
+    });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// GET /api/analyzer/dios?countryId=&city=&centerId= — DIOs + their ODIOs/Sub-DIOs.
+router.get('/dios', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const dioQuery = { role: 'dio_view', isActive: { $ne: false } };
+    if (req.query.countryId) dioQuery.countryId = req.query.countryId;
+    const city = cityFilter(req.query.city);
+    if (city) dioQuery.city = city;
+    if (req.query.centerId) dioQuery.assignedCenterIds = req.query.centerId;
+
+    const dios = await User.find(dioQuery).select('-password')
+      .populate('countryId', 'name code').populate('assignedCenterIds', 'name').sort({ name: 1 });
+    const dioIds = dios.map(d => d._id);
+    const [odios, subDios] = await Promise.all([
+      User.find({ role: 'dio', dioId: { $in: dioIds }, isActive: { $ne: false } })
+        .select('-password').populate('dioId', 'name').sort({ name: 1 }),
+      User.find({ role: 'sub_dio', dioId: { $in: dioIds }, isActive: { $ne: false } })
+        .select('-password').populate('dioId', 'name').sort({ name: 1 }),
+    ]);
+    const hist = await changeHistoryFor([...dioIds, ...odios.map(o => o._id), ...subDios.map(s => s._id)]);
+    const stamp = u => ({ ...u.toObject(), changeHistory: hist[String(u._id)] || [] });
+    res.json({ success: true, data: { dios: dios.map(stamp), odios: odios.map(stamp), subDios: subDios.map(stamp) } });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// GET /api/analyzer/programs?countryId=&city=&centerId=&specialtyId=&search=
+router.get('/programs', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const query = { isActive: { $ne: false } };
+    if (req.query.specialtyId) query.specialtyId = req.query.specialtyId;
+    if (req.query.centerId) query.trainingCenterId = req.query.centerId;
+    if (req.query.search) query.name = new RegExp(escapeRegex(String(req.query.search).slice(0, 100)), 'i');
+    if (req.query.countryId || cityFilter(req.query.city)) {
+      const cq = {};
+      if (req.query.countryId) cq.countryId = req.query.countryId;
+      const city = cityFilter(req.query.city);
+      if (city) cq.city = city;
+      const centers = await Hospital.find(cq).select('_id');
+      const ids = centers.map(c => c._id);
+      query.trainingCenterId = query.trainingCenterId
+        ? (ids.some(id => String(id) === String(query.trainingCenterId)) ? query.trainingCenterId : null)
+        : { $in: ids };
+    }
+    const programs = await Program.find(query)
+      .populate({ path: 'trainingCenterId', select: 'name accreditationNumber countryId city', populate: { path: 'countryId', select: 'code name' } })
+      .populate('specialtyId', 'name nameEn type code')
+      .populate('programDirectorId', 'name')
+      .populate('subProgramDirectorId', 'name')
+      .sort({ createdAt: -1 });
+    const hist = await changeHistoryFor(programs.map(p => p._id));
+    res.json({ success: true, data: programs.map(p => ({ ...withAccreditation(p), changeHistory: hist[String(p._id)] || [] })) });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// GET /api/analyzer/pds?specialtyId=&programId=&search= — PDs + their Sub-PDs.
+router.get('/pds', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const query = { role: 'program_director', isActive: { $ne: false } };
+    if (req.query.specialtyId) query.specialtyId = req.query.specialtyId;
+    if (req.query.search) query.name = new RegExp(escapeRegex(String(req.query.search).slice(0, 100)), 'i');
+    if (req.query.programId) {
+      const prog = await Program.findById(req.query.programId).select('programDirectorId');
+      query._id = prog ? prog.programDirectorId : null;
+    }
+    const pds = await User.find(query).select('-password').populate('specialtyId', 'name').populate('countryId', 'name code').sort({ name: 1 });
+    const subPds = await User.find({ role: 'sub_pd', pdId: { $in: pds.map(p => p._id) }, isActive: { $ne: false } })
+      .select('-password').populate('specialtyId', 'name').populate('pdId', 'name').sort({ name: 1 });
+    const hist = await changeHistoryFor([...pds.map(p => p._id), ...subPds.map(s => s._id)]);
+    const stamp = u => ({ ...u.toObject(), changeHistory: hist[String(u._id)] || [] });
+    res.json({ success: true, data: { pds: pds.map(stamp), subPds: subPds.map(stamp) } });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// GET /api/analyzer/clerks
+router.get('/clerks', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const query = { role: 'data_entry' };
+    if (req.query.includeInactive !== 'true') query.isActive = { $ne: false };
+    const clerks = await User.find(query).select('-password').sort({ name: 1 });
+    const hist = await changeHistoryFor(clerks.map(c => c._id));
+    res.json({ success: true, data: clerks.map(c => ({ ...c.toObject(), changeHistory: hist[String(c._id)] || [] })) });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// GET /api/analyzer/central-secretaries — CS accounts with council + type.
+router.get('/central-secretaries', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const query = { role: 'central_secretary' };
+    if (req.query.includeInactive !== 'true') query.isActive = { $ne: false };
+    const list = await User.find(query).select('-password').populate('councilId', 'name nameEn').sort({ name: 1 });
+    const hist = await changeHistoryFor(list.map(c => c._id));
+    res.json({ success: true, data: list.map(c => ({ ...c.toObject(), changeHistory: hist[String(c._id)] || [] })) });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// GET /api/analyzer/hocs — Heads of Council with their council.
+router.get('/hocs', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const query = { role: 'hoc' };
+    if (req.query.includeInactive !== 'true') query.isActive = { $ne: false };
+    const list = await User.find(query).select('-password').populate('councilId', 'name nameEn').sort({ name: 1 });
+    const hist = await changeHistoryFor(list.map(h => h._id));
+    res.json({ success: true, data: list.map(h => ({ ...h.toObject(), changeHistory: hist[String(h._id)] || [] })) });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// GET /api/analyzer/specialties?type=&councilId= — with council label.
+router.get('/specialties', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const query = { ...trackFilter(req.track), isActive: { $ne: false } };
+    if (req.query.type) query.type = req.query.type;
+    if (req.query.councilId) query.councilId = req.query.councilId;
+    const specialties = await Specialty.find(query).populate('councilId', 'name nameEn').sort({ type: 1, name: 1 });
+    const programCounts = await Program.aggregate([
+      { $match: { specialtyId: { $in: specialties.map(s => s._id) }, isActive: { $ne: false } } },
+      { $group: { _id: '$specialtyId', count: { $sum: 1 } } },
+    ]);
+    const byId = new Map(programCounts.map(p => [String(p._id), p.count]));
+    const data = specialties.map(s => ({ ...s.toObject(), programsCount: byId.get(String(s._id)) || 0 }));
+    res.json({ success: true, data });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// GET /api/analyzer/trainees?countryId=&city=&centerId=&specialtyId=&programId=&search=
+router.get('/trainees', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const query = { role: coerceRoleToTrack('trainee', req.track), isActive: { $ne: false } };
+    if (req.query.countryId) query.countryId = req.query.countryId;
+    if (req.query.specialtyId) query.specialtyId = req.query.specialtyId;
+    if (req.query.programId) query.programId = req.query.programId;
+    if (req.query.centerId) query.$or = [{ hospitalId: req.query.centerId }, { hospital: req.query.centerId }];
+    const city = cityFilter(req.query.city);
+    if (city) query.city = city;
+    if (req.query.search) {
+      const rx = new RegExp(escapeRegex(String(req.query.search).slice(0, 100)), 'i');
+      const search = [{ name: rx }, { idNumber: rx }, { studentId: rx }];
+      if (query.$or) {
+        query.$and = [{ $or: query.$or }, { $or: search }];
+        delete query.$or;
+      } else {
+        query.$or = search;
+      }
+    }
+    const trainees = await User.find(query).select('-password')
+      .populate('programId', 'name').populate('hospitalId', 'name').populate('specialtyId', 'name')
+      .populate('pdId', 'name').populate('countryId', 'name code').sort({ name: 1 }).limit(1000);
+    const hist = await changeHistoryFor(trainees.map(t => t._id));
+    const data = trainees.map(t => ({ ...t.toObject(), trainingYear: trainingYear(t), changeHistory: hist[String(t._id)] || [] }));
+    res.json({ success: true, data });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ── PENDING CHANGES INBOX (analyzer-reviewed clerk/CS requests) ──────────────
+
+function viewChangeRequest(doc) {
+  const o = doc?.toObject ? doc.toObject() : { ...(doc || {}) };
+  if (o.changes && typeof o.changes === 'object') { const c = { ...o.changes }; delete c.password; o.changes = c; }
+  return o;
+}
+
+// GET /api/analyzer/change-requests?status=pending|approved|rejected
+router.get('/change-requests', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const query = { reviewerRole: 'data_analyzer', ...trackFilter(req.track) };
+    if (req.query.status) query.status = req.query.status;
+    if (req.query.requestType) query.requestType = req.query.requestType;
+    const items = await ChangeRequest.find(query)
+      .populate('requestedBy', 'name role')
+      .populate('reviewedBy', 'name')
+      .populate('hospitalId', 'name')
+      .populate('specialtyId', 'name')
+      .sort({ createdAt: -1 })
+      .limit(300);
+    res.json({ success: true, data: items.map(viewChangeRequest) });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+// PATCH /api/analyzer/change-requests/:id/approve — apply + notify requester.
+router.patch('/change-requests/:id/approve', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const cr = await ChangeRequest.findOne({ _id: req.params.id, status: 'pending', reviewerRole: 'data_analyzer' });
+    if (!cr) return res.status(404).json({ success: false, message: 'Pending request not found' });
+
+    let updated;
+    try {
+      updated = await applyChangeRequest(cr);
+    } catch (applyErr) {
+      return res.status(applyErr.status || 400).json({ success: false, message: applyErr.message });
+    }
+
+    cr.status = 'approved';
+    cr.reviewedBy = req.user._id;
+    cr.reviewedAt = new Date();
+    if (req.body && req.body.note) cr.reviewNote = String(req.body.note);
+    await cr.save();
+    await writeAudit(req, 'analyzer_approve_change_request', 'ChangeRequest', cr._id, { routeKey: cr.routeKey, requestType: cr.requestType, targetId: cr.targetId });
+    await Notification.create({
+      user: cr.requestedBy,
+      message: `Your ${cr.requestType === 'delete' ? 'deletion of' : 'change to'} ${cr.targetLabel || 'a record'} was approved by the Data Analyzer.`,
+      category: 'promotions',
+    }).catch(() => {});
+    res.json({ success: true, data: { changeRequest: viewChangeRequest(cr), target: updated } });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+// PATCH /api/analyzer/change-requests/:id/reject — note REQUIRED.
+router.patch('/change-requests/:id/reject', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const note = req.body && req.body.note;
+    if (!note || !String(note).trim()) return res.status(400).json({ success: false, message: 'A rejection note is required' });
+    const cr = await ChangeRequest.findOne({ _id: req.params.id, status: 'pending', reviewerRole: 'data_analyzer' });
+    if (!cr) return res.status(404).json({ success: false, message: 'Pending request not found' });
+
+    cr.status = 'rejected';
+    cr.reviewedBy = req.user._id;
+    cr.reviewedAt = new Date();
+    cr.reviewNote = String(note).trim();
+    await cr.save();
+    await writeAudit(req, 'analyzer_reject_change_request', 'ChangeRequest', cr._id, { routeKey: cr.routeKey, requestType: cr.requestType });
+    await Notification.create({
+      user: cr.requestedBy,
+      message: `Your ${cr.requestType === 'delete' ? 'deletion of' : 'change to'} ${cr.targetLabel || 'a record'} was rejected by the Data Analyzer.`,
+      category: 'promotions',
+    }).catch(() => {});
+    res.json({ success: true, data: viewChangeRequest(cr) });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 // ── SNAPSHOTS ──────────────────────────────────────────────────────────────

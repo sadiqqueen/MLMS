@@ -1,13 +1,23 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePrefs } from '../context/PrefsContext';
-import { IconSun, IconMoon } from './icons';
+import { IconSun, IconMoon, IconBell, IconCaret, NavIcon } from './icons';
 import api from '../api/axios';
 import NotificationPanel from './NotificationPanel';
 import ProfileDropdown from './ProfileDropdown';
+import Topbar from './Topbar';
 import { APP_NAV_LABEL } from './memo/MemoPrefs';
-import { ROLE_HOME, ROLE_LINKS, baseRole, basePathForRole } from '../config/roles';
+import { ROLE_HOME, ROLE_LINKS, roleLabel, baseRole, basePathForRole } from '../config/roles';
+
+// The 10 redesigned "design roles" render the new mt- top-nav + Topbar shell.
+// Every other role (president, ASG, secretary, supervisor, basic-track b_*) keeps
+// the existing navbar EXACTLY as-is. No role switcher in either shell.
+const MT_SHELL_ROLES = new Set([
+  'super_admin', 'hoc', 'central_secretary', 'data_analyzer', 'data_entry',
+  'secretary_general', 'assistant_secretary', 'dio', 'dio_view', 'sub_dio',
+  'program_director', 'sub_pd', 'trainee',
+]);
 
 // ROLE_LINKS and ROLE_HOME now live in ../config/roles (shared with App.jsx and
 // ProtectedRoute.jsx) and include the Basic-Training (b_*) roles.
@@ -38,17 +48,17 @@ function notifLink(message = '', role) {
         break;
       case 'program_director':
         if (has(/announcement|إعلان/)) return '/announcements';
+        if (has(/log book|logbook|سجل/)) return '/program-director/log-book';
         if (has(/report|grade/))  return '/program-director/reports';
-        if (has(/supervisor/))    return '/program-director/supervisors';
+        if (has(/evaluat|assess/)) return '/program-director/evaluations';
         if (has(/trainee/))       return '/program-director/trainees';
         break;
       case 'dio':
         if (has(/change|approval|promotion|research/)) return '/dio/approvals';
         if (has(/certificat/))  return '/dio/certificates';
         if (has(/rotation/))    return '/dio/rotations';
-        if (has(/distribut/))   return '/dio/distributions';
-        if (has(/supervisor/))  return '/dio/supervisors';
-        if (has(/trainee/))     return '/dio/users';
+        if (has(/assign/))      return '/dio/assignments';
+        if (has(/trainee/))     return '/dio/assignments';
         break;
       case 'secretary':
         if (has(/research|forward|sign/))  return '/secretary/research';
@@ -58,6 +68,9 @@ function notifLink(message = '', role) {
       case 'super_admin':
         if (has(/user|account|locked/))  return '/admin/users';
         if (has(/hospital/))             return '/admin/hospitals';
+        break;
+      case 'data_analyzer':
+        if (has(/change|approval|request|pending/)) return '/analyzer/pending';
         break;
       case 'secretary_general':
       case 'assistant_secretary':
@@ -72,7 +85,7 @@ function notifLink(message = '', role) {
   return dest ? basePathForRole(role) + dest : (ROLE_HOME[role] || '/');
 }
 
-export default function Navbar() {
+export default function Navbar({ title, subtitle }) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme, lang, toggleLang, t } = usePrefs();
   const navigate = useNavigate();
@@ -82,6 +95,11 @@ export default function Navbar() {
   const [showNotif,     setShowNotif    ] = useState(false);
   const [showProfile,   setShowProfile  ] = useState(false);
   const [menuOpen,      setMenuOpen     ] = useState(false);
+
+  // mt- nav overflow ("More"/"Less") — clamp to one row until expanded.
+  const navrowRef = useRef(null);
+  const [navOver, setNavOver] = useState(false);
+  const [navExp,  setNavExp ] = useState(false);
 
   // The consultant-memo feature has its own عربي/EN toggle; its navbar item
   // here follows that choice (persisted as cm-lang).
@@ -119,6 +137,23 @@ export default function Navbar() {
     fetchNotifications();
   }, [fetchNotifications]);
 
+  const links = user ? (ROLE_LINKS[user.role] || []) : [];
+  const isMt = !!user && MT_SHELL_ROLES.has(user.role);
+
+  // Measure the mt- nav row: if links wrap past one row, show the More expander
+  // and clamp the row until expanded (shell_tokens §b).
+  useEffect(() => {
+    if (!isMt) return undefined;
+    const el = navrowRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const measure = () => setNavOver(el.scrollHeight > 52);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    window.addEventListener('resize', measure);
+    return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
+  }, [isMt, links, lang]);
+
   async function handleRead(id) {
     await api.put(`/api/notifications/${id}/read`);
     setNotifications(prev => prev.map(n => n._id === id ? { ...n, read: true } : n));
@@ -147,8 +182,110 @@ export default function Navbar() {
   function toggleNotif()   { setShowNotif(v => !v);   setShowProfile(false); setMenuOpen(false); }
   function toggleProfile() { setShowProfile(v => !v); setShowNotif(false);   setMenuOpen(false); }
 
-  const links = user ? (ROLE_LINKS[user.role] || []) : [];
+  // ── mt- redesigned shell (10 design roles) ────────────────────────────────
+  if (isMt) {
+    // Page title: explicit prop, else the active nav link's label; subtitle: the
+    // role name (or an explicit override).
+    const path = location.pathname;
+    let activeLink = null;
+    for (const l of links) {
+      if (path === l.to || path.startsWith(l.to + '/')) {
+        if (!activeLink || l.to.length > activeLink.to.length) activeLink = l;
+      }
+    }
+    const pageTitle = title != null ? title : (activeLink ? linkLabel(activeLink) : '');
+    const roleSub = subtitle != null ? subtitle : roleLabel(user.role, lang);
 
+    const controls = (
+      <>
+        <button
+          type="button" className="mt-iconbtn" onClick={toggleTheme}
+          aria-label={t(theme === 'dark' ? 'nav.toggle.theme.light' : 'nav.toggle.theme.dark')}
+          title={t(theme === 'dark' ? 'nav.toggle.theme.light' : 'nav.toggle.theme.dark')}
+        >
+          {theme === 'dark' ? <IconSun size={17} /> : <IconMoon size={17} />}
+        </button>
+
+        <button
+          type="button" className="mt-iconbtn mt-iconbtn-lang" onClick={toggleLang}
+          aria-label={t(lang === 'ar' ? 'nav.toggle.lang.en' : 'nav.toggle.lang.ar')}
+          title={t(lang === 'ar' ? 'nav.toggle.lang.en' : 'nav.toggle.lang.ar')}
+        >
+          {lang === 'ar' ? 'EN' : 'عربى'}
+        </button>
+
+        <div className="mt-bell-wrap">
+          <button type="button" className="mt-iconbtn" onClick={toggleNotif} aria-label="Notifications">
+            <IconBell size={17} />
+            {unreadCount > 0 && <span className="mt-bell-dot" />}
+          </button>
+          {showNotif && (
+            <NotificationPanel
+              notifications={notifications}
+              onOpen={handleOpenNotif}
+              onReadAll={handleReadAll}
+              onDelete={handleDeleteNotif}
+              onClose={() => setShowNotif(false)}
+            />
+          )}
+        </div>
+
+        <div className="mt-avatar-wrap">
+          <button type="button" className="mt-topbar-avatar" onClick={toggleProfile} aria-label="Account menu">
+            {user?.initials}
+          </button>
+          <div className="mt-topbar-uname" onClick={toggleProfile}>
+            <div className="mt-topbar-uname-name">{user?.name}</div>
+            <div className="mt-topbar-uname-role">{roleSub}</div>
+          </div>
+          {showProfile && <ProfileDropdown onClose={() => setShowProfile(false)} />}
+        </div>
+      </>
+    );
+
+    return (
+      <div className="mt-shell-top">
+        {/* TOP-NAV — logo + centered links + More expander. dir="ltr" keeps the
+            bar layout fixed in both languages; only the labels translate. */}
+        <nav className="mt-nav" dir="ltr">
+          <button
+            type="button" className="mt-nav-brand" aria-label="Home"
+            onClick={() => navigate(ROLE_HOME[user?.role] || '/')}
+          >
+            <img
+              className="mt-nav-logo" src="/logo-light.png" alt="MTMS"
+              onError={e => { e.currentTarget.style.display = 'none'; }}
+            />
+          </button>
+
+          <div className={'mt-navrow' + (navOver && !navExp ? ' is-collapsed' : '')} ref={navrowRef}>
+            {links.map(l => (
+              <NavLink
+                key={l.to}
+                to={l.to}
+                end={l.to === '/'}
+                className={({ isActive }) => 'mt-navlink' + (isActive ? ' is-active' : '')}
+              >
+                {l.ic && <NavIcon name={l.ic} size={16} />}
+                {linkLabel(l)}
+              </NavLink>
+            ))}
+          </div>
+
+          {navOver && (
+            <button type="button" className="mt-nav-more" onClick={() => setNavExp(v => !v)}>
+              {navExp ? 'Less' : 'More'}
+              <IconCaret size={14} style={{ transform: navExp ? 'rotate(180deg)' : 'none' }} />
+            </button>
+          )}
+        </nav>
+
+        <Topbar title={pageTitle} subtitle={roleSub} right={controls} />
+      </div>
+    );
+  }
+
+  // ── Legacy shell (all de-scoped roles) — unchanged ────────────────────────
   return (
     // dir="ltr" keeps the navbar layout fixed in both languages — only its text
     // translates; the logo, links, toggles, bell and avatar never switch sides.

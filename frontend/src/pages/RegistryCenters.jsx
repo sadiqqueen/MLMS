@@ -1,317 +1,228 @@
 // frontend/src/pages/RegistryCenters.jsx
 //
-// Data-entry clerk's Training Centers registry (global, unscoped). A card grid
-// of centers with a search + country filter toolbar, an Add/Edit modal, and a
-// click-through to the center detail page (programs live there).
-// Contract: GET/POST/PATCH /api/registry/centers, GET /api/countries.
-import { useState, useEffect, useCallback } from 'react';
+// Data-entry clerk's Training Centers registry (design "clerk › Training Centers").
+// mt- table: Center · ID · Country · City · DIO · Programs (used/100) · Status.
+// "+ Add training center" is a direct create; per-row view opens the center
+// detail, edit routes through the analyzer approval flow (book-of-changes PDF).
+// Contract: GET /api/registry/centers, /api/programs, /api/countries,
+// /api/registry/users?role=dio_view|sub_dio.
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePrefs } from '../context/PrefsContext';
 import Navbar from '../components/Navbar';
-import Toast from '../components/Toast';
-import SearchableSelect from '../components/SearchableSelect';
-import AccreditationBadge from '../components/AccreditationBadge';
-import Sk from '../components/Skeleton';
-import { IconPencil } from '../components/icons';
+import RevealOnScroll from '../components/RevealOnScroll';
+import Pagination from '../components/Pagination';
+import { MtToastHost, useMtToast } from '../components/MtToast';
+import { IconEye, IconEdit } from '../components/icons';
+import {
+  SearchBox, AddCenterModal, ApprovalModal, normId, refName, toDateInput,
+} from './registryShared';
 import api from '../api/axios';
+import './registry.css';
 
-const STRINGS = {
+const PAGE = 10;
+const CAP = 100;
+const STR = {
   ar: {
-    title: 'المراكز التدريبية',
-    search: 'ابحث باسم المركز…',
-    allCountries: 'كل الدول',
-    addCenter: 'إضافة مركز',
-    editCenter: 'تعديل المركز',
-    newCenter: 'مركز جديد',
-    name: 'اسم المركز',
-    country: 'الدولة',
-    city: 'المدينة',
-    address: 'العنوان',
-    email: 'البريد الإلكتروني',
-    phone: 'الهاتف',
-    accNo: 'رقم الاعتماد',
-    accGrant: 'تاريخ منح الاعتماد',
-    accExpiry: 'تاريخ انتهاء الاعتماد',
-    withdrawn: 'الاعتماد مسحوب',
-    programs: 'البرامج',
-    noCenters: 'لا توجد مراكز بعد.',
-    noMatch: 'لا توجد مراكز مطابقة.',
-    edit: 'تعديل',
-    cancel: 'إلغاء',
-    save: 'حفظ',
-    saving: 'جارٍ الحفظ…',
-    created: 'تم إنشاء المركز',
-    updated: 'تم تحديث المركز',
-    loadFailed: 'فشل تحميل المراكز',
-    nameReq: 'اسم المركز مطلوب',
-    countryReq: 'الدولة مطلوبة',
+    add: 'إضافة مركز تدريبي', count: (n) => `${n} مركز`, search: 'ابحث باسم المركز…', allCountries: 'الدولة: الكل',
+    cName: 'المركز', cId: 'المعرّف', cCountry: 'الدولة', cCity: 'المدينة', cDio: 'DIO', cPrograms: 'البرامج', cStatus: 'الحالة',
+    empty: 'لا توجد مراكز بعد.', noMatch: 'لا توجد نتائج مطابقة.', view: 'عرض', edit: 'تعديل',
+    created: 'تمت إضافة المركز', submitted: 'أُرسل للموافقة', loadFailed: 'فشل التحميل', editRecord: 'تعديل المركز',
+    name: 'الاسم', country: 'الدولة', city: 'المدينة', address: 'العنوان', governorate: 'المحافظة', phone: 'الهاتف',
+    email: 'البريد الإلكتروني', idNumber: 'المعرّف', accId: 'رقم الاعتماد', accDate: 'تاريخ منح الاعتماد', accExpiry: 'انتهاء الاعتماد',
+    withdrawn: 'الاعتماد مسحوب', dio: 'DIO', subDio: 'Sub-DIO',
+    stAccredited: 'معتمد', stExpiring: 'قارب الانتهاء', stExpired: 'منتهٍ', stWithdrawn: 'مسحوب', stNone: 'غير معتمد',
   },
   en: {
-    title: 'Training Centers',
-    search: 'Search by center name…',
-    allCountries: 'All countries',
-    addCenter: 'Add Center',
-    editCenter: 'Edit Center',
-    newCenter: 'New Center',
-    name: 'Center Name',
-    country: 'Country',
-    city: 'City',
-    address: 'Address',
-    email: 'Email',
-    phone: 'Phone',
-    accNo: 'Accreditation No.',
-    accGrant: 'Accreditation Grant Date',
-    accExpiry: 'Accreditation Expiry',
-    withdrawn: 'Accreditation withdrawn',
-    programs: 'Programs',
-    noCenters: 'No centers yet.',
-    noMatch: 'No centers match your filters.',
-    edit: 'Edit',
-    cancel: 'Cancel',
-    save: 'Save',
-    saving: 'Saving…',
-    created: 'Center created',
-    updated: 'Center updated',
-    loadFailed: 'Failed to load centers',
-    nameReq: 'Center name is required',
-    countryReq: 'Country is required',
+    add: 'Add training center', count: (n) => `${n} centers`, search: 'Search by center name…', allCountries: 'Country: All',
+    cName: 'Center', cId: 'ID', cCountry: 'Country', cCity: 'City', cDio: 'DIO', cPrograms: 'Programs', cStatus: 'Status',
+    empty: 'No centers yet.', noMatch: 'No matching results.', view: 'View', edit: 'Edit',
+    created: 'Center added', submitted: 'Submitted for approval', loadFailed: 'Failed to load', editRecord: 'Edit training center',
+    name: 'Name', country: 'Country', city: 'City', address: 'Address', governorate: 'Governorate', phone: 'Phone',
+    email: 'Email', idNumber: 'ID', accId: 'Accreditation ID', accDate: 'Accreditation grant date', accExpiry: 'Accreditation expiry',
+    withdrawn: 'Accreditation withdrawn', dio: 'DIO', subDio: 'Sub-DIO',
+    stAccredited: 'Accredited', stExpiring: 'Expiring', stExpired: 'Expired', stWithdrawn: 'Withdrawn', stNone: 'Unaccredited',
   },
 };
 
-function toDateInput(v) { return v ? new Date(v).toISOString().slice(0, 10) : ''; }
-
-function CenterModal({ center, countries, t, dir, onClose, onSaved }) {
-  const isEdit = !!center;
-  const [form, setForm] = useState(() => ({
-    name:                   center?.name || '',
-    countryId:              center?.countryId?._id || center?.countryId || '',
-    city:                   center?.city || '',
-    address:                center?.address || '',
-    email:                  center?.email || '',
-    phone:                  center?.phone || '',
-    accreditationNumber:    center?.accreditationNumber || '',
-    accreditationGrantDate: toDateInput(center?.accreditationGrantDate),
-    accreditationExpiry:    toDateInput(center?.accreditationExpiry),
-    accreditationWithdrawn: !!center?.accreditationWithdrawn,
-  }));
-  const [errors, setErrors] = useState({});
-  const [saving, setSaving] = useState(false);
-  const [apiErr, setApiErr] = useState('');
-
-  useEffect(() => {
-    const h = e => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [onClose]);
-
-  function set(k, v) { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: false })); setApiErr(''); }
-
-  async function handleSave() {
-    const e = {};
-    if (!form.name.trim()) e.name = true;
-    if (!form.countryId) e.countryId = true;
-    if (Object.keys(e).length) { setErrors(e); return; }
-    setSaving(true); setApiErr('');
-    try {
-      const payload = {
-        name: form.name.trim(),
-        countryId: form.countryId,
-        city: form.city.trim(),
-        address: form.address.trim(),
-        email: form.email.trim(),
-        phone: form.phone.trim(),
-        accreditationNumber: form.accreditationNumber.trim(),
-        accreditationGrantDate: form.accreditationGrantDate || null,
-        accreditationExpiry: form.accreditationExpiry || null,
-        accreditationWithdrawn: form.accreditationWithdrawn,
-      };
-      const res = isEdit
-        ? await api.patch(`/api/registry/centers/${center._id}`, payload)
-        : await api.post('/api/registry/centers', payload);
-      onSaved(res.data?.data || res.data, isEdit);
-    } catch (err) {
-      setApiErr(err.response?.data?.message || 'Save failed');
-    } finally { setSaving(false); }
+function statusPill(status, t) {
+  switch (status) {
+    case 'green': return { cls: 'mt-pill--active', label: t('stAccredited') };
+    case 'yellow': return { cls: 'mt-pill--warn', label: t('stExpiring') };
+    case 'red': return { cls: 'mt-pill--rejected', label: t('stExpired') };
+    case 'black': return { cls: 'mt-pill--rejected', label: t('stWithdrawn') };
+    default: return { cls: 'mt-pill--neutral', label: t('stNone') };
   }
-
-  const countryOptions = countries.map(c => ({ value: c._id, label: `${c.name} (${c.code})` }));
-
-  return (
-    <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="admin-modal admin-modal-lg" dir={dir} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-        <div className="admin-modal-header">
-          <div className="admin-modal-title">{isEdit ? t('editCenter') : t('newCenter')}</div>
-          <button className="admin-modal-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="admin-modal-body">
-          <div className="admin-form-grid">
-            <div className="admin-field full">
-              <label>{t('name')} *</label>
-              <input className={errors.name ? 'invalid' : ''} value={form.name} onChange={e => set('name', e.target.value)} />
-            </div>
-            <div className="admin-field full">
-              <label>{t('country')} *</label>
-              <SearchableSelect value={form.countryId} onChange={v => set('countryId', v)} options={countryOptions} placeholder={t('country')} error={errors.countryId} />
-            </div>
-            <div className="admin-field">
-              <label>{t('city')}</label>
-              <input value={form.city} onChange={e => set('city', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('phone')}</label>
-              <input value={form.phone} onChange={e => set('phone', e.target.value)} />
-            </div>
-            <div className="admin-field full">
-              <label>{t('address')}</label>
-              <input value={form.address} onChange={e => set('address', e.target.value)} />
-            </div>
-            <div className="admin-field full">
-              <label>{t('email')}</label>
-              <input type="email" value={form.email} onChange={e => set('email', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('accNo')}</label>
-              <input value={form.accreditationNumber} onChange={e => set('accreditationNumber', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('accGrant')}</label>
-              <input type="date" value={form.accreditationGrantDate} onChange={e => set('accreditationGrantDate', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('accExpiry')}</label>
-              <input type="date" value={form.accreditationExpiry} onChange={e => set('accreditationExpiry', e.target.value)} />
-            </div>
-            <div className="admin-field full">
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, textTransform: 'none', letterSpacing: 0 }}>
-                <input type="checkbox" checked={form.accreditationWithdrawn} onChange={e => set('accreditationWithdrawn', e.target.checked)} />
-                {t('withdrawn')}
-              </label>
-            </div>
-          </div>
-          {apiErr && (
-            <div style={{ marginTop: 14, background: 'var(--danger-bg)', color: 'var(--danger-fg)', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>{apiErr}</div>
-          )}
-        </div>
-        <div className="admin-modal-footer">
-          <button className="btn-outline" onClick={onClose}>{t('cancel')}</button>
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? t('saving') : t('save')}</button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export default function RegistryCenters() {
   const navigate = useNavigate();
   const { lang } = usePrefs();
-  const t = k => STRINGS[lang]?.[k] ?? STRINGS.ar[k] ?? k;
+  const t = (k) => STR[lang]?.[k] ?? STR.en[k] ?? k;
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
+  const { toasts, showToast } = useMtToast();
 
   const [centers, setCenters] = useState([]);
+  const [programs, setPrograms] = useState([]);
   const [countries, setCountries] = useState([]);
+  const [dios, setDios] = useState([]);
+  const [subDios, setSubDios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [countryFilter, setCountryFilter] = useState('');
-  const [modal, setModal] = useState(null); // { center? } | null
-  const [toasts, setToasts] = useState([]);
-
-  function showToast(message, type = 'success') {
-    const id = Date.now();
-    setToasts(p => [...p, { id, message, type }]);
-    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3200);
-  }
+  const [countryF, setCountryF] = useState('');
+  const [page, setPage] = useState(1);
+  const [addOpen, setAddOpen] = useState(false);
+  const [editItem, setEditItem] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [cRes, coRes] = await Promise.allSettled([
+    const [c, p, co, d, sd] = await Promise.allSettled([
       api.get('/api/registry/centers'),
+      api.get('/api/programs'),
       api.get('/api/countries'),
+      api.get('/api/registry/users', { params: { role: 'dio_view' } }),
+      api.get('/api/registry/users', { params: { role: 'sub_dio' } }),
     ]);
-    if (cRes.status === 'fulfilled') setCenters(cRes.value.data?.data || cRes.value.data || []);
-    else showToast(t('loadFailed'), 'error');
-    if (coRes.status === 'fulfilled') setCountries(coRes.value.data?.data || coRes.value.data || []);
+    if (c.status === 'fulfilled') setCenters(c.value.data?.data || c.value.data || []);
+    else showToast(t('loadFailed'), 'dng');
+    if (p.status === 'fulfilled') setPrograms(p.value.data?.data || p.value.data || []);
+    if (co.status === 'fulfilled') setCountries(co.value.data?.data || co.value.data || []);
+    if (d.status === 'fulfilled') setDios(d.value.data?.data || d.value.data || []);
+    if (sd.status === 'fulfilled') setSubDios(sd.value.data?.data || sd.value.data || []);
     setLoading(false);
   }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { setPage(1); }, [search, countryF]);
 
-  function handleSaved(saved, isEdit) {
-    load();
-    setModal(null);
-    showToast(isEdit ? t('updated') : t('created'));
-  }
+  const usedBy = useMemo(() => {
+    const m = new Map();
+    for (const p of programs) { const k = normId(p.trainingCenterId); m.set(k, (m.get(k) || 0) + 1); }
+    return m;
+  }, [programs]);
 
-  const countryFilterOptions = [{ value: '', label: t('allCountries') }, ...countries.map(c => ({ value: c._id, label: `${c.name} (${c.code})` }))];
-
-  const filtered = centers.filter(c => {
-    if (countryFilter && (c.countryId?._id || c.countryId) !== countryFilter) return false;
+  const filtered = useMemo(() => centers.filter((c) => {
+    if (countryF && normId(c.countryId) !== countryF) return false;
     const q = search.trim().toLowerCase();
     if (q && !(c.name || '').toLowerCase().includes(q)) return false;
     return true;
-  });
+  }), [centers, countryF, search]);
 
-  if (loading) return (
-    <>
-      <Navbar />
-      <main className="admin-main" dir={dir}>
-        <div className="admin-card">
-          <div className="admin-toolbar"><Sk h={36} r={8} style={{ flex: 1 }} /><Sk w={170} h={36} r={8} /><Sk w={120} h={36} r={8} /></div>
-          <div className="management-card-grid">
-            {[...Array(6)].map((_, i) => (
-              <div className="management-card" key={i}>
-                <Sk w={140} h={15} /><Sk w={100} h={12} /><Sk w={80} h={22} r={20} />
-              </div>
-            ))}
-          </div>
-        </div>
-      </main>
-    </>
-  );
+  const paged = filtered.slice((page - 1) * PAGE, page * PAGE);
+
+  const countryOpts = countries.map((c) => ({ value: c._id, label: `${c.name} (${c.code})` }));
+  const dioOpts = dios.map((d) => ({ value: d._id, label: d.name }));
+  const subDioOpts = subDios.map((d) => ({ value: d._id, label: d.name }));
+
+  function editFields() {
+    return [
+      { key: 'name', label: t('name'), type: 'text', full: true },
+      { key: 'countryId', label: t('country'), type: 'select', options: countryOpts },
+      { key: 'city', label: t('city'), type: 'text' },
+      { key: 'address', label: t('address'), type: 'text', full: true },
+      { key: 'governorate', label: t('governorate'), type: 'text' },
+      { key: 'phone', label: t('phone'), type: 'text' },
+      { key: 'email', label: t('email'), type: 'text' },
+      { key: 'idNumber', label: t('idNumber'), type: 'text', mono: true },
+      { key: 'dioId', label: t('dio'), type: 'select', options: dioOpts },
+      { key: 'subDioId', label: t('subDio'), type: 'select', options: subDioOpts },
+      { key: 'accreditationNumber', label: t('accId'), type: 'text', mono: true },
+      { key: 'accreditationGrantDate', label: t('accDate'), type: 'date' },
+      { key: 'accreditationExpiry', label: t('accExpiry'), type: 'date' },
+      { key: 'accreditationWithdrawn', label: t('withdrawn'), type: 'checkbox', full: true },
+    ];
+  }
+  function editInitial(c) {
+    return {
+      name: c.name || '', countryId: normId(c.countryId), city: c.city || '', address: c.address || '',
+      governorate: c.governorate || '', phone: c.phone || '', email: c.email || '', idNumber: c.idNumber || '',
+      dioId: normId(c.dioId), subDioId: normId(c.subDioId), accreditationNumber: c.accreditationNumber || '',
+      accreditationGrantDate: toDateInput(c.accreditationGrantDate), accreditationExpiry: toDateInput(c.accreditationExpiry),
+      accreditationWithdrawn: !!c.accreditationWithdrawn,
+    };
+  }
 
   return (
     <>
       <Navbar />
-      <main className="admin-main" dir={dir}>
-        <div className="admin-card">
-          <div className="admin-toolbar" style={{ flexWrap: 'wrap', gap: 8 }}>
-            <input className="admin-search" style={{ flex: 1, minWidth: 200 }} placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)} />
-            <div style={{ minWidth: 180 }}>
-              <SearchableSelect value={countryFilter} onChange={setCountryFilter} options={countryFilterOptions} placeholder={t('allCountries')} />
-            </div>
-            <button className="btn-primary" onClick={() => setModal({ center: null })}>+ {t('addCenter')}</button>
-          </div>
-
-          <div className="management-card-grid">
-            {filtered.length === 0 && (
-              <div className="admin-empty" style={{ gridColumn: '1/-1' }}>{centers.length === 0 ? t('noCenters') : t('noMatch')}</div>
-            )}
-            {filtered.map(c => (
-              <div className="management-card" key={c._id} onClick={() => navigate(`/registry/centers/${c._id}`)} style={{ cursor: 'pointer' }}>
-                <div className="management-card-title">{c.name}</div>
-                <div className="management-card-sub">
-                  {c.countryId?.name ? `${c.countryId.name} (${c.countryId.code})` : '—'}{c.city ? ` · ${c.city}` : ''}
-                </div>
-                <div className="management-card-meta">
-                  <AccreditationBadge status={c.accreditationStatus} />
-                  {typeof c.programsCount === 'number' && (
-                    <span className="badge badge-blue">{t('programs')}: {c.programsCount}</span>
-                  )}
-                </div>
-                <div className="management-card-actions">
-                  <button className="btn-action edit" title={t('edit')} aria-label={t('edit')}
-                    onClick={e => { e.stopPropagation(); setModal({ center: c }); }}><IconPencil /></button>
-                </div>
-              </div>
-            ))}
-          </div>
+      <main className="mt-content" dir={dir}>
+        <div className="mt-filterbar">
+          <SearchBox value={search} onChange={setSearch} placeholder={t('search')} />
+          <select className="mt-filter" value={countryF} onChange={(e) => setCountryF(e.target.value)}>
+            <option value="">{t('allCountries')}</option>
+            {countries.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
+          </select>
+          <span className="mt-filterbar-spacer" />
+          <button type="button" className="mt-btn" onClick={() => setAddOpen(true)}>+ {t('add')}</button>
+          <span className="mt-count">{t('count')(filtered.length)}</span>
         </div>
 
-        {modal && (
-          <CenterModal center={modal.center} countries={countries} t={t} dir={dir}
-            onClose={() => setModal(null)} onSaved={handleSaved} />
+        <RevealOnScroll className="mt-card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="mt-table-wrap">
+            <table className="mt-table">
+              <thead>
+                <tr>
+                  <th className="mt-th">{t('cName')}</th><th className="mt-th">{t('cId')}</th>
+                  <th className="mt-th">{t('cCountry')}</th><th className="mt-th">{t('cCity')}</th>
+                  <th className="mt-th">{t('cDio')}</th><th className="mt-th">{t('cPrograms')}</th>
+                  <th className="mt-th">{t('cStatus')}</th><th className="mt-th" aria-label="actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {loading && [...Array(6)].map((_, i) => (
+                  <tr key={i}>{[...Array(8)].map((__, j) => <td key={j} className="mt-td"><span className="skeleton mt-skel" style={{ display: 'block', height: 13, borderRadius: 4 }} /></td>)}</tr>
+                ))}
+                {!loading && paged.length === 0 && (
+                  <tr><td className="mt-td mt-td--muted" colSpan={8} style={{ textAlign: 'center', padding: 40 }}>
+                    {centers.length === 0 ? t('empty') : t('noMatch')}
+                  </td></tr>
+                )}
+                {!loading && paged.map((c) => {
+                  const used = usedBy.get(c._id) || 0;
+                  const capCls = used >= CAP ? 'reg-cap reg-cap--full' : (used / CAP) * 100 > 75 ? 'reg-cap reg-cap--warn' : 'reg-cap';
+                  const st = statusPill(c.accreditationStatus, t);
+                  return (
+                    <tr key={c._id}>
+                      <td className="mt-td mt-td--name">{c.name}</td>
+                      <td className="mt-td mt-td--mono">{c.idNumber || '—'}</td>
+                      <td className="mt-td mt-td--muted">{refName(c.countryId)}</td>
+                      <td className="mt-td mt-td--muted">{c.city || '—'}</td>
+                      <td className="mt-td mt-td--muted">{refName(c.dioId)}</td>
+                      <td className="mt-td"><span className={capCls}>{used} / {CAP}</span></td>
+                      <td className="mt-td"><span className={`mt-pill ${st.cls}`}>{st.label}</span></td>
+                      <td className="mt-td mt-td--actions">
+                        <div className="mt-row-actions">
+                          <button type="button" className="mt-icon-action" title={t('view')} aria-label={t('view')}
+                            onClick={() => navigate(`/registry/centers/${c._id}`)}><IconEye size={15} /></button>
+                          <button type="button" className="mt-icon-action" title={t('edit')} aria-label={t('edit')}
+                            onClick={() => setEditItem(c)}><IconEdit size={15} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </RevealOnScroll>
+
+        {filtered.length > PAGE && (
+          <Pagination page={page} pageSize={PAGE} total={filtered.length}
+            onPrev={() => setPage((p) => Math.max(1, p - 1))} onNext={() => setPage((p) => p + 1)} />
         )}
-        <Toast toasts={toasts} />
+
+        <AddCenterModal open={addOpen} lang={lang} countries={countries} dios={dios} subDios={subDios}
+          onClose={() => setAddOpen(false)}
+          onSaved={() => { setAddOpen(false); showToast(t('created'), 'ok'); load(); }} />
+
+        {editItem && (
+          <ApprovalModal open lang={lang} routeKey="centers" entityId={editItem._id} entityLabel={editItem.name}
+            title={t('editRecord')} sub={editItem.name} fields={editFields()} initialValues={editInitial(editItem)}
+            onClose={() => setEditItem(null)}
+            onSubmitted={() => { showToast(t('submitted'), 'warn'); load(); }} />
+        )}
       </main>
+      <MtToastHost toasts={toasts} />
     </>
   );
 }

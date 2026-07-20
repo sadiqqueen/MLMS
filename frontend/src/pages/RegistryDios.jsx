@@ -1,431 +1,293 @@
 // frontend/src/pages/RegistryDios.jsx
 //
-// Data-entry clerk's DIO registry. A DIO is a `dio_view` user scoped to a
-// country + a multi-select subset of that country's training centers. Each DIO
-// may have one ODIO (`dio`) and Sub-DIO(s) (`sub_dio`), both linked back through
-// `dioId`. Contract:
-//   GET  /api/registry/users?role=dio_view|dio|sub_dio
-//   GET  /api/countries · GET /api/registry/centers?countryId=
-//   POST /api/registry/dios · POST /api/registry/dios/:id/odio|/sub-dio
-//   PATCH /api/registry/dios/:id  (assignedCenterIds)
-import { useState, useEffect, useCallback } from 'react';
+// Data-entry clerk's DIO registry (design clerk › DIOs). One account-card grid
+// holding both DIOs (dio_view) and Sub-DIOs (sub_dio) — a Sub-DIO card shows its
+// parent under "Assigned DIO". "+ Add DIO" / "+ Add Sub-DIO" are direct creates;
+// card edit/delete route through the analyzer approval flow (book-of-changes).
+// Contract: GET /api/registry/users?role=dio_view|sub_dio, /api/countries;
+// POST /api/registry/dios, /api/registry/dios/:id/sub-dio.
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { usePrefs } from '../context/PrefsContext';
 import Navbar from '../components/Navbar';
-import Toast from '../components/Toast';
+import RevealOnScroll from '../components/RevealOnScroll';
+import AccountCard from '../components/AccountCard';
+import MtModal from '../components/MtModal';
 import SearchableSelect from '../components/SearchableSelect';
-import Sk from '../components/Skeleton';
+import { MtToastHost, useMtToast } from '../components/MtToast';
+import {
+  SearchBox, ApprovalModal, ViewModal, normId, refName, histLine,
+} from './registryShared';
 import api from '../api/axios';
+import './registry.css';
 
-const STRINGS = {
+const STR = {
   ar: {
-    title: 'مديرو التدريب (DIOs)', search: 'ابحث بالاسم أو الرقم التعريفي…', allCountries: 'كل الدول',
-    addDio: 'إضافة DIO', newDio: 'DIO جديد', addOdio: 'إضافة ODIO', addSubDio: 'إضافة Sub-DIO',
-    newOdio: 'ODIO جديد', newSubDio: 'Sub-DIO جديد', editCenters: 'تعديل المراكز',
-    name: 'الاسم', idNumber: 'الرقم التعريفي', password: 'كلمة المرور', email: 'البريد الإلكتروني', phone: 'الهاتف',
-    country: 'الدولة', centers: 'المراكز', selectCountryFirst: 'اختر الدولة أولاً', noCentersInCountry: 'لا توجد مراكز في هذه الدولة',
-    centersCount: 'مركز', odio: 'ODIO', subDios: 'Sub-DIOs', none: 'لا يوجد',
-    noDios: 'لا يوجد مديرو تدريب بعد.', noMatch: 'لا توجد نتائج مطابقة.',
-    cancel: 'إلغاء', save: 'حفظ', saving: 'جارٍ الحفظ…', create: 'إنشاء',
-    created: 'تم إنشاء DIO', odioCreated: 'تم إنشاء ODIO', subDioCreated: 'تم إنشاء Sub-DIO', centersUpdated: 'تم تحديث المراكز',
-    loadFailed: 'فشل التحميل', passwordHint: '(6 أحرف على الأقل)',
+    addDio: 'إضافة DIO', addSubDio: 'إضافة Sub-DIO', count: (n) => `${n} حساب`, search: 'ابحث بالاسم أو الرقم…', allCountries: 'الدولة: الكل',
+    badgeDio: 'DIO', badgeSub: 'Sub-DIO', country: 'الدولة', city: 'المدينة', phone: 'الهاتف', email: 'البريد الإلكتروني', assignedDio: 'DIO المسؤول',
+    empty: 'لا يوجد مديرو تدريب بعد.', noMatch: 'لا توجد نتائج مطابقة.',
+    name: 'الاسم', idNumber: 'الرقم التعريفي', password: 'كلمة المرور', pwHint: '(6 أحرف على الأقل)', parentDio: 'DIO الأصل',
+    cancel: 'إلغاء', create: 'إنشاء', saving: 'جارٍ الحفظ…', newDio: 'DIO جديد', newDioSub: 'حساب مدير تدريب مؤسسي',
+    newSubDio: 'Sub-DIO جديد', newSubDioSub: 'مساعد لمدير تدريب', createBanner: 'ستتم إضافة هذا السجل إلى السجل مباشرة.',
+    dioCreated: 'تم إنشاء DIO', subDioCreated: 'تم إنشاء Sub-DIO', submitted: 'أُرسل للموافقة', loadFailed: 'فشل التحميل',
+    saveFailed: 'فشل الحفظ', required: 'الحقول المطلوبة ناقصة', editDio: 'تعديل DIO', editSubDio: 'تعديل Sub-DIO',
   },
   en: {
-    title: 'DIOs', search: 'Search by name or ID number…', allCountries: 'All countries',
-    addDio: 'Add DIO', newDio: 'New DIO', addOdio: 'Add ODIO', addSubDio: 'Add Sub-DIO',
-    newOdio: 'New ODIO', newSubDio: 'New Sub-DIO', editCenters: 'Edit centers',
-    name: 'Name', idNumber: 'ID Number', password: 'Password', email: 'Email', phone: 'Phone',
-    country: 'Country', centers: 'Centers', selectCountryFirst: 'Select a country first', noCentersInCountry: 'No centers in this country',
-    centersCount: 'centers', odio: 'ODIO', subDios: 'Sub-DIOs', none: 'None',
-    noDios: 'No DIOs yet.', noMatch: 'No matching results.',
-    cancel: 'Cancel', save: 'Save', saving: 'Saving…', create: 'Create',
-    created: 'DIO created', odioCreated: 'ODIO created', subDioCreated: 'Sub-DIO created', centersUpdated: 'Centers updated',
-    loadFailed: 'Failed to load', passwordHint: '(min 6 chars)',
+    addDio: 'Add DIO', addSubDio: 'Add Sub-DIO', count: (n) => `${n} accounts`, search: 'Search by name or ID…', allCountries: 'Country: All',
+    badgeDio: 'DIO', badgeSub: 'Sub-DIO', country: 'Country', city: 'City', phone: 'Phone', email: 'Email', assignedDio: 'Assigned DIO',
+    empty: 'No DIOs yet.', noMatch: 'No matching results.',
+    name: 'Name', idNumber: 'ID number', password: 'Password', pwHint: '(min 6 chars)', parentDio: 'Parent DIO',
+    cancel: 'Cancel', create: 'Create', saving: 'Saving…', newDio: 'New DIO', newDioSub: 'New institutional DIO',
+    newSubDio: 'New Sub-DIO', newSubDioSub: 'Assistant to a DIO', createBanner: 'This record will be added to the registry.',
+    dioCreated: 'DIO created', subDioCreated: 'Sub-DIO created', submitted: 'Submitted for approval', loadFailed: 'Failed to load',
+    saveFailed: 'Save failed', required: 'Required fields are missing', editDio: 'Edit DIO', editSubDio: 'Edit Sub-DIO',
   },
 };
 
-function ErrBox({ msg }) {
-  if (!msg) return null;
-  return <div style={{ marginTop: 14, background: 'var(--danger-bg)', color: 'var(--danger-fg)', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>{msg}</div>;
-}
-
-// Scrollable checkbox list of centers for a country.
-function CenterChecklist({ centers, selected, onToggle, t, loading }) {
-  if (loading) return <Sk h={140} r={8} />;
-  if (!centers.length) return <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '10px 4px' }}>{t('noCentersInCountry')}</div>;
-  return (
-    <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px' }}>
-      {centers.map(c => (
-        <label key={c._id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 4px', cursor: 'pointer', borderRadius: 6 }}>
-          <input type="checkbox" checked={selected.includes(c._id)} onChange={() => onToggle(c._id)} />
-          <span style={{ fontSize: 13, color: 'var(--brand-secondary)', fontWeight: 500 }}>{c.name}</span>
-          {c.city && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.city}</span>}
-        </label>
-      ))}
-    </div>
-  );
-}
-
-function DioFormModal({ countries, t, dir, onClose, onSaved }) {
-  const [form, setForm] = useState({ name: '', idNumber: '', password: '', email: '', phone: '', countryId: '' });
-  const [assignedCenterIds, setAssigned] = useState([]);
-  const [centers, setCenters] = useState([]);
-  const [loadingCenters, setLoadingCenters] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [saving, setSaving] = useState(false);
-  const [apiErr, setApiErr] = useState('');
-
-  useEffect(() => {
-    const h = e => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [onClose]);
-
-  useEffect(() => {
-    if (!form.countryId) { setCenters([]); setAssigned([]); return; }
-    let cancelled = false;
-    setLoadingCenters(true); setAssigned([]);
-    api.get('/api/registry/centers', { params: { countryId: form.countryId } })
-      .then(r => { if (!cancelled) setCenters(r.data?.data || r.data || []); })
-      .catch(() => { if (!cancelled) setCenters([]); })
-      .finally(() => { if (!cancelled) setLoadingCenters(false); });
-    return () => { cancelled = true; };
-  }, [form.countryId]);
-
-  function set(k, v) { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: false })); setApiErr(''); }
-  function toggleCenter(cid) { setAssigned(prev => prev.includes(cid) ? prev.filter(x => x !== cid) : [...prev, cid]); }
-
-  async function handleSave() {
+function AddDioModal({ lang, countries, onClose, onSaved }) {
+  const t = (k) => STR[lang]?.[k] ?? STR.en[k] ?? k;
+  const [f, setF] = useState({ name: '', idNumber: '', password: '', countryId: '', city: '', phone: '', email: '' });
+  const [err, setErr] = useState({}); const [saving, setSaving] = useState(false); const [apiErr, setApiErr] = useState('');
+  const set = (k, v) => { setF((s) => ({ ...s, [k]: v })); setErr((e) => ({ ...e, [k]: false })); setApiErr(''); };
+  async function save() {
     const e = {};
-    if (!form.name.trim()) e.name = true;
-    if (!form.idNumber.trim()) e.idNumber = true;
-    if (!form.password || form.password.length < 6) e.password = true;
-    if (!form.countryId) e.countryId = true;
-    if (Object.keys(e).length) { setErrors(e); return; }
+    if (!f.name.trim()) e.name = true;
+    if (!f.idNumber.trim()) e.idNumber = true;
+    if (!f.password || f.password.length < 6) e.password = true;
+    if (!f.countryId) e.countryId = true;
+    if (Object.keys(e).length) { setErr(e); setApiErr(t('required')); return; }
     setSaving(true); setApiErr('');
     try {
-      const payload = {
-        name: form.name.trim(), idNumber: form.idNumber.trim(), password: form.password,
-        countryId: form.countryId, assignedCenterIds,
-      };
-      if (form.email.trim()) payload.email = form.email.trim();
-      if (form.phone.trim()) payload.phone = form.phone.trim();
+      const payload = { name: f.name.trim(), idNumber: f.idNumber.trim(), password: f.password, countryId: f.countryId };
+      if (f.city.trim()) payload.city = f.city.trim();
+      if (f.phone.trim()) payload.phone = f.phone.trim();
+      if (f.email.trim()) payload.email = f.email.trim();
       const res = await api.post('/api/registry/dios', payload);
       onSaved(res.data?.data || res.data);
-    } catch (err) {
-      setApiErr(err.response?.data?.message || 'Save failed');
-    } finally { setSaving(false); }
+    } catch (ex) { setApiErr(ex.response?.data?.message || t('saveFailed')); } finally { setSaving(false); }
   }
-
-  const countryOptions = countries.map(c => ({ value: c._id, label: `${c.name} (${c.code})` }));
-
+  const countryOpts = countries.map((c) => ({ value: c._id, label: `${c.name} (${c.code})` }));
   return (
-    <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="admin-modal admin-modal-lg" dir={dir} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-        <div className="admin-modal-header">
-          <div className="admin-modal-title">{t('newDio')}</div>
-          <button className="admin-modal-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="admin-modal-body">
-          <div className="admin-form-grid">
-            <div className="admin-field">
-              <label>{t('name')} *</label>
-              <input className={errors.name ? 'invalid' : ''} value={form.name} onChange={e => set('name', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('idNumber')} *</label>
-              <input className={errors.idNumber ? 'invalid' : ''} value={form.idNumber} onChange={e => set('idNumber', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('password')} * <span style={{ color: 'var(--text-muted)', fontWeight: 400, textTransform: 'none' }}>{t('passwordHint')}</span></label>
-              <input type="password" autoComplete="new-password" className={errors.password ? 'invalid' : ''} value={form.password} onChange={e => set('password', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('phone')}</label>
-              <input value={form.phone} onChange={e => set('phone', e.target.value)} />
-            </div>
-            <div className="admin-field full">
-              <label>{t('email')}</label>
-              <input type="email" value={form.email} onChange={e => set('email', e.target.value)} />
-            </div>
-            <div className="admin-field full">
-              <label>{t('country')} *</label>
-              <SearchableSelect value={form.countryId} onChange={v => set('countryId', v)} options={countryOptions} placeholder={t('country')} error={errors.countryId} />
-            </div>
-            <div className="admin-field full">
-              <label>{t('centers')}</label>
-              {form.countryId
-                ? <CenterChecklist centers={centers} selected={assignedCenterIds} onToggle={toggleCenter} t={t} loading={loadingCenters} />
-                : <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '10px 4px' }}>{t('selectCountryFirst')}</div>}
-            </div>
-          </div>
-          <ErrBox msg={apiErr} />
-        </div>
-        <div className="admin-modal-footer">
-          <button className="btn-outline" onClick={onClose}>{t('cancel')}</button>
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? t('saving') : t('create')}</button>
-        </div>
+    <MtModal open title={t('newDio')} sub={t('newDioSub')} onClose={onClose}
+      footer={<><button type="button" className="mt-btn--cancel" onClick={onClose}>{t('cancel')}</button>
+        <button type="button" className="mt-btn" onClick={save} disabled={saving}>{saving ? t('saving') : t('create')}</button></>}>
+      <div className="mt-banner">{t('createBanner')}</div>
+      <div className="mt-field-grid">
+        <div className="mt-field"><label className="mt-label">{t('name')}<span className="mt-label-req">*</span></label>
+          <input className="mt-input" value={f.name} onChange={(e) => set('name', e.target.value)} style={err.name ? { borderColor: 'var(--danger)' } : undefined} /></div>
+        <div className="mt-field"><label className="mt-label">{t('idNumber')}<span className="mt-label-req">*</span></label>
+          <input className="mt-input mt-input--mono" value={f.idNumber} placeholder="DIO-…" onChange={(e) => set('idNumber', e.target.value)} style={err.idNumber ? { borderColor: 'var(--danger)' } : undefined} /></div>
+        <div className="mt-field"><label className="mt-label">{t('password')}<span className="mt-label-req">*</span> <span style={{ fontWeight: 400, color: 'var(--text-2)' }}>{t('pwHint')}</span></label>
+          <input className="mt-input" type="password" autoComplete="new-password" value={f.password} onChange={(e) => set('password', e.target.value)} style={err.password ? { borderColor: 'var(--danger)' } : undefined} /></div>
+        <div className="mt-field"><label className="mt-label">{t('city')}</label>
+          <input className="mt-input" value={f.city} onChange={(e) => set('city', e.target.value)} /></div>
+        <div className="mt-field mt-field-full"><label className="mt-label">{t('country')}<span className="mt-label-req">*</span></label>
+          <SearchableSelect value={f.countryId} onChange={(v) => set('countryId', v)} options={countryOpts} placeholder={t('country')} error={err.countryId} /></div>
+        <div className="mt-field"><label className="mt-label">{t('phone')}</label>
+          <input className="mt-input" value={f.phone} onChange={(e) => set('phone', e.target.value)} /></div>
+        <div className="mt-field"><label className="mt-label">{t('email')}</label>
+          <input className="mt-input" type="email" value={f.email} onChange={(e) => set('email', e.target.value)} /></div>
       </div>
-    </div>
+      {apiErr && <div className="reg-del-note" style={{ marginBlockStart: 14, marginBlockEnd: 0 }}>{apiErr}</div>}
+    </MtModal>
   );
 }
 
-function ChildFormModal({ dio, kind, t, dir, onClose, onSaved }) {
-  // kind: 'odio' | 'sub-dio'
-  const [form, setForm] = useState({ name: '', idNumber: '', password: '', email: '' });
-  const [errors, setErrors] = useState({});
-  const [saving, setSaving] = useState(false);
-  const [apiErr, setApiErr] = useState('');
-
-  useEffect(() => {
-    const h = e => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [onClose]);
-
-  function set(k, v) { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: false })); setApiErr(''); }
-
-  async function handleSave() {
+function AddSubDioModal({ lang, dios, onClose, onSaved }) {
+  const t = (k) => STR[lang]?.[k] ?? STR.en[k] ?? k;
+  const [f, setF] = useState({ dioId: '', name: '', idNumber: '', password: '', city: '', phone: '', email: '' });
+  const [err, setErr] = useState({}); const [saving, setSaving] = useState(false); const [apiErr, setApiErr] = useState('');
+  const set = (k, v) => { setF((s) => ({ ...s, [k]: v })); setErr((e) => ({ ...e, [k]: false })); setApiErr(''); };
+  async function save() {
     const e = {};
-    if (!form.name.trim()) e.name = true;
-    if (!form.idNumber.trim()) e.idNumber = true;
-    if (!form.password || form.password.length < 6) e.password = true;
-    if (Object.keys(e).length) { setErrors(e); return; }
+    if (!f.dioId) e.dioId = true;
+    if (!f.name.trim()) e.name = true;
+    if (!f.idNumber.trim()) e.idNumber = true;
+    if (!f.password || f.password.length < 6) e.password = true;
+    if (Object.keys(e).length) { setErr(e); setApiErr(t('required')); return; }
     setSaving(true); setApiErr('');
     try {
-      const payload = { name: form.name.trim(), idNumber: form.idNumber.trim(), password: form.password };
-      if (form.email.trim()) payload.email = form.email.trim();
-      const res = await api.post(`/api/registry/dios/${dio._id}/${kind}`, payload);
-      onSaved(res.data?.data || res.data, kind);
-    } catch (err) {
-      setApiErr(err.response?.data?.message || 'Save failed');
-    } finally { setSaving(false); }
-  }
-
-  return (
-    <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="admin-modal" dir={dir}>
-        <div className="admin-modal-header">
-          <div className="admin-modal-title">{kind === 'odio' ? t('newOdio') : t('newSubDio')} · {dio.name}</div>
-          <button className="admin-modal-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="admin-modal-body">
-          <div className="admin-form-grid">
-            <div className="admin-field">
-              <label>{t('name')} *</label>
-              <input className={errors.name ? 'invalid' : ''} value={form.name} onChange={e => set('name', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('idNumber')} *</label>
-              <input className={errors.idNumber ? 'invalid' : ''} value={form.idNumber} onChange={e => set('idNumber', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('password')} * <span style={{ color: 'var(--text-muted)', fontWeight: 400, textTransform: 'none' }}>{t('passwordHint')}</span></label>
-              <input type="password" autoComplete="new-password" className={errors.password ? 'invalid' : ''} value={form.password} onChange={e => set('password', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('email')}</label>
-              <input type="email" value={form.email} onChange={e => set('email', e.target.value)} />
-            </div>
-          </div>
-          <ErrBox msg={apiErr} />
-        </div>
-        <div className="admin-modal-footer">
-          <button className="btn-outline" onClick={onClose}>{t('cancel')}</button>
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? t('saving') : t('create')}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function EditCentersModal({ dio, t, dir, onClose, onSaved }) {
-  const countryId = dio.countryId?._id || dio.countryId || '';
-  const [centers, setCenters] = useState([]);
-  const [loadingCenters, setLoadingCenters] = useState(true);
-  const [assignedCenterIds, setAssigned] = useState(() => (dio.assignedCenterIds || []).map(c => c._id || c));
-  const [saving, setSaving] = useState(false);
-  const [apiErr, setApiErr] = useState('');
-
-  useEffect(() => {
-    const h = e => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [onClose]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingCenters(true);
-    api.get('/api/registry/centers', { params: { countryId } })
-      .then(r => { if (!cancelled) setCenters(r.data?.data || r.data || []); })
-      .catch(() => { if (!cancelled) setCenters([]); })
-      .finally(() => { if (!cancelled) setLoadingCenters(false); });
-    return () => { cancelled = true; };
-  }, [countryId]);
-
-  function toggleCenter(cid) { setAssigned(prev => prev.includes(cid) ? prev.filter(x => x !== cid) : [...prev, cid]); }
-
-  async function handleSave() {
-    setSaving(true); setApiErr('');
-    try {
-      const res = await api.patch(`/api/registry/dios/${dio._id}`, { assignedCenterIds });
+      const payload = { name: f.name.trim(), idNumber: f.idNumber.trim(), password: f.password };
+      if (f.city.trim()) payload.city = f.city.trim();
+      if (f.phone.trim()) payload.phone = f.phone.trim();
+      if (f.email.trim()) payload.email = f.email.trim();
+      const res = await api.post(`/api/registry/dios/${f.dioId}/sub-dio`, payload);
       onSaved(res.data?.data || res.data);
-    } catch (err) {
-      setApiErr(err.response?.data?.message || 'Save failed');
-    } finally { setSaving(false); }
+    } catch (ex) { setApiErr(ex.response?.data?.message || t('saveFailed')); } finally { setSaving(false); }
   }
-
+  const dioOpts = dios.map((d) => ({ value: d._id, label: `${d.name}${d.idNumber ? ` · ${d.idNumber}` : ''}` }));
   return (
-    <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="admin-modal" dir={dir}>
-        <div className="admin-modal-header">
-          <div className="admin-modal-title">{t('editCenters')} · {dio.name}</div>
-          <button className="admin-modal-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="admin-modal-body">
-          <div className="admin-field full">
-            <label>{t('centers')}</label>
-            <CenterChecklist centers={centers} selected={assignedCenterIds} onToggle={toggleCenter} t={t} loading={loadingCenters} />
-          </div>
-          <ErrBox msg={apiErr} />
-        </div>
-        <div className="admin-modal-footer">
-          <button className="btn-outline" onClick={onClose}>{t('cancel')}</button>
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? t('saving') : t('save')}</button>
-        </div>
+    <MtModal open title={t('newSubDio')} sub={t('newSubDioSub')} onClose={onClose}
+      footer={<><button type="button" className="mt-btn--cancel" onClick={onClose}>{t('cancel')}</button>
+        <button type="button" className="mt-btn" onClick={save} disabled={saving}>{saving ? t('saving') : t('create')}</button></>}>
+      <div className="mt-banner">{t('createBanner')}</div>
+      <div className="mt-field-grid">
+        <div className="mt-field mt-field-full"><label className="mt-label">{t('parentDio')}<span className="mt-label-req">*</span></label>
+          <SearchableSelect value={f.dioId} onChange={(v) => set('dioId', v)} options={dioOpts} placeholder={t('parentDio')} error={err.dioId} /></div>
+        <div className="mt-field"><label className="mt-label">{t('name')}<span className="mt-label-req">*</span></label>
+          <input className="mt-input" value={f.name} onChange={(e) => set('name', e.target.value)} style={err.name ? { borderColor: 'var(--danger)' } : undefined} /></div>
+        <div className="mt-field"><label className="mt-label">{t('idNumber')}<span className="mt-label-req">*</span></label>
+          <input className="mt-input mt-input--mono" value={f.idNumber} placeholder="DIO-…" onChange={(e) => set('idNumber', e.target.value)} style={err.idNumber ? { borderColor: 'var(--danger)' } : undefined} /></div>
+        <div className="mt-field"><label className="mt-label">{t('password')}<span className="mt-label-req">*</span> <span style={{ fontWeight: 400, color: 'var(--text-2)' }}>{t('pwHint')}</span></label>
+          <input className="mt-input" type="password" autoComplete="new-password" value={f.password} onChange={(e) => set('password', e.target.value)} style={err.password ? { borderColor: 'var(--danger)' } : undefined} /></div>
+        <div className="mt-field"><label className="mt-label">{t('city')}</label>
+          <input className="mt-input" value={f.city} onChange={(e) => set('city', e.target.value)} /></div>
+        <div className="mt-field"><label className="mt-label">{t('phone')}</label>
+          <input className="mt-input" value={f.phone} onChange={(e) => set('phone', e.target.value)} /></div>
+        <div className="mt-field mt-field-full"><label className="mt-label">{t('email')}</label>
+          <input className="mt-input" type="email" value={f.email} onChange={(e) => set('email', e.target.value)} /></div>
       </div>
-    </div>
+      {apiErr && <div className="reg-del-note" style={{ marginBlockStart: 14, marginBlockEnd: 0 }}>{apiErr}</div>}
+    </MtModal>
   );
 }
 
 export default function RegistryDios() {
   const { lang } = usePrefs();
-  const t = k => STRINGS[lang]?.[k] ?? STRINGS.ar[k] ?? k;
+  const t = (k) => STR[lang]?.[k] ?? STR.en[k] ?? k;
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
+  const { toasts, showToast } = useMtToast();
 
   const [dios, setDios] = useState([]);
-  const [odios, setOdios] = useState([]);
   const [subDios, setSubDios] = useState([]);
   const [countries, setCountries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [countryFilter, setCountryFilter] = useState('');
+  const [countryF, setCountryF] = useState('');
   const [addDio, setAddDio] = useState(false);
-  const [childModal, setChildModal] = useState(null); // { dio, kind } | null
-  const [centersModal, setCentersModal] = useState(null); // { dio } | null
-  const [toasts, setToasts] = useState([]);
-
-  function showToast(message, type = 'success') {
-    const id = Date.now();
-    setToasts(p => [...p, { id, message, type }]);
-    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3200);
-  }
+  const [addSub, setAddSub] = useState(false);
+  const [editItem, setEditItem] = useState(null);   // { user, kind }
+  const [viewItem, setViewItem] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const results = await Promise.allSettled([
+    const [d, s, co] = await Promise.allSettled([
       api.get('/api/registry/users', { params: { role: 'dio_view' } }),
-      api.get('/api/registry/users', { params: { role: 'dio' } }),
       api.get('/api/registry/users', { params: { role: 'sub_dio' } }),
       api.get('/api/countries'),
     ]);
-    const [dRes, oRes, sRes, coRes] = results;
-    if (dRes.status === 'fulfilled') setDios(dRes.value.data?.data || dRes.value.data || []);
-    else showToast(t('loadFailed'), 'error');
-    if (oRes.status === 'fulfilled') setOdios(oRes.value.data?.data || oRes.value.data || []);
-    if (sRes.status === 'fulfilled') setSubDios(sRes.value.data?.data || sRes.value.data || []);
-    if (coRes.status === 'fulfilled') setCountries(coRes.value.data?.data || coRes.value.data || []);
+    if (d.status === 'fulfilled') setDios(d.value.data?.data || d.value.data || []);
+    else showToast(t('loadFailed'), 'dng');
+    if (s.status === 'fulfilled') setSubDios(s.value.data?.data || s.value.data || []);
+    if (co.status === 'fulfilled') setCountries(co.value.data?.data || co.value.data || []);
     setLoading(false);
   }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load(); }, [load]);
 
-  function odiosFor(d) { return odios.filter(o => (o.dioId?._id || o.dioId) === d._id); }
-  function subDiosFor(d) { return subDios.filter(s => (s.dioId?._id || s.dioId) === d._id); }
+  const rows = useMemo(() => {
+    const all = [
+      ...dios.map((u) => ({ u, kind: 'dio' })),
+      ...subDios.map((u) => ({ u, kind: 'sub' })),
+    ];
+    return all.filter(({ u }) => {
+      if (countryF && normId(u.countryId) !== countryF) return false;
+      const q = search.trim().toLowerCase();
+      if (q && !((u.name || '').toLowerCase().includes(q) || (u.idNumber || '').toLowerCase().includes(q))) return false;
+      return true;
+    });
+  }, [dios, subDios, countryF, search]);
 
-  const countryFilterOptions = [{ value: '', label: t('allCountries') }, ...countries.map(c => ({ value: c._id, label: `${c.name} (${c.code})` }))];
+  const countryOpts = countries.map((c) => ({ value: c._id, label: `${c.name} (${c.code})` }));
 
-  const filtered = dios.filter(d => {
-    if (countryFilter && (d.countryId?._id || d.countryId) !== countryFilter) return false;
-    const q = search.trim().toLowerCase();
-    if (q && !((d.name || '').toLowerCase().includes(q) || (d.idNumber || '').toLowerCase().includes(q))) return false;
-    return true;
-  });
+  function fieldsFor({ u, kind }) {
+    return kind === 'sub'
+      ? [{ label: t('country'), value: refName(u.countryId) }, { label: t('city'), value: u.city || '—' },
+         { label: t('assignedDio'), value: refName(u.dioId) }, { label: t('email'), value: u.email || '—' }]
+      : [{ label: t('country'), value: refName(u.countryId) }, { label: t('city'), value: u.city || '—' },
+         { label: t('phone'), value: u.phone || '—' }, { label: t('email'), value: u.email || '—' }];
+  }
 
-  if (loading) return (
-    <>
-      <Navbar />
-      <main className="admin-main" dir={dir}>
-        <div className="admin-card">
-          <div className="admin-toolbar"><Sk h={36} r={8} style={{ flex: 1 }} /><Sk w={170} h={36} r={8} /><Sk w={120} h={36} r={8} /></div>
-          <div className="management-card-grid">
-            {[...Array(6)].map((_, i) => (<div className="management-card" key={i}><Sk w={140} h={15} /><Sk w={100} h={12} /><Sk w={80} h={22} r={20} /></div>))}
-          </div>
-        </div>
-      </main>
-    </>
-  );
+  function editConfig({ u, kind }) {
+    if (kind === 'sub') {
+      return {
+        routeKey: 'sub-dios', title: t('editSubDio'),
+        fields: [
+          { key: 'name', label: t('name'), type: 'text', full: true },
+          { key: 'email', label: t('email'), type: 'text' },
+          { key: 'phone', label: t('phone'), type: 'text' },
+        ],
+        initialValues: { name: u.name || '', email: u.email || '', phone: u.phone || '' },
+      };
+    }
+    return {
+      routeKey: 'dios', title: t('editDio'),
+      fields: [
+        { key: 'name', label: t('name'), type: 'text', full: true },
+        { key: 'countryId', label: t('country'), type: 'select', options: countryOpts },
+        { key: 'city', label: t('city'), type: 'text' },
+        { key: 'email', label: t('email'), type: 'text' },
+        { key: 'phone', label: t('phone'), type: 'text' },
+      ],
+      initialValues: { name: u.name || '', countryId: normId(u.countryId), city: u.city || '', email: u.email || '', phone: u.phone || '' },
+    };
+  }
+
+  const ec = editItem ? editConfig(editItem) : null;
 
   return (
     <>
       <Navbar />
-      <main className="admin-main" dir={dir}>
-        <div className="admin-card">
-          <div className="admin-toolbar" style={{ flexWrap: 'wrap', gap: 8 }}>
-            <input className="admin-search" style={{ flex: 1, minWidth: 200 }} placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)} />
-            <div style={{ minWidth: 180 }}>
-              <SearchableSelect value={countryFilter} onChange={setCountryFilter} options={countryFilterOptions} placeholder={t('allCountries')} />
-            </div>
-            <button className="btn-primary" onClick={() => setAddDio(true)}>+ {t('addDio')}</button>
-          </div>
-
-          <div className="management-card-grid">
-            {filtered.length === 0 && (
-              <div className="admin-empty" style={{ gridColumn: '1/-1' }}>{dios.length === 0 ? t('noDios') : t('noMatch')}</div>
-            )}
-            {filtered.map(d => {
-              const myOdios = odiosFor(d);
-              const mySubs = subDiosFor(d);
-              const centerCount = (d.assignedCenterIds || []).length;
-              return (
-                <div className="management-card" key={d._id}>
-                  <div className="management-card-title">{d.name}</div>
-                  <div className="management-card-sub">{t('idNumber')}: {d.idNumber || '—'}</div>
-                  <div className="management-card-meta">
-                    <span className="badge badge-blue">{d.countryId?.name ? `${d.countryId.name} (${d.countryId.code})` : '—'}</span>
-                    <span className="badge badge-green">{centerCount} {t('centersCount')}</span>
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                    <div><strong>{t('odio')}:</strong> {myOdios.length ? myOdios.map(o => o.name).join('، ') : t('none')}</div>
-                    <div><strong>{t('subDios')}:</strong> {mySubs.length ? mySubs.map(s => s.name).join('، ') : t('none')}</div>
-                  </div>
-                  <div className="management-card-actions" style={{ justifyContent: 'flex-start' }}>
-                    <button className="btn-outline" style={{ fontSize: 12, padding: '5px 10px' }} onClick={() => setChildModal({ dio: d, kind: 'odio' })}>+ {t('odio')}</button>
-                    <button className="btn-outline" style={{ fontSize: 12, padding: '5px 10px' }} onClick={() => setChildModal({ dio: d, kind: 'sub-dio' })}>+ {t('subDios')}</button>
-                    <button className="btn-outline" style={{ fontSize: 12, padding: '5px 10px' }} onClick={() => setCentersModal({ dio: d })}>{t('editCenters')}</button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+      <main className="mt-content" dir={dir}>
+        <div className="mt-filterbar">
+          <SearchBox value={search} onChange={setSearch} placeholder={t('search')} />
+          <select className="mt-filter" value={countryF} onChange={(e) => setCountryF(e.target.value)}>
+            <option value="">{t('allCountries')}</option>
+            {countries.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
+          </select>
+          <span className="mt-filterbar-spacer" />
+          <button type="button" className="mt-btn" onClick={() => setAddDio(true)}>+ {t('addDio')}</button>
+          <button type="button" className="mt-btn" onClick={() => setAddSub(true)}>+ {t('addSubDio')}</button>
+          <span className="mt-count">{t('count')(rows.length)}</span>
         </div>
 
+        {loading ? (
+          <div className="mt-acct-grid">
+            {[...Array(6)].map((_, i) => <div key={i} className="skeleton mt-skel" style={{ height: 190 }} />)}
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="mt-empty"><div className="mt-empty-title">{dios.length + subDios.length === 0 ? t('empty') : t('noMatch')}</div></div>
+        ) : (
+          <div className="mt-acct-grid">
+            {rows.map((row, i) => (
+              <RevealOnScroll key={row.u._id} delay={i * 0.06}>
+                <AccountCard
+                  name={row.u.name} id={row.u.idNumber}
+                  role={row.kind === 'sub' ? t('badgeSub') : t('badgeDio')}
+                  fields={fieldsFor(row)} canEdit
+                  history={(row.u.changeHistory || []).map(histLine)}
+                  onView={() => setViewItem(row)} onEdit={() => setEditItem(row)}
+                />
+              </RevealOnScroll>
+            ))}
+          </div>
+        )}
+
         {addDio && (
-          <DioFormModal countries={countries} t={t} dir={dir}
+          <AddDioModal lang={lang} countries={countries}
             onClose={() => setAddDio(false)}
-            onSaved={() => { setAddDio(false); load(); showToast(t('created')); }} />
+            onSaved={() => { setAddDio(false); showToast(t('dioCreated'), 'ok'); load(); }} />
         )}
-        {childModal && (
-          <ChildFormModal dio={childModal.dio} kind={childModal.kind} t={t} dir={dir}
-            onClose={() => setChildModal(null)}
-            onSaved={(_saved, kind) => { setChildModal(null); load(); showToast(kind === 'odio' ? t('odioCreated') : t('subDioCreated')); }} />
+        {addSub && (
+          <AddSubDioModal lang={lang} dios={dios}
+            onClose={() => setAddSub(false)}
+            onSaved={() => { setAddSub(false); showToast(t('subDioCreated'), 'ok'); load(); }} />
         )}
-        {centersModal && (
-          <EditCentersModal dio={centersModal.dio} t={t} dir={dir}
-            onClose={() => setCentersModal(null)}
-            onSaved={() => { setCentersModal(null); load(); showToast(t('centersUpdated')); }} />
+
+        {editItem && ec && (
+          <ApprovalModal open lang={lang} routeKey={ec.routeKey} entityId={editItem.u._id} entityLabel={editItem.u.name}
+            title={ec.title} sub={editItem.u.name} fields={ec.fields} initialValues={ec.initialValues}
+            onClose={() => setEditItem(null)}
+            onSubmitted={() => { showToast(t('submitted'), 'warn'); load(); }} />
         )}
-        <Toast toasts={toasts} />
+
+        {viewItem && (
+          <ViewModal open lang={lang} title={viewItem.u.name} sub={viewItem.u.idNumber}
+            meta={viewItem.kind === 'sub' ? t('badgeSub') : t('badgeDio')}
+            rows={fieldsFor(viewItem)} history={(viewItem.u.changeHistory || []).map(histLine)}
+            onClose={() => setViewItem(null)} />
+        )}
       </main>
+      <MtToastHost toasts={toasts} />
     </>
   );
 }

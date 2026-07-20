@@ -36,7 +36,7 @@ export default function Profile() {
 
   if (loading) return (
     <>
-      <Navbar />
+      <Navbar title="Profile" />
       <main className="main">
         <div className="card profile-header-card">
           <div className="profile-photo-wrap">
@@ -160,7 +160,7 @@ export default function Profile() {
 
   return (
     <>
-      <Navbar />
+      <Navbar title="Profile" />
       <main className="main">
 
         {/* ── HEADER CARD ── */}

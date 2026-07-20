@@ -9,26 +9,55 @@ const mongoose = require('mongoose');
 // Creates within capacity and deactivations still happen directly (not queued).
 const changeRequestSchema = new mongoose.Schema(
   {
-    requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true }, // secretary
-    requestType: { type: String, enum: ['edit', 'capacity_exception'], default: 'edit', index: true },
+    requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true }, // secretary / clerk / CS
+    // 'edit' — change an existing account/entity; 'delete' — soft-delete it
+    // (both reviewed by the Data Analyzer in the redesign clerk/CS flow);
+    // 'capacity_exception' — legacy secretary→DIO create-above-capacity flow.
+    requestType: { type: String, enum: ['edit', 'delete', 'capacity_exception'], default: 'edit', index: true },
     targetModel: { type: String, default: 'User' },
-    // Required for edits, null for capacity_exception (the account does not exist yet).
+    // Required for edits/deletes, null for capacity_exception (no account yet).
     targetId:    { type: mongoose.Schema.Types.ObjectId, default: null },
     // The hospital a capacity_exception is scoped to (also traceability for edits).
     hospitalId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Hospital', default: null },
-    routeKey:    { type: String, enum: ['trainees', 'supervisors'], required: true }, // which apply-rules to re-run
-    targetLabel: { type: String, default: '' },   // denormalized account name for the list
+    // Which apply-rules to re-run on approval. The original two (trainees,
+    // supervisors) drive the legacy DIO-reviewed flow; the rest are the redesign
+    // clerk/CS registry targets reviewed by the Data Analyzer (see
+    // utils/registryChanges.js).
+    routeKey:    {
+      type: String,
+      enum: [
+        'trainees', 'supervisors',
+        'dios', 'odios', 'sub_dios', 'pds', 'sub_pds',
+        'centers', 'programs', 'countries',
+        'clerks', 'central_secretaries', 'hocs'
+      ],
+      required: true
+    },
+    targetLabel: { type: String, default: '' },   // denormalized account/entity name for the list
 
     changes:     { type: mongoose.Schema.Types.Mixed, required: true },   // raw allowlist-picked fields to apply
     before:      { type: mongoose.Schema.Types.Mixed, default: {} },      // raw snapshot of the same keys
-    display:     { type: [mongoose.Schema.Types.Mixed], default: [] },    // [{ label, from, to }] for the DIO diff
+    display:     { type: [mongoose.Schema.Types.Mixed], default: [] },    // [{ label, from, to }] diff
+
+    // Who approves this request: 'dio' (legacy secretary/CS→DIO/ODIO inbox) or
+    // 'data_analyzer' (redesign clerk/CS→Analyzer inbox). Legacy rows have no
+    // value and are treated as 'dio' by the DIO inbox's { $ne:'data_analyzer' }
+    // filter, so the two pipelines never cross.
+    reviewerRole: { type: String, enum: ['dio', 'data_analyzer'], default: 'dio', index: true },
+
+    // Required book-of-changes PDF for clerk/CS analyzer-reviewed requests.
+    bookOfChangesPdf: {
+      fileUrl:   { type: String, default: '' },   // /uploads/book-of-changes/<file>
+      fileName:  { type: String, default: '' },   // decoded original filename
+      sizeBytes: { type: Number, default: 0 },
+    },
 
     status:      { type: String, enum: ['pending', 'approved', 'rejected', 'cancelled'], default: 'pending', index: true },
-    reviewedBy:  { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, // DIO
+    reviewedBy:  { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, // DIO or Data Analyzer
     reviewedAt:  { type: Date, default: null },
     reviewNote:  { type: String, default: '' },
 
-    specialtyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Specialty', default: null }, // secretary scope snapshot
+    specialtyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Specialty', default: null }, // requester scope snapshot
     track:       { type: String, enum: ['basic', 'advanced'], default: 'advanced', index: true },
   },
   { timestamps: true }

@@ -11,24 +11,26 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import useBasePath from '../hooks/useBasePath';
 import Navbar from '../components/Navbar';
-import Toast from '../components/Toast';
+import { useMtToast, MtToastHost } from '../components/MtToast';
+import MtModal from '../components/MtModal';
 import SearchableSelect from '../components/SearchableSelect';
 import ViewToggle from '../components/ViewToggle';
 import api from '../api/axios';
 import Sk from '../components/Skeleton';
 import { IconEye, IconPencil, IconBan } from '../components/icons';
 import { roleLabel } from '../config/roles';
+import './dio.css';
 
 const API_BASE = '';
 
-// ── Role config: badge colours, list endpoint, table empty icon (labels come
-// from the central roleLabel helper) ──
+// ── Role config: list endpoint per role (labels come from the central roleLabel
+// helper; the badge is the shared accent-tint mt- role pill for every role) ──
 const ROLE_META = {
-  trainee:          { api: 'trainees',          icon: '🎓', badge: { bg: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)' } },
-  supervisor:       { api: 'supervisors',       icon: '👨‍⚕️', badge: { bg: 'var(--info-bg)', color: 'var(--info-fg)' } },
-  program_director: { api: 'program-directors', icon: '⭐', badge: { bg: 'var(--warning-bg)', color: 'var(--warning-fg)' } },
-  secretary:        { api: 'secretaries',       icon: '📋', badge: { bg: '#FCE7F3', color: '#9D174D' } },
-  president:        { api: 'presidents',        icon: '🏛️', badge: { bg: '#E0E7FF', color: '#3730A3' } },
+  trainee:          { api: 'trainees' },
+  supervisor:       { api: 'supervisors' },
+  program_director: { api: 'program-directors' },
+  secretary:        { api: 'secretaries' },
+  president:        { api: 'presidents' },
 };
 // Display/filter order (president is read-only — see CREATABLE_ROLES).
 const ROLE_ORDER = ['trainee', 'supervisor', 'program_director', 'secretary', 'president'];
@@ -46,6 +48,12 @@ function specialtyName(u) { return textValue(u?.specialtyId || u?.specialty); }
 function hospitalName(u)  { return u?.hospitalId?.name || u?.hospital?.name || '—'; }
 function hospitalIdOf(u)  { const h = u?.hospitalId || u?.hospital; return (h?._id || h || '').toString(); }
 function specialtyIdOf(u) { const s = u?.specialtyId; return (s?._id || s || '').toString(); }
+function initialsOf(u)    { return u.initials || u.name?.trim()?.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?'; }
+function AvatarCell({ u, size = 34 }) {
+  return u.photoUrl
+    ? <img src={`${API_BASE}${u.photoUrl}`} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }} />
+    : <span className="mt-acct-avatar" style={{ width: size, height: size, fontSize: size < 30 ? 12 : 13 }}>{initialsOf(u)}</span>;
+}
 
 // Field schema per role — matches the validation the backend enforces.
 function roleFields(role) {
@@ -74,21 +82,16 @@ function roleFields(role) {
 
 // ── Confirm modal (deactivate) ────────────────────────────────────────────
 function ConfirmModal({ title, message, confirmLabel, onConfirm, onCancel }) {
-  useEffect(() => {
-    const h = e => { if (e.key === 'Escape') onCancel(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [onCancel]);
   return (
-    <div className="confirm-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
-      <div className="confirm-box">
-        <h3>{title}</h3><p>{message}</p>
-        <div className="confirm-btns">
-          <button className="btn-outline" onClick={onCancel}>Cancel</button>
-          <button className="btn-red" onClick={onConfirm}>{confirmLabel}</button>
-        </div>
-      </div>
-    </div>
+    <MtModal open title={title} onClose={onCancel}
+      footer={(
+        <>
+          <button className="mt-btn--cancel" onClick={onCancel}>Cancel</button>
+          <button className="mt-btn--danger-solid" onClick={onConfirm}>{confirmLabel}</button>
+        </>
+      )}>
+      <div style={{ fontSize: 13.5, color: 'var(--text)' }}>{message}</div>
+    </MtModal>
   );
 }
 
@@ -112,12 +115,6 @@ function UserFormModal({ user, initialRole, hospitals, specialties, supervisors,
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [apiErr, setApiErr] = useState('');
-
-  useEffect(() => {
-    const h = e => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [onClose]);
 
   const fields = roleFields(role);
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: false })); setApiErr(''); }
@@ -186,85 +183,67 @@ function UserFormModal({ user, initialRole, hospitals, specialties, supervisors,
 
   function renderField(f) {
     if (f.createOnly && isEdit) return null;
-    const invalid = errors[f.key] ? 'invalid' : '';
     let control;
     if (f.type === 'hospital') {
-      control = <SearchableSelect value={form.hospitalId} onChange={v => set('hospitalId', v)} options={hospitalOptions} placeholder="Search hospital..." error={errors.hospitalId} />;
+      control = <SearchableSelect value={form.hospitalId} onChange={v => set('hospitalId', v)} options={hospitalOptions} placeholder="Search hospital…" error={errors.hospitalId} />;
     } else if (f.type === 'specialty') {
-      control = <SearchableSelect value={form.specialtyId} onChange={v => set('specialtyId', v)} options={specialtyOptions} placeholder="Search specialty..." error={errors.specialtyId} />;
+      control = <SearchableSelect value={form.specialtyId} onChange={v => set('specialtyId', v)} options={specialtyOptions} placeholder="Search specialty…" error={errors.specialtyId} />;
     } else if (f.type === 'supervisor') {
-      control = <SearchableSelect value={form[f.key]} onChange={v => set(f.key, v)} options={supervisorOptions} placeholder="Search supervisor..." error={errors[f.key]} />;
+      control = <SearchableSelect value={form[f.key]} onChange={v => set(f.key, v)} options={supervisorOptions} placeholder="Search supervisor…" error={errors[f.key]} />;
     } else if (f.type === 'year') {
       control = (
-        <select value={form.year} onChange={e => set('year', e.target.value)}>
+        <select className="mt-select" value={form.year} onChange={e => set('year', e.target.value)}>
           <option value="">— select —</option>
           {[1, 2, 3, 4, 5, 6].map(y => <option key={y} value={y}>Year {y}</option>)}
         </select>
       );
     } else {
-      control = <input className={invalid} type={f.type === 'password' ? 'password' : f.type === 'email' ? 'email' : 'text'}
+      control = <input className="mt-input" style={{ borderColor: errors[f.key] ? 'var(--danger)' : undefined }}
+        type={f.type === 'password' ? 'password' : f.type === 'email' ? 'email' : 'text'}
         value={form[f.key]} placeholder={f.placeholder || ''}
         autoComplete={f.type === 'password' ? 'new-password' : 'off'}
         onChange={e => set(f.key, e.target.value)} />;
     }
     return (
-      <div className="admin-field" key={f.key}>
-        <label>{f.label}</label>
+      <div className="mt-field" key={f.key}>
+        <label className="mt-label">{f.label}</label>
         {control}
       </div>
     );
   }
 
   return (
-    <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="admin-modal admin-modal-lg">
-        <div className="admin-modal-header">
-          <div className="admin-modal-title">{isEdit ? `Edit ${roleLabel(role)}` : `Add ${roleLabel(role)}`}</div>
-          <button className="admin-modal-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="admin-modal-body">
-          {!isEdit && (
-            <div className="admin-field" style={{ marginBottom: 14 }}>
-              <label>User Type *</label>
-              <select value={role} onChange={e => setRole(e.target.value)}>
-                {CREATABLE_ROLES.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
-              </select>
-            </div>
-          )}
-          <div className="admin-form-grid">
-            {fields.map(renderField)}
-          </div>
-          {apiErr && (
-            <div style={{ marginTop: 14, background: 'var(--danger-bg)', color: 'var(--danger-fg)', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>
-              {apiErr}
-            </div>
-          )}
-        </div>
-        <div className="admin-modal-footer">
-          <button className="btn-outline" onClick={onClose}>Cancel</button>
-          <button className="btn-purple" onClick={handleSave} disabled={saving}>
+    <MtModal open title={isEdit ? `Edit ${roleLabel(role)}` : `Add ${roleLabel(role)}`} onClose={onClose}
+      footer={(
+        <>
+          <button className="mt-btn--cancel" onClick={onClose}>Cancel</button>
+          <button className="mt-btn" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : isEdit ? 'Save Changes' : `Create ${roleLabel(role)}`}
           </button>
+        </>
+      )}>
+      {!isEdit && (
+        <div className="mt-field" style={{ marginBlockEnd: 14 }}>
+          <label className="mt-label">User Type <span className="mt-label-req">*</span></label>
+          <select className="mt-select" value={role} onChange={e => setRole(e.target.value)}>
+            {CREATABLE_ROLES.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
+          </select>
         </div>
+      )}
+      <div className="mt-field-grid">
+        {fields.map(renderField)}
       </div>
-    </div>
+      {apiErr && (
+        <div className="mt-banner" style={{ background: 'var(--danger-bg)', borderInlineStartColor: 'var(--danger)', color: 'var(--danger)', marginBlock: '14px 0' }}>
+          {apiErr}
+        </div>
+      )}
+    </MtModal>
   );
 }
 
 // ── Read-only View modal (built from list data — no backend fetch) ─────────
-// For a supervisor, `trainees` lists their assigned trainees (null = failed to
-// load); clicking one calls onTraineeClick(t) to swap this modal in place to the
-// trainee's card, with onBack returning to the supervisor.
 function UserViewModal({ user, trainees, onTraineeClick, onBack, onClose, onFullProfile }) {
-  useEffect(() => {
-    // Escape steps back to the supervisor card if we're viewing one of their
-    // trainees, otherwise it closes the modal.
-    const h = e => { if (e.key === 'Escape') (onBack || onClose)(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [onClose, onBack]);
-
-  const meta = ROLE_META[user.role] || { badge: { bg: 'var(--border-soft)', color: 'var(--text-2)' } };
   const active = user.isActive !== false;
   const rows = [
     ['Email', user.email],
@@ -279,80 +258,66 @@ function UserViewModal({ user, trainees, onTraineeClick, onBack, onClose, onFull
     ['Status', active ? 'Active' : 'Inactive'],
   ].filter(Boolean);
 
-  return (
-    <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="admin-modal admin-modal-lg">
-        <div className="admin-modal-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {user.photoUrl
-              ? <img src={`${API_BASE}${user.photoUrl}`} alt="" className="cell-photo" />
-              : <div className="cell-initials">{user.initials || user.name?.[0] || '?'}</div>}
-            <div>
-              <div className="admin-modal-title" style={{ marginBottom: 3 }}>{user.name}</div>
-              <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 20, background: meta.badge.bg, color: meta.badge.color }}>
-                {roleLabel(user.role)}
-              </span>
-            </div>
-          </div>
-          <button className="admin-modal-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="admin-modal-body">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px 18px' }}>
-            {rows.map(([label, value]) => (
-              <div key={label}>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 3 }}>{label}</div>
-                <div style={{ fontSize: 14, color: 'var(--brand-secondary)', fontWeight: 600 }}>{textValue(value)}</div>
-              </div>
-            ))}
-          </div>
+  const titleNode = (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <AvatarCell u={user} size={40} />
+      <span>
+        <span style={{ display: 'block', fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{user.name}</span>
+        <span className="mt-pill mt-pill--role" style={{ marginBlockStart: 3 }}>{roleLabel(user.role)}</span>
+      </span>
+    </span>
+  );
 
-          {/* Supervisor → assigned trainees (click one to view their card in this panel) */}
-          {user.role === 'supervisor' && (
-            <div style={{ marginTop: 20 }}>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8 }}>
-                Assigned Trainees{Array.isArray(trainees) ? ` (${trainees.length})` : ''}
-              </div>
-              {trainees === null ? (
-                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Could not load assigned trainees.</div>
-              ) : trainees.length === 0 ? (
-                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>No trainees assigned.</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
-                  {trainees.map(t => (
-                    <button type="button" key={t._id}
-                      onClick={() => onTraineeClick(t)}
-                      aria-label={`View ${t.name}`}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
-                        background: 'var(--surface-2)', border: '1px solid var(--border-soft)', borderRadius: 8,
-                        padding: '7px 10px', cursor: 'pointer',
-                      }}>
-                      {t.photoUrl
-                        ? <img src={`${API_BASE}${t.photoUrl}`} alt="" className="cell-photo" style={{ width: 28, height: 28 }} />
-                        : <div className="cell-initials" style={{ width: 28, height: 28, fontSize: 12 }}>{t.initials || t.name?.[0] || '?'}</div>}
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t.studentId || t.specialty || ''}</div>
-                      </div>
-                      <span style={{ fontSize: 16, color: 'var(--text-muted)', flexShrink: 0 }}>›</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+  return (
+    <MtModal open title={titleNode} onClose={onBack || onClose}
+      footer={(
+        <>
+          {onBack && <button className="mt-btn--cancel" onClick={onBack}>← Back to supervisor</button>}
+          {user.role === 'trainee' && <button className="mt-btn--outline" onClick={onFullProfile}>Open full profile →</button>}
+          <button className="mt-btn" onClick={onClose}>Close</button>
+        </>
+      )}>
+      <div className="dio-kv-grid">
+        {rows.map(([label, value]) => (
+          <div key={label}>
+            <div className="mt-acct-k">{label}</div>
+            <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600 }}>{textValue(value)}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Supervisor → assigned trainees (click one to view their card in this panel) */}
+      {user.role === 'supervisor' && (
+        <div style={{ marginBlockStart: 20 }}>
+          <div className="mt-acct-k" style={{ marginBlockEnd: 8 }}>
+            Assigned Trainees{Array.isArray(trainees) ? ` (${trainees.length})` : ''}
+          </div>
+          {trainees === null ? (
+            <div className="mt-card-sub">Could not load assigned trainees.</div>
+          ) : trainees.length === 0 ? (
+            <div className="mt-card-sub">No trainees assigned.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
+              {trainees.map(t => (
+                <button type="button" key={t._id}
+                  onClick={() => onTraineeClick(t)}
+                  aria-label={`View ${t.name}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'start',
+                    background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8,
+                    padding: '7px 10px', cursor: 'pointer' }}>
+                  <AvatarCell u={t} size={28} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}</div>
+                    <div className="mt-acct-id">{t.studentId || t.specialty || ''}</div>
+                  </div>
+                  <span style={{ fontSize: 16, color: 'var(--text-2)', flexShrink: 0 }}>›</span>
+                </button>
+              ))}
             </div>
           )}
         </div>
-        <div className="admin-modal-footer">
-          {onBack && (
-            <button className="btn-outline" onClick={onBack}>← Back to supervisor</button>
-          )}
-          {user.role === 'trainee' && (
-            <button className="btn-outline" onClick={onFullProfile}>Open full profile →</button>
-          )}
-          <button className="btn-purple" onClick={onClose}>Close</button>
-        </div>
-      </div>
-    </div>
+      )}
+    </MtModal>
   );
 }
 
@@ -377,13 +342,7 @@ export default function DioUsers() {
   const [viewFrom,     setViewFrom    ] = useState(null);   // supervisor to return to when viewing one of their trainees
   const [traineesBySup, setTraineesBySup] = useState(null); // { supId: [trainee] } | null (null = not loaded / failed)
   const [confirmDeact, setConfirmDeact] = useState(null);
-  const [toasts,       setToasts      ] = useState([]);
-
-  function showToast(message, type = 'success') {
-    const id = Date.now();
-    setToasts(p => [...p, { id, message, type }]);
-    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3200);
-  }
+  const { toasts, showToast } = useMtToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -415,8 +374,9 @@ export default function DioUsers() {
     // null = failed/unavailable (modal shows a fallback line); {} = loaded-empty.
     setTraineesBySup(tmRes.status === 'fulfilled' ? (tmRes.value.data?.data || {}) : null);
     setUsers(merged);
-    if (anyFail) showToast('Some users could not be loaded', 'error');
+    if (anyFail) showToast('Some users could not be loaded', 'dng');
     setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showInactive]);
 
   useEffect(() => { load(); }, [load]);
@@ -455,7 +415,7 @@ export default function DioUsers() {
   function handleSaved(saved, isEdit) {
     // Simplest correct path: refetch so cross-list state stays consistent.
     load();
-    showToast(isEdit ? 'User updated' : 'User created');
+    showToast(isEdit ? 'User updated' : 'User created', 'ok');
   }
 
   async function handleDeactivate() {
@@ -465,38 +425,36 @@ export default function DioUsers() {
       setUsers(prev => showInactive
         ? prev.map(x => x._id === u._id ? { ...x, isActive: false } : x)
         : prev.filter(x => x._id !== u._id));
-      showToast(`${u.name} deactivated`);
-    } catch (err) { showToast(err.response?.data?.message || 'Deactivate failed', 'error'); }
+      showToast(`${u.name} deactivated`, 'ok');
+    } catch (err) { showToast(err.response?.data?.message || 'Deactivate failed', 'dng'); }
     finally { setConfirmDeact(null); }
   }
 
   const hospitalFilterOptions  = [{ value: '', label: 'All Hospitals' }, ...hospitals.map(h => ({ value: h._id, label: h.name }))];
   const specialtyFilterOptions = [{ value: '', label: 'All Specialties' }, ...specialties.map(s => ({ value: s._id, label: s.name }))];
 
+  function rowActions(u, active) {
+    return (
+      <div className="mt-row-actions">
+        <button className="mt-icon-action" title="View details" aria-label={`View ${u.name}`} onClick={() => setViewUser(u)}><IconEye size={15} /></button>
+        {u.role !== 'president' && (
+          <button className="mt-icon-action" title="Edit" aria-label={`Edit ${u.name}`} onClick={() => setFormModal({ user: u })}><IconPencil size={15} /></button>
+        )}
+        {u.role !== 'president' && active && (
+          <button className="mt-icon-action mt-icon-action--danger" title="Deactivate" aria-label={`Deactivate ${u.name}`} onClick={() => setConfirmDeact(u)}><IconBan size={15} /></button>
+        )}
+      </div>
+    );
+  }
+
   if (loading) return (
     <>
       <Navbar />
-      <main className="admin-main">
-        <div className="filter-tabs" style={{ marginBottom: 14 }}>
-          {[...Array(5)].map((_, i) => <Sk key={i} w={90} h={32} r={20} />)}
-        </div>
-        <div className="admin-card">
-          <div className="admin-toolbar"><Sk h={36} r={8} style={{ flex: 1 }} /></div>
-          <div className="admin-table-wrap">
-            <table className="admin-table"><tbody>
-              {[...Array(8)].map((_, i) => (
-                <tr key={i}>
-                  <td><Sk w={20} h={13} /></td>
-                  <td><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Sk w={36} h={36} r="50%" /><Sk w={130} h={13} /></div></td>
-                  <td><Sk w={90} h={22} r={20} /></td>
-                  <td><Sk w={90} h={22} r={20} /></td>
-                  <td><Sk w={90} h={13} /></td>
-                  <td><Sk w={70} h={22} r={20} /></td>
-                  <td><div style={{ display: 'flex', gap: 6 }}><Sk w={36} h={36} r={8} /><Sk w={36} h={36} r={8} /><Sk w={36} h={36} r={8} /></div></td>
-                </tr>
-              ))}
-            </tbody></table>
-          </div>
+      <main className="mt-content">
+        <div className="dio-tabs">{[...Array(5)].map((_, i) => <Sk key={i} w={90} h={32} r={6} style={{ marginInlineEnd: 6 }} />)}</div>
+        <div className="mt-card">
+          <div className="mt-filterbar"><Sk h={38} r={8} style={{ flex: 1 }} /></div>
+          {[...Array(8)].map((_, i) => <Sk key={i} h={44} r={8} style={{ marginBottom: 8 }} />)}
         </div>
       </main>
     </>
@@ -505,39 +463,36 @@ export default function DioUsers() {
   return (
     <>
       <Navbar />
-      <main className="admin-main">
+      <main className="mt-content">
 
-        {/* Role filter pills */}
-        <div className="filter-tabs" style={{ marginBottom: 14 }}>
-          <button className={`filter-tab${roleFilter === 'all' ? ' active' : ''}`} onClick={() => setRoleFilter('all')}>
-            All ({roleCounts.all})
+        {/* Role filter tabs */}
+        <div className="dio-tabs">
+          <button className={`dio-tab${roleFilter === 'all' ? ' is-active' : ''}`} onClick={() => setRoleFilter('all')}>
+            All<span className="dio-tab-badge">{roleCounts.all}</span>
           </button>
           {ROLE_ORDER.map(r => (
-            <button key={r} className={`filter-tab${roleFilter === r ? ' active' : ''}`} onClick={() => setRoleFilter(r)}>
-              {roleLabel(r)}s ({roleCounts[r] || 0})
+            <button key={r} className={`dio-tab${roleFilter === r ? ' is-active' : ''}`} onClick={() => setRoleFilter(r)}>
+              {roleLabel(r)}s<span className="dio-tab-badge">{roleCounts[r] || 0}</span>
             </button>
           ))}
         </div>
 
-        <div className="admin-card">
-          <div className="admin-toolbar" style={{ flexWrap: 'wrap', gap: 8 }}>
-            <input className="admin-search" style={{ flex: 1, minWidth: 200 }}
-              placeholder="Search by name, email, student ID…"
-              value={search} onChange={e => setSearch(e.target.value)} />
+        <div className="mt-card">
+          <div className="mt-filterbar">
+            <div className="mt-search">
+              <input placeholder="Search by name, email, student ID…" value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
             <div style={{ minWidth: 170 }}>
               <SearchableSelect value={hospitalFilter} onChange={setHospitalFilter} options={hospitalFilterOptions} placeholder="All Hospitals" />
             </div>
             <div style={{ minWidth: 170 }}>
               <SearchableSelect value={specialtyFilter} onChange={setSpecialtyFilter} options={specialtyFilterOptions} placeholder="All Specialties" />
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-2)', cursor: 'pointer' }}>
-              <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} /> Show inactive
-            </label>
+            <label className="mt-check-label"><input className="mt-check" type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} /> Show inactive</label>
+            <div className="mt-filterbar-spacer" />
             <ViewToggle value={view} onChange={setView} />
-            <span style={{ fontSize: 13, color: 'var(--text-muted)', flexShrink: 0 }}>
-              {filtered.length} user{filtered.length !== 1 ? 's' : ''}
-            </span>
-            <button className="btn-purple"
+            <span className="mt-count">{filtered.length} user{filtered.length !== 1 ? 's' : ''}</span>
+            <button className="mt-btn mt-btn--small"
               onClick={() => setFormModal({ user: null, initialRole: CREATABLE_ROLES.includes(roleFilter) ? roleFilter : 'trainee' })}>
               + Add User
             </button>
@@ -546,66 +501,41 @@ export default function DioUsers() {
           {/* Keyed wrapper → subtle crossfade when filters/view change */}
           <div key={`${roleFilter}|${hospitalFilter}|${specialtyFilter}|${search}|${view}`} style={{ animation: 'fadeIn .18s ease-out' }}>
           {view === 'list' && (
-            <div className="admin-table-wrap">
-              <table className="admin-table admin-table--stack">
+            <div className="mt-table-wrap">
+              <table className="mt-table mt-table--stack">
                 <thead>
-                  <tr><th>#</th><th>User</th><th>Role</th><th>Specialty</th><th>Hospital</th><th>Status</th><th>Actions</th></tr>
+                  <tr>
+                    <th className="mt-th">#</th><th className="mt-th">User</th><th className="mt-th">Role</th>
+                    <th className="mt-th">Specialty</th><th className="mt-th">Hospital</th><th className="mt-th">Status</th><th className="mt-th">Actions</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {filtered.length === 0 && (
-                    <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', padding: 40 }}>
-                        <div style={{ fontSize: 32, marginBottom: 8 }}>👥</div>
-                        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)' }}>
-                          {users.length === 0 ? 'No users yet.' : 'No users match your filters.'}
-                        </div>
-                      </td>
-                    </tr>
+                    <tr><td className="mt-td mt-td--muted" colSpan={7} style={{ textAlign: 'center', padding: 32 }}>
+                      {users.length === 0 ? 'No users yet.' : 'No users match your filters.'}
+                    </td></tr>
                   )}
                   {filtered.map((u, i) => {
                     const active = u.isActive !== false;
-                    const meta = ROLE_META[u.role] || { badge: { bg: 'var(--border-soft)', color: 'var(--text-2)' } };
                     return (
                       <tr key={u._id} style={{ opacity: active ? 1 : 0.65 }}>
-                        <td style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
-                        <td data-label="User">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            {u.photoUrl
-                              ? <img src={`${API_BASE}${u.photoUrl}`} alt="" className="cell-photo" />
-                              : <div className="cell-initials">{u.initials || u.name?.[0] || '?'}</div>}
+                        <td className="mt-td mt-td--muted">{i + 1}</td>
+                        <td className="mt-td" data-label="User">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                            <AvatarCell u={u} />
                             <div>
-                              <strong>{u.name}</strong>
-                              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{u.email}</div>
+                              <div style={{ fontWeight: 600, color: 'var(--text)' }}>{u.name}</div>
+                              {u.email && <div className="mt-acct-id">{u.email}</div>}
                             </div>
                           </div>
                         </td>
-                        <td data-label="Role">
-                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: meta.badge.bg, color: meta.badge.color }}>
-                            {roleLabel(u.role)}
-                          </span>
+                        <td className="mt-td" data-label="Role"><span className="mt-pill mt-pill--role">{roleLabel(u.role)}</span></td>
+                        <td className="mt-td" data-label="Specialty"><span className="mt-pill mt-pill--neutral">{specialtyName(u)}</span></td>
+                        <td className="mt-td mt-td--muted" data-label="Hospital">{hospitalName(u)}</td>
+                        <td className="mt-td" data-label="Status">
+                          <span className={`mt-pill ${active ? 'mt-pill--active' : 'mt-pill--rejected'}`}>{active ? 'Active' : 'Inactive'}</span>
                         </td>
-                        <td data-label="Specialty">
-                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)' }}>
-                            {specialtyName(u)}
-                          </span>
-                        </td>
-                        <td data-label="Hospital" style={{ fontSize: 13, color: 'var(--text-2)' }}>{hospitalName(u)}</td>
-                        <td data-label="Status">
-                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, background: active ? 'var(--success-bg)' : 'var(--danger-bg)', color: active ? 'var(--success-fg)' : 'var(--danger-fg)' }}>
-                            {active ? 'Active' : 'Inactive'}
-                          </span>
-                        </td>
-                        <td data-label="Actions">
-                          <div className="action-btns">
-                            <button className="btn-action view" title="View details" aria-label={`View ${u.name}`} onClick={() => setViewUser(u)}><IconEye /></button>
-                            {u.role !== 'president' && (
-                              <button className="btn-action edit" title="Edit" aria-label={`Edit ${u.name}`} onClick={() => setFormModal({ user: u })}><IconPencil /></button>
-                            )}
-                            {u.role !== 'president' && active && (
-                              <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${u.name}`} onClick={() => setConfirmDeact(u)}><IconBan /></button>
-                            )}
-                          </div>
-                        </td>
+                        <td className="mt-td mt-td--actions" data-label="Actions">{rowActions(u, active)}</td>
                       </tr>
                     );
                   })}
@@ -615,31 +545,29 @@ export default function DioUsers() {
           )}
 
           {view === 'card' && (
-            <div className="management-card-grid">
+            <div className="mt-acct-grid">
               {filtered.length === 0 && (
-                <div className="admin-empty" style={{ gridColumn: '1/-1' }}>
-                  {users.length === 0 ? 'No users yet.' : 'No users match your filters.'}
+                <div className="mt-empty" style={{ gridColumn: '1/-1' }}>
+                  <div className="mt-empty-sub">{users.length === 0 ? 'No users yet.' : 'No users match your filters.'}</div>
                 </div>
               )}
               {filtered.map(u => {
                 const active = u.isActive !== false;
-                const meta = ROLE_META[u.role] || { badge: { bg: 'var(--border-soft)', color: 'var(--text-2)' } };
                 return (
-                  <div className="management-card" key={u._id} style={{ opacity: active ? 1 : 0.65 }}>
+                  <div className="mt-card" key={u._id} style={{ opacity: active ? 1 : 0.65, display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      {u.photoUrl ? <img src={`${API_BASE}${u.photoUrl}`} alt="" className="cell-photo" /> : <div className="cell-initials">{u.initials || u.name?.[0] || '?'}</div>}
-                      <div><div className="management-card-title">{u.name}</div><div className="management-card-sub">{u.email}</div></div>
+                      <AvatarCell u={u} />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{u.name}</div>
+                        <div className="mt-acct-id">{u.email}</div>
+                      </div>
                     </div>
-                    <div className="management-card-meta">
-                      <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: meta.badge.bg, color: meta.badge.color }}>{roleLabel(u.role)}</span>
-                      <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, background: active ? 'var(--success-bg)' : 'var(--danger-bg)', color: active ? 'var(--success-fg)' : 'var(--danger-fg)' }}>{active ? 'Active' : 'Inactive'}</span>
+                    <div className="dio-chip-row">
+                      <span className="mt-pill mt-pill--role">{roleLabel(u.role)}</span>
+                      <span className={`mt-pill ${active ? 'mt-pill--active' : 'mt-pill--rejected'}`}>{active ? 'Active' : 'Inactive'}</span>
                     </div>
-                    <div className="management-card-sub">{specialtyName(u)} · {hospitalName(u)}</div>
-                    <div className="management-card-actions">
-                      <button className="btn-action view" title="View details" aria-label={`View ${u.name}`} onClick={() => setViewUser(u)}><IconEye /></button>
-                      {u.role !== 'president' && <button className="btn-action edit" title="Edit" aria-label={`Edit ${u.name}`} onClick={() => setFormModal({ user: u })}><IconPencil /></button>}
-                      {u.role !== 'president' && active && <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${u.name}`} onClick={() => setConfirmDeact(u)}><IconBan /></button>}
-                    </div>
+                    <div className="mt-card-sub">{specialtyName(u)} · {hospitalName(u)}</div>
+                    <div className="mt-row-actions" style={{ justifyContent: 'flex-start' }}>{rowActions(u, active)}</div>
                   </div>
                 );
               })}
@@ -686,7 +614,7 @@ export default function DioUsers() {
             onCancel={() => setConfirmDeact(null)}
           />
         )}
-        <Toast toasts={toasts} />
+        <MtToastHost toasts={toasts} />
       </main>
     </>
   );

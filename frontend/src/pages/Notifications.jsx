@@ -3,7 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import Navbar from '../components/Navbar';
 import Sk from '../components/Skeleton';
-import { IconTrash } from '../components/icons';
+import { IconTrash, NavIcon } from '../components/icons';
+import './trainee.css';
 
 function fmt(d) {
   if (!d) return '';
@@ -56,41 +57,34 @@ export default function Notifications() {
   return (
     <>
       <Navbar />
-      <main className="main">
-        <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
-            <div>
-              <div className="card-title">Program Director Notifications</div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
-                Updates from your Program Directors — e.g. when a report is graded or published.
-              </div>
+      <main className="mt-content">
+        <div className="mt-card">
+          <div className="mt-card-head mt-card-head--tight" style={{ marginBlockEnd: 14 }}>
+            <div style={{ minWidth: 0 }}>
+              <div className="mt-card-title">Program Director notifications</div>
+              <div className="mt-card-sub">Updates from your Program Directors — e.g. when a report is graded or published.</div>
             </div>
-            {unread > 0 && (
-              <button className="btn-purple" onClick={markAllRead}>Mark all as read</button>
-            )}
+            <div className="mt-card-head-spacer" style={{ flex: 1 }} />
+            {unread > 0 && <button className="mt-btn mt-btn--small" onClick={markAllRead}>Mark all as read</button>}
           </div>
 
           {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {[0, 1, 2].map(i => <Sk key={i} h={58} r={10} />)}
-            </div>
+            <div className="tr-rows">{[0, 1, 2].map(i => <Sk key={i} h={58} r={10} />)}</div>
           ) : items.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: 38, marginBottom: 10 }}>🔔</div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)', marginBottom: 4 }}>No notifications yet</div>
-              <div style={{ fontSize: 13 }}>Notifications from your Program Directors will appear here.</div>
+            <div className="mt-empty">
+              <span className="mt-empty-icon"><NavIcon name="bell" size={24} /></span>
+              <div className="mt-empty-title">No notifications yet</div>
+              <div className="mt-empty-sub">Notifications from your Program Directors will appear here.</div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="tr-rows" style={{ gap: 8 }}>
               {items.map(n => (
-                <div key={n._id}
-                  role="button"
-                  onClick={() => markRead(n)}
+                <div key={n._id} role="button" onClick={() => markRead(n)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12,
                     border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px',
-                    background: n.read ? 'var(--surface-2)' : 'var(--info-bg)',
-                    borderLeft: `4px solid ${n.read ? 'var(--border)' : 'var(--accent)'}`,
+                    background: n.read ? 'var(--surface-2)' : 'var(--brand-primary-t)',
+                    borderInlineStart: `4px solid ${n.read ? 'var(--border)' : 'var(--accent)'}`,
                     cursor: 'pointer',
                   }}>
                   <div style={{ width: 10, flexShrink: 0 }}>
@@ -98,15 +92,11 @@ export default function Notifications() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: n.read ? 500 : 700 }}>{n.message}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>{fmt(n.createdAt)}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-2)', marginBlockStart: 3 }}>{fmt(n.createdAt)}</div>
                   </div>
-                  <button type="button" title="Delete" aria-label="Delete"
+                  <button type="button" className="mt-icon-action mt-icon-action--danger" title="Delete" aria-label="Delete"
                     onClick={e => { e.stopPropagation(); handleDelete(n._id); }}
-                    style={{
-                      width: 32, height: 32, borderRadius: 8, background: 'var(--surface)',
-                      border: '1px solid var(--border)', color: 'var(--danger-fg)', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                    }}>
+                    style={{ width: 32, height: 32, border: '1px solid var(--border)', background: 'var(--surface)' }}>
                     <IconTrash size={15} />
                   </button>
                 </div>

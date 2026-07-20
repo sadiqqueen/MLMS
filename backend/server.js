@@ -81,6 +81,14 @@ app.use('/uploads/consultant-memos', (req, res, next) => {
   }
   next();
 });
+// Book-of-changes PDFs (clerk/CS edit attachments) download with their original
+// (possibly Arabic) filename via ?dl=<name>, same pattern as consultant-memos.
+app.use('/uploads/book-of-changes', (req, res, next) => {
+  if (typeof req.query.dl === 'string' && req.query.dl) {
+    res.setHeader('Content-Disposition', contentDisposition(req.query.dl));
+  }
+  next();
+});
 
 // Uploaded training/report files require an authenticated session.
 app.use('/uploads', auth, express.static(path.join(__dirname, 'uploads')));
@@ -93,6 +101,8 @@ app.use('/api/research', writeMethodsOnly);
 app.use('/api/logbook', writeMethodsOnly);
 app.use('/api/central', writeMethodsOnly);
 app.use('/api/registry', writeMethodsOnly);
+app.use('/api/analyzer', writeMethodsOnly);
+app.use('/api/dio-view', writeMethodsOnly);
 app.use('/api/announcements', writeMethodsOnly);
 
 // ── HEALTH CHECK ─────────────────────────────────────────────────────────
@@ -128,6 +138,7 @@ app.use('/api/registry',          require('./routes/registry'));
 app.use('/api/programs',          require('./routes/programs'));
 app.use('/api/analyzer',          require('./routes/analyzer'));
 app.use('/api/central',           require('./routes/centralSecretary'));
+app.use('/api/hoc',               require('./routes/hoc'));
 app.use('/api/sg',                require('./routes/sg'));
 app.use('/api/dio-view',          require('./routes/dioView'));
 app.use('/api/announcements',     require('./routes/announcements'));

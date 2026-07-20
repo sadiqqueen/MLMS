@@ -4,20 +4,46 @@
 // specialties). Creates trainees (trainer OPTIONAL) and trainers against a
 // program; edits are queued as ChangeRequests approved by the center's ODIO.
 const router         = require('express').Router();
+const fs             = require('fs');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const User          = require('../models/User');
 const Program       = require('../models/Program');
 const Hospital      = require('../models/Hospital');
+const Country       = require('../models/Country');
+const Certificate   = require('../models/Certificate');
+const Evaluation    = require('../models/Evaluation');
+const Research      = require('../models/Research');
 const Notification  = require('../models/Notification');
 const ChangeRequest = require('../models/ChangeRequest');
 const AuditLog      = require('../models/AuditLog');
 const { currentYearRange, inYear } = require('../utils/capacity');
 const { accreditationExpiry, accreditationStatus } = require('../utils/accreditation');
 const { trainingYear } = require('../utils/trainingYear');
+const { specialtyIdsForCs } = require('../utils/councilScope');
+const { changeHistoryFor } = require('../utils/changeHistory');
+const { decodeOriginalName } = require('../utils/filename');
+const { bocUpload, BOC_URL_PREFIX } = require('../utils/bookOfChanges');
+const { ROUTE_TARGETS, buildRegistryChangePayload, notifyAnalyzers } = require('../utils/registryChanges');
 
 const CENTRAL_ROLES = ['central_secretary', 'super_admin'];
 const EDIT_FIELDS = ['name', 'phone', 'city', 'gender', 'supervisorId', 'researchSupervisorId'];
+
+// Resolve the CS specialty scope. super_admin sees everything (all:true); a main
+// CS is scoped to its council's specialties, a precise CS to every precise
+// specialty (utils/councilScope.js).
+async function csScope(req) {
+  if (req.user.role === 'super_admin') return { all: true, ids: null };
+  const ids = await specialtyIdsForCs(req.user);
+  return { all: false, ids: ids || [] };
+}
+
+// True when a specialtyId is inside the CS's scope (super_admin: always true).
+function inCsScope(scope, specialtyId) {
+  if (scope.all) return true;
+  if (!specialtyId) return false;
+  return (scope.ids || []).some(id => String(id) === String(specialtyId));
+}
 
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -155,12 +181,18 @@ async function queueChangeRequest({ req, routeKey, existing, fields }) {
 
 // ── PROGRAMS (global picker with accreditation + capacity usage) ────────────
 
-// GET /api/central/programs?search=&specialtyId=&countryId=
+// GET /api/central/programs?search=&specialtyId=&countryId= — scoped to the CS.
 router.get('/programs', auth, allowRoles(...CENTRAL_ROLES), async (req, res) => {
   try {
     const { search, specialtyId, countryId } = req.query;
+    const scope = await csScope(req);
     const query = { isActive: { $ne: false } };
-    if (specialtyId) query.specialtyId = specialtyId;
+    if (specialtyId) {
+      if (!inCsScope(scope, specialtyId)) return res.json({ success: true, data: [] });
+      query.specialtyId = specialtyId;
+    } else if (!scope.all) {
+      query.specialtyId = { $in: scope.ids };
+    }
     if (search) query.name = new RegExp(escapeRegex(String(search).slice(0, 100)), 'i');
     if (countryId) {
       const centers = await Hospital.find({ countryId }).select('_id');
@@ -169,13 +201,16 @@ router.get('/programs', auth, allowRoles(...CENTRAL_ROLES), async (req, res) => 
 
     const programs = await Program.find(query)
       .populate({ path: 'trainingCenterId', select: 'name accreditationNumber countryId', populate: { path: 'countryId', select: 'code name' } })
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn type code')
       .populate('programDirectorId', 'name')
+      .populate('subProgramDirectorId', 'name')
       .sort({ createdAt: -1 });
 
+    const hist = await changeHistoryFor(programs.map(p => p._id));
     const data = await Promise.all(programs.map(async p => ({
       ...withAccreditation(p),
       capacityUsed: await capacityUsedFor(p._id),
+      changeHistory: hist[String(p._id)] || [],
     })));
     res.json({ success: true, data });
   } catch (err) {
@@ -184,12 +219,164 @@ router.get('/programs', auth, allowRoles(...CENTRAL_ROLES), async (req, res) => 
   }
 });
 
+// GET /api/central/stats — dashboard counts scoped to the CS's specialties.
+router.get('/stats', auth, allowRoles(...CENTRAL_ROLES), async (req, res) => {
+  try {
+    const scope = await csScope(req);
+    const programQuery = { isActive: { $ne: false } };
+    if (!scope.all) programQuery.specialtyId = { $in: scope.ids };
+    const programs = await Program.find(programQuery).select('_id trainingCenterId programDirectorId');
+    const programIds = programs.map(p => p._id);
+    const centerIds = [...new Set(programs.map(p => String(p.trainingCenterId)).filter(Boolean))];
+    const pdCount = new Set(programs.map(p => p.programDirectorId).filter(Boolean).map(String)).size;
+
+    const traineeQuery = { role: 'trainee', isActive: { $ne: false } };
+    if (!scope.all) traineeQuery.$or = [{ specialtyId: { $in: scope.ids } }, { programId: { $in: programIds } }];
+    const trainees = await User.find(traineeQuery).select('_id');
+    const traineeIds = trainees.map(t => t._id);
+
+    const dioQuery = { role: 'dio_view', isActive: { $ne: false } };
+    if (!scope.all) dioQuery.assignedCenterIds = { $in: centerIds };
+
+    const [dios, evaluations, researches, certificates] = await Promise.all([
+      User.countDocuments(dioQuery),
+      traineeIds.length ? Evaluation.countDocuments({ $or: [{ student: { $in: traineeIds } }, { traineeId: { $in: traineeIds } }] }) : 0,
+      traineeIds.length ? Research.countDocuments({ trainee: { $in: traineeIds } }) : 0,
+      traineeIds.length ? Certificate.countDocuments({ $or: [{ student: { $in: traineeIds } }, { traineeId: { $in: traineeIds } }], revokedAt: null }) : 0,
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        centers: centerIds.length,
+        dios,
+        programs: programIds.length,
+        programDirectors: pdCount,
+        trainees: traineeIds.length,
+        evaluations,
+        researches,
+        certificates,
+      },
+    });
+  } catch (err) {
+    console.error('[central] stats:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/central/countries — dropdown source (all active countries).
+router.get('/countries', auth, allowRoles(...CENTRAL_ROLES), async (req, res) => {
+  try {
+    const countries = await Country.find({ isActive: { $ne: false } }).sort({ name: 1 });
+    res.json({ success: true, data: countries });
+  } catch (err) {
+    console.error('[central] countries:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/central/centers?search=&countryId= — centers running the CS's
+// programs, each with its assigned DIO/Sub-DIO.
+router.get('/centers', auth, allowRoles(...CENTRAL_ROLES), async (req, res) => {
+  try {
+    const scope = await csScope(req);
+    let centerIds = null;
+    if (!scope.all) {
+      const programs = await Program.find({ specialtyId: { $in: scope.ids }, isActive: { $ne: false } }).select('trainingCenterId');
+      centerIds = [...new Set(programs.map(p => String(p.trainingCenterId)).filter(Boolean))];
+      if (!centerIds.length) return res.json({ success: true, data: [] });
+    }
+    const query = {};
+    if (centerIds) query._id = { $in: centerIds };
+    if (req.query.countryId) query.countryId = req.query.countryId;
+    if (req.query.search) query.name = new RegExp(escapeRegex(String(req.query.search).slice(0, 100)), 'i');
+
+    const centers = await Hospital.find(query)
+      .populate('countryId', 'name code').populate('dioId', 'name').populate('subDioId', 'name')
+      .sort({ name: 1 });
+    const hist = await changeHistoryFor(centers.map(c => c._id));
+    res.json({ success: true, data: centers.map(c => ({ ...withAccreditation(c), changeHistory: hist[String(c._id)] || [] })) });
+  } catch (err) {
+    console.error('[central] centers:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // ── TRAINEES ────────────────────────────────────────────────────────────────
 
-// POST /api/central/trainees
+// Queue a CS trainee edit/delete as an analyzer-reviewed ChangeRequest with a
+// required book-of-changes PDF (RULINGS §E22). Scoped to the CS's specialties.
+function submitTraineeChange(requestType) {
+  return (req, res) => {
+    bocUpload.single('bookOfChanges')(req, res, async err => {
+      if (err) return res.status(400).json({ message: err.message });
+      if (!req.file) return res.status(400).json({ message: 'A book-of-changes PDF is required' });
+      const cleanup = () => fs.promises.unlink(req.file.path).catch(() => {});
+      try {
+        const trainee = await User.findOne({ _id: req.params.id, role: 'trainee' });
+        if (!trainee) { cleanup(); return res.status(404).json({ message: 'Trainee not found' }); }
+
+        const scope = await csScope(req);
+        if (!inCsScope(scope, trainee.specialtyId)) {
+          cleanup();
+          return res.status(403).json({ message: 'Trainee is outside your specialty scope' });
+        }
+
+        let fields = {};
+        if (requestType === 'edit') {
+          ROUTE_TARGETS.trainees.fields.forEach(k => { if (req.body[k] !== undefined) fields[k] = req.body[k]; });
+          if ('name' in fields) {
+            fields.name = String(fields.name).trim();
+            if (!fields.name) { cleanup(); return res.status(400).json({ message: 'Name cannot be empty' }); }
+          }
+          if (!Object.keys(fields).length) { cleanup(); return res.status(400).json({ message: 'No changes provided' }); }
+        }
+
+        const dup = await ChangeRequest.findOne({ targetId: trainee._id, status: 'pending' });
+        if (dup) { cleanup(); return res.status(409).json({ message: 'This trainee already has a pending change awaiting approval' }); }
+
+        const { before, display } = requestType === 'edit'
+          ? await buildRegistryChangePayload(fields, trainee)
+          : { before: {}, display: [] };
+
+        const cr = await ChangeRequest.create({
+          requestedBy: req.user._id,
+          requestType,
+          targetModel: 'User',
+          targetId: trainee._id,
+          hospitalId: trainee.hospitalId || trainee.hospital || null,
+          routeKey: 'trainees',
+          reviewerRole: 'data_analyzer',
+          targetLabel: trainee.name || 'Trainee',
+          changes: fields,
+          before,
+          display,
+          bookOfChangesPdf: {
+            fileUrl: BOC_URL_PREFIX + req.file.filename,
+            fileName: decodeOriginalName(req.file),
+            sizeBytes: req.file.size,
+          },
+          specialtyId: trainee.specialtyId || null,
+          track: req.track,
+        });
+        await notifyAnalyzers(`${req.user.name} submitted a ${requestType === 'delete' ? 'deletion' : 'change'} to ${trainee.name || 'a trainee'} for approval.`);
+        await writeAudit(req, `central_submit_${requestType}`, 'User', trainee._id, { routeKey: 'trainees' });
+        res.status(202).json({ success: true, pending: true, data: viewChangeRequest(cr) });
+      } catch (e) {
+        cleanup();
+        if (e.code === 11000) return res.status(409).json({ message: 'This trainee already has a pending change awaiting approval' });
+        console.error('[central] submit trainee change:', e.message);
+        res.status(500).json({ message: e.message });
+      }
+    });
+  };
+}
+
+// POST /api/central/trainees — direct create (RULINGS §E22). Links the trainee
+// to a Program Director (§D19); defaults to the program's PD when none is chosen.
 router.post('/trainees', auth, allowRoles(...CENTRAL_ROLES), async (req, res) => {
   try {
-    const { name, idNumber, password, email, phone, city, gender, programId, supervisorId, researchSupervisorId } = req.body;
+    const { name, idNumber, password, email, phone, city, gender, programId, pdId, startDate, supervisorId, researchSupervisorId } = req.body;
     if (!name || !String(name).trim()) return res.status(400).json({ message: 'Name is required' });
     if (!idNumber || !String(idNumber).trim()) return res.status(400).json({ message: 'ID number is required' });
     if (!password || String(password).length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' });
@@ -197,6 +384,21 @@ router.post('/trainees', auth, allowRoles(...CENTRAL_ROLES), async (req, res) =>
 
     const program = await Program.findOne({ _id: programId, isActive: { $ne: false } });
     if (!program) return res.status(400).json({ message: 'Program not found' });
+
+    // A CS may only enroll trainees into programs within its specialty scope.
+    const scope = await csScope(req);
+    if (!inCsScope(scope, program.specialtyId)) {
+      return res.status(403).json({ message: 'Program is outside your specialty scope' });
+    }
+
+    // Trainee → PD link (default = the program's PD). Optional explicit override.
+    let resolvedPdId = program.programDirectorId || null;
+    if (pdId) {
+      const pd = await User.findOne({ _id: pdId, role: 'program_director', isActive: { $ne: false } }).select('_id');
+      if (!pd) return res.status(400).json({ message: 'Program director not found or inactive' });
+      resolvedPdId = pd._id;
+    }
+
     const center = await Hospital.findById(program.trainingCenterId).select('countryId');
 
     // Capacity hard block — no exception request in the advanced flow.
@@ -245,7 +447,8 @@ router.post('/trainees', auth, allowRoles(...CENTRAL_ROLES), async (req, res) =>
       hospital: program.trainingCenterId,          // legacy alias
       countryId: center?.countryId || null,
       specialtyId: program.specialtyId,
-      enrolledSince: new Date(),
+      pdId: resolvedPdId,
+      enrolledSince: startDate ? new Date(startDate) : new Date(),
       supervisorId: resolvedSupervisorId,
       supervisor: resolvedSupervisorId,             // legacy alias
       researchSupervisorId: resolvedResearchId,
@@ -263,6 +466,7 @@ router.post('/trainees', auth, allowRoles(...CENTRAL_ROLES), async (req, res) =>
       .populate('programId', 'name')
       .populate('hospitalId', 'name')
       .populate('specialtyId', 'name')
+      .populate('pdId', 'name')
       .populate('supervisorId', 'name')
       .populate('researchSupervisorId', 'name');
     res.status(201).json({ success: true, data: saved });
@@ -274,14 +478,20 @@ router.post('/trainees', auth, allowRoles(...CENTRAL_ROLES), async (req, res) =>
   }
 });
 
-// GET /api/central/trainees — global list; injects computed trainingYear.
+// GET /api/central/trainees — CS-scoped list; injects trainingYear + change history.
 router.get('/trainees', auth, allowRoles(...CENTRAL_ROLES), async (req, res) => {
   try {
     const { search, programId, specialtyId, countryId, includeInactive } = req.query;
+    const scope = await csScope(req);
     const query = { role: 'trainee' };
     if (includeInactive !== 'true') query.isActive = { $ne: false };
     if (programId) query.programId = programId;
-    if (specialtyId) query.specialtyId = specialtyId;
+    if (specialtyId) {
+      if (!inCsScope(scope, specialtyId)) return res.json({ success: true, data: [] });
+      query.specialtyId = specialtyId;
+    } else if (!scope.all) {
+      query.specialtyId = { $in: scope.ids };
+    }
     if (countryId) query.countryId = countryId;
     if (search) {
       const rx = new RegExp(escapeRegex(String(search).slice(0, 100)), 'i');
@@ -292,11 +502,13 @@ router.get('/trainees', auth, allowRoles(...CENTRAL_ROLES), async (req, res) => 
       .populate('programId', 'name')
       .populate('hospitalId', 'name')
       .populate('specialtyId', 'name')
+      .populate('pdId', 'name')
       .populate('supervisorId', 'name')
       .populate('researchSupervisorId', 'name')
       .sort({ name: 1 });
 
-    const data = trainees.map(t => ({ ...t.toObject(), trainingYear: trainingYear(t) }));
+    const hist = await changeHistoryFor(trainees.map(t => t._id));
+    const data = trainees.map(t => ({ ...t.toObject(), trainingYear: trainingYear(t), changeHistory: hist[String(t._id)] || [] }));
     res.json({ success: true, data });
   } catch (err) {
     console.error('[central] list trainees:', err.message);
@@ -304,8 +516,11 @@ router.get('/trainees', auth, allowRoles(...CENTRAL_ROLES), async (req, res) => 
   }
 });
 
-// PATCH /api/central/trainees/:id — queued as a ChangeRequest (ODIO approves).
-router.patch('/trainees/:id', auth, allowRoles(...CENTRAL_ROLES), (req, res) => handleEdit(req, res, 'trainees', 'trainee'));
+// PATCH /api/central/trainees/:id — edit queued as a ChangeRequest with a required
+// book-of-changes PDF, reviewed by the Data Analyzer (RULINGS §E22).
+router.patch('/trainees/:id', auth, allowRoles(...CENTRAL_ROLES), submitTraineeChange('edit'));
+// DELETE /api/central/trainees/:id — delete queued (analyzer approval + PDF).
+router.delete('/trainees/:id', auth, allowRoles(...CENTRAL_ROLES), submitTraineeChange('delete'));
 
 // ── TRAINERS ──────────────────────────────────────────────────────────────
 

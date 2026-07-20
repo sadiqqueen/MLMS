@@ -1,0 +1,69 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   DIO (app role `dio_view`) + Sub-DIO (`sub_dio`) page-local styles — owned by
+   W2-DIO. Layout-only helpers on top of the shared mt- design system
+   (styles/mtms-design.css). NEVER restyles shared mt- classes; only adds
+   dioview- prefixed helpers. Colors come from tokens only; logical properties
+   for RTL; motion respects the global prefers-reduced-motion kill-switch.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Dashboard charts grid — line + bars side by side, stacks < 1100px. */
+.dioview-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-block-start: 16px; }
+@media (max-width: 1100px) { .dioview-charts { grid-template-columns: 1fr; } }
+
+/* ── Expandable centers table ────────────────────────────────────────────── */
+/* Whole center row is a toggle; the caret button leads the last cell. */
+.dioview-crow { cursor: pointer; }
+.dioview-crow:hover .mt-td { background: var(--brand-primary-t); }
+.dioview-caret {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border: none; border-radius: 7px;
+  background: transparent; color: var(--text-2); cursor: pointer;
+  transition: transform .2s ease, background .12s ease;
+}
+.dioview-caret.is-open { transform: rotate(180deg); }
+.dioview-caret:hover { background: var(--accent-t); color: var(--accent-hover); }
+
+/* Detail row that holds the nested programs list (custom cell class so the
+   parent table's nth-child striping never bleeds into it). */
+.dioview-detail-cell { padding: 0; background: var(--surface-2); border-block-end: 1px solid var(--border); }
+.dioview-plist { display: flex; flex-direction: column; }
+.dioview-phead,
+.dioview-prow {
+  display: grid; grid-template-columns: 2fr 1.4fr 1.4fr auto;
+  gap: 12px; align-items: center; padding: 9px 18px;
+}
+.dioview-phead {
+  font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text-2); border-block-end: 1px solid var(--border);
+}
+.dioview-prow { font-size: 13px; color: var(--text); border-block-end: 1px solid var(--border-soft); }
+.dioview-prow:last-child { border-block-end: none; }
+.dioview-pname { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.dioview-pmuted { color: var(--text-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.dioview-pempty { padding: 16px 18px; font-size: 12.5px; color: var(--text-2); text-align: center; }
+@media (max-width: 640px) {
+  .dioview-phead { display: none; }
+  .dioview-prow { grid-template-columns: 1fr; gap: 4px; }
+}
+
+/* ── Add-ODIO inherited (read-only, locked) fields ───────────────────────── */
+/* A greyed box that wraps its value (used for the training-centers list). */
+.dioview-ro-box {
+  min-height: 38px; padding: 9px 12px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface-2); color: var(--text-2);
+  font-size: 13.5px; line-height: 1.55;
+}
+/* "Inherited from your account" helper line under a locked field. */
+.dioview-help {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--text-2); margin-block-start: 5px;
+}
+.dioview-help svg { flex-shrink: 0; }
+
+/* Inline form error (validation / API) inside the Add-ODIO modal. */
+.dioview-err {
+  margin-block-start: 14px; padding: 9px 12px;
+  border-radius: 8px; background: var(--danger-bg); color: var(--danger);
+  font-size: 12.5px; border-inline-start: 3px solid var(--danger);
+}

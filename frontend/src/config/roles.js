@@ -41,6 +41,7 @@ export const ROLE_LABELS = {
   data_analyzer:       { en: 'Data Analyzer',        ar: 'محلل البيانات' },
   data_entry:          { en: 'Data Entry',           ar: 'مدخل البيانات' },
   central_secretary:   { en: 'Central Secretary',    ar: 'السكرتير المركزي' },
+  hoc:                 { en: 'HOC',                  ar: 'HOC' },
   dio_view:            { en: 'DIO',                  ar: 'DIO' },
   dio:                 { en: 'ODIO',                 ar: 'ODIO' },
   sub_dio:             { en: 'Sub-DIO',              ar: 'Sub-DIO' },
@@ -76,16 +77,17 @@ const ADVANCED_HOME = {
   supervisor:       '/supervisor/trainees',
   trainee:          '/timeline',
   president:        '/president/dashboard',
-  program_director: '/program-director/trainees',
+  program_director: '/program-director/dashboard',
   asg1:             '/consultant-memo',
   asg2:             '/consultant-memo',
   // v2 roles — final homes.
+  hoc:                 '/hoc/dashboard',
   dio_view:            '/dio-view/dashboard',
   secretary_general:   '/sg/dashboard',
   assistant_secretary: '/sg/dashboard',
   data_analyzer:       '/analyzer/dashboard',
-  data_entry:          '/registry/centers',
-  central_secretary:   '/central/trainees',
+  data_entry:          '/registry/dashboard',
+  central_secretary:   '/central/dashboard',
   sub_dio:             '/dio-view/dashboard',
   sub_pd:              '/program-director/dashboard',
 };
@@ -100,13 +102,16 @@ export const ROLE_HOME = {
 // shared dictionary as t("nav.<baseRole>.<key>"), so Basic roles reuse the
 // Advanced translations. Paths for Basic roles are prefixed with /basic.
 const ADVANCED_LINKS = {
+  // Developer (super_admin) — design shows 5, we keep Hospitals + Event Feedback
+  // (no-feature-removal rule, RULINGS §B14). Specialties wires AdminSpecialties.
   super_admin: [
-    { to: '/admin/dashboard',    key: 'dashboard',    label: 'Dashboard'    },
-    { to: '/admin/users',        key: 'users',        label: 'Users'        },
-    { to: '/admin/hospitals',    key: 'hospitals',    label: 'Hospitals'    },
-    { to: '/admin/system',       key: 'system',       label: 'System'       },
-    { to: '/admin/event-feedback', key: 'event_feedback', label: 'Event Feedback' },
-    { to: '/admin/audit-log',    key: 'audit_log',    label: 'Audit Log'    },
+    { to: '/admin/dashboard',      key: 'dashboard',      label: 'Dashboard',      ic: 'grid'     },
+    { to: '/admin/users',          key: 'users',          label: 'Users',          ic: 'users'    },
+    { to: '/admin/specialties',    key: 'specialties',    label: 'Specialties',    ic: 'book'     },
+    { to: '/admin/hospitals',      key: 'hospitals',      label: 'Hospitals',      ic: 'building' },
+    { to: '/admin/event-feedback', key: 'event_feedback', label: 'Event Feedback', ic: 'doc'      },
+    { to: '/admin/audit-log',      key: 'audit_log',      label: 'Audit Log',      ic: 'list'     },
+    { to: '/admin/system',         key: 'system',         label: 'System',         ic: 'sliders'  },
   ],
   secretary: [
     { to: '/secretary/trainees',    key: 'trainees',    label: 'Trainees'    },
@@ -114,17 +119,27 @@ const ADVANCED_LINKS = {
     { to: '/secretary/hospitals',   key: 'hospitals',   label: 'Hospitals'   },
     { to: '/secretary/research',    key: 'research',    label: 'Research'    },
   ],
+  // ODIO (app role `dio`) — design nav (dashboards.md §4.7). Existing routes are
+  // reused/restyled by wave 2; /dio/users etc. stay routed (no feature removal).
   dio: [
-    { to: '/dio/dashboard',    key: 'dashboard',    label: 'Dashboard'    },
-    { to: '/dio/users',        key: 'users',        label: 'Users'        },
-    { to: '/dio/hospitals',    key: 'hospitals',    label: 'Hospitals'    },
-    { to: '/dio/assignments',  key: 'assignments',  label: 'Assignments'  },
-    { to: '/dio/evaluations',  key: 'evaluations',  label: 'Evaluations'  },
-    { to: '/dio/certificates', key: 'certificates', label: 'Certificates' },
-    { to: '/dio/approvals',    key: 'approvals',    label: 'Promotions'   },
+    { to: '/dio/dashboard',    key: 'dashboard',        label: 'Dashboard',        ic: 'grid'     },
+    { to: '/dio/approvals',    key: 'approvals',        label: 'Approvals',        ic: 'check'    },
+    { to: '/dio/assignments',  key: 'assignments',      label: 'Assignments',      ic: 'users'    },
+    { to: '/dio/assign-pds',   key: 'pd_assignment',    label: 'PD Assignment',    ic: 'brief'    },
+    { to: '/dio/certificates', key: 'certificates',     label: 'Certificates',     ic: 'award'    },
+    { to: '/dio/evaluations',  key: 'evaluations',      label: 'Evaluations',      ic: 'doc'      },
+    { to: '/dio/rotations',    key: 'rotations',        label: 'Rotations',        ic: 'clock'    },
+    { to: '/dio/hospitals',    key: 'training_centers', label: 'Training Centers', ic: 'building' },
+    { to: '/dio/secretaries',  key: 'secretaries',      label: 'Secretaries',      ic: 'users'    },
   ],
   asg1: [ { to: '/consultant-memo', label: 'مذكرة الاستشاري' } ],
   asg2: [ { to: '/consultant-memo', label: 'مذكرة الاستشاري' } ],
+  // TODO(fable): task §7 asks to REMOVE the supervisor login-role UI, but RULINGS
+  // §B13 de-scopes supervisor and keeps it "intact and functioning with the OLD
+  // shell" (accounts remain, role stays in enum). Fully removing its HOME/LINKS
+  // here would trap any existing supervisor login in a redirect loop, so this
+  // block is kept as-is (old shell). Only the trainer *entity* links were removed
+  // from the redesigned roles (CS/DIO). Confirm which behavior you want.
   supervisor: [
     { to: '/supervisor/trainees',    key: 'trainees',    label: 'My Trainees' },
     { to: '/supervisor/reports',     key: 'reports',     label: 'Reports'     },
@@ -133,15 +148,18 @@ const ADVANCED_LINKS = {
     { to: '/supervisor/research',    key: 'research',    label: 'Research'    },
     { to: '/announcements',          key: 'announcements', label: 'Announcements', advancedOnly: true },
   ],
+  // Trainee — design nav (dashboards.md §4.10). Announcements moves off the nav
+  // (still routed + reachable from notifications); Profile joins it (advancedOnly
+  // so the b_trainee mirror, which has no /basic/profile, drops it).
   trainee: [
-    { to: '/timeline', key: 'timeline', label: 'Timeline' },
-    { to: '/reports',  key: 'reports',  label: 'Reports'  },
-    { to: '/grades',   key: 'grades',   label: 'Portfolio' },
-    { to: '/certificates-courses', key: 'courses', label: 'Certificates' },
-    { to: '/logbook',  key: 'logbook',  label: 'Log Book', advancedOnly: true },
-    { to: '/research', key: 'research', label: 'Research' },
-    { to: '/announcements', key: 'announcements', label: 'Announcements', advancedOnly: true },
-    { to: '/notifications', key: 'notifications', label: 'Notifications' },
+    { to: '/timeline',             key: 'timeline',      label: 'Timeline',                ic: 'clock' },
+    { to: '/reports',              key: 'reports',       label: 'Reports',                 ic: 'doc'   },
+    { to: '/grades',               key: 'grades',        label: 'Grades',                  ic: 'award' },
+    { to: '/certificates-courses', key: 'courses',       label: 'Certificates & Courses',  ic: 'award' },
+    { to: '/logbook',              key: 'logbook',       label: 'Log Book',                ic: 'book', advancedOnly: true },
+    { to: '/research',             key: 'research',      label: 'Research',                ic: 'flask' },
+    { to: '/notifications',        key: 'notifications', label: 'Notifications',           ic: 'bell'  },
+    { to: '/profile',              key: 'profile',       label: 'Profile',                 ic: 'users', advancedOnly: true },
   ],
   president: [
     { to: '/president/dashboard',         key: 'dashboard',         label: 'Dashboard'      },
@@ -152,72 +170,104 @@ const ADVANCED_LINKS = {
     { to: '/president/secretaries',       key: 'secretaries',       label: 'Secretaries'    },
     { to: '/president/hospitals',         key: 'hospitals',         label: 'Hospitals'      },
   ],
+  // PD — design swaps Supervisors → Log Book (RULINGS §D20, dashboards.md §4.9).
+  // Supervisors route stays in App.jsx; only the nav link is retired here.
   program_director: [
-    { to: '/program-director/dashboard',   key: 'dashboard',   label: 'Dashboard',   advancedOnly: true },
-    { to: '/program-director/program',     key: 'program',     label: 'Program',     advancedOnly: true },
-    { to: '/program-director/trainees',    key: 'trainees',    label: 'Trainees'    },
-    { to: '/program-director/supervisors', key: 'supervisors', label: 'Supervisors' },
-    { to: '/program-director/evaluations', key: 'evaluations', label: 'Evaluations' },
-    { to: '/program-director/reports',     key: 'reports',     label: 'Reports'     },
-    { to: '/announcements',                key: 'announcements', label: 'Announcements', advancedOnly: true },
+    { to: '/program-director/dashboard',   key: 'dashboard',     label: 'Dashboard',     ic: 'grid',   advancedOnly: true },
+    { to: '/program-director/program',     key: 'program',       label: 'My Program',    ic: 'layers', advancedOnly: true },
+    { to: '/program-director/trainees',    key: 'trainees',      label: 'Trainees',      ic: 'grad'  },
+    { to: '/program-director/evaluations', key: 'evaluations',   label: 'Evaluations',   ic: 'doc'   },
+    { to: '/program-director/log-book',    key: 'log_book',      label: 'Log Book',      ic: 'book',  advancedOnly: true },
+    { to: '/program-director/reports',     key: 'reports',       label: 'Reports',       ic: 'doc'   },
+    { to: '/announcements',                key: 'announcements', label: 'Announcements', ic: 'mega',  advancedOnly: true },
   ],
+  // Clerk (data_entry) — design adds Dashboard + Programs, drops Specialties from
+  // the nav (route stays in App.jsx). Countries is a breadcrumb drill-down page.
   data_entry: [
-    { to: '/registry/centers',     key: 'centers',     label: 'Training Centers' },
-    { to: '/registry/countries',   key: 'countries',   label: 'Countries' },
-    { to: '/registry/specialties', key: 'specialties', label: 'Specialties' },
-    { to: '/registry/dios',        key: 'dios',        label: 'DIOs' },
-    { to: '/registry/pds',         key: 'pds',         label: 'PDs' },
+    { to: '/registry/dashboard', key: 'dashboard', label: 'Dashboard',        ic: 'grid'     },
+    { to: '/registry/countries', key: 'countries', label: 'Countries',        ic: 'globe'    },
+    { to: '/registry/centers',   key: 'centers',   label: 'Training Centers', ic: 'building' },
+    { to: '/registry/programs',  key: 'programs',  label: 'Programs',         ic: 'layers'   },
+    { to: '/registry/dios',      key: 'dios',      label: 'DIOs',             ic: 'brief'    },
+    { to: '/registry/pds',       key: 'pds',       label: 'PDs',              ic: 'users'    },
   ],
+  // Analyzer — 13-item read-only registry + Pending-Changes inbox + Exports.
+  // (Old /analyzer/staff route stays in App.jsx, unlinked.)
   data_analyzer: [
-    { to: '/analyzer/dashboard', key: 'dashboard', label: 'Dashboard' },
-    { to: '/analyzer/staff',     key: 'staff',     label: 'Staff' },
-    { to: '/analyzer/exports',   key: 'exports',   label: 'Exports & Reports' },
+    { to: '/analyzer/dashboard',           key: 'dashboard',           label: 'Dashboard',           ic: 'grid'     },
+    { to: '/analyzer/countries',           key: 'countries',           label: 'Countries',           ic: 'globe'    },
+    { to: '/analyzer/centers',             key: 'centers',             label: 'Training Centers',    ic: 'building' },
+    { to: '/analyzer/dios',                key: 'dios',                label: 'DIOs',                ic: 'brief'    },
+    { to: '/analyzer/programs',            key: 'programs',            label: 'Programs',            ic: 'layers'   },
+    { to: '/analyzer/pds',                 key: 'pds',                 label: 'PDs',                 ic: 'users'    },
+    { to: '/analyzer/clerks',              key: 'clerks',              label: 'Data Entry Clerks',   ic: 'edit'     },
+    { to: '/analyzer/hocs',                key: 'hocs',                label: 'HOCs',                ic: 'book'     },
+    { to: '/analyzer/specialties',         key: 'specialties',         label: 'Specialties',         ic: 'book'     },
+    { to: '/analyzer/central-secretaries', key: 'central_secretaries', label: 'Central Secretaries', ic: 'users'    },
+    { to: '/analyzer/trainees',            key: 'trainees',            label: 'Trainees',            ic: 'grad'     },
+    { to: '/analyzer/pending',             key: 'pending',             label: 'Pending Changes',     ic: 'inbox'    },
+    { to: '/analyzer/exports',             key: 'exports',             label: 'Exports & Reports',   ic: 'doc'      },
   ],
+  // Central Secretary — design nav (dashboards.md §4.3). Trainers link retired
+  // per RULINGS §D21 (trainer entity removed from redesigned roles' UI).
   central_secretary: [
-    { to: '/central/trainees', key: 'trainees', label: 'Trainees' },
-    { to: '/central/trainers', key: 'trainers', label: 'Trainers' },
+    { to: '/central/dashboard', key: 'dashboard', label: 'Dashboard',        ic: 'grid'     },
+    { to: '/central/countries', key: 'countries', label: 'Countries',        ic: 'globe'    },
+    { to: '/central/centers',   key: 'centers',   label: 'Training Centers', ic: 'building' },
+    { to: '/central/programs',  key: 'programs',  label: 'Programs',         ic: 'layers'   },
+    { to: '/central/trainees',  key: 'trainees',  label: 'Trainees',         ic: 'grad'     },
   ],
+  // HOC (NEW, RULINGS §B12) — fully read-only over its council's specialty scope.
+  hoc: [
+    { to: '/hoc/dashboard', key: 'dashboard', label: 'Dashboard',        ic: 'grid'     },
+    { to: '/hoc/centers',   key: 'centers',   label: 'Training Centers', ic: 'building' },
+    { to: '/hoc/programs',  key: 'programs',  label: 'Programs',         ic: 'layers'   },
+  ],
+  // DIO (dio_view) + Sub-DIO — design nav (dashboards.md §4.8): adds ODIOs, drops
+  // Trainers (RULINGS §D21) and Certificates from the nav. Both routes stay in
+  // App.jsx (no feature removal). dio_view can Add ODIO; sub_dio is read-only.
   dio_view: [
-    { to: '/dio-view/dashboard',         key: 'dashboard',    label: 'Dashboard'         },
-    { to: '/dio-view/centers',           key: 'centers',      label: 'Centers'           },
-    { to: '/dio-view/program-directors', key: 'pds',          label: 'Program Directors' },
-    { to: '/dio-view/trainees',          key: 'trainees',     label: 'Trainees'          },
-    { to: '/dio-view/trainers',          key: 'trainers',     label: 'Trainers'          },
-    { to: '/dio-view/certificates',      key: 'certificates', label: 'Certificates'      },
+    { to: '/dio-view/dashboard',         key: 'dashboard', label: 'Dashboard',        ic: 'grid'     },
+    { to: '/dio-view/centers',           key: 'centers',   label: 'Training Centers', ic: 'building' },
+    { to: '/dio-view/odios',             key: 'odios',     label: 'ODIOs',            ic: 'brief'    },
+    { to: '/dio-view/program-directors', key: 'pds',       label: 'PDs',              ic: 'users'    },
+    { to: '/dio-view/trainees',          key: 'trainees',  label: 'Trainees',         ic: 'grad'     },
   ],
   sub_dio: [
-    { to: '/dio-view/dashboard',         key: 'dashboard',    label: 'Dashboard'         },
-    { to: '/dio-view/centers',           key: 'centers',      label: 'Centers'           },
-    { to: '/dio-view/program-directors', key: 'pds',          label: 'Program Directors' },
-    { to: '/dio-view/trainees',          key: 'trainees',     label: 'Trainees'          },
-    { to: '/dio-view/trainers',          key: 'trainers',     label: 'Trainers'          },
-    { to: '/dio-view/certificates',      key: 'certificates', label: 'Certificates'      },
+    { to: '/dio-view/dashboard',         key: 'dashboard', label: 'Dashboard',        ic: 'grid'     },
+    { to: '/dio-view/centers',           key: 'centers',   label: 'Training Centers', ic: 'building' },
+    { to: '/dio-view/odios',             key: 'odios',     label: 'ODIOs',            ic: 'brief'    },
+    { to: '/dio-view/program-directors', key: 'pds',       label: 'PDs',              ic: 'users'    },
+    { to: '/dio-view/trainees',          key: 'trainees',  label: 'Trainees',         ic: 'grad'     },
   ],
+  // SG + Assistant Secretary — read-only, design order (dashboards.md §4.6).
   secretary_general: [
-    { to: '/sg/dashboard',   key: 'dashboard',   label: 'Dashboard'   },
-    { to: '/sg/centers',     key: 'centers',     label: 'Centers'     },
-    { to: '/sg/dios',        key: 'dios',        label: 'DIOs'        },
-    { to: '/sg/specialties', key: 'specialties', label: 'Specialties' },
-    { to: '/sg/programs',    key: 'programs',    label: 'Programs'    },
-    { to: '/sg/pds',         key: 'pds',         label: 'PDs'         },
-    { to: '/sg/trainees',    key: 'trainees',    label: 'Trainees'    },
-    { to: '/sg/reports',     key: 'reports',     label: 'Reports'     },
+    { to: '/sg/dashboard',   key: 'dashboard',   label: 'Dashboard',        ic: 'grid'     },
+    { to: '/sg/centers',     key: 'centers',     label: 'Training Centers', ic: 'building' },
+    { to: '/sg/dios',        key: 'dios',        label: 'DIOs',             ic: 'brief'    },
+    { to: '/sg/pds',         key: 'pds',         label: 'PDs',              ic: 'users'    },
+    { to: '/sg/programs',    key: 'programs',    label: 'Programs',         ic: 'layers'   },
+    { to: '/sg/specialties', key: 'specialties', label: 'Specialties',      ic: 'book'     },
+    { to: '/sg/trainees',    key: 'trainees',    label: 'Trainees',         ic: 'grad'     },
+    { to: '/sg/reports',     key: 'reports',     label: 'Reports',          ic: 'doc'      },
   ],
   assistant_secretary: [
-    { to: '/sg/dashboard',   key: 'dashboard',   label: 'Dashboard'   },
-    { to: '/sg/centers',     key: 'centers',     label: 'Centers'     },
-    { to: '/sg/dios',        key: 'dios',        label: 'DIOs'        },
-    { to: '/sg/specialties', key: 'specialties', label: 'Specialties' },
-    { to: '/sg/programs',    key: 'programs',    label: 'Programs'    },
-    { to: '/sg/pds',         key: 'pds',         label: 'PDs'         },
-    { to: '/sg/trainees',    key: 'trainees',    label: 'Trainees'    },
-    { to: '/sg/reports',     key: 'reports',     label: 'Reports'     },
+    { to: '/sg/dashboard',   key: 'dashboard',   label: 'Dashboard',        ic: 'grid'     },
+    { to: '/sg/centers',     key: 'centers',     label: 'Training Centers', ic: 'building' },
+    { to: '/sg/dios',        key: 'dios',        label: 'DIOs',             ic: 'brief'    },
+    { to: '/sg/pds',         key: 'pds',         label: 'PDs',              ic: 'users'    },
+    { to: '/sg/programs',    key: 'programs',    label: 'Programs',         ic: 'layers'   },
+    { to: '/sg/specialties', key: 'specialties', label: 'Specialties',      ic: 'book'     },
+    { to: '/sg/trainees',    key: 'trainees',    label: 'Trainees',         ic: 'grad'     },
+    { to: '/sg/reports',     key: 'reports',     label: 'Reports',          ic: 'doc'      },
   ],
+  // Sub-PD — read-only mirror of the PD screens it can reach today (Supervisors
+  // link retired). Widening evaluations/log-book/reports to sub_pd needs matching
+  // route allow-list changes in App.jsx (left to the PD wave).
   sub_pd: [
-    { to: '/program-director/dashboard',   key: 'dashboard',   label: 'Dashboard'   },
-    { to: '/program-director/program',     key: 'program',     label: 'Program'     },
-    { to: '/program-director/trainees',    key: 'trainees',    label: 'Trainees'    },
-    { to: '/program-director/supervisors', key: 'supervisors', label: 'Supervisors' },
+    { to: '/program-director/dashboard', key: 'dashboard', label: 'Dashboard',  ic: 'grid'   },
+    { to: '/program-director/program',   key: 'program',   label: 'My Program', ic: 'layers' },
+    { to: '/program-director/trainees',  key: 'trainees',  label: 'Trainees',   ic: 'grad'   },
   ],
 };
 

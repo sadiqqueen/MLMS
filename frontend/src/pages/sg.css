@@ -1,0 +1,28 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Secretary General + Assistant Secretary pages — page-local layout (W2-SG).
+   Layout-only helpers on top of the shared mt- design system
+   (styles/mtms-design.css). NEVER restyles shared mt- classes; only adds
+   sg- prefixed helpers. All colors come from tokens; logical properties for
+   RTL; motion respects the global prefers-reduced-motion kill-switch.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Dashboard charts grid (dashboards.md §1 — two columns, stacks < 1100px). */
+.sg-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-block-start: 16px;
+}
+@media (max-width: 1100px) {
+  .sg-charts { grid-template-columns: 1fr; }
+}
+
+/* Spacing between stacked blocks (filter bar → card → pagination sit tight,
+   but the pagination row already carries its own margin). */
+.sg-section { margin-block-start: 16px; }
+
+/* Loading placeholder rows inside a flush table/card shell. */
+.sg-skel-rows { display: grid; gap: 10px; padding: 16px; }
+
+/* Secondary (English) name under a primary bold cell/name. */
+.sg-subname { font-size: 11.5px; color: var(--text-2); margin-block-start: 2px; }

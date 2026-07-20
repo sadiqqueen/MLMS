@@ -1,287 +1,263 @@
 // frontend/src/pages/ProgramDirectorEvaluations.jsx
 //
-// Program Director evaluation feature — same design/flow as the DIO's, but
-// scoped to the PD's single specialty. The PD evaluates BOTH trainees and
-// supervisors of its specialty via a top toggle, reusing the shared EvalModal +
-// WPBA forms. PD evaluations are finalized on create, so no `finalize` handler
-// is passed and the modal hides the finalize step.
+// Program Director evaluations (lists_views.md §PD evaluations, proto_modals §New
+// evaluation). A table of the PD's authored evaluations + a "New evaluation"
+// modal (proto field-set). Restyled to the mt- system. program_director is now
+// an evaluation author (RULINGS §D20 / API_CONTRACTS §PD). Direct create — PD
+// writes are NOT approval-gated (that is clerk/CS only, §E22).
+//   GET  /api/program-director/evaluations                    → authored evals
+//   GET  /api/program-director/trainees                       → modal Trainee pool
+//   POST /api/program-director/trainees/:id/evaluations       → create (201)
 import { useState, useEffect } from 'react';
-import { useAuth }  from '../context/AuthContext';
 import { usePrefs } from '../context/PrefsContext';
-import Navbar       from '../components/Navbar';
-import Toast        from '../components/Toast';
-import api          from '../api/axios';
-import Sk           from '../components/Skeleton';
-import { IconEye }  from '../components/icons';
-import {
-  EvalModal, Avatar, isThisMonth, safeArr, baseEvalType, evalSubjectId,
-} from '../components/evaluations/EvalModal';
-import { EVAL_STRINGS } from '../components/evaluations/evalStrings';
-import { EVAL_FORMS, SUPERVISOR_EVAL_FORMS } from '../data/evalForms';
+import Navbar from '../components/Navbar';
+import MtModal from '../components/MtModal';
+import RevealOnScroll from '../components/RevealOnScroll';
+import MtSkeleton from '../components/MtSkeleton';
+import Pagination from '../components/Pagination';
+import { MtToastHost, useMtToast } from '../components/MtToast';
+import api from '../api/axios';
+import './pd.css';
 
-const TABS = [
-  { key: 'trainees',    en: 'Trainees',    ar: 'المتدربون' },
-  { key: 'supervisors', en: 'Supervisors', ar: 'المشرفون'  },
-];
+const PAGE_SIZE = 10;
+const EVAL_TYPES = ['End-of-rotation', 'Mid-year assessment', 'Skills OSCE', 'Probation review'];
+const ROTATIONS = ['ICU', 'Wards', 'Clinic', 'CCU', 'Emergency'];
+const RESULTS = ['Pass', 'Borderline', 'Fail'];
+
+function SearchIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  );
+}
+
+const STRINGS = {
+  ar: {
+    countCompleted: (n) => `${n} مكتملة`, newEval: '+ تقييم جديد', searchPh: 'ابحث باسم المتدرب…',
+    allResults: 'كل النتائج', colTrainee: 'المتدرب', colEval: 'التقييم', colRotation: 'التدوير', colDate: 'التاريخ', colResult: 'النتيجة', colStatus: 'الحالة',
+    completed: 'مكتمل', empty: 'لا توجد تقييمات بعد.', noMatch: 'لا يوجد تطابق مع بحثك.', loadFailed: 'فشل التحميل',
+    mTitle: 'تقييم جديد', mSub: 'إنشاء تقييم لمتدرب', mMeta: 'مدير البرنامج',
+    fTrainee: 'المتدرب', fType: 'نوع التقييم', fRotation: 'التدوير', fDate: 'التاريخ', fResult: 'النتيجة', fComments: 'الملاحظات',
+    selectTrainee: '— اختر متدربًا —', selectType: '— اختر النوع —', selectRotation: '— لا شيء —', commentsPh: 'نقاط القوة والملاحظات والتوصيات…',
+    cancel: 'إلغاء', save: 'حفظ التقييم', saved: 'تم حفظ التقييم', reqFields: 'يرجى اختيار المتدرب والنوع والتاريخ.', saveFailed: 'فشل حفظ التقييم',
+  },
+  en: {
+    countCompleted: (n) => `${n} completed`, newEval: '+ New evaluation', searchPh: 'Search by trainee name…',
+    allResults: 'All results', colTrainee: 'Trainee', colEval: 'Evaluation', colRotation: 'Rotation', colDate: 'Date', colResult: 'Result', colStatus: 'Status',
+    completed: 'Completed', empty: 'No evaluations yet.', noMatch: 'No match for your search.', loadFailed: 'Failed to load',
+    mTitle: 'New evaluation', mSub: 'Create a trainee evaluation', mMeta: 'Program Director',
+    fTrainee: 'Trainee', fType: 'Evaluation type', fRotation: 'Rotation', fDate: 'Date', fResult: 'Result', fComments: 'Comments',
+    selectTrainee: '— Select a trainee —', selectType: '— Select type —', selectRotation: '— None —', commentsPh: 'Observed strengths, gaps, and recommendations…',
+    cancel: 'Cancel', save: 'Save evaluation', saved: 'Evaluation saved', reqFields: 'Please choose a trainee, type, and date.', saveFailed: 'Failed to save evaluation',
+  },
+};
+
+function fmtDate(d) { return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'; }
+function evName(ev) { return ev.student?.name || ev.traineeId?.name || ev.evaluateeId?.name || '—'; }
+function resultTone(r) {
+  const v = String(r || '').toLowerCase();
+  if (v.startsWith('pass') || v === 'competent') return 'mt-pill--active';
+  if (v.startsWith('fail') || v === 'not-competent') return 'mt-pill--rejected';
+  if (v) return 'mt-pill--warn';
+  return 'mt-pill--neutral';
+}
+
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const EMPTY_FORM = { traineeId: '', evaluationType: '', rotation: '', date: todayISO(), result: '', comments: '' };
 
 export default function ProgramDirectorEvaluations() {
-  const { user: me }  = useAuth();
-  const { lang, dir } = usePrefs();
-  const t = k => EVAL_STRINGS[lang]?.[k] ?? EVAL_STRINGS.ar[k] ?? k;
+  const { lang } = usePrefs();
+  const t = (k) => STRINGS[lang]?.[k] ?? STRINGS.ar[k] ?? k;
+  const { toasts, showToast } = useMtToast();
 
-  const [tab,         setTab        ] = useState('trainees');
-  const [evals,       setEvals      ] = useState([]);
-  const [trainees,    setTrainees   ] = useState([]);
-  const [supervisors, setSupervisors] = useState([]);
-  const [loading,     setLoading    ] = useState(true);
-  const [search,      setSearch     ] = useState('');
-  const [selected,    setSelected   ] = useState(null);
-  const [toasts,      setToasts     ] = useState([]);
-
-  function showToast(message, type = 'success') {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(x => x.id !== id)), 3500);
-  }
+  const [evals, setEvals] = useState([]);
+  const [trainees, setTrainees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [resultFilter, setResultFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    Promise.all([
+    Promise.allSettled([
       api.get('/api/program-director/evaluations'),
       api.get('/api/program-director/trainees'),
-      api.get('/api/program-director/supervisors'),
-    ]).then(([eRes, tRes, sRes]) => {
-      setEvals(safeArr(eRes.data?.data || eRes.data));
-      // The PD /trainees endpoint returns { trainees, distributions }.
-      const tData = tRes.data?.data || tRes.data;
-      setTrainees(safeArr(tData?.trainees || tData));
-      setSupervisors(safeArr(sRes.data?.data || sRes.data));
-    }).catch(() => showToast(t('loadFailed'), 'error'))
-      .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    ]).then(([e, tr]) => {
+      if (e.status === 'fulfilled') {
+        const d = e.value.data?.data || e.value.data || [];
+        setEvals(Array.isArray(d) ? d : []);
+      } else showToast(t('loadFailed'), 'dng');
+      if (tr.status === 'fulfilled') {
+        const d = tr.value.data?.data || tr.value.data || {};
+        setTrainees(Array.isArray(d) ? d : (d.trainees || []));
+      }
+    }).finally(() => setLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const isSupervisorTab = tab === 'supervisors';
-  const people = isSupervisorTab ? supervisors : trainees;
-  // Forms available for the active subject: none for supervisors (all removed),
-  // the trainee WPBA set otherwise. cap 0 → hide the "X/N forms" progress + the
-  // "all forms done" state so supervisor rows read cleanly.
-  const activeForms = isSupervisorTab ? SUPERVISOR_EVAL_FORMS : EVAL_FORMS;
-  const cap = activeForms.length;
-  const tabLabel = lang === 'ar' ? TABS.find(x => x.key === tab).ar : TABS.find(x => x.key === tab).en;
+  // Only trainee-subject evaluations belong in this list (a legacy row with no
+  // evaluateeRole is treated as a trainee; supervisor rows are excluded).
+  const traineeEvals = evals.filter((ev) => (ev.evaluateeRole || 'trainee') !== 'supervisor');
+  const completedCount = traineeEvals.length;
 
-  // Split the PD's evaluations by subject type (legacy rows → trainee).
-  const tabEvals = safeArr(evals).filter(ev => {
-    const role = ev?.evaluateeRole || 'trainee';
-    return isSupervisorTab ? role === 'supervisor' : role !== 'supervisor';
+  const filtered = traineeEvals.filter((ev) => {
+    if (resultFilter !== 'all' && String(ev.grade || '').toLowerCase() !== resultFilter) return false;
+    const q = search.trim().toLowerCase();
+    return !q || evName(ev).toLowerCase().includes(q) || (ev.evaluationType || '').toLowerCase().includes(q);
   });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  const filtered = safeArr(people).filter(p => {
-    const q = search.toLowerCase();
-    return !q
-      || p.name?.toLowerCase().includes(q)
-      || (p.studentId || '').toLowerCase().includes(q)
-      || (p.email || '').toLowerCase().includes(q);
-  });
+  function openModal() { setForm(EMPTY_FORM); setModal(true); }
+  function setField(k, v) { setForm((f) => ({ ...f, [k]: v })); }
 
-  function evalCountFor(id) {
-    return tabEvals.filter(ev => evalSubjectId(ev) === id).length;
-  }
-  function monthlyTypesFor(id) {
-    return new Set(
-      tabEvals.filter(ev => evalSubjectId(ev) === id && isThisMonth(ev?.date || ev?.createdAt))
-        .map(baseEvalType).filter(tp => activeForms.some(f => f.type === tp))
-    ).size;
-  }
-
-  // PD transport: finalized-on-create. Endpoint depends on the active tab.
-  async function submitEval(payload, { trainee }) {
-    const apiName = isSupervisorTab ? 'supervisors' : 'trainees';
+  async function save() {
+    if (!form.traineeId || !form.evaluationType || !form.date) { showToast(t('reqFields'), 'dng'); return; }
+    setSaving(true);
     try {
-      const res = await api.post(`/api/program-director/${apiName}/${trainee._id}/evaluations`, {
-        type: payload.evaluationType,
-        date: new Date().toISOString(),
-        distributionId: null,
-        ...payload,
+      const res = await api.post(`/api/program-director/trainees/${form.traineeId}/evaluations`, {
+        evaluationType: form.evaluationType,
+        type: form.evaluationType,
+        date: form.date,
+        grade: form.result,
+        comments: form.comments,
+        notes: form.comments,
+        formData: { rotation: form.rotation },
       });
-      return res.data?.data || res.data;
+      const created = res.data?.data || res.data;
+      if (created && typeof created === 'object') setEvals((prev) => [created, ...prev]);
+      showToast(t('saved'), 'ok');
+      setModal(false);
     } catch (err) {
-      throw new Error(err.response?.data?.message || t('submitFailed'));
-    }
+      showToast(err.response?.data?.message || t('saveFailed'), 'dng');
+    } finally { setSaving(false); }
   }
-
-  function handleSubmitted(newEval) {
-    if (!newEval || typeof newEval !== 'object') return;
-    setEvals(prev => [newEval, ...safeArr(prev)]);
-    showToast(t('submitSuccess'));
-  }
-
-  function switchTab(next) {
-    if (next === tab) return;
-    setTab(next);
-    setSelected(null);
-  }
-
-  const total     = tabEvals.length;
-  const thisMonth = tabEvals.filter(ev => isThisMonth(ev?.date || ev?.createdAt)).length;
 
   if (loading) return (
     <>
       <Navbar />
-      <main className="admin-main" dir={dir}>
-        <div className="filter-tabs" style={{ marginBottom: 16 }}>
-          {[0, 1].map(i => <Sk key={i} w={110} h={32} r={20} />)}
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 14, marginBottom: 20 }}>
-          {[0, 1, 2].map(i => (
-            <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
-              <Sk w={46} h={46} r={10} /><Sk w={110} h={14} />
-            </div>
-          ))}
-        </div>
-        <div style={{ marginBottom: 16 }}><Sk h={40} r={8} /></div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {[...Array(6)].map((_, i) => (
-            <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
-              <Sk w={44} h={44} r="50%" />
-              <div style={{ flex: 1 }}><Sk w={160} h={14} style={{ marginBottom: 8 }} /><Sk w={100} h={12} /></div>
-              <Sk w={80} h={32} r={8} />
-            </div>
-          ))}
-        </div>
-      </main>
+      <main className="mt-content"><MtSkeleton stats={0} charts={0} table /></main>
     </>
   );
 
   return (
     <>
       <Navbar />
-      <main className="admin-main" dir={dir}>
-
-        {/* Subject toggle — Trainees | Supervisors */}
-        <div className="filter-tabs" style={{ marginBottom: 16 }}>
-          {TABS.map(x => (
-            <button
-              key={x.key}
-              type="button"
-              className={`filter-tab${tab === x.key ? ' active' : ''}`}
-              onClick={() => switchTab(x.key)}
-            >
-              {lang === 'ar' ? x.ar : x.en}
-            </button>
-          ))}
+      <main className="mt-content">
+        <div className="mt-filterbar">
+          <span className="mt-count">{t('countCompleted')(completedCount)}</span>
+          <span className="mt-filterbar-spacer" />
+          <span className="mt-search">
+            <SearchIcon />
+            <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder={t('searchPh')} aria-label={t('searchPh')} />
+          </span>
+          <select className="mt-filter" value={resultFilter} onChange={(e) => { setResultFilter(e.target.value); setPage(1); }} aria-label={t('allResults')}>
+            <option value="all">{t('allResults')}</option>
+            {RESULTS.map((r) => <option key={r} value={r.toLowerCase()}>{r}</option>)}
+          </select>
+          <button type="button" className="mt-btn" onClick={openModal}>{t('newEval')}</button>
         </div>
 
-        {/* Stat Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 14, marginBottom: 20 }}>
-          {[
-            { label: t('statTotal'),     count: total,           color: 'var(--info-fg)',    bg: 'var(--info-bg)' },
-            { label: t('statThisMonth'), count: thisMonth,       color: 'var(--warning-fg)', bg: 'var(--warning-bg)' },
-            { label: tabLabel,           count: people.length,   color: 'var(--success-fg)', bg: 'var(--success-bg)' },
-          ].map(c => (
-            <div key={c.label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ width: 46, height: 46, borderRadius: 10, background: c.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 700, color: c.color, flexShrink: 0 }}>
-                {c.count}
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>{c.label}</div>
+        {filtered.length === 0 ? (
+          <div className="mt-empty" style={{ padding: 48 }}>
+            <div className="mt-empty-title">{traineeEvals.length === 0 ? t('empty') : t('noMatch')}</div>
+          </div>
+        ) : (
+          <RevealOnScroll className="mt-card" style={{ padding: 0 }}>
+            <div className="mt-table-wrap">
+              <table className="mt-table mt-table--stack">
+                <thead>
+                  <tr>
+                    <th className="mt-th">{t('colTrainee')}</th>
+                    <th className="mt-th">{t('colEval')}</th>
+                    <th className="mt-th">{t('colRotation')}</th>
+                    <th className="mt-th">{t('colDate')}</th>
+                    <th className="mt-th">{t('colResult')}</th>
+                    <th className="mt-th">{t('colStatus')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageItems.map((ev) => (
+                    <tr key={ev._id}>
+                      <td className="mt-td mt-td--name" data-label={t('colTrainee')}>{evName(ev)}</td>
+                      <td className="mt-td" data-label={t('colEval')}>{ev.evaluationType || '—'}</td>
+                      <td className="mt-td mt-td--muted" data-label={t('colRotation')}>{ev.formData?.rotation || '—'}</td>
+                      <td className="mt-td mt-td--muted" data-label={t('colDate')}>{fmtDate(ev.date || ev.createdAt)}</td>
+                      <td className="mt-td" data-label={t('colResult')}>
+                        {ev.grade ? <span className={`mt-pill ${resultTone(ev.grade)}`}>{ev.grade}</span> : '—'}
+                      </td>
+                      <td className="mt-td" data-label={t('colStatus')}><span className="mt-pill mt-pill--active">{t('completed')}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ))}
-        </div>
+          </RevealOnScroll>
+        )}
+        {filtered.length > 0 && (
+          <Pagination page={safePage} pageSize={PAGE_SIZE} total={filtered.length} onPrev={() => setPage((n) => Math.max(1, n - 1))} onNext={() => setPage((n) => Math.min(totalPages, n + 1))} />
+        )}
 
-        {/* Search */}
-        <div style={{ marginBottom: 16 }}>
-          <input
-            className="admin-search"
-            style={{ width: '100%', height: 40, maxWidth: '100%' }}
-            placeholder={lang === 'ar' ? `ابحث في ${tabLabel}…` : `Search ${tabLabel.toLowerCase()} by name…`}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-
-        {/* Empty state */}
-        {filtered.length === 0 && (
-          <div style={{ textAlign: 'center', padding: 56, color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
-            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>
-              {people.length === 0
-                ? (lang === 'ar' ? `لا يوجد ${tabLabel} بعد` : `No ${tabLabel.toLowerCase()} yet`)
-                : (lang === 'ar' ? 'لا يوجد تطابق مع بحثك' : 'No match for your search')}
+        <MtModal
+          open={modal}
+          title={t('mTitle')}
+          sub={t('mSub')}
+          meta={t('mMeta')}
+          onClose={() => setModal(false)}
+          footer={<>
+            <button type="button" className="mt-btn--cancel" onClick={() => setModal(false)}>{t('cancel')}</button>
+            <button type="button" className="mt-btn" onClick={save} disabled={saving}>{t('save')}</button>
+          </>}
+        >
+          <div className="mt-field-grid">
+            <div className="mt-field">
+              <label className="mt-label">{t('fTrainee')}<span className="mt-label-req">*</span></label>
+              <select className="mt-select" value={form.traineeId} onChange={(e) => setField('traineeId', e.target.value)}>
+                <option value="">{t('selectTrainee')}</option>
+                {trainees.map((tr) => <option key={tr._id} value={tr._id}>{tr.name}{tr.studentId ? ` · ${tr.studentId}` : ''}</option>)}
+              </select>
+            </div>
+            <div className="mt-field">
+              <label className="mt-label">{t('fType')}<span className="mt-label-req">*</span></label>
+              <select className="mt-select" value={form.evaluationType} onChange={(e) => setField('evaluationType', e.target.value)}>
+                <option value="">{t('selectType')}</option>
+                {EVAL_TYPES.map((x) => <option key={x} value={x}>{x}</option>)}
+              </select>
+            </div>
+            <div className="mt-field">
+              <label className="mt-label">{t('fRotation')}</label>
+              <select className="mt-select" value={form.rotation} onChange={(e) => setField('rotation', e.target.value)}>
+                <option value="">{t('selectRotation')}</option>
+                {ROTATIONS.map((x) => <option key={x} value={x}>{x}</option>)}
+              </select>
+            </div>
+            <div className="mt-field">
+              <label className="mt-label">{t('fDate')}<span className="mt-label-req">*</span></label>
+              <input type="date" className="mt-input" value={form.date} onChange={(e) => setField('date', e.target.value)} />
+            </div>
+            <div className="mt-field mt-field-full">
+              <label className="mt-label">{t('fResult')}</label>
+              <div className="mt-radio-group">
+                {RESULTS.map((r) => (
+                  <label key={r} className="mt-check-label">
+                    <input type="radio" className="mt-check" name="pd-eval-result" checked={form.result === r} onChange={() => setField('result', r)} />
+                    {r}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="mt-field mt-field-full">
+              <label className="mt-label">{t('fComments')}</label>
+              <textarea className="mt-textarea" value={form.comments} onChange={(e) => setField('comments', e.target.value)} placeholder={t('commentsPh')} />
             </div>
           </div>
-        )}
+        </MtModal>
 
-        {/* People list */}
-        <div key={tab} style={{ display: 'flex', flexDirection: 'column', gap: 10, animation: 'fadeIn .18s ease-out' }}>
-          {filtered.map(person => {
-            const id         = person._id?.toString();
-            const count      = evalCountFor(id);
-            const monthTypes = monthlyTypesFor(id);
-            const complete   = cap > 0 && monthTypes >= cap;
-
-            return (
-              <div
-                key={id}
-                style={{
-                  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
-                  padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14,
-                  boxShadow: '0 1px 3px rgba(0,0,0,.05)',
-                }}
-              >
-                <Avatar user={person} size={44} />
-
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>
-                    {person.name || '—'}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                    {person.studentId ? `${t('idLabel')}: ${person.studentId} · ` : ''}
-                    {count} {t('evaluationsTotal')}{cap > 0 ? ` · ${monthTypes}/${cap} ${t('formsThisMonth')}` : ''}
-                  </div>
-                </div>
-
-                {complete && (
-                  <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: 'var(--success-bg)', color: 'var(--success-fg)' }}>
-                    {t('allFormsDone')}
-                  </span>
-                )}
-
-                {complete ? (
-                  <button
-                    onClick={() => setSelected({ trainee: person, dist: {} })}
-                    title={t('view')} aria-label={t('view')}
-                    style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--surface)', color: 'var(--text-2)', border: '1.5px solid var(--border)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
-                  >
-                    <IconEye size={16} />
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setSelected({ trainee: person, dist: {} })}
-                    style={{ padding: '8px 18px', borderRadius: 8, background: 'var(--accent)', color: '#fff', border: 'none', fontWeight: 500, fontSize: 12, cursor: 'pointer', flexShrink: 0, boxShadow: '0 2px 6px rgba(255,107,53,.3)' }}
-                  >
-                    {t('evaluationsBtn')}
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {selected && (
-          <EvalModal
-            item={selected}
-            evals={tabEvals}
-            forms={activeForms}
-            assessorName={me?.name}
-            onClose={() => setSelected(null)}
-            onSubmitted={handleSubmitted}
-            onFinalized={() => {}}
-            isReadOnly={false}
-            submitEval={submitEval}
-            t={t}
-          />
-        )}
-
-        <Toast toasts={toasts} />
+        <MtToastHost toasts={toasts} />
       </main>
     </>
   );

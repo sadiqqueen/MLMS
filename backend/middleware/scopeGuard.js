@@ -7,7 +7,7 @@ module.exports = function scopeGuard() {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
 
-    const { role, _id, hospitalId, hospital, specialtyId } = req.user;
+    const { role, _id, hospitalId, hospital, specialtyId, councilId, secretaryType } = req.user;
     const effectiveHospital = hospitalId || hospital;
 
     switch (role) {
@@ -24,6 +24,18 @@ module.exports = function scopeGuard() {
         break;
       case 'secretary':
         req.scope = { specialtyId };
+        break;
+      // Head of Council: oversight limited to its assigned Scientific Council.
+      // Route handlers resolve councilId → specialty set (utils/councilScope.js);
+      // this only carries the council id.
+      case 'hoc':
+        req.scope = { councilId };
+        break;
+      // Central Secretary: a main-type CS is scoped to its council; the single
+      // precise-type CS covers every precise specialty. The concrete specialty
+      // set is resolved async in the route handlers (utils/councilScope.js).
+      case 'central_secretary':
+        req.scope = { councilId, secretaryType };
         break;
       case 'dio':
         req.scope = { hospitalId: effectiveHospital };

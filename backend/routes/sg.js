@@ -99,6 +99,7 @@ router.get('/centers', auth, allowRoles(...SG_ROLES), async (req, res) => {
   try {
     const centers = await Hospital.find({ ...trackFilter(req.track), isActive: { $ne: false } })
       .populate('countryId', 'name code')
+      .populate('dioId', 'name')
       .sort({ name: 1 });
     res.json({ success: true, data: centers.map(withAccreditation) });
   } catch (err) {
@@ -131,7 +132,9 @@ router.get('/dios', auth, allowRoles(...SG_ROLES), async (req, res) => {
 // GET /api/sg/specialties — advanced specialties.
 router.get('/specialties', auth, allowRoles(...SG_ROLES), async (req, res) => {
   try {
-    const specialties = await Specialty.find({ ...trackFilter(req.track), isActive: { $ne: false } }).sort({ name: 1 });
+    const specialties = await Specialty.find({ ...trackFilter(req.track), isActive: { $ne: false } })
+      .populate('councilId', 'name nameEn')
+      .sort({ name: 1 });
     res.json({ success: true, data: specialties });
   } catch (err) {
     console.error('[sg] specialties:', err.message);

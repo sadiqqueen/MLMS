@@ -1,0 +1,52 @@
+/* Central Secretary pages — page-local layout (W1-CS owned).
+   Layout only; all motion lives in the shared mt- components + mtms-design.css.
+   Logical properties throughout so html[dir="rtl"] mirrors automatically. */
+
+/* Dashboard charts grid: line + bars on row 1, the two donuts on row 2.
+   Collapses to a single column below 1100px (dashboards.md §1). */
+.cs-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-block-start: 16px;
+}
+@media (max-width: 1100px) {
+  .cs-charts { grid-template-columns: 1fr; }
+}
+
+/* Section spacing between the stat grid, charts, and the summary table. */
+.cs-section { margin-block-start: 16px; }
+
+/* Pending-requests panel (the CS's own queued edit/delete requests). */
+.cs-pending-list { display: flex; flex-direction: column; gap: 8px; }
+.cs-pending-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 9px; padding: 9px 13px;
+}
+.cs-pending-main { min-width: 0; }
+.cs-pending-target { font-size: 13px; font-weight: 600; color: var(--text); }
+.cs-pending-summary {
+  font-size: 12px; color: var(--text-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Modal helper: the neutral / approval note banner reuses .mt-banner; this only
+   adds a little breathing room before the field grid when a banner precedes it. */
+.cs-modal-banner { margin-block-end: 15px; }
+
+/* Read-only info block inside the Add-trainee modal (chosen program summary). */
+.cs-proginfo {
+  margin-block-start: 4px; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px;
+}
+.cs-proginfo-row {
+  display: flex; justify-content: space-between; gap: 10px;
+  font-size: 13px; padding: 3px 0;
+}
+.cs-proginfo-k { color: var(--text-2); }
+.cs-proginfo-v { color: var(--text); font-weight: 500; text-align: end; }
+
+/* Delete-confirmation copy inside the approval modal. */
+.cs-delete-note { font-size: 13px; color: var(--text-2); line-height: 1.6; margin-block-end: 14px; }
+.cs-delete-note strong { color: var(--text); }

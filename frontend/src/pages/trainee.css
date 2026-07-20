@@ -1,0 +1,57 @@
+/* Trainee pages — co-located page-local CSS (owned by W2-Trainee).
+   Only layout helpers that can't be expressed inline (media queries / spine).
+   All colors come from tokens; zero teal/gold hex. Logical props for RTL. */
+
+/* Dashboard charts grid (Timeline) — 2-up, stacks < 1100px like the prototype */
+.tr-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-block-start: 16px;
+}
+@media (max-width: 1100px) {
+  .tr-charts { grid-template-columns: 1fr; }
+}
+.tr-chart-empty {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 180px; color: var(--text-2); font-size: 13px;
+}
+
+/* Vertical stack of record rows (log book / research / courses / notifications) */
+.tr-rows { display: flex; flex-direction: column; gap: 10px; }
+
+/* A single record row — surface-2 card with an accent inline-start rule */
+.tr-row {
+  display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap;
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 14px; background: var(--surface-2);
+  border-inline-start: 4px solid var(--accent);
+}
+.tr-row-main { flex: 1; min-width: 180px; }
+.tr-row-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.tr-row-meta { font-size: 12px; color: var(--text-2); margin-block-start: 4px; }
+
+/* Filter tabs (Reports) */
+.tr-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-block-end: 16px; }
+.tr-tab {
+  padding: 7px 14px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); color: var(--text-2);
+  font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+  transition: background .12s ease, color .12s ease, border-color .12s ease;
+}
+.tr-tab:hover { border-color: var(--brand-primary); color: var(--brand-primary); }
+.tr-tab.is-active { background: var(--brand-primary); color: #fff; border-color: var(--brand-primary); }
+
+/* Clickable record row (opens a detail modal) */
+.tr-clickable { cursor: pointer; transition: border-color .12s ease, box-shadow .12s ease; }
+.tr-clickable:hover { border-color: var(--brand-primary); }
+
+/* Timeline rotation card (below the dashboard) */
+.tr-rot-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px 18px; box-shadow: var(--card-shadow);
+}
+.tr-rot-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-block-end: 10px; }
+.tr-rot-name { font-size: 15px; font-weight: 700; color: var(--text); }
+.tr-rot-line { font-size: 13px; color: var(--text-2); display: flex; align-items: center; gap: 7px; }
+.tr-rot-line + .tr-rot-line { margin-block-start: 5px; }

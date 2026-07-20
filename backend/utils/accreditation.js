@@ -18,12 +18,15 @@ function addYears(date, years) {
 }
 
 // Resolve the accreditation expiry for a program or a training center.
-// Programs: grantDate + (partly ? 2 : 6) years.
-// Centers (no accreditationType): the stored accreditationExpiry, or null.
-function accreditationExpiry({ accreditationType, accreditationGrantDate, accreditationExpiry } = {}) {
-  if (accreditationType) {
-    const grant = toDate(accreditationGrantDate);
-    if (!grant) return null;
+// Programs (v2): grantDate + durationYears, when set. Programs (legacy):
+// grantDate + (partly ? 2 : 6) years from accreditationType. Centers (neither):
+// the stored accreditationExpiry, or null.
+function accreditationExpiry({ accreditationType, accreditationGrantDate, accreditationExpiry, durationYears } = {}) {
+  const grant = toDate(accreditationGrantDate);
+  if (durationYears && Number(durationYears) > 0 && grant) {
+    return addYears(grant, Number(durationYears));
+  }
+  if (accreditationType && grant) {
     return addYears(grant, accreditationType === 'partly' ? 2 : 6);
   }
   return toDate(accreditationExpiry);

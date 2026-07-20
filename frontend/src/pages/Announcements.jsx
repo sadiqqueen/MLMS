@@ -1,7 +1,7 @@
 // frontend/src/pages/Announcements.jsx
 //
 // Program announcements board. A Program Director composes announcements for his
-// own program (title + body) and may delete his own posts; trainees, trainers,
+// own program (title + body) and may delete his own posts; trainees, evaluators,
 // Sub-PDs and oversight roles see a read-only, scoped board.
 // Contract (backend/routes/announcements.js):
 //   GET    /api/announcements                → scoped board (newest first)
@@ -11,10 +11,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { usePrefs } from '../context/PrefsContext';
 import Navbar from '../components/Navbar';
-import Toast from '../components/Toast';
+import MtToastHost, { useMtToast } from '../components/MtToast';
 import Sk from '../components/Skeleton';
-import { IconTrash, IconPlus } from '../components/icons';
+import { IconTrash, IconPlus, NavIcon } from '../components/icons';
 import api from '../api/axios';
+import './trainee.css';
 
 const STRINGS = {
   ar: {
@@ -61,20 +62,14 @@ export default function Announcements() {
   const [form, setForm] = useState({ title: '', body: '' });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
-  const [toasts, setToasts] = useState([]);
-
-  function showToast(message, type = 'success') {
-    const id = Date.now();
-    setToasts(p => [...p, { id, message, type }]);
-    setTimeout(() => setToasts(p => p.filter(x => x.id !== id)), 3200);
-  }
+  const { toasts, showToast } = useMtToast();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const r = await api.get('/api/announcements', { cache: false });
       setItems(r.data?.data || r.data || []);
-    } catch { showToast(t('loadFailed'), 'error'); }
+    } catch { showToast(t('loadFailed'), 'dng'); }
     setLoading(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -93,9 +88,9 @@ export default function Announcements() {
       const created = res.data?.data || res.data;
       setItems(prev => [created, ...prev]);
       setForm({ title: '', body: '' });
-      showToast(t('posted'));
+      showToast(t('posted'), 'ok');
     } catch (err) {
-      showToast(err.response?.data?.message || t('saveFailed'), 'error');
+      showToast(err.response?.data?.message || t('saveFailed'), 'dng');
     } finally { setSaving(false); }
   }
 
@@ -104,35 +99,34 @@ export default function Announcements() {
     try {
       await api.delete(`/api/announcements/${id}`);
       setItems(prev => prev.filter(x => x._id !== id));
-      showToast(t('deleted'));
+      showToast(t('deleted'), 'ok');
     } catch (err) {
-      showToast(err.response?.data?.message || t('saveFailed'), 'error');
+      showToast(err.response?.data?.message || t('saveFailed'), 'dng');
     }
   }
 
-  const fieldStyle = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 14, fontFamily: 'inherit' };
-  const labelStyle = { display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 6 };
-
   return (
     <>
-      <Navbar />
-      <main className="main" dir={dir}>
+      <Navbar title={t('title')} />
+      <main className="mt-content" dir={dir}>
         {isPd && (
-          <div className="card" style={{ marginBottom: 18 }}>
-            <div className="card-title" style={{ marginBottom: 14 }}>{t('composeTitle')}</div>
+          <div className="mt-card" style={{ marginBlockEnd: 18 }}>
+            <div className="mt-card-head mt-card-head--tight" style={{ marginBlockEnd: 14 }}>
+              <div className="mt-card-title">{t('composeTitle')}</div>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div>
-                <label style={labelStyle}>{t('fTitle')} *</label>
-                <input style={{ ...fieldStyle, height: 42, borderColor: errors.title ? 'var(--danger)' : 'var(--border)' }}
+              <div className="mt-field">
+                <label className="mt-label">{t('fTitle')} <span className="mt-label-req">*</span></label>
+                <input className="mt-input" style={{ borderColor: errors.title ? 'var(--danger)' : undefined }}
                   value={form.title} placeholder={t('titlePh')} onChange={e => set('title', e.target.value)} />
               </div>
-              <div>
-                <label style={labelStyle}>{t('fBody')} *</label>
-                <textarea style={{ ...fieldStyle, minHeight: 90, resize: 'vertical', borderColor: errors.body ? 'var(--danger)' : 'var(--border)' }}
+              <div className="mt-field">
+                <label className="mt-label">{t('fBody')} <span className="mt-label-req">*</span></label>
+                <textarea className="mt-textarea" style={{ borderColor: errors.body ? 'var(--danger)' : undefined }}
                   value={form.body} placeholder={t('bodyPh')} onChange={e => set('body', e.target.value)} />
               </div>
               <div>
-                <button className="btn-purple" onClick={handlePost} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <button className="mt-btn" onClick={handlePost} disabled={saving}>
                   <IconPlus size={15} /> {saving ? t('posting') : t('post')}
                 </button>
               </div>
@@ -140,40 +134,39 @@ export default function Announcements() {
           </div>
         )}
 
-        <div className="card">
-          <div className="card-title" style={{ marginBottom: 14 }}>
-            {t('title')}
-            <span className="badge badge-blue" style={{ marginInlineStart: 8 }}>{items.length}</span>
+        <div className="mt-card">
+          <div className="mt-card-head mt-card-head--tight" style={{ marginBlockEnd: 14 }}>
+            <div className="mt-card-title">{t('title')}</div>
+            <span className="mt-count">{items.length}</span>
           </div>
 
           {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {[0, 1, 2].map(i => <Sk key={i} h={84} r={10} />)}
-            </div>
+            <div className="tr-rows">{[0, 1, 2].map(i => <Sk key={i} h={84} r={10} />)}</div>
           ) : items.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 44, color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: 38, marginBottom: 10 }}>📢</div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)' }}>{t('none')}</div>
+            <div className="mt-empty">
+              <span className="mt-empty-icon"><NavIcon name="mega" size={24} /></span>
+              <div className="mt-empty-title">{t('none')}</div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="tr-rows" style={{ gap: 12 }}>
               {items.map(a => {
                 const canDelete = isPd && idOf(a.authorId) === user?._id;
                 return (
-                  <div key={a._id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', background: 'var(--surface-2)', borderInlineStart: '4px solid var(--accent)' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                  <div key={a._id} className="tr-row" style={{ flexDirection: 'column', gap: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, width: '100%' }}>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{a.title}</div>
-                        <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 6, whiteSpace: 'pre-wrap' }}>{a.body}</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-2)', marginBlockStart: 6, whiteSpace: 'pre-wrap' }}>{a.body}</div>
                       </div>
                       {canDelete && (
-                        <button type="button" onClick={() => handleDelete(a._id)} title={t('delete')} aria-label={t('delete')}
-                          style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--danger-fg)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <button type="button" className="mt-icon-action mt-icon-action--danger" onClick={() => handleDelete(a._id)}
+                          title={t('delete')} aria-label={t('delete')}
+                          style={{ width: 34, height: 34, border: '1px solid var(--border)', background: 'var(--surface)' }}>
                           <IconTrash size={16} />
                         </button>
                       )}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-2)', marginBlockStart: 10, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                       <span>{t('by')}: {a.authorId?.name || '—'}</span>
                       {a.programId?.name && <span>{t('program')}: {a.programId.name}</span>}
                       <span>{fmt(a.createdAt)}</span>
@@ -184,7 +177,7 @@ export default function Announcements() {
             </div>
           )}
         </div>
-        <Toast toasts={toasts} />
+        <MtToastHost toasts={toasts} />
       </main>
     </>
   );

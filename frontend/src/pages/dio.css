@@ -1,0 +1,67 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   ODIO (app role `dio`) page-local styles — owned by W2-ODIO.
+   Layout-only helpers that sit on top of the shared mt- design system
+   (styles/mtms-design.css). NEVER restyles shared mt- classes; only adds
+   dio- prefixed helpers. All colors come from tokens; logical properties for
+   RTL; motion respects the global prefers-reduced-motion kill-switch.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Dashboard charts grid (dashboards.md §1 — two columns, stacks < 1100px) */
+.dio-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-block-start: 16px; }
+@media (max-width: 1100px) { .dio-charts { grid-template-columns: 1fr; } }
+
+/* Chart empty state (muted, centered inside a chart card) */
+.dio-chart-empty {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 200px; padding: 24px; text-align: center;
+  font-size: 13px; color: var(--text-2);
+}
+
+/* Section spacing between stacked blocks on a list/detail page */
+.dio-section { margin-block-start: 18px; }
+
+/* Page-level heading (list title + count) when not driven by the topbar */
+.dio-page-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-block-end: 14px; }
+.dio-page-title { font-size: 17px; font-weight: 700; color: var(--text); }
+
+/* Tab strip (Approvals inbox: Account Changes / Capacity / Research) */
+.dio-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-block-end: 16px; border-block-end: 1px solid var(--border); }
+.dio-tab {
+  appearance: none; background: none; border: none; cursor: pointer;
+  padding: 10px 14px; font: inherit; font-size: 13.5px; font-weight: 600;
+  color: var(--text-2); border-block-end: 2px solid transparent;
+  margin-block-end: -1px; display: inline-flex; align-items: center; gap: 7px;
+  transition: color .15s ease, border-color .15s ease;
+}
+.dio-tab:hover { color: var(--text); }
+.dio-tab.is-active { color: var(--brand-primary); border-block-end-color: var(--accent); }
+.dio-tab-badge {
+  min-width: 18px; height: 18px; padding-inline: 5px; border-radius: 999px;
+  background: var(--accent-t); color: var(--accent-t-fg);
+  font-size: 10.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;
+}
+
+/* Detail header card (trainee / center drill-down) */
+.dio-detail-head { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.dio-detail-avatar {
+  width: 54px; height: 54px; flex: none; border-radius: 50%;
+  background: var(--brand-primary); color: #fff; font-size: 19px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+}
+.dio-detail-name { font-size: 18px; font-weight: 700; color: var(--text); }
+.dio-detail-sub { font-size: 13px; color: var(--text-2); margin-block-start: 2px; }
+.dio-detail-meta { display: flex; gap: 10px 20px; flex-wrap: wrap; margin-block-start: 12px; }
+.dio-detail-meta-k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; color: var(--text-2); }
+.dio-detail-meta-v { font-size: 13.5px; color: var(--text); }
+
+/* Simple two-column info grid used inside detail cards */
+.dio-kv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 18px; }
+
+/* Toolbar action group aligned to the inline-end */
+.dio-toolbar-actions { display: flex; gap: 9px; flex-wrap: wrap; align-items: center; }
+
+/* Inline stat chips (e.g. "12 pending · 3 overdue" broken into pills) */
+.dio-chip-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* Diff grid for the legacy approvals inbox (Field / From / To) — reuses tokens */
+.dio-diff-note { font-size: 12.5px; color: var(--text-2); margin-block-start: 10px; line-height: 1.6; }

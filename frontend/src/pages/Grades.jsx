@@ -1,19 +1,16 @@
 import { useState, useEffect } from 'react';
-import {
-  Chart as ChartJS, CategoryScale, LinearScale,
-  PointElement, LineElement, Title, Tooltip, Legend
-} from 'chart.js';
-import { Line } from 'react-chartjs-2';
 import { useAuth } from '../context/AuthContext';
 import api    from '../api/axios';
 import Navbar from '../components/Navbar';
 import Sk     from '../components/Skeleton';
+import StatCard from '../components/StatCard';
+import LineChart from '../components/charts/LineChart';
+import RevealOnScroll from '../components/RevealOnScroll';
 import { getForm, scoreMeta } from '../data/evalForms';
 import { printEvaluation } from '../utils/printEvaluation';
-import { IconCheck, IconClock, IconEye } from '../components/icons';
+import { IconCheck, IconClock, IconEye, NavIcon } from '../components/icons';
 import ReportModal from '../components/ReportModal';
-
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+import './trainee.css';
 
 function fmt(d) {
   if (!d) return '—';
@@ -50,19 +47,18 @@ function gradeLabel(report) {
 }
 
 const RATING_LABEL = { na:'N/A', below:'Below Standard', meets:'Meets Standard', above:'Above Standard' };
-const RATING_COLOR = { na:'#b2bec3', below:'#FF4757', meets:'#f39c12', above:'#00B894' };
 
-// One supervisor evaluation (Mini-CEX / CbD / DOPS) — expandable to show the
-// per-competency scores and structured feedback captured by the supervisor.
+// One evaluation (Mini-CEX / CbD / DOPS) — expandable to show the per-competency
+// scores and structured feedback captured by the evaluator.
 function EvalCard({ ev, traineeName }) {
   const [open, setOpen] = useState(false);
 
-  const supName  = ev.supervisorId?.name || ev.doctor?.name || 'Supervisor';
+  const supName  = ev.supervisorId?.name || ev.doctor?.name || 'Evaluator';
   const type     = ev.evaluationType || ev.type || '';
   const form     = getForm(type);
   const fd       = ev.formData || {};
   const overall  = ev.grade || fd.globalRating || RATING_LABEL[ev.scores?.overall] || '';
-  const accent   = form?.accent || '#185FA5';
+  const accent   = form?.accent || 'var(--brand-primary)';
 
   const domainRows = form?.domains
     ? form.domains
@@ -80,15 +76,13 @@ function EvalCard({ ev, traineeName }) {
     <div style={{
       border:'1px solid var(--border)', borderRadius:10, padding:'14px 16px',
       background: ev.isFinalized ? 'var(--success-bg)' : 'var(--surface-2)',
-      borderLeft:`4px solid ${accent}`
+      borderInlineStart:`4px solid ${accent}`
     }}>
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
         <div>
           <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
             {type && (
-              <span style={{ fontSize:11, background:`${accent}22`, color:accent, borderRadius:5, padding:'2px 8px', fontWeight:800, textTransform:'uppercase' }}>
-                {form?.title || type}
-              </span>
+              <span className="mt-pill mt-pill--capacity">{form?.title || type}</span>
             )}
             <span
               className={ev.isFinalized ? 'status-ic status-ic-green' : 'status-ic status-ic-amber'}
@@ -99,32 +93,32 @@ function EvalCard({ ev, traineeName }) {
             </span>
             {overall && <span style={{ fontSize:13, fontWeight:600, color:accent }}>{overall}</span>}
           </div>
-          <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:4 }}>
+          <div style={{ fontSize:12, color:'var(--text-2)', marginBlockStart:4 }}>
             By {supName} · {fmt(ev.sentToTraineeAt || ev.createdAt)}
           </div>
           {ev.hospital?.name && (
-            <div style={{ fontSize:12, color:'var(--text-muted)' }}>🏥 {ev.hospital.name}</div>
+            <div style={{ fontSize:12, color:'var(--text-2)' }}>{ev.hospital.name}</div>
           )}
         </div>
         {ev.totalScore !== undefined && ev.totalScore !== null && (
-          <div style={{ textAlign:'right' }}>
+          <div style={{ textAlign:'end' }}>
             <div style={{ fontSize:22, fontWeight:700, color:'var(--text)', lineHeight:1 }}>
               {Math.round(ev.totalScore * 10) / 10}
             </div>
-            <div style={{ fontSize:11, color:'var(--text-muted)' }}>avg / 10</div>
+            <div style={{ fontSize:11, color:'var(--text-2)' }}>avg / 10</div>
           </div>
         )}
       </div>
 
       {hasDetail && open && (
-        <div style={{ marginTop:12, borderTop:'1px solid var(--border-soft)', paddingTop:12 }}>
+        <div style={{ marginBlockStart:12, borderTop:'1px solid var(--border-soft)', paddingBlockStart:12 }}>
           {fd.supervisionLevel && (
-            <div style={{ fontSize:12.5, color:'var(--text-2)', marginBottom:10 }}>
+            <div style={{ fontSize:12.5, color:'var(--text-2)', marginBlockEnd:10 }}>
               <strong>Supervision level:</strong> {fd.supervisionLevel}
             </div>
           )}
           {domainRows.length > 0 && (
-            <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:feedbackRows.length ? 12 : 0 }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:6, marginBlockEnd:feedbackRows.length ? 12 : 0 }}>
               {domainRows.map(r => {
                 const m = scoreMeta(r.value);
                 return (
@@ -132,7 +126,7 @@ function EvalCard({ ev, traineeName }) {
                     <span style={{
                       width:26, height:22, flexShrink:0, borderRadius:6, fontSize:11, fontWeight:800,
                       display:'flex', alignItems:'center', justifyContent:'center',
-                      background:m?.bg || 'var(--surface-3)', color:m?.color || 'var(--text-muted)'
+                      background:m?.bg || 'var(--surface-3)', color:m?.color || 'var(--text-2)'
                     }}>
                       {m?.short || r.value}
                     </span>
@@ -143,8 +137,8 @@ function EvalCard({ ev, traineeName }) {
             </div>
           )}
           {feedbackRows.map(r => (
-            <div key={r.label} style={{ marginBottom:8 }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.04em' }}>{r.label}</div>
+            <div key={r.label} style={{ marginBlockEnd:8 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'var(--text-2)', textTransform:'uppercase', letterSpacing:'.04em' }}>{r.label}</div>
               <div style={{ fontSize:13, color:'var(--text-2)', lineHeight:1.5 }}>{r.text}</div>
             </div>
           ))}
@@ -152,32 +146,21 @@ function EvalCard({ ev, traineeName }) {
       )}
 
       {!hasDetail && (ev.comments || ev.notes) && (
-        <div style={{ fontSize:13, color:'var(--text-2)', marginTop:8, padding:'8px 10px', background:'var(--surface-3)', borderRadius:7, lineHeight:1.6, whiteSpace:'pre-line' }}>
+        <div style={{ fontSize:13, color:'var(--text-2)', marginBlockStart:8, padding:'8px 10px', background:'var(--surface-3)', borderRadius:7, lineHeight:1.6, whiteSpace:'pre-line' }}>
           {ev.comments || ev.notes}
         </div>
       )}
 
-      <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:16 }}>
+      <div style={{ marginBlockStart:10, display:'flex', alignItems:'center', gap:16 }}>
         {hasDetail && (
-          <button
-            onClick={() => setOpen(o => !o)}
-            style={{
-              padding:0, background:'none', border:'none',
-              color:accent, fontSize:12, fontWeight:600, cursor:'pointer'
-            }}
-          >
+          <button onClick={() => setOpen(o => !o)}
+            style={{ padding:0, background:'none', border:'none', color:accent, fontSize:12, fontWeight:600, cursor:'pointer' }}>
             {open ? 'Hide details ▲' : 'View full assessment ▼'}
           </button>
         )}
-        <button
-          onClick={() => printEvaluation(ev, { traineeName })}
-          title="Print evaluation form"
-          style={{
-            padding:0, background:'none', border:'none',
-            color:'var(--text-2)', fontSize:12, fontWeight:600, cursor:'pointer'
-          }}
-        >
-          🖨 Print
+        <button onClick={() => printEvaluation(ev, { traineeName })} title="Print evaluation form"
+          style={{ padding:0, background:'none', border:'none', color:'var(--text-2)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+          Print
         </button>
       </div>
     </div>
@@ -216,16 +199,11 @@ export default function Grades() {
   if (loading) return (
     <>
       <Navbar />
-      <main className="main">
-        <div className="stats">
-          {[0,1,2].map(i => (
-            <div className="stat-card" key={i}>
-              <Sk w={90} h={12} />
-              <Sk w={120} h={28} style={{ marginTop:8 }} />
-            </div>
-          ))}
+      <main className="mt-content">
+        <div className="mt-stat-grid">
+          {[0,1,2].map(i => <Sk key={i} h={100} r={12} />)}
         </div>
-        <div className="card">
+        <div className="mt-card" style={{ marginBlockStart: 16 }}>
           <Sk w={180} h={16} style={{ marginBottom:14 }} />
           <Sk h={220} r={8} />
         </div>
@@ -237,7 +215,7 @@ export default function Grades() {
   const evalList   = safeArr(evaluations);
   const finalList  = safeArr(finalGrades);
 
-  // Supervisor-evaluations search + type filter
+  // Evaluations search + type filter
   const evalTypeOf = ev => ev.evaluationType || ev.type || 'Other';
   const evalTypes  = [...new Set(evalList.map(evalTypeOf))];
   const evalQuery  = evalSearch.trim().toLowerCase();
@@ -258,90 +236,59 @@ export default function Grades() {
     byHospital[key].push(r);
   });
 
-  let best = null, bestAvg = -1;
-  for (const [name, reps] of Object.entries(byHospital)) {
-    const avg = calcAvg(reps);
-    if (avg !== null && avg > bestAvg) { bestAvg = avg; best = name; }
-  }
-
   const sorted = [...graded].sort((a,b) => new Date(a.date) - new Date(b.date));
-  const chartData = {
-    labels: sorted.map(r => fmt(r.date)),
-    datasets: [{
-      label:'GPA Points',
-      data: sorted.map(r => gradeToGpa(r.grade)),
-      borderColor:'#185FA5',
-      backgroundColor:'rgba(24,95,165,0.08)',
-      tension:0.35,
-      pointBackgroundColor:'#185FA5',
-      pointRadius:5,
-      fill:true
-    }]
-  };
-  const chartOptions = {
-    responsive:true, maintainAspectRatio:false,
-    plugins:{ legend:{ display:false } },
-    scales:{
-      y:{ min:0, max:4.0, ticks:{ stepSize:0.5 }, grid:{ color:'#f0f0f0' } },
-      x:{ grid:{ display:false } }
-    }
-  };
+  const gpaValues = sorted.map(r => gradeToGpa(r.grade));
+  const gpaLabels = sorted.map(r => fmt(r.date));
 
   return (
     <>
       <Navbar />
-      <main className="main">
+      <main className="mt-content">
 
         {/* ── STAT CARDS ── */}
-        <div className="stats">
-          <div className="stat-card">
-            <div className="stat-label">Overall GPA</div>
-            <div className="gpa-score" style={{ marginTop:6 }}>
-              <span className="gpa-num">{gpaDisplay}</span>
-              <span className="gpa-max">/ 4.0</span>
+        <div className="mt-stat-grid">
+          <RevealOnScroll delay={0}>
+            <div className="mt-stat">
+              <div className="mt-stat-ic"><NavIcon name="award" size={19} /></div>
+              <div className="mt-stat-value">{gpaDisplay}
+                <span style={{ fontSize:13, fontWeight:500, color:'var(--text-2)', marginInlineStart:6 }}>/ 4.0</span>
+              </div>
+              <div className="mt-stat-label">Overall GPA</div>
             </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Evaluations received</div>
-            <div className="gpa-score" style={{ marginTop:6 }}>
-              <span className="gpa-num gpa-num-sm">{evalList.length}</span>
-              <span className="gpa-max">total</span>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Final reports graded</div>
-            <div className="gpa-score" style={{ marginTop:6 }}>
-              <span className="gpa-num gpa-num-sm">{finalList.length}</span>
-              <span className="gpa-max">total</span>
-            </div>
-          </div>
+          </RevealOnScroll>
+          <RevealOnScroll delay={0.055}>
+            <StatCard label="Evaluations received" value={evalList.length} icon="doc" />
+          </RevealOnScroll>
+          <RevealOnScroll delay={0.11}>
+            <StatCard label="Final reports graded" value={finalList.length} icon="check" />
+          </RevealOnScroll>
         </div>
 
-        {/* ── SUPERVISOR EVALUATIONS ── */}
+        {/* ── EVALUATIONS ── */}
         {evalList.length > 0 && (
-          <div className="card">
-            <div className="card-title" style={{ marginBottom:14 }}>
-              Supervisor Evaluations
-              <span className="badge badge-blue" style={{ marginInlineStart:8 }}>{evalList.length}</span>
+          <div className="mt-card" style={{ marginBlockStart: 16 }}>
+            <div className="mt-card-head mt-card-head--tight" style={{ marginBlockEnd: 14 }}>
+              <div className="mt-card-title">Evaluations</div>
+              <span className="mt-count">{evalList.length}</span>
             </div>
 
-            <div className="report-search-bar">
-              <input
-                type="text"
-                className="report-search-input"
-                placeholder="Search evaluations (supervisor, type, comment)…"
-                value={evalSearch}
-                onChange={e => setEvalSearch(e.target.value)}
-              />
-              <select className="report-sort-select" value={evalType} onChange={e => setEvalType(e.target.value)}>
+            <div className="mt-filterbar">
+              <div className="mt-search">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+                </svg>
+                <input type="text" placeholder="Search evaluations (evaluator, type, comment)…"
+                  value={evalSearch} onChange={e => setEvalSearch(e.target.value)} />
+              </div>
+              <select className="mt-filter" value={evalType} onChange={e => setEvalType(e.target.value)}>
                 <option value="all">All types</option>
-                {evalTypes.map(t => <option key={t} value={t}>{getForm(t)?.title || t}</option>)}
+                {evalTypes.map(ty => <option key={ty} value={ty}>{getForm(ty)?.title || ty}</option>)}
               </select>
             </div>
 
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               {filteredEvals.length === 0
-                ? <div className="empty-row">No evaluations match your search.</div>
+                ? <div style={{ fontSize: 13, color: 'var(--text-2)', padding: '10px 2px' }}>No evaluations match your search.</div>
                 : filteredEvals.map(ev => <EvalCard key={ev._id} ev={ev} traineeName={user?.name} />)}
             </div>
           </div>
@@ -349,54 +296,46 @@ export default function Grades() {
 
         {/* ── FINAL REPORT GRADES (from Program Director) ── */}
         {finalList.length > 0 && (
-          <div className="card">
-            <div className="card-title" style={{ marginBottom:14 }}>
-              Final Report Grades
-              <span className="badge" style={{ marginLeft:8, background:'var(--danger-bg)', color:'var(--danger-fg)' }}>Program Director</span>
+          <div className="mt-card" style={{ marginBlockStart: 16 }}>
+            <div className="mt-card-head mt-card-head--tight" style={{ marginBlockEnd: 14 }}>
+              <div className="mt-card-title">Final report grades</div>
+              <span className="mt-pill mt-pill--role">Program Director</span>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               {finalList.map(r => (
                 <div key={r._id} style={{
                   border:'1px solid var(--border)', borderRadius:10, padding:'14px 16px',
-                  background:'var(--surface-2)', borderLeft:'4px solid var(--accent)'
+                  background:'var(--surface-2)', borderInlineStart:'4px solid var(--accent)'
                 }}>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
                     <div>
                       <div style={{ fontSize:13, fontWeight:600, color:'var(--text)' }}>Final Report</div>
-                      <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:3 }}>
+                      <div style={{ fontSize:12, color:'var(--text-2)', marginBlockStart:3 }}>
                         Graded by {r.gradedBy?.name || 'Program Director'} · {fmt(r.gradedAt)}
                       </div>
-                      {r.hospital?.name && <div style={{ fontSize:12, color:'var(--text-muted)' }}>🏥 {r.hospital.name}</div>}
+                      {r.hospital?.name && <div style={{ fontSize:12, color:'var(--text-2)' }}>{r.hospital.name}</div>}
                     </div>
                     <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6 }}>
                       {r.grade && (
-                        <div style={{ width:44, height:44, borderRadius:'50%', background:'var(--brand-secondary)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:700 }}>
+                        <div style={{ width:44, height:44, borderRadius:'50%', background:'var(--brand-primary)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:700 }}>
                           {r.grade}
                         </div>
                       )}
                       {hasScore(r) && (
-                        <span style={{ fontSize:12, fontWeight:700, padding:'4px 10px', borderRadius:20, background:'var(--info-bg)', color:'var(--info-fg)' }}>
-                          {r.score}/100
-                        </span>
+                        <span className="mt-pill mt-pill--capacity">{r.score}/100</span>
                       )}
                       {!r.grade && !hasScore(r) && (
-                        <span style={{ fontSize:12, fontWeight:700, padding:'4px 10px', borderRadius:20, background:'var(--surface-2)', color:'var(--text-muted)' }}>
-                          {gradeLabel(r)}
-                        </span>
+                        <span className="mt-pill mt-pill--neutral">{gradeLabel(r)}</span>
                       )}
                       {r.globalRating && (
-                        <span style={{
-                          fontSize:11, fontWeight:600, padding:'2px 9px', borderRadius:20,
-                          background:r.globalRating==='competent' ? 'var(--success-bg)' : 'var(--danger-bg)',
-                          color:     r.globalRating==='competent' ? 'var(--success-fg)' : 'var(--danger-fg)'
-                        }}>
+                        <span className={`mt-pill ${r.globalRating==='competent' ? 'mt-pill--active' : 'mt-pill--rejected'}`}>
                           {r.globalRating==='competent' ? 'Competent' : 'Not-Competent'}
                         </span>
                       )}
                     </div>
                   </div>
                   {r.assessorComments && (
-                    <div style={{ fontSize:13, color:'var(--text-2)', marginTop:8, padding:'8px 10px', background:'var(--surface-2)', borderRadius:7, lineHeight:1.6 }}>
+                    <div style={{ fontSize:13, color:'var(--text-2)', marginBlockStart:8, padding:'8px 10px', background:'var(--surface)', borderRadius:7, lineHeight:1.6 }}>
                       {r.assessorComments}
                     </div>
                   )}
@@ -408,12 +347,16 @@ export default function Grades() {
 
         {/* ── GPA CHART ── */}
         {graded.length > 1 && (
-          <div className="card">
-            <div className="card-title">Grade progress over time</div>
-            <div style={{ height:220 }}>
-              <Line data={chartData} options={chartOptions} />
+          <RevealOnScroll chart className="mt-card mt-card--chart" style={{ marginBlockStart: 16 }}>
+            <div className="mt-card-head">
+              <div style={{ minWidth: 0 }}>
+                <div className="mt-card-title">Grade progress over time</div>
+                <div className="mt-card-sub">GPA equivalent per assessment</div>
+              </div>
+              <div className="mt-divider" />
             </div>
-          </div>
+            <LineChart values={gpaValues} labels={gpaLabels} />
+          </RevealOnScroll>
         )}
 
         {/* ── HOSPITAL REPORT BREAKDOWN ── */}
@@ -421,52 +364,46 @@ export default function Grades() {
           const avg    = calcAvg(reps);
           const isOpen = !collapsed[name];
           return (
-            <div className="card" key={name}>
-              <button className="hospital-header" onClick={() => setCollapsed(c => ({ ...c, [name]:!c[name] }))}>
-                <div>
-                  <span className="hospital-name">{name}</span>
-                  {avg !== null && <span className="badge badge-blue" style={{ marginLeft:10 }}>Avg GPA: {avg.toFixed(1)}</span>}
+            <div className="mt-card" key={name} style={{ marginBlockStart: 16 }}>
+              <button onClick={() => setCollapsed(c => ({ ...c, [name]:!c[name] }))}
+                style={{ display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', background:'none', border:'none', padding:0, cursor:'pointer' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <span className="mt-card-title">{name}</span>
+                  {avg !== null && <span className="mt-pill mt-pill--capacity">Avg GPA: {avg.toFixed(1)}</span>}
                 </div>
-                <span className="collapse-icon">{isOpen ? '▲' : '▼'}</span>
+                <span style={{ color:'var(--text-2)' }}>{isOpen ? '▲' : '▼'}</span>
               </button>
               {isOpen && (
-                <table className="grade-table">
-                  <thead>
-                    <tr><th>Report</th><th>Type</th><th>Date</th><th>Status</th><th>Grade</th><th>Graded by</th><th></th></tr>
-                  </thead>
-                  <tbody>
-                    {reps.map(r => {
-                      const isGraded = r.status==='graded' || r.status==='approved';
-                      return (
-                      <tr key={r._id}>
-                        <td>{r.title}</td>
-                        <td><span className="badge badge-blue">{r.type}</span></td>
-                        <td>{fmt(r.date)}</td>
-                        <td><span className={isGraded ? 'status-ic status-ic-green' : 'status-ic status-ic-amber'} title={isGraded ? 'Graded' : 'Pending'} style={{ margin:'0 auto' }}>{isGraded ? <IconCheck size={15} /> : <IconClock size={15} />}</span></td>
-                        <td><div className={`grade-circle${r.grade ? '' : ' grade-empty'}`} style={{ margin:'0 auto' }}>{gradeLabel(r)}</div></td>
-                        <td>{r.gradedBy?.name ?? '—'}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className="icon-btn"
-                            title="View report"
-                            aria-label="View report"
-                            onClick={() => setViewReport(r)}
-                            style={{
-                              display:'flex', alignItems:'center', justifyContent:'center',
-                              margin:'0 auto', width:30, height:30, padding:0,
-                              background:'none', border:'1px solid var(--border)', borderRadius:7,
-                              color:'var(--link)', cursor:'pointer'
-                            }}
-                          >
-                            <IconEye size={16} />
-                          </button>
-                        </td>
+                <div className="mt-table-wrap" style={{ marginBlockStart: 14 }}>
+                  <table className="mt-table">
+                    <thead>
+                      <tr>
+                        <th className="mt-th">Report</th><th className="mt-th">Type</th><th className="mt-th">Date</th>
+                        <th className="mt-th">Status</th><th className="mt-th">Grade</th><th className="mt-th">Graded by</th><th className="mt-th"></th>
                       </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {reps.map(r => {
+                        const isGraded = r.status==='graded' || r.status==='approved';
+                        return (
+                        <tr key={r._id}>
+                          <td className="mt-td mt-td--name">{r.title}</td>
+                          <td className="mt-td"><span className="mt-pill mt-pill--role">{r.type}</span></td>
+                          <td className="mt-td mt-td--mono">{fmt(r.date)}</td>
+                          <td className="mt-td"><span className={isGraded ? 'status-ic status-ic-green' : 'status-ic status-ic-amber'} title={isGraded ? 'Graded' : 'Pending'}>{isGraded ? <IconCheck size={15} /> : <IconClock size={15} />}</span></td>
+                          <td className="mt-td"><div className={`grade-circle${r.grade ? '' : ' grade-empty'}`}>{gradeLabel(r)}</div></td>
+                          <td className="mt-td mt-td--muted">{r.gradedBy?.name ?? '—'}</td>
+                          <td className="mt-td mt-td--actions">
+                            <button type="button" className="mt-icon-action" title="View report" aria-label="View report" onClick={() => setViewReport(r)}>
+                              <IconEye size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           );
@@ -474,10 +411,10 @@ export default function Grades() {
 
         {/* Empty state */}
         {reportList.length === 0 && evalList.length === 0 && finalList.length === 0 && (
-          <div style={{ textAlign:'center', padding:56, color:'var(--text-muted)' }}>
-            <div style={{ fontSize:40, marginBottom:12 }}>📊</div>
-            <div style={{ fontSize:16, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>No grades yet</div>
-            <div style={{ fontSize:13 }}>Grades will appear here once your supervisor assesses your reports and evaluations.</div>
+          <div className="mt-empty" style={{ marginBlockStart: 16 }}>
+            <span className="mt-empty-icon"><NavIcon name="award" size={24} /></span>
+            <div className="mt-empty-title">No grades yet</div>
+            <div className="mt-empty-sub">Grades will appear here once your evaluator assesses your reports and evaluations.</div>
           </div>
         )}
 

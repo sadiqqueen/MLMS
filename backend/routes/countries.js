@@ -6,7 +6,10 @@ const { allowRoles } = require('../middleware/roles');
 const auditLog       = require('../middleware/auditLogger');
 const Country        = require('../models/Country');
 
+// Create is direct for the clerk; edit/delete are approval-gated via
+// routes/registry.js (RULINGS §E22), so direct PATCH/DELETE is super_admin-only.
 const WRITE_ROLES = ['data_entry', 'super_admin'];
+const EDIT_ROLES  = ['super_admin'];
 
 // GET /api/countries — any authenticated user (dropdown source): active only.
 router.get('/', auth, async (req, res) => {
@@ -41,10 +44,11 @@ router.post('/',
   }
 );
 
-// PATCH /api/countries/:id
+// PATCH /api/countries/:id — direct edit is super_admin only (clerk edits go
+// through POST-style approval at /api/registry/countries/:id, RULINGS §E22).
 router.patch('/:id',
   auth,
-  allowRoles(...WRITE_ROLES),
+  allowRoles(...EDIT_ROLES),
   auditLog('update_country', 'Country'),
   async (req, res) => {
     try {
@@ -68,10 +72,11 @@ router.patch('/:id',
   }
 );
 
-// DELETE /api/countries/:id — soft delete (isActive: false)
+// DELETE /api/countries/:id — soft delete; super_admin only (clerk deletes go
+// through approval at /api/registry/countries/:id, RULINGS §E22).
 router.delete('/:id',
   auth,
-  allowRoles(...WRITE_ROLES),
+  allowRoles(...EDIT_ROLES),
   auditLog('deactivate_country', 'Country'),
   async (req, res) => {
     try {

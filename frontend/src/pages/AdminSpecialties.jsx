@@ -1,278 +1,268 @@
+// W2-Developer — Specialties (RULINGS §B14 wires the orphaned AdminSpecialties;
+// §C15/§39 make the REAL hierarchy authoritative: 20 Scientific Councils → main /
+// precise specialties with string codes). Rebuilt per design as a council →
+// main/precise browse table (Specialty · Type · Council · Code · HOC · Status),
+// with an Add-Specialty modal (fields adapted to the real hierarchy) and the
+// legacy per-specialty PDF report/eval template manager preserved behind a
+// per-row "Templates" action (no-feature-removal).
+//
+// Data: GET /api/specialties (super_admin → all rows incl. type/code/councilId),
+//       GET /api/admin/councils (council names), GET /api/admin/users?role=hoc.
 import { useState, useEffect, useRef } from 'react';
 import Navbar from '../components/Navbar';
-import Toast  from '../components/Toast';
-import api    from '../api/axios';
-import Sk     from '../components/Skeleton';
+import MtModal from '../components/MtModal';
+import RevealOnScroll from '../components/RevealOnScroll';
+import { MtToastHost, useMtToast } from '../components/MtToast';
+import { IconBook, IconFileText } from '../components/icons';
+import api from '../api/axios';
+import { MagnifierIcon } from './devkit';
+import './developer.css';
 
 const PDF_TYPES = [
-  { key: 'weekly',  label: 'Weekly Report',  field: 'weeklyReportPdf',  uploadPath: 'upload-weekly'  },
-  { key: 'monthly', label: 'Monthly Report', field: 'monthlyReportPdf', uploadPath: 'upload-monthly' },
-  { key: 'final',   label: 'Final Report',   field: 'finalReportPdf',   uploadPath: 'upload-final'   },
+  { key: 'weekly', label: 'Weekly report', field: 'weeklyReportPdf', path: 'upload-weekly' },
+  { key: 'monthly', label: 'Monthly report', field: 'monthlyReportPdf', path: 'upload-monthly' },
+  { key: 'final', label: 'Final report', field: 'finalReportPdf', path: 'upload-final' },
 ];
+const EVAL_TYPES = [1, 2, 3, 4, 5].map((n) => ({ key: `eval${n}`, label: `Eval form ${n}`, field: `evaluationPdf${n}`, path: `upload-eval${n}` }));
 
-const EVAL_TYPES = [
-  { key: 'eval1', label: 'Eval Form 1', field: 'evaluationPdf1', uploadPath: 'upload-eval1' },
-  { key: 'eval2', label: 'Eval Form 2', field: 'evaluationPdf2', uploadPath: 'upload-eval2' },
-  { key: 'eval3', label: 'Eval Form 3', field: 'evaluationPdf3', uploadPath: 'upload-eval3' },
-  { key: 'eval4', label: 'Eval Form 4', field: 'evaluationPdf4', uploadPath: 'upload-eval4' },
-  { key: 'eval5', label: 'Eval Form 5', field: 'evaluationPdf5', uploadPath: 'upload-eval5' },
-];
+// ── Add specialty modal (real-hierarchy fields) ──────────────────────────────
+function AddSpecialtyModal({ councils, onCreate, onClose, saving }) {
+  const [f, setF] = useState({ name: '', nameEn: '', type: 'precise', councilId: '', code: '' });
+  const [errors, setErrors] = useState({});
+  const set = (k, v) => { setF((s) => ({ ...s, [k]: v })); setErrors((e) => ({ ...e, [k]: false })); };
+  function submit() {
+    const e = {};
+    if (!f.name.trim()) e.name = true;
+    setErrors(e);
+    if (Object.keys(e).length) return;
+    onCreate(f);
+  }
+  return (
+    <MtModal open title="Add specialty" sub="Main or precise specialty" meta="Developer" onClose={onClose}
+      footer={<>
+        <button type="button" className="mt-btn--cancel" onClick={onClose}>Cancel</button>
+        <button type="button" className="mt-btn" onClick={submit} disabled={saving}>{saving ? 'Creating…' : 'Create specialty'}</button>
+      </>}>
+      <div className="mt-banner">This record will be added to the registry.</div>
+      <div className="mt-field-grid">
+        <div className="mt-field"><label className="mt-label">Name <span className="mt-label-req">*</span></label><input className={`mt-input${errors.name ? ' dev-invalid' : ''}`} value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="Specialty name" /></div>
+        <div className="mt-field"><label className="mt-label">English name</label><input className="mt-input" value={f.nameEn} onChange={(e) => set('nameEn', e.target.value)} placeholder="English name" /></div>
+        <div className="mt-field">
+          <label className="mt-label">Type</label>
+          <div className="mt-radio-group">
+            <label className="mt-check-label"><input type="radio" className="mt-check" name="spType" checked={f.type === 'main'} onChange={() => set('type', 'main')} /> Main</label>
+            <label className="mt-check-label"><input type="radio" className="mt-check" name="spType" checked={f.type === 'precise'} onChange={() => set('type', 'precise')} /> Precise</label>
+          </div>
+        </div>
+        <div className="mt-field"><label className="mt-label">Code</label><input className="mt-input mt-input--mono" value={f.code} onChange={(e) => set('code', e.target.value)} placeholder='e.g. "05" or "05d1"' /></div>
+        <div className="mt-field mt-field-full">
+          <label className="mt-label">Council</label>
+          <select className="mt-select" value={f.councilId} onChange={(e) => set('councilId', e.target.value)}>
+            <option value="">— Select council —</option>
+            {councils.map((c) => <option key={c._id} value={c._id}>{c.name}{c.nameEn ? ` — ${c.nameEn}` : ''}</option>)}
+          </select>
+        </div>
+      </div>
+    </MtModal>
+  );
+}
 
-export default function AdminSpecialties() {
-  const [specialties, setSpecialties] = useState([]);
-  const [loading,     setLoading    ] = useState(true);
-  const [uploading,   setUploading  ] = useState({});
-  const [creating,    setCreating   ] = useState(false);
-  const [newName,     setNewName    ] = useState('');
-  const [toasts,      setToasts     ] = useState([]);
+// ── Templates modal (legacy PDF report / eval upload — preserved feature) ─────
+function TemplatesModal({ specialty, onClose, onUpdated, showToast }) {
+  const [busy, setBusy] = useState({});
   const fileRefs = useRef({});
 
-  function showToast(msg, type = 'success') {
-    const id = Date.now();
-    setToasts(p => [...p, { id, message: msg, type }]);
-    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3500);
-  }
-
-  useEffect(() => {
-    api.get('/api/specialties')
-      .then(r => setSpecialties(r.data?.data || r.data || []))
-      .catch(() => showToast('Failed to load specialties', 'error'))
-      .finally(() => setLoading(false));
-  }, []);
-
-  async function createSpecialty() {
-    const name = newName.trim();
-    if (!name) return;
-    if (specialties.some(s => s.name?.toLowerCase() === name.toLowerCase())) {
-      showToast('Specialty already exists', 'error');
-      return;
-    }
-    setCreating(true);
-    try {
-      const res = await api.post('/api/specialties', { name });
-      const created = res.data?.data || res.data;
-      setSpecialties(prev => [...prev, created]);
-      setNewName('');
-      showToast(`${name} specialty created`);
-    } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to create specialty', 'error');
-    } finally {
-      setCreating(false);
-    }
-  }
-
-  async function uploadPdf(specialtyId, key, field, uploadPath, file) {
-    const uploadKey = `${specialtyId}_${key}`;
+  async function upload(field, path, key, file) {
     if (!file) return;
-    if (!file.type.includes('pdf')) { showToast('Only PDF files are allowed', 'error'); return; }
-    if (file.size > 10 * 1024 * 1024) { showToast('File must be under 10MB', 'error'); return; }
-
-    setUploading(p => ({ ...p, [uploadKey]: true }));
+    if (!file.type.includes('pdf')) { showToast('Only PDF files are allowed', 'dng'); return; }
+    if (file.size > 10 * 1024 * 1024) { showToast('File must be under 10 MB', 'dng'); return; }
+    setBusy((b) => ({ ...b, [key]: true }));
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await api.post(`/api/specialties/${specialtyId}/${uploadPath}`, fd, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      const updated = res.data?.data || res.data;
-      setSpecialties(prev => prev.map(s => s._id === specialtyId ? { ...s, ...updated } : s));
-      showToast(`${key.charAt(0).toUpperCase() + key.slice(1)} PDF uploaded successfully`);
-    } catch (err) {
-      showToast(err.response?.data?.message || 'Upload failed', 'error');
-    } finally {
-      setUploading(p => ({ ...p, [uploadKey]: false }));
-    }
+      const res = await api.post(`/api/specialties/${specialty._id}/${path}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      onUpdated(res.data?.data || res.data);
+      showToast('Template uploaded', 'ok');
+    } catch (err) { showToast(err.response?.data?.message || 'Upload failed', 'dng'); } finally { setBusy((b) => ({ ...b, [key]: false })); }
   }
 
-  function triggerUpload(specialtyId, key) {
-    const uploadKey = `${specialtyId}_${key}`;
-    fileRefs.current[uploadKey]?.click();
-  }
-
-  function PdfSlot({ specialty, typeObj }) {
-    const { key, label, field, uploadPath } = typeObj;
-    const uploadKey = `${specialty._id}_${key}`;
-    const hasPdf    = !!specialty[field];
-    const isLoading = !!uploading[uploadKey];
-
+  const Slot = ({ t }) => {
+    const has = !!specialty[t.field];
+    const loading = !!busy[t.key];
     return (
-      <div style={{
-        border: '1px solid var(--border)', borderRadius: 10, padding: '16px 14px',
-        background: 'var(--surface-2)', display: 'flex', flexDirection: 'column', gap: 10
-      }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand-secondary)' }}>{label}</div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-          {hasPdf ? (
-            <>
-              <span style={{ color: '#059669' }}>✓</span>
-              <a
-                href={specialty[field]}
-                target="_blank"
-                rel="noreferrer"
-                style={{ color: 'var(--link)', fontWeight: 500 }}
-              >
-                Template uploaded ↗
-              </a>
-            </>
-          ) : (
-            <>
-              <span style={{ color: 'var(--text-muted)' }}>○</span>
-              <span style={{ color: 'var(--text-muted)' }}>No template yet</span>
-            </>
-          )}
+      <div className="dev-tpl-slot">
+        <div className="dev-tpl-slot-title">{t.label}</div>
+        <div className="dev-tpl-slot-state">
+          {has
+            ? <a className="dev-tpl-link" href={specialty[t.field]} target="_blank" rel="noreferrer">Template uploaded ↗</a>
+            : <span>No template yet</span>}
         </div>
-
-        <button
-          className="pdf-upload-btn"
-          style={{
-            padding: '7px 14px', borderRadius: 7,
-            background: hasPdf ? 'var(--chip-spec-bg)' : '#FF6B35',
-            color: hasPdf ? 'var(--brand-secondary)' : '#fff',
-            border: 'none', fontWeight: 600, fontSize: 12,
-            cursor: isLoading ? 'default' : 'pointer',
-            opacity: isLoading ? 0.7 : 1,
-            transition: 'background-color .15s ease, color .15s ease, opacity .15s ease, transform .1s ease'
-          }}
-          onClick={() => triggerUpload(specialty._id, key)}
-          disabled={isLoading}
-        >
-          {isLoading ? '⏳ Uploading…' : hasPdf ? '↺ Replace PDF' : '⬆ Upload PDF'}
+        <button className="mt-btn--small-outline" disabled={loading} onClick={() => fileRefs.current[t.key]?.click()}>
+          {loading ? 'Uploading…' : has ? 'Replace PDF' : 'Upload PDF'}
         </button>
-
-        <input
-          type="file"
-          accept=".pdf,application/pdf"
-          style={{ display: 'none' }}
-          ref={el => { fileRefs.current[uploadKey] = el; }}
-          onChange={e => {
-            const file = e.target.files?.[0];
-            if (file) uploadPdf(specialty._id, key, field, uploadPath, file);
-            e.target.value = '';
-          }}
-        />
+        <input type="file" accept=".pdf,application/pdf" style={{ display: 'none' }} ref={(el) => { fileRefs.current[t.key] = el; }}
+          onChange={(e) => { const file = e.target.files?.[0]; if (file) upload(t.field, t.path, t.key, file); e.target.value = ''; }} />
       </div>
     );
+  };
+
+  return (
+    <MtModal open title="Report & evaluation templates" sub={specialty.name} onClose={onClose}
+      footer={<button type="button" className="mt-btn--cancel" onClick={onClose}>Close</button>}>
+      <div className="dev-tpl-section-label">Report templates</div>
+      <div className="dev-tpl-grid">{PDF_TYPES.map((t) => <Slot key={t.key} t={t} />)}</div>
+      <div className="dev-tpl-section-label">Evaluation form templates</div>
+      <div className="dev-tpl-grid">{EVAL_TYPES.map((t) => <Slot key={t.key} t={t} />)}</div>
+    </MtModal>
+  );
+}
+
+export default function AdminSpecialties() {
+  const { toasts, showToast } = useMtToast();
+  const [specialties, setSpecialties] = useState([]);
+  const [councils, setCouncils] = useState([]);
+  const [hocByCouncil, setHocByCouncil] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [councilFilter, setCouncilFilter] = useState('');
+  const [showAdd, setShowAdd] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [tplSpecialty, setTplSpecialty] = useState(null);
+
+  useEffect(() => {
+    Promise.all([
+      api.get('/api/specialties'),
+      api.get('/api/admin/councils').catch(() => ({ data: { data: [] } })),
+      api.get('/api/admin/users', { params: { role: 'hoc', limit: 100 } }).catch(() => ({ data: { data: [] } })),
+    ]).then(([sp, co, hoc]) => {
+      setSpecialties(sp.data?.data || sp.data || []);
+      setCouncils(co.data?.data || co.data || []);
+      const map = {};
+      (hoc.data?.data || hoc.data || []).forEach((h) => { const cid = h.councilId?._id || h.councilId; if (cid) map[String(cid)] = h.name; });
+      setHocByCouncil(map);
+    }).catch(() => showToast('Failed to load specialties', 'dng')).finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const councilName = (id) => { const c = councils.find((x) => String(x._id) === String(id)); return c ? (c.nameEn || c.name) : null; };
+
+  async function handleCreate(f) {
+    setSaving(true);
+    try {
+      // TODO(fable): the backend whitelist SPECIALTY_FIELDS (routes/specialties.js
+      // + routes/adminV2.js) omits type/code/councilId/nameEn, so only `name`
+      // persists here — a full hierarchy create needs those fields added server-side.
+      const res = await api.post('/api/specialties', { name: f.name, nameEn: f.nameEn, type: f.type, councilId: f.councilId || undefined, code: f.code || undefined });
+      const created = res.data?.data || res.data;
+      setSpecialties((prev) => [created, ...prev]);
+      showToast('Specialty added', 'ok');
+      setShowAdd(false);
+    } catch (err) { showToast(err.response?.data?.message || 'Failed to create specialty', 'dng'); } finally { setSaving(false); }
   }
 
-  if (loading) return (
-    <>
-      <Navbar />
-      <main className="admin-main">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {[0,1,2,3,4].map(i => (
-            <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 24 }}>
-              <Sk w={200} h={18} style={{ marginBottom: 16 }} />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 12 }}>
-                {[0,1,2].map(j => <Sk key={j} h={80} r={8} />)}
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12 }}>
-                {[0,1,2,3,4].map(j => <Sk key={j} h={80} r={8} />)}
-              </div>
-            </div>
-          ))}
-        </div>
-      </main>
-    </>
-  );
+  const q = search.trim().toLowerCase();
+  const rows = specialties
+    .filter((s) => !typeFilter || (s.type || 'precise') === typeFilter)
+    .filter((s) => {
+      if (!councilFilter) return true;
+      if (councilFilter === '__none__') return !(s.councilId);
+      return String(s.councilId?._id || s.councilId) === councilFilter;
+    })
+    .filter((s) => !q || s.name?.toLowerCase().includes(q) || s.nameEn?.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q))
+    .sort((a, b) => {
+      const ca = councilName(a.councilId?._id || a.councilId) || 'zzz';
+      const cb = councilName(b.councilId?._id || b.councilId) || 'zzz';
+      if (ca !== cb) return ca.localeCompare(cb);
+      const ta = a.type === 'main' ? 0 : 1; const tb = b.type === 'main' ? 0 : 1;
+      if (ta !== tb) return ta - tb;
+      return String(a.code || a.name || '').localeCompare(String(b.code || b.name || ''));
+    });
+
+  const typePill = (t) => t === 'main'
+    ? <span className="mt-pill mt-pill--warn">Main</span>
+    : <span className="mt-pill mt-pill--active">Precise</span>;
 
   return (
     <>
-      <Navbar />
-      <main className="admin-main">
+      <Navbar title="Specialties" subtitle="Developer" />
+      <main className="mt-content">
+        <div className="dev-intro">20 Scientific Councils → their main &amp; precise specialties with codes.</div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--brand-secondary)' }}>Specialties</div>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
-              Manage specialties and upload PDF report and evaluation templates for each
+        <div className="mt-filterbar">
+          <div className="mt-search">
+            <MagnifierIcon />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or code…" aria-label="Search specialties" />
+          </div>
+          <select className="mt-filter" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} aria-label="Type filter">
+            <option value="">Type: All</option><option value="main">Main</option><option value="precise">Precise</option>
+          </select>
+          <select className="mt-filter" value={councilFilter} onChange={(e) => setCouncilFilter(e.target.value)} aria-label="Council filter">
+            <option value="">Council: All</option>
+            {councils.map((c) => <option key={c._id} value={c._id}>{c.nameEn || c.name}</option>)}
+            <option value="__none__">— Ungrouped —</option>
+          </select>
+          <span className="mt-filterbar-spacer" />
+          <button className="mt-btn" onClick={() => setShowAdd(true)}>+ Add specialty</button>
+          <span className="mt-count">{specialties.length} specialties</span>
+        </div>
+
+        {loading ? <div className="skeleton mt-skel" style={{ height: 320 }} /> : (
+          <RevealOnScroll>
+            <div className="mt-card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div className="mt-table-wrap">
+                <table className="mt-table">
+                  <thead><tr>
+                    <th className="mt-th">Specialty</th><th className="mt-th">Type</th><th className="mt-th">Council</th>
+                    <th className="mt-th">Code</th><th className="mt-th">HOC</th><th className="mt-th">Status</th><th className="mt-th" />
+                  </tr></thead>
+                  <tbody>
+                    {rows.length === 0 && (
+                      <tr><td className="mt-td mt-td--muted" colSpan={7} style={{ textAlign: 'center', padding: 40 }}>No specialties found.</td></tr>
+                    )}
+                    {rows.map((s) => {
+                      const cid = s.councilId?._id || s.councilId;
+                      return (
+                        <tr key={s._id}>
+                          <td className="mt-td">
+                            <div className="mt-td--name">{s.name}</div>
+                            {s.nameEn && <div className="mt-td--muted" style={{ fontSize: 11.5 }}>{s.nameEn}</div>}
+                          </td>
+                          <td className="mt-td">{typePill(s.type)}</td>
+                          <td className="mt-td mt-td--muted">{councilName(cid) || '—'}</td>
+                          <td className="mt-td mt-td--mono">{s.code || '—'}</td>
+                          <td className="mt-td mt-td--muted">{(cid && hocByCouncil[String(cid)]) || '—'}</td>
+                          <td className="mt-td">{s.isActive !== false ? <span className="mt-pill mt-pill--active">Active</span> : <span className="mt-pill mt-pill--rejected">Inactive</span>}</td>
+                          <td className="mt-td mt-td--actions">
+                            <button className="mt-btn--small-outline" onClick={() => setTplSpecialty(s)} title="Manage report & evaluation templates">
+                              <IconFileText size={13} /> Templates
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        </div>
+          </RevealOnScroll>
+        )}
 
-        {/* Create new specialty */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 20, marginBottom: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--brand-secondary)', marginBottom: 12 }}>Add Specialty</div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <input
-              className="admin-search"
-              style={{ flex: 1, minWidth: 200 }}
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              placeholder="Enter specialty name"
-              onKeyDown={e => { if (e.key === 'Enter') createSpecialty(); }}
-            />
-            <button
-              className="btn-purple"
-              onClick={createSpecialty}
-              disabled={!newName.trim() || creating}
-              style={{ opacity: !newName.trim() || creating ? 0.6 : 1 }}
-            >
-              {creating ? 'Creating…' : '+ Add Specialty'}
-            </button>
-          </div>
-        </div>
-
-        {specialties.length === 0 && (
-          <div style={{ textAlign: 'center', padding: 56, color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>🔬</div>
-            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>No specialties yet</div>
-            <div style={{ fontSize: 13 }}>Add a specialty above to get started.</div>
+        {!loading && specialties.length === 0 && (
+          <div className="mt-empty" style={{ marginBlockStart: 16 }}>
+            <div className="mt-empty-icon"><IconBook size={22} /></div>
+            <div className="mt-empty-title">No specialties yet</div>
+            <div className="mt-empty-sub">Seed the councils &amp; specialties, or add one above.</div>
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {specialties.map(specialty => (
-            <div key={specialty._id} style={{
-              background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
-              padding: 24, boxShadow: '0 1px 3px rgba(0,0,0,.06)'
-            }}>
+        {showAdd && <AddSpecialtyModal councils={councils} onCreate={handleCreate} onClose={() => setShowAdd(false)} saving={saving} />}
+        {tplSpecialty && (
+          <TemplatesModal specialty={tplSpecialty} onClose={() => setTplSpecialty(null)} showToast={showToast}
+            onUpdated={(updated) => { setSpecialties((prev) => prev.map((x) => (x._id === updated._id ? { ...x, ...updated } : x))); setTplSpecialty((cur) => (cur && cur._id === updated._id ? { ...cur, ...updated } : cur)); }} />
+        )}
 
-              {/* Header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                <div>
-                  <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--brand-secondary)' }}>
-                    🔬 {specialty.name}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
-                    {specialty.secretaryId?.name ? `Secretary: ${specialty.secretaryId.name}` : 'No secretary assigned'}
-                    {specialty.hospitalId?.name ? ` · ${specialty.hospitalId.name}` : ''}
-                  </div>
-                </div>
-                <span style={{
-                  fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
-                  background: specialty.isActive !== false ? 'var(--success-bg)' : 'var(--danger-bg)',
-                  color:      specialty.isActive !== false ? 'var(--success-fg)' : 'var(--danger-fg)'
-                }}>
-                  {specialty.isActive !== false ? 'Active' : 'Inactive'}
-                </span>
-              </div>
-
-              {/* Report PDFs */}
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>
-                Report Templates
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, marginBottom: 20 }}>
-                {PDF_TYPES.map(t => (
-                  <PdfSlot key={t.key} specialty={specialty} typeObj={t} />
-                ))}
-              </div>
-
-              {/* Evaluation PDFs */}
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>
-                Evaluation Form Templates
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 14 }}>
-                {EVAL_TYPES.map(t => (
-                  <PdfSlot key={t.key} specialty={specialty} typeObj={t} />
-                ))}
-              </div>
-
-            </div>
-          ))}
-        </div>
-
-        <Toast toasts={toasts} />
+        <MtToastHost toasts={toasts} />
       </main>
     </>
   );

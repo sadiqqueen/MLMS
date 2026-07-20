@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { PrefsProvider } from './context/PrefsContext';
@@ -101,6 +102,35 @@ import SgReports from './pages/SgReports';
 import ProgramDirectorDashboard from './pages/ProgramDirectorDashboard';
 import ProgramDirectorProgram from './pages/ProgramDirectorProgram';
 
+// ── mt- redesign (Agent F) ────────────────────────────────────────────────
+// Previously-orphaned page now wired into the nav.
+import AdminSpecialties from './pages/AdminSpecialties';
+// New screens — lazy so the initial bundle stays lean. These are minimal STUBS
+// today; the role waves replace each file with the real implementation.
+const HocDashboard              = lazy(() => import('./pages/HocDashboard'));
+const HocCenters                = lazy(() => import('./pages/HocCenters'));
+const HocPrograms               = lazy(() => import('./pages/HocPrograms'));
+const CentralDashboard          = lazy(() => import('./pages/CentralDashboard'));
+const CentralCountries          = lazy(() => import('./pages/CentralCountries'));
+const CentralCenters            = lazy(() => import('./pages/CentralCenters'));
+const CentralPrograms           = lazy(() => import('./pages/CentralPrograms'));
+const RegistryDashboard         = lazy(() => import('./pages/RegistryDashboard'));
+const RegistryPrograms          = lazy(() => import('./pages/RegistryPrograms'));
+const AnalyzerPending           = lazy(() => import('./pages/AnalyzerPending'));
+const AnalyzerCountries         = lazy(() => import('./pages/AnalyzerCountries'));
+const AnalyzerCenters           = lazy(() => import('./pages/AnalyzerCenters'));
+const AnalyzerDios              = lazy(() => import('./pages/AnalyzerDios'));
+const AnalyzerPrograms          = lazy(() => import('./pages/AnalyzerPrograms'));
+const AnalyzerPds               = lazy(() => import('./pages/AnalyzerPds'));
+const AnalyzerClerks            = lazy(() => import('./pages/AnalyzerClerks'));
+const AnalyzerHocs              = lazy(() => import('./pages/AnalyzerHocs'));
+const AnalyzerSpecialties       = lazy(() => import('./pages/AnalyzerSpecialties'));
+const AnalyzerCentralSecretaries= lazy(() => import('./pages/AnalyzerCentralSecretaries'));
+const AnalyzerTrainees          = lazy(() => import('./pages/AnalyzerTrainees'));
+const DioViewOdios              = lazy(() => import('./pages/DioViewOdios'));
+const DioPdAssignment           = lazy(() => import('./pages/DioPdAssignment'));
+const ProgramDirectorLogBook    = lazy(() => import('./pages/ProgramDirectorLogBook'));
+
 function RootRedirect() {
   const { user, loading } = useAuth();
   if (loading) return null;
@@ -124,6 +154,7 @@ export default function App() {
       <PrefsProvider>
       <BrowserRouter>
         <ErrorBoundary>
+        <Suspense fallback={<div className="loading">Loading…</div>}>
         <Routes>
           <Route path="/" element={<RootRedirect />} />
           <Route path="/verify/:code" element={<VerifyCertificate />} />
@@ -467,6 +498,11 @@ export default function App() {
               <CentralTrainees />
             </ProtectedRoute>
           } />
+          {/* TODO(fable): RULINGS §D21 says remove CentralTrainers/DioViewTrainers
+              routes+links, but task §7 + frontend_map §8 list them as trainer-ENTITY
+              refs to keep. I removed the NAV LINKS (new CS/DIO navs) but kept these
+              ROUTES functional (no feature removal / no deep-link 404). Confirm
+              whether to also delete the routes + page files. */}
           <Route path="/central/trainers" element={
             <ProtectedRoute allowedRoles={['central_secretary', 'super_admin']}>
               <CentralTrainers />
@@ -711,14 +747,110 @@ export default function App() {
             <ProtectedRoute allowedRoles={['b_president']}><PresidentHospitals /></ProtectedRoute>
           } />
 
+          {/* ══════════════════════════════════════════════════════════
+              mt- REDESIGN ROUTES (Agent F). Behind these paths are minimal
+              STUB pages today; role waves replace each file in place. HOC is a
+              NEW role (Agent B adds it to the User enum); super_admin can view
+              every screen for oversight.
+          ══════════════════════════════════════════════════════════ */}
+          {/* Developer — wire the previously-orphaned Specialties page */}
+          <Route path="/admin/specialties" element={
+            <ProtectedRoute allowedRoles={['super_admin']}><AdminSpecialties /></ProtectedRoute>
+          } />
+
+          {/* HOC (NEW role) — read-only council scope */}
+          <Route path="/hoc/dashboard" element={
+            <ProtectedRoute allowedRoles={['hoc', 'super_admin']}><HocDashboard /></ProtectedRoute>
+          } />
+          <Route path="/hoc/centers" element={
+            <ProtectedRoute allowedRoles={['hoc', 'super_admin']}><HocCenters /></ProtectedRoute>
+          } />
+          <Route path="/hoc/programs" element={
+            <ProtectedRoute allowedRoles={['hoc', 'super_admin']}><HocPrograms /></ProtectedRoute>
+          } />
+
+          {/* Central Secretary — new dashboard + registry drill screens */}
+          <Route path="/central/dashboard" element={
+            <ProtectedRoute allowedRoles={['central_secretary', 'super_admin']}><CentralDashboard /></ProtectedRoute>
+          } />
+          <Route path="/central/countries" element={
+            <ProtectedRoute allowedRoles={['central_secretary', 'super_admin']}><CentralCountries /></ProtectedRoute>
+          } />
+          <Route path="/central/centers" element={
+            <ProtectedRoute allowedRoles={['central_secretary', 'super_admin']}><CentralCenters /></ProtectedRoute>
+          } />
+          <Route path="/central/programs" element={
+            <ProtectedRoute allowedRoles={['central_secretary', 'super_admin']}><CentralPrograms /></ProtectedRoute>
+          } />
+
+          {/* Clerk (data_entry) — new dashboard + programs list */}
+          <Route path="/registry/dashboard" element={
+            <ProtectedRoute allowedRoles={['data_entry', 'super_admin']}><RegistryDashboard /></ProtectedRoute>
+          } />
+          <Route path="/registry/programs" element={
+            <ProtectedRoute allowedRoles={['data_entry', 'super_admin']}><RegistryPrograms /></ProtectedRoute>
+          } />
+
+          {/* Analyzer — 13-item nav: registry read-only views + Pending inbox */}
+          <Route path="/analyzer/pending" element={
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerPending /></ProtectedRoute>
+          } />
+          <Route path="/analyzer/countries" element={
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerCountries /></ProtectedRoute>
+          } />
+          <Route path="/analyzer/centers" element={
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerCenters /></ProtectedRoute>
+          } />
+          <Route path="/analyzer/dios" element={
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerDios /></ProtectedRoute>
+          } />
+          <Route path="/analyzer/programs" element={
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerPrograms /></ProtectedRoute>
+          } />
+          <Route path="/analyzer/pds" element={
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerPds /></ProtectedRoute>
+          } />
+          <Route path="/analyzer/clerks" element={
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerClerks /></ProtectedRoute>
+          } />
+          <Route path="/analyzer/hocs" element={
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerHocs /></ProtectedRoute>
+          } />
+          <Route path="/analyzer/specialties" element={
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerSpecialties /></ProtectedRoute>
+          } />
+          <Route path="/analyzer/central-secretaries" element={
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerCentralSecretaries /></ProtectedRoute>
+          } />
+          <Route path="/analyzer/trainees" element={
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerTrainees /></ProtectedRoute>
+          } />
+
+          {/* DIO (dio_view) — ODIOs list + Add-ODIO (its only write) */}
+          <Route path="/dio-view/odios" element={
+            <ProtectedRoute allowedRoles={['dio_view', 'sub_dio', 'super_admin']}><DioViewOdios /></ProtectedRoute>
+          } />
+
+          {/* ODIO — PD Assignment. W2-ODIO builds the real page here, reusing the
+              existing ProgramDirectorsPanel export from DioAssignPds.jsx. */}
+          <Route path="/dio/assign-pds" element={
+            <ProtectedRoute allowedRoles={['dio', 'super_admin']}><DioPdAssignment /></ProtectedRoute>
+          } />
+
+          {/* PD — Log Book sign-off */}
+          <Route path="/program-director/log-book" element={
+            <ProtectedRoute allowedRoles={['program_director', 'super_admin']}><ProgramDirectorLogBook /></ProtectedRoute>
+          } />
+
           <Route path="/profile" element={
-            <ProtectedRoute allowedRoles={['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president', 'super_admin', 'b_trainee', 'b_supervisor', 'b_program_director', 'b_secretary', 'b_dio', 'b_president', 'secretary_general', 'assistant_secretary', 'data_analyzer', 'data_entry', 'central_secretary', 'dio_view', 'sub_dio', 'sub_pd']}>
+            <ProtectedRoute allowedRoles={['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president', 'super_admin', 'b_trainee', 'b_supervisor', 'b_program_director', 'b_secretary', 'b_dio', 'b_president', 'secretary_general', 'assistant_secretary', 'data_analyzer', 'data_entry', 'central_secretary', 'hoc', 'dio_view', 'sub_dio', 'sub_pd']}>
               <Profile />
             </ProtectedRoute>
           } />
 
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </Suspense>
         </ErrorBoundary>
       </BrowserRouter>
       </PrefsProvider>

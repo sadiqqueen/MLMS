@@ -13,6 +13,7 @@ import Navbar from '../components/Navbar';
 import { DistributionsPanel } from './DioDistributions';
 import { RotationsPanel } from './DioRotations';
 import { ProgramDirectorsPanel } from './DioAssignPds';
+import './dio.css';
 
 const TABS = [
   { key: 'distributions',     label: 'Sup. Distribution' },
@@ -55,13 +56,13 @@ export default function DioAssignments() {
   return (
     <>
       <Navbar />
-      <main className="admin-main">
-        <div className="filter-tabs" style={{ marginBottom: 14 }}>
+      <main className="mt-content">
+        <div className="dio-tabs">
           {TABS.map(t => (
             <button
               key={t.key}
               type="button"
-              className={`filter-tab${tab === t.key ? ' active' : ''}`}
+              className={`dio-tab${tab === t.key ? ' is-active' : ''}`}
               onClick={() => switchTab(t.key)}
             >
               {t.label}

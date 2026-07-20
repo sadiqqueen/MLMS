@@ -10,17 +10,21 @@ const Specialty      = require('../models/Specialty');
 const User           = require('../models/User');
 const { accreditationExpiry, accreditationStatus } = require('../utils/accreditation');
 const { resolveCenterSet } = require('../utils/centerScope');
+const { MAX_PROGRAMS_PER_CENTER } = require('../utils/registryChanges');
 
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 const READ_ROLES = ['data_entry', 'data_analyzer', 'super_admin', 'central_secretary',
-  'dio', 'dio_view', 'sub_dio', 'secretary_general', 'assistant_secretary',
+  'dio', 'dio_view', 'sub_dio', 'hoc', 'secretary_general', 'assistant_secretary',
   'program_director', 'sub_pd'];
-const WRITE_ROLES = ['data_entry', 'super_admin'];
-
-const MAX_PROGRAMS_PER_CENTER = 70;
+// Create + PD-candidate lookup: the clerk creates programs directly.
+const CREATE_ROLES = ['data_entry', 'super_admin'];
+// Direct edit/delete is super_admin only — a clerk's program edits/deletes go
+// through the Data-Analyzer approval flow (POST /api/registry/programs/:id …,
+// RULINGS §E22). The route stays for super_admin; the clerk uses registry.js.
+const EDIT_ROLES = ['super_admin'];
 
 // Inject computed accreditation fields (never stored) into a program object.
 function withAccreditation(program) {
@@ -81,7 +85,7 @@ router.get('/', auth, allowRoles(...READ_ROLES), async (req, res) => {
 });
 
 // GET /api/programs/pd-candidates?specialtyId=&search=
-router.get('/pd-candidates', auth, allowRoles(...WRITE_ROLES), async (req, res) => {
+router.get('/pd-candidates', auth, allowRoles(...CREATE_ROLES), async (req, res) => {
   try {
     const { specialtyId, search } = req.query;
     const query = { role: 'program_director', isActive: { $ne: false } };
@@ -123,31 +127,43 @@ async function validateProgramDirector(pdId, specialtyId, excludeProgramId) {
   return null;
 }
 
+// Validate an optional Sub-Program-Director reference (active sub_pd or PD).
+async function validateSubPd(subPdId) {
+  const u = await User.findById(subPdId).select('role isActive');
+  if (!u || u.isActive === false) return 'Selected sub-program director not found';
+  if (!['sub_pd', 'program_director'].includes(u.role)) return 'Selected user is not a sub-program director';
+  return null;
+}
+
 // POST /api/programs
+// Create is direct for the clerk. v2: durationYears + subProgramDirectorId are
+// accepted; accreditationType and trainingStartDate are now OPTIONAL.
 router.post('/',
   auth,
-  allowRoles(...WRITE_ROLES),
+  allowRoles(...CREATE_ROLES),
   auditLog('create_program', 'Program'),
   async (req, res) => {
     try {
       const {
-        name, trainingCenterId, specialtyId, programDirectorId,
+        name, trainingCenterId, specialtyId, programDirectorId, subProgramDirectorId,
         accreditationType, accreditationGrantDate, accreditationNumber,
         accreditationWithdrawn, yearlyCapacity, trainingStartDate,
-        renewalApplicationDate
+        durationYears, renewalApplicationDate
       } = req.body;
 
       if (!name || !String(name).trim()) return res.status(400).json({ message: 'Program name is required' });
       if (!trainingCenterId) return res.status(400).json({ message: 'Training center is required' });
       if (!specialtyId) return res.status(400).json({ message: 'Specialty is required' });
-      if (!accreditationType || !['partly', 'fully'].includes(accreditationType)) {
+      if (accreditationType && !['partly', 'fully'].includes(accreditationType)) {
         return res.status(400).json({ message: 'Accreditation type must be partly or fully' });
       }
-      if (!accreditationGrantDate) return res.status(400).json({ message: 'Accreditation grant date is required' });
       if (yearlyCapacity === undefined || yearlyCapacity === null || Number(yearlyCapacity) < 0) {
         return res.status(400).json({ message: 'Yearly capacity is required' });
       }
-      if (!trainingStartDate) return res.status(400).json({ message: 'Training start date is required' });
+      if (durationYears !== undefined && durationYears !== null && durationYears !== ''
+          && (!Number.isFinite(Number(durationYears)) || Number(durationYears) < 1)) {
+        return res.status(400).json({ message: 'Duration (years) must be a positive number' });
+      }
 
       const center = await Hospital.findById(trainingCenterId).select('isActive');
       if (!center || center.isActive === false) return res.status(400).json({ message: 'Training center not found' });
@@ -155,7 +171,7 @@ router.post('/',
       const specialty = await Specialty.findById(specialtyId).select('_id');
       if (!specialty) return res.status(400).json({ message: 'Specialty not found' });
 
-      // Max 70 active programs per center.
+      // Max 100 active programs per center.
       const count = await Program.countDocuments({ trainingCenterId, isActive: { $ne: false } });
       if (count >= MAX_PROGRAMS_PER_CENTER) {
         return res.status(409).json({ message: `This training center already has the maximum of ${MAX_PROGRAMS_PER_CENTER} programs`, count });
@@ -165,18 +181,24 @@ router.post('/',
         const pdError = await validateProgramDirector(programDirectorId, specialtyId, null);
         if (pdError) return res.status(409).json({ message: pdError });
       }
+      if (subProgramDirectorId) {
+        const subErr = await validateSubPd(subProgramDirectorId);
+        if (subErr) return res.status(409).json({ message: subErr });
+      }
 
       const program = await Program.create({
         name: String(name).trim(),
         trainingCenterId,
         specialtyId,
         programDirectorId: programDirectorId || null,
-        accreditationType,
-        accreditationGrantDate,
+        subProgramDirectorId: subProgramDirectorId || null,
+        accreditationType: accreditationType || null,
+        accreditationGrantDate: accreditationGrantDate || null,
         accreditationNumber: accreditationNumber || '',
         accreditationWithdrawn: accreditationWithdrawn === true,
         yearlyCapacity: Number(yearlyCapacity),
-        trainingStartDate,
+        durationYears: durationYears ? Number(durationYears) : null,
+        trainingStartDate: trainingStartDate || null,
         renewalApplicationDate: renewalApplicationDate || null,
         createdBy: req.user._id
       });
@@ -188,10 +210,11 @@ router.post('/',
   }
 );
 
-// PATCH /api/programs/:id
+// PATCH /api/programs/:id — direct edit (super_admin only; clerk edits are
+// approval-gated via routes/registry.js, RULINGS §E22).
 router.patch('/:id',
   auth,
-  allowRoles(...WRITE_ROLES),
+  allowRoles(...EDIT_ROLES),
   auditLog('update_program', 'Program'),
   async (req, res) => {
     try {
@@ -199,8 +222,8 @@ router.patch('/:id',
       if (!existing || existing.isActive === false) return res.status(404).json({ message: 'Program not found' });
 
       const EDITABLE = ['name', 'trainingCenterId', 'specialtyId', 'programDirectorId',
-        'accreditationType', 'accreditationGrantDate', 'accreditationNumber',
-        'accreditationWithdrawn', 'yearlyCapacity', 'trainingStartDate',
+        'subProgramDirectorId', 'accreditationType', 'accreditationGrantDate', 'accreditationNumber',
+        'accreditationWithdrawn', 'yearlyCapacity', 'trainingStartDate', 'durationYears',
         'renewalApplicationDate'];
       const fields = {};
       EDITABLE.forEach(k => { if (req.body[k] !== undefined) fields[k] = req.body[k]; });
@@ -209,7 +232,7 @@ router.patch('/:id',
         if (!fields.name) return res.status(400).json({ message: 'Program name cannot be empty' });
       }
 
-      // Moving the program to a DIFFERENT center re-checks that center's 70-cap
+      // Moving the program to a DIFFERENT center re-checks that center's 100-cap
       // (same limit/logic as POST) so a move can't overfill the destination.
       if (fields.trainingCenterId !== undefined
           && String(fields.trainingCenterId) !== String(existing.trainingCenterId)) {
@@ -229,6 +252,12 @@ router.patch('/:id',
       if (fields.programDirectorId === '' || fields.programDirectorId === null) {
         fields.programDirectorId = null;
       }
+      if (fields.subProgramDirectorId === '' || fields.subProgramDirectorId === null) {
+        fields.subProgramDirectorId = null;
+      } else if (fields.subProgramDirectorId !== undefined) {
+        const subErr = await validateSubPd(fields.subProgramDirectorId);
+        if (subErr) return res.status(409).json({ message: subErr });
+      }
 
       const program = await Program.findByIdAndUpdate(req.params.id, fields, { new: true, runValidators: true })
         .populate('trainingCenterId', 'name accreditationNumber countryId')
@@ -242,10 +271,11 @@ router.patch('/:id',
   }
 );
 
-// DELETE /api/programs/:id — soft delete (isActive: false)
+// DELETE /api/programs/:id — soft delete (super_admin only; clerk deletes are
+// approval-gated via routes/registry.js, RULINGS §E22).
 router.delete('/:id',
   auth,
-  allowRoles(...WRITE_ROLES),
+  allowRoles(...EDIT_ROLES),
   auditLog('deactivate_program', 'Program'),
   async (req, res) => {
     try {

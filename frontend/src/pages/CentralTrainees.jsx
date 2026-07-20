@@ -1,139 +1,188 @@
 // frontend/src/pages/CentralTrainees.jsx
 //
-// Central Secretary's global trainee management. Trainees are created against a
-// PROGRAM (which fixes the center/country/specialty); the trainer is OPTIONAL
-// and the research trainer defaults to the program's PD. Edits are NOT applied
-// directly — they queue as ChangeRequests approved by the center's ODIO.
-// Contract (backend/routes/centralSecretary.js):
-//   GET  /api/central/trainees[?includeInactive=true]  (injects trainingYear)
-//   GET  /api/central/programs   (picker: center/country/PD/capacity per program)
-//   GET  /api/central/trainers?programId=   (optional trainer picker)
-//   POST /api/central/trainees   → 409 { capacityFull, used, capacity } when full
-//   PATCH /api/central/trainees/:id → 202 { pending:true } (queued for ODIO)
-//   GET  /api/central/change-requests?status=pending
-//   PATCH /api/central/change-requests/:id/cancel
-import { useState, useEffect, useCallback } from 'react';
+// Central Secretary — Trainees (the CS's only write surface). Trainees are an
+// AccountCard grid with a change-history footer. CREATES apply directly (green
+// "saved" toast, neutral banner). EDITS and DELETES are approval-gated: they
+// upload a required "book of changes" PDF and return 202 { pending:true } — the
+// change is NOT applied until a Data Analyzer approves it (RULINGS §E22/§E24).
+//
+// Contract (API_CONTRACTS.md · CENTRAL SECRETARY):
+//   GET    /api/central/trainees?includeInactive=true
+//   GET    /api/central/programs        (PD select is filtered per program)
+//   GET    /api/central/countries
+//   POST   /api/central/trainees        → 201 (direct create) | 409 { capacityFull }
+//   PATCH  /api/central/trainees/:id     multipart bookOfChanges + fields → 202 { pending }
+//   DELETE /api/central/trainees/:id     multipart bookOfChanges           → 202 { pending }
+//   GET    /api/central/change-requests?status=pending
+//   PATCH  /api/central/change-requests/:id/cancel
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { usePrefs } from '../context/PrefsContext';
 import Navbar from '../components/Navbar';
-import Toast from '../components/Toast';
-import SearchableSelect from '../components/SearchableSelect';
-import Sk from '../components/Skeleton';
-import { IconPencil, IconXCircle } from '../components/icons';
+import AccountCard from '../components/AccountCard';
+import MtModal from '../components/MtModal';
+import PdfDropzone from '../components/PdfDropzone';
+import Pagination from '../components/Pagination';
+import RevealOnScroll from '../components/RevealOnScroll';
+import { MtToastHost, useMtToast } from '../components/MtToast';
+import { IconXCircle } from '../components/icons';
 import api from '../api/axios';
+import './central.css';
+
+const PAGE_SIZE = 9;
 
 const STRINGS = {
   ar: {
-    title: 'المتدربون', search: 'ابحث بالاسم أو الرقم التعريفي…',
-    allPrograms: 'كل البرامج', includeInactive: 'إظهار المعطّلين',
-    addTrainee: 'إضافة متدرب', newTrainee: 'متدرب جديد', editTrainee: 'تعديل المتدرب',
-    name: 'الاسم', idNumber: 'الرقم التعريفي', password: 'كلمة المرور',
-    email: 'البريد الإلكتروني', phone: 'الهاتف', city: 'المدينة',
+    title: 'المتدربون', sub: 'السكرتير المركزي',
+    search: 'ابحث بالاسم أو الرقم…', allPrograms: 'كل البرامج',
+    allStatus: 'كل الحالات', active: 'نشط', inactive: 'معطّل',
+    addTrainee: 'إضافة متدرب', count: n => `${n} متدرب`,
+    role: 'متدرب', country: 'الدولة', city: 'المدينة', program: 'البرنامج', email: 'البريد', na: '—',
+    // add modal
+    newTrainee: 'متدرب جديد', createBanner: 'سيُضاف هذا السجل إلى السجل مباشرة.',
+    name: 'الاسم', idNumber: 'الرقم التعريفي', password: 'كلمة المرور', phone: 'الهاتف',
     gender: 'الجنس', selectGender: '— اختر —', male: 'ذكر', female: 'أنثى',
-    program: 'البرنامج', selectProgram: 'اختر برنامجاً…',
-    trainer: 'المدرب', noTrainerYet: 'لا يوجد مدرب بعد',
-    researchTrainer: 'مدرب الأبحاث', researchHint: '(الافتراضي: مدير البرنامج)',
-    pd: 'مدير البرنامج', center: 'المركز', country: 'الدولة', capacity: 'السعة',
-    year: 'السنة', trainerCol: 'المدرب', active: 'الحالة',
-    statusActive: 'نشط', statusInactive: 'معطّل',
+    selectProgram: 'اختر برنامجاً…', pd: 'مدير البرنامج', pdHint: 'مُرشّح حسب البرنامج المختار',
+    startDate: 'تاريخ البدء', passwordHint: '(6 أحرف على الأقل)',
+    pdName: 'مدير البرنامج', center: 'المركز', capacity: 'السعة',
+    cancel: 'إلغاء', create: 'إنشاء متدرب', saving: 'جارٍ الحفظ…', created: 'تمت إضافة المتدرب',
+    programFull: 'البرنامج ممتلئ',
+    // edit / delete approval
+    editTitle: 'تعديل السجل — يتطلب موافقة', deleteTitle: 'حذف السجل — يتطلب موافقة',
+    editBanner: 'لا تُطبَّق التعديلات فوراً — يُرسَل طلب التغيير إلى محلّل البيانات للموافقة، مع إرفاق سجل التغييرات المطلوب.',
+    deleteBanner: 'لا يُطبَّق الحذف فوراً — يُرسَل طلب الحذف إلى محلّل البيانات للموافقة، مع إرفاق سجل التغييرات المطلوب.',
+    deleteConfirm: n => `أنت على وشك طلب حذف حساب المتدرب «${n}». ارفع سجل التغييرات للمتابعة.`,
+    requestDeletion: 'طلب الحذف بدلاً من ذلك', backToEdit: '‹ العودة إلى التعديل',
+    submitEdit: 'إرسال للموافقة', submitDelete: 'إرسال طلب الحذف', submitting: 'جارٍ الإرسال…',
+    noChanges: 'لا توجد تغييرات لإرسالها.',
+    submittedEdit: id => `تم إرسال طلب التغيير للموافقة · ${id}`,
+    submittedDelete: id => `تم إرسال طلب الحذف للموافقة · ${id}`,
+    // pending panel
+    pendingTitle: n => `طلبات معلّقة (${n})`, cancelReq: 'إلغاء الطلب',
+    reqCancelled: 'تم إلغاء الطلب', typeEdit: 'تعديل', typeDelete: 'حذف',
     none: 'لا يوجد متدربون بعد.', noMatch: 'لا توجد نتائج مطابقة.',
-    cancel: 'إلغاء', save: 'حفظ', saving: 'جارٍ الحفظ…', create: 'إنشاء',
-    created: 'تمت إضافة المتدرب', pendingApproval: 'تم إرسال التغيير إلى الـ ODIO للموافقة',
-    loadFailed: 'فشل التحميل', passwordHint: '(6 أحرف على الأقل)',
-    programFull: 'البرنامج ممتلئ', action: 'الإجراء',
-    pendingTitle: 'الطلبات المعلّقة', pendingNone: 'لا توجد طلبات معلّقة.',
-    cancelReq: 'إلغاء الطلب', reqCancelled: 'تم إلغاء الطلب', noChanges: 'لا تغييرات',
+    loadFailed: 'فشل التحميل', saveFailed: 'فشل الحفظ',
   },
   en: {
-    title: 'Trainees', search: 'Search by name or ID number…',
-    allPrograms: 'All programs', includeInactive: 'Show inactive',
-    addTrainee: 'Add Trainee', newTrainee: 'New Trainee', editTrainee: 'Edit Trainee',
-    name: 'Name', idNumber: 'ID Number', password: 'Password',
-    email: 'Email', phone: 'Phone', city: 'City',
+    title: 'Trainees', sub: 'Central Secretary',
+    search: 'Search by name or ID…', allPrograms: 'All programs',
+    allStatus: 'All statuses', active: 'Active', inactive: 'Inactive',
+    addTrainee: 'Add Trainee', count: n => `${n} trainee${n === 1 ? '' : 's'}`,
+    role: 'Trainee', country: 'Country', city: 'City', program: 'Program', email: 'Email', na: '—',
+    newTrainee: 'New Trainee', createBanner: 'This record will be added to the registry.',
+    name: 'Name', idNumber: 'ID Number', password: 'Password', phone: 'Phone',
     gender: 'Gender', selectGender: '— Select —', male: 'Male', female: 'Female',
-    program: 'Program', selectProgram: 'Select a program…',
-    trainer: 'Trainer', noTrainerYet: 'No trainer yet',
-    researchTrainer: 'Research Trainer', researchHint: '(defaults to the Program Director)',
-    pd: 'Program Director', center: 'Center', country: 'Country', capacity: 'Capacity',
-    year: 'Year', trainerCol: 'Trainer', active: 'Status',
-    statusActive: 'Active', statusInactive: 'Inactive',
+    selectProgram: 'Select a program…', pd: 'PD', pdHint: 'Filtered by the chosen program',
+    startDate: 'Start date', passwordHint: '(min 6 chars)',
+    pdName: 'Program Director', center: 'Center', capacity: 'Capacity',
+    cancel: 'Cancel', create: 'Create trainee', saving: 'Saving…', created: 'Trainee added',
+    programFull: 'Program is full',
+    editTitle: 'Edit record — requires approval', deleteTitle: 'Delete record — requires approval',
+    editBanner: 'Edits do not take effect immediately — this change request goes to a Data Analyzer for approval, with the required book of changes attached.',
+    deleteBanner: 'Deletions do not take effect immediately — this delete request goes to a Data Analyzer for approval, with the required book of changes attached.',
+    deleteConfirm: n => `You are about to request deletion of the trainee account “${n}”. Upload the book of changes to proceed.`,
+    requestDeletion: 'Request deletion instead', backToEdit: '‹ Back to edit',
+    submitEdit: 'Submit for approval', submitDelete: 'Submit deletion', submitting: 'Submitting…',
+    noChanges: 'No changes to submit.',
+    submittedEdit: id => `Change request submitted for approval · ${id}`,
+    submittedDelete: id => `Delete request submitted for approval · ${id}`,
+    pendingTitle: n => `Pending requests (${n})`, cancelReq: 'Cancel request',
+    reqCancelled: 'Request cancelled', typeEdit: 'Edit', typeDelete: 'Delete',
     none: 'No trainees yet.', noMatch: 'No matching results.',
-    cancel: 'Cancel', save: 'Save', saving: 'Saving…', create: 'Create',
-    created: 'Trainee added', pendingApproval: 'Sent to the ODIO for approval',
-    loadFailed: 'Failed to load', passwordHint: '(min 6 chars)',
-    programFull: 'Program is full', action: 'Action',
-    pendingTitle: 'Pending requests', pendingNone: 'No pending requests.',
-    cancelReq: 'Cancel request', reqCancelled: 'Request cancelled', noChanges: 'No changes',
+    loadFailed: 'Failed to load', saveFailed: 'Save failed',
   },
 };
 
-function ErrBox({ msg }) {
-  if (!msg) return null;
-  return <div style={{ marginTop: 14, background: 'var(--danger-bg)', color: 'var(--danger-fg)', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>{msg}</div>;
+// ── helpers ──────────────────────────────────────────────────────────────────
+function idOf(v) { return v?._id || v || ''; }
+function reqId(cr) { return 'REQ-' + String(cr?._id || '').slice(-6).toUpperCase(); }
+function fmtDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+// change-history footer lines: "12 Mar 2026 — Phone, City — by Sara Mahmoud"
+function historyLines(changeHistory = []) {
+  return changeHistory.map(h => {
+    const labels = Array.isArray(h.labels) ? h.labels.join(', ') : (h.labels || '');
+    return `${fmtDate(h.date)} — ${labels}${h.by ? ` — by ${h.by}` : ''}`.trim();
+  });
+}
+// PD options for a program come from its PD + Sub-PD (RULINGS §D19 — filtered by
+// the chosen program; default = the program's programDirectorId).
+// TODO(fable): there is no CS "PD candidates" endpoint, so the PD select is
+// built from the program payload's programDirectorId + subProgramDirectorId
+// (1–2 options). Also: the design's Add-Trainee shows an editable Country* field,
+// but country is derived from the chosen program here (read-only ProgramInfo),
+// and idNumber is required (no TR- auto-generation). Confirm all three.
+function pdOptionsFromProgram(program) {
+  if (!program) return [];
+  const out = [];
+  const seen = new Set();
+  [program.programDirectorId, program.subProgramDirectorId].forEach(pd => {
+    const pid = idOf(pd);
+    if (pd && pid && !seen.has(pid)) { seen.add(pid); out.push({ value: pid, label: pd.name || pid }); }
+  });
+  return out;
 }
 
-function idOf(v) { return v?._id || v || ''; }
-function countryLabel(c) { return c ? `${c.name} (${c.code})` : '—'; }
-function programOptionLabel(p) { return `${p.name}${p.trainingCenterId?.name ? ` — ${p.trainingCenterId.name}` : ''}`; }
-function trainerOptionLabel(tr) { return `${tr.name}${tr.idNumber ? ` (${tr.idNumber})` : ''}`; }
+function SearchIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
+    </svg>
+  );
+}
 
-// Read-only info block for a chosen program.
+function ErrBox({ msg }) {
+  if (!msg) return null;
+  return <div style={{ marginBlockStart: 12, background: 'var(--danger-bg)', color: 'var(--danger)', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>{msg}</div>;
+}
+
+const errStyle = { borderColor: 'var(--danger)', boxShadow: '0 0 0 3px var(--danger-bg)' };
+
 function ProgramInfo({ program, t }) {
   if (!program) return null;
+  const co = program.trainingCenterId?.countryId;
   const rows = [
-    [t('pd'), program.programDirectorId?.name || '—'],
-    [t('center'), program.trainingCenterId?.name || '—'],
-    [t('country'), program.trainingCenterId?.countryId ? countryLabel(program.trainingCenterId.countryId) : '—'],
+    [t('pdName'), program.programDirectorId?.name || t('na')],
+    [t('center'), program.trainingCenterId?.name || t('na')],
+    [t('country'), co?.name ? `${co.name}${co.code ? ` (${co.code})` : ''}` : t('na')],
     [t('capacity'), `${program.capacityUsed ?? 0} / ${program.yearlyCapacity ?? 0}`],
   ];
   return (
-    <div style={{ marginTop: 4, background: 'var(--surface-2)', borderRadius: 8, padding: '10px 14px' }}>
-      {rows.map(([label, value]) => (
-        <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13, padding: '3px 0' }}>
-          <span style={{ color: 'var(--text-muted)' }}>{label}</span>
-          <span style={{ color: 'var(--text-2)', textAlign: 'end', fontWeight: 500 }}>{value}</span>
+    <div className="cs-proginfo">
+      {rows.map(([k, v]) => (
+        <div className="cs-proginfo-row" key={k}>
+          <span className="cs-proginfo-k">{k}</span>
+          <span className="cs-proginfo-v">{v}</span>
         </div>
       ))}
     </div>
   );
 }
 
-// Fetch the trainers of a program (for the optional trainer/research pickers).
-function useProgramTrainers(programId) {
-  const [trainers, setTrainers] = useState([]);
-  useEffect(() => {
-    if (!programId) { setTrainers([]); return; }
-    let cancelled = false;
-    api.get('/api/central/trainers', { params: { programId } })
-      .then(r => { if (!cancelled) setTrainers(r.data?.data || r.data || []); })
-      .catch(() => { if (!cancelled) setTrainers([]); });
-    return () => { cancelled = true; };
-  }, [programId]);
-  return trainers;
-}
-
-function AddTraineeModal({ programs, t, dir, onClose, onSaved }) {
+// ── Add trainee (direct create) ─────────────────────────────────────────────
+function AddTraineeModal({ programs, t, onClose, onSaved }) {
   const [form, setForm] = useState({
     name: '', idNumber: '', password: '', email: '', phone: '', city: '', gender: '',
-    programId: '', supervisorId: '', researchSupervisorId: '',
+    programId: '', pdId: '', startDate: '',
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [apiErr, setApiErr] = useState('');
 
-  const trainers = useProgramTrainers(form.programId);
-  const selectedProgram = programs.find(p => p._id === form.programId) || null;
-
-  useEffect(() => {
-    const h = e => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [onClose]);
+  const program = programs.find(p => p._id === form.programId) || null;
+  const pdOptions = useMemo(() => pdOptionsFromProgram(program), [program]);
 
   function set(k, v) {
     setForm(f => {
       const next = { ...f, [k]: v };
-      // Changing the program invalidates the trainer selections.
-      if (k === 'programId') { next.supervisorId = ''; next.researchSupervisorId = ''; }
+      if (k === 'programId') {
+        const p = programs.find(x => x._id === v) || null;
+        next.pdId = idOf(p?.programDirectorId) || ''; // default to the program's PD
+      }
       return next;
     });
     setErrors(e => ({ ...e, [k]: false })); setApiErr('');
@@ -149,217 +198,251 @@ function AddTraineeModal({ programs, t, dir, onClose, onSaved }) {
     setSaving(true); setApiErr('');
     try {
       const payload = {
-        name: form.name.trim(),
-        idNumber: form.idNumber.trim(),
-        password: form.password,
+        name: form.name.trim(), idNumber: form.idNumber.trim(), password: form.password,
         programId: form.programId,
-        phone: form.phone.trim(),
-        city: form.city.trim(),
-        gender: form.gender,
-        supervisorId: form.supervisorId || null,
-        researchSupervisorId: form.researchSupervisorId || null,
       };
+      if (form.pdId) payload.pdId = form.pdId;
+      if (form.startDate) payload.startDate = form.startDate;
       if (form.email.trim()) payload.email = form.email.trim();
-      const res = await api.post('/api/central/trainees', payload);
-      onSaved(res.data?.data || res.data);
+      if (form.phone.trim()) payload.phone = form.phone.trim();
+      if (form.city.trim()) payload.city = form.city.trim();
+      if (form.gender) payload.gender = form.gender;
+      await api.post('/api/central/trainees', payload);
+      onSaved();
     } catch (err) {
       const rd = err.response?.data;
-      if (err.response?.status === 409 && rd?.capacityFull) {
-        setApiErr(`${t('programFull')}: ${rd.used}/${rd.capacity}`);
-      } else {
-        setApiErr(rd?.message || 'Save failed');
-      }
+      if (err.response?.status === 409 && rd?.capacityFull) setApiErr(`${t('programFull')}: ${rd.used}/${rd.capacity}`);
+      else setApiErr(rd?.message || t('saveFailed'));
     } finally { setSaving(false); }
   }
 
-  const programOptions = programs.map(p => ({ value: p._id, label: programOptionLabel(p) }));
-  const trainerOptions = trainers.map(tr => ({ value: tr._id, label: trainerOptionLabel(tr) }));
-
   return (
-    <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="admin-modal admin-modal-lg" dir={dir} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-        <div className="admin-modal-header">
-          <div className="admin-modal-title">{t('newTrainee')}</div>
-          <button className="admin-modal-close" onClick={onClose}>✕</button>
+    <MtModal open title={t('newTrainee')} sub={t('sub')} meta={t('role')} onClose={onClose}
+      footer={(
+        <>
+          <button type="button" className="mt-btn--cancel" onClick={onClose}>{t('cancel')}</button>
+          <button type="button" className="mt-btn" onClick={handleSave} disabled={saving}>{saving ? t('saving') : t('create')}</button>
+        </>
+      )}>
+      <div className="mt-banner cs-modal-banner">{t('createBanner')}</div>
+      <div className="mt-field-grid">
+        <div className="mt-field">
+          <label className="mt-label">{t('name')}<span className="mt-label-req">*</span></label>
+          <input className="mt-input" style={errors.name ? errStyle : undefined} value={form.name} onChange={e => set('name', e.target.value)} />
         </div>
-        <div className="admin-modal-body">
-          <div className="admin-form-grid">
-            <div className="admin-field">
-              <label>{t('name')} *</label>
-              <input className={errors.name ? 'invalid' : ''} value={form.name} onChange={e => set('name', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('idNumber')} *</label>
-              <input className={errors.idNumber ? 'invalid' : ''} value={form.idNumber} onChange={e => set('idNumber', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('password')} * <span style={{ color: 'var(--text-muted)', fontWeight: 400, textTransform: 'none' }}>{t('passwordHint')}</span></label>
-              <input type="password" autoComplete="new-password" className={errors.password ? 'invalid' : ''} value={form.password} onChange={e => set('password', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('phone')}</label>
-              <input value={form.phone} onChange={e => set('phone', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('email')}</label>
-              <input type="email" value={form.email} onChange={e => set('email', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('city')}</label>
-              <input value={form.city} onChange={e => set('city', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('gender')}</label>
-              <select value={form.gender} onChange={e => set('gender', e.target.value)}>
-                <option value="">{t('selectGender')}</option>
-                <option value="male">{t('male')}</option>
-                <option value="female">{t('female')}</option>
-              </select>
-            </div>
-
-            <div className="admin-field full">
-              <label>{t('program')} *</label>
-              <SearchableSelect value={form.programId} onChange={v => set('programId', v)} options={programOptions} placeholder={t('selectProgram')} error={errors.programId} />
-              {selectedProgram && <ProgramInfo program={selectedProgram} t={t} />}
-            </div>
-
-            <div className="admin-field">
-              <label>{t('trainer')}</label>
-              <SearchableSelect value={form.supervisorId} onChange={v => set('supervisorId', v)} options={trainerOptions} placeholder={t('noTrainerYet')} disabled={!form.programId} />
-            </div>
-            <div className="admin-field">
-              <label>{t('researchTrainer')} <span style={{ color: 'var(--text-muted)', fontWeight: 400, textTransform: 'none' }}>{t('researchHint')}</span></label>
-              <SearchableSelect value={form.researchSupervisorId} onChange={v => set('researchSupervisorId', v)} options={trainerOptions} placeholder={t('researchTrainer')} disabled={!form.programId} />
-            </div>
-          </div>
-          <ErrBox msg={apiErr} />
+        <div className="mt-field">
+          <label className="mt-label">{t('idNumber')}<span className="mt-label-req">*</span></label>
+          <input className="mt-input mt-input--mono" style={errors.idNumber ? errStyle : undefined} value={form.idNumber} onChange={e => set('idNumber', e.target.value)} placeholder="TR-…" />
         </div>
-        <div className="admin-modal-footer">
-          <button className="btn-outline" onClick={onClose}>{t('cancel')}</button>
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? t('saving') : t('create')}</button>
+        <div className="mt-field">
+          <label className="mt-label">{t('password')}<span className="mt-label-req">*</span> <span style={{ fontWeight: 400, color: 'var(--text-2)' }}>{t('passwordHint')}</span></label>
+          <input type="password" autoComplete="new-password" className="mt-input" style={errors.password ? errStyle : undefined} value={form.password} onChange={e => set('password', e.target.value)} />
+        </div>
+        <div className="mt-field">
+          <label className="mt-label">{t('phone')}</label>
+          <input className="mt-input" value={form.phone} onChange={e => set('phone', e.target.value)} />
+        </div>
+        <div className="mt-field">
+          <label className="mt-label">{t('email')}</label>
+          <input type="email" className="mt-input" value={form.email} onChange={e => set('email', e.target.value)} placeholder="name@mtms.med" />
+        </div>
+        <div className="mt-field">
+          <label className="mt-label">{t('city')}</label>
+          <input className="mt-input" value={form.city} onChange={e => set('city', e.target.value)} />
+        </div>
+        <div className="mt-field">
+          <label className="mt-label">{t('gender')}</label>
+          <select className="mt-select" value={form.gender} onChange={e => set('gender', e.target.value)}>
+            <option value="">{t('selectGender')}</option>
+            <option value="male">{t('male')}</option>
+            <option value="female">{t('female')}</option>
+          </select>
+        </div>
+        <div className="mt-field">
+          <label className="mt-label">{t('startDate')}</label>
+          <input type="date" className="mt-input" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
+        </div>
+        <div className="mt-field mt-field-full">
+          <label className="mt-label">{t('program')}<span className="mt-label-req">*</span></label>
+          <select className="mt-select" style={errors.programId ? errStyle : undefined} value={form.programId} onChange={e => set('programId', e.target.value)}>
+            <option value="">{t('selectProgram')}</option>
+            {programs.map(p => (
+              <option key={p._id} value={p._id}>{p.name}{p.trainingCenterId?.name ? ` — ${p.trainingCenterId.name}` : ''}</option>
+            ))}
+          </select>
+          <ProgramInfo program={program} t={t} />
+        </div>
+        <div className="mt-field mt-field-full">
+          <label className="mt-label">{t('pd')} <span style={{ fontWeight: 400, color: 'var(--text-2)' }}>{t('pdHint')}</span></label>
+          <select className="mt-select" value={form.pdId} onChange={e => set('pdId', e.target.value)} disabled={!form.programId || pdOptions.length === 0}>
+            <option value="">{t('selectGender')}</option>
+            {pdOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
         </div>
       </div>
-    </div>
+      <ErrBox msg={apiErr} />
+    </MtModal>
   );
 }
 
-function EditTraineeModal({ trainee, t, dir, onClose, onSaved }) {
-  const programId = idOf(trainee.programId);
+// ── Edit / delete with approval (required book-of-changes PDF) ───────────────
+function ApprovalModal({ trainee, program, t, onClose, onSubmitted }) {
+  const [mode, setMode] = useState('edit'); // 'edit' | 'delete'
   const [form, setForm] = useState({
-    name: trainee.name || '',
-    phone: trainee.phone || '',
-    city: trainee.city || '',
-    gender: trainee.gender || '',
-    supervisorId: idOf(trainee.supervisorId),
-    researchSupervisorId: idOf(trainee.researchSupervisorId),
+    name: trainee.name || '', email: trainee.email || '', phone: trainee.phone || '',
+    city: trainee.city || '', gender: trainee.gender || '', pdId: idOf(trainee.pdId),
   });
-  const [errors, setErrors] = useState({});
+  const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [apiErr, setApiErr] = useState('');
 
-  const trainers = useProgramTrainers(programId);
+  const pdOptions = useMemo(() => {
+    const base = pdOptionsFromProgram(program);
+    // Ensure the trainee's current PD is selectable even if not the program PD/Sub-PD.
+    const cur = idOf(trainee.pdId);
+    if (cur && !base.some(o => o.value === cur)) base.unshift({ value: cur, label: trainee.pdId?.name || cur });
+    return base;
+  }, [program, trainee]);
 
-  useEffect(() => {
-    const h = e => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [onClose]);
+  function set(k, v) { setForm(f => ({ ...f, [k]: v })); setApiErr(''); }
 
-  function set(k, v) { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: false })); setApiErr(''); }
+  // Only the fields that actually changed are sent (the backend builds the diff).
+  function changedFields() {
+    const orig = {
+      name: trainee.name || '', email: trainee.email || '', phone: trainee.phone || '',
+      city: trainee.city || '', gender: trainee.gender || '', pdId: idOf(trainee.pdId),
+    };
+    const out = {};
+    Object.keys(form).forEach(k => { if ((form[k] || '') !== (orig[k] || '')) out[k] = form[k]; });
+    return out;
+  }
 
-  async function handleSave() {
-    if (!form.name.trim()) { setErrors({ name: true }); return; }
+  async function submit() {
+    if (!file) return; // submit is disabled without the PDF anyway
+    if (mode === 'edit' && Object.keys(changedFields()).length === 0) { setApiErr(t('noChanges')); return; }
     setSaving(true); setApiErr('');
     try {
-      const payload = {
-        name: form.name.trim(),
-        phone: form.phone.trim(),
-        city: form.city.trim(),
-        gender: form.gender,
-        supervisorId: form.supervisorId || null,           // clearable → none
-        researchSupervisorId: form.researchSupervisorId || null,
-      };
-      const res = await api.patch(`/api/central/trainees/${trainee._id}`, payload);
-      onSaved(res.data || {});
+      const fd = new FormData();
+      fd.append('bookOfChanges', file);
+      let res;
+      if (mode === 'edit') {
+        Object.entries(changedFields()).forEach(([k, v]) => fd.append(k, v ?? ''));
+        res = await api.patch(`/api/central/trainees/${trainee._id}`, fd);
+      } else {
+        res = await api.delete(`/api/central/trainees/${trainee._id}`, { data: fd });
+      }
+      const cr = res.data?.data || {};
+      onSubmitted(mode, reqId(cr));
     } catch (err) {
-      setApiErr(err.response?.data?.message || 'Save failed');
+      setApiErr(err.response?.data?.message || t('saveFailed'));
     } finally { setSaving(false); }
   }
 
-  const trainerOptions = trainers.map(tr => ({ value: tr._id, label: trainerOptionLabel(tr) }));
-
+  const isEdit = mode === 'edit';
   return (
-    <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="admin-modal admin-modal-lg" dir={dir} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-        <div className="admin-modal-header">
-          <div className="admin-modal-title">{t('editTrainee')} · {trainee.name}</div>
-          <button className="admin-modal-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="admin-modal-body">
-          <div className="admin-form-grid">
-            <div className="admin-field">
-              <label>{t('name')} *</label>
-              <input className={errors.name ? 'invalid' : ''} value={form.name} onChange={e => set('name', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('phone')}</label>
-              <input value={form.phone} onChange={e => set('phone', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('city')}</label>
-              <input value={form.city} onChange={e => set('city', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>{t('gender')}</label>
-              <select value={form.gender} onChange={e => set('gender', e.target.value)}>
-                <option value="">{t('selectGender')}</option>
-                <option value="male">{t('male')}</option>
-                <option value="female">{t('female')}</option>
-              </select>
-            </div>
-            <div className="admin-field">
-              <label>{t('trainer')}</label>
-              <SearchableSelect value={form.supervisorId} onChange={v => set('supervisorId', v)} options={trainerOptions} placeholder={t('noTrainerYet')} />
-            </div>
-            <div className="admin-field">
-              <label>{t('researchTrainer')} <span style={{ color: 'var(--text-muted)', fontWeight: 400, textTransform: 'none' }}>{t('researchHint')}</span></label>
-              <SearchableSelect value={form.researchSupervisorId} onChange={v => set('researchSupervisorId', v)} options={trainerOptions} placeholder={t('researchTrainer')} />
-            </div>
+    <MtModal open title={isEdit ? t('editTitle') : t('deleteTitle')} sub={trainee.name} meta={t('role')} onClose={onClose}
+      footer={(
+        <>
+          <button type="button" className="mt-btn--cancel" onClick={onClose}>{t('cancel')}</button>
+          {isEdit
+            ? <button type="button" className="mt-btn--danger" onClick={() => { setMode('delete'); setApiErr(''); }}>{t('requestDeletion')}</button>
+            : <button type="button" className="mt-btn--ghost" onClick={() => { setMode('edit'); setApiErr(''); }}>{t('backToEdit')}</button>}
+          <button type="button" className="mt-btn" onClick={submit} disabled={!file || saving}>
+            {saving ? t('submitting') : (isEdit ? t('submitEdit') : t('submitDelete'))}
+          </button>
+        </>
+      )}>
+      <div className="mt-banner cs-modal-banner">{isEdit ? t('editBanner') : t('deleteBanner')}</div>
+
+      {isEdit ? (
+        <div className="mt-field-grid" style={{ marginBlockEnd: 15 }}>
+          <div className="mt-field">
+            <label className="mt-label">{t('name')}</label>
+            <input className="mt-input" value={form.name} onChange={e => set('name', e.target.value)} />
           </div>
-          <ErrBox msg={apiErr} />
+          <div className="mt-field">
+            <label className="mt-label">{t('email')}</label>
+            <input type="email" className="mt-input" value={form.email} onChange={e => set('email', e.target.value)} />
+          </div>
+          <div className="mt-field">
+            <label className="mt-label">{t('phone')}</label>
+            <input className="mt-input" value={form.phone} onChange={e => set('phone', e.target.value)} />
+          </div>
+          <div className="mt-field">
+            <label className="mt-label">{t('city')}</label>
+            <input className="mt-input" value={form.city} onChange={e => set('city', e.target.value)} />
+          </div>
+          <div className="mt-field">
+            <label className="mt-label">{t('gender')}</label>
+            <select className="mt-select" value={form.gender} onChange={e => set('gender', e.target.value)}>
+              <option value="">{t('selectGender')}</option>
+              <option value="male">{t('male')}</option>
+              <option value="female">{t('female')}</option>
+            </select>
+          </div>
+          <div className="mt-field">
+            <label className="mt-label">{t('pd')}</label>
+            <select className="mt-select" value={form.pdId} onChange={e => set('pdId', e.target.value)} disabled={pdOptions.length === 0}>
+              <option value="">{t('selectGender')}</option>
+              {pdOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
         </div>
-        <div className="admin-modal-footer">
-          <button className="btn-outline" onClick={onClose}>{t('cancel')}</button>
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? t('saving') : t('save')}</button>
-        </div>
-      </div>
-    </div>
+      ) : (
+        <div className="cs-delete-note">{t('deleteConfirm')(trainee.name)}</div>
+      )}
+
+      <PdfDropzone file={file} onFile={setFile} onRemove={() => setFile(null)} />
+      <ErrBox msg={apiErr} />
+    </MtModal>
   );
 }
 
-// Pending change-requests panel (the secretary's own queued edits).
-function PendingRequests({ items, t, onCancel }) {
+// ── Pending-requests panel (the CS's own queued edit/delete requests) ───────
+function PendingPanel({ items, t, onCancel }) {
   if (!items.length) return null;
   return (
-    <div className="admin-card" style={{ marginBottom: 16 }}>
-      <div className="admin-card-header"><div className="admin-card-title">{t('pendingTitle')} ({items.length})</div></div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '4px 2px' }}>
+    <RevealOnScroll className="mt-card cs-section" style={{ marginBlockStart: 0, marginBlockEnd: 16 }}>
+      <div className="mt-card-head mt-card-head--tight">
+        <div className="mt-card-title">{t('pendingTitle')(items.length)}</div>
+        <div className="mt-divider" />
+      </div>
+      <div className="cs-pending-list" style={{ marginBlockStart: 12 }}>
         {items.map(cr => {
           const summary = Array.isArray(cr.display) && cr.display.length
-            ? cr.display.map(d => `${d.label}: ${d.from} → ${d.to}`).join('  ·  ')
-            : t('noChanges');
+            ? cr.display.map(d => `${d.label}: ${d.from ?? '—'} → ${d.to ?? '—'}`).join('  ·  ')
+            : (cr.requestType === 'delete' ? t('typeDelete') : t('typeEdit'));
           return (
-            <div key={cr._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: 'var(--surface-2)', borderRadius: 8, padding: '8px 12px' }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{cr.targetLabel || '—'}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{summary}</div>
+            <div className="cs-pending-row" key={cr._id}>
+              <div className="cs-pending-main">
+                <div className="cs-pending-target">
+                  <span className="mt-pill mt-pill--pending" style={{ marginInlineEnd: 8 }}>{reqId(cr)}</span>
+                  {cr.targetLabel || '—'}
+                </div>
+                <div className="cs-pending-summary">{summary}</div>
               </div>
-              <button className="btn-outline" style={{ fontSize: 12, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }} onClick={() => onCancel(cr)}>
+              <button type="button" className="mt-btn--small-outline" onClick={() => onCancel(cr)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
                 <IconXCircle size={14} /> {t('cancelReq')}
               </button>
             </div>
           );
         })}
+      </div>
+    </RevealOnScroll>
+  );
+}
+
+function GridSkeleton() {
+  return (
+    <div>
+      <div className="mt-filterbar">
+        <div className="skeleton" style={{ height: 38, borderRadius: 8, flex: 1, minWidth: 200, maxWidth: 300 }} />
+        <div className="skeleton" style={{ height: 38, width: 160, borderRadius: 8 }} />
+        <div className="skeleton" style={{ height: 38, width: 140, borderRadius: 8 }} />
+      </div>
+      <div className="mt-acct-grid">
+        {[...Array(6)].map((_, i) => <div key={i} className="skeleton" style={{ height: 210, borderRadius: 12 }} />)}
       </div>
     </div>
   );
@@ -369,6 +452,7 @@ export default function CentralTrainees() {
   const { lang } = usePrefs();
   const t = k => STRINGS[lang]?.[k] ?? STRINGS.ar[k] ?? k;
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
+  const { toasts, showToast } = useMtToast();
 
   const [trainees, setTrainees] = useState([]);
   const [programs, setPrograms] = useState([]);
@@ -377,16 +461,14 @@ export default function CentralTrainees() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [programFilter, setProgramFilter] = useState('');
-  const [includeInactive, setIncludeInactive] = useState(false);
+  const [statusFilter, setStatusFilter] = useState(''); // '' | 'active' | 'inactive'
+  const [page, setPage] = useState(1);
   const [addOpen, setAddOpen] = useState(false);
   const [editTrainee, setEditTrainee] = useState(null);
-  const [toasts, setToasts] = useState([]);
 
-  function showToast(message, type = 'success') {
-    const id = Date.now();
-    setToasts(p => [...p, { id, message, type }]);
-    setTimeout(() => setToasts(p => p.filter(x => x.id !== id)), 3200);
-  }
+  const programsById = useMemo(() => {
+    const m = {}; programs.forEach(p => { m[p._id] = p; }); return m;
+  }, [programs]);
 
   const loadPending = useCallback(async () => {
     try {
@@ -395,141 +477,151 @@ export default function CentralTrainees() {
     } catch { /* non-fatal */ }
   }, []);
 
-  // Programs + countries load once.
-  useEffect(() => {
-    api.get('/api/central/programs').then(r => setPrograms(r.data?.data || r.data || [])).catch(() => setPrograms([]));
-    api.get('/api/countries').then(r => {
-      const map = {};
-      (r.data?.data || r.data || []).forEach(c => { map[c._id] = c; });
-      setCountryMap(map);
-    }).catch(() => setCountryMap({}));
-    loadPending();
-  }, [loadPending]);
-
   const loadTrainees = useCallback(async () => {
-    setLoading(true);
     try {
-      const r = await api.get('/api/central/trainees', { params: includeInactive ? { includeInactive: 'true' } : {}, cache: false });
+      const r = await api.get('/api/central/trainees', { params: { includeInactive: 'true' }, cache: false });
       setTrainees(r.data?.data || r.data || []);
-    } catch { showToast(t('loadFailed'), 'error'); }
-    setLoading(false);
-  }, [includeInactive]); // eslint-disable-line react-hooks/exhaustive-deps
+    } catch { showToast(t('loadFailed'), 'dng'); }
+  }, [showToast]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { loadTrainees(); }, [loadTrainees]);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      const [, , coRes] = await Promise.all([
+        loadTrainees(),
+        loadPending(),
+        api.get('/api/central/countries').catch(() => null),
+        api.get('/api/central/programs').then(r => { if (alive) setPrograms(r.data?.data || r.data || []); }).catch(() => {}),
+      ]);
+      if (alive && coRes) {
+        const map = {};
+        (coRes.data?.data || coRes.data || []).forEach(c => { map[c._id] = c; });
+        setCountryMap(map);
+      }
+      if (alive) setLoading(false);
+    })();
+    return () => { alive = false; };
+  }, [loadTrainees, loadPending]);
 
   async function handleCancelRequest(cr) {
     try {
       await api.patch(`/api/central/change-requests/${cr._id}/cancel`);
       setPending(prev => prev.filter(x => x._id !== cr._id));
-      showToast(t('reqCancelled'));
-    } catch (err) { showToast(err.response?.data?.message || 'Cancel failed', 'error'); }
+      showToast(t('reqCancelled'), 'ok');
+    } catch (err) { showToast(err.response?.data?.message || t('saveFailed'), 'dng'); }
   }
 
-  const programFilterOptions = [{ value: '', label: t('allPrograms') }, ...programs.map(p => ({ value: p._id, label: programOptionLabel(p) }))];
+  // Targets with an in-flight request can't be edited again (one pending per
+  // target → 409). Disable their edit pencil; they surface in the pending panel.
+  const pendingTargetIds = useMemo(
+    () => new Set(pending.map(cr => idOf(cr.targetId)).filter(Boolean)),
+    [pending],
+  );
 
-  const filtered = trainees.filter(tr => {
+  const countryNameOf = useCallback((tr) => {
+    const co = tr?.countryId;
+    return co?.name || countryMap[idOf(co)]?.name || null;
+  }, [countryMap]);
+
+  const filtered = useMemo(() => trainees.filter(tr => {
     if (programFilter && idOf(tr.programId) !== programFilter) return false;
+    if (statusFilter === 'active' && tr.isActive === false) return false;
+    if (statusFilter === 'inactive' && tr.isActive !== false) return false;
     const q = search.trim().toLowerCase();
     if (q && !((tr.name || '').toLowerCase().includes(q) || (tr.idNumber || '').toLowerCase().includes(q))) return false;
     return true;
-  });
+  }), [trainees, programFilter, statusFilter, search]);
 
-  if (loading) return (
-    <>
-      <Navbar />
-      <main className="admin-main" dir={dir}>
-        <div className="admin-card">
-          <div className="admin-toolbar"><Sk h={36} r={8} style={{ flex: 1 }} /><Sk w={180} h={36} r={8} /><Sk w={130} h={36} r={8} /></div>
-          <div className="admin-table-wrap">
-            <table className="admin-table"><tbody>
-              {[...Array(7)].map((_, i) => (
-                <tr key={i}><td><Sk w={130} h={13} /></td><td><Sk w={80} h={13} /></td><td><Sk w={120} h={13} /></td><td><Sk w={110} h={13} /></td><td><Sk w={90} h={13} /></td><td><Sk w={40} h={22} r={20} /></td><td><Sk w={100} h={13} /></td><td><Sk w={60} h={22} r={20} /></td><td><Sk w={36} h={36} r={8} /></td></tr>
-              ))}
-            </tbody></table>
-          </div>
-        </div>
-      </main>
-    </>
-  );
+  useEffect(() => { setPage(1); }, [search, programFilter, statusFilter]);
+
+  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <>
-      <Navbar />
-      <main className="admin-main" dir={dir}>
+      <Navbar title={t('title')} subtitle={t('sub')} />
+      <main className="mt-content" dir={dir}>
+        {loading ? <GridSkeleton /> : (
+          <>
+            <PendingPanel items={pending} t={t} onCancel={handleCancelRequest} />
 
-        <PendingRequests items={pending} t={t} onCancel={handleCancelRequest} />
-
-        <div className="admin-card">
-          <div className="admin-toolbar" style={{ flexWrap: 'wrap', gap: 8 }}>
-            <input className="admin-search" style={{ flex: 1, minWidth: 200 }} placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)} />
-            <div style={{ minWidth: 200 }}>
-              <SearchableSelect value={programFilter} onChange={setProgramFilter} options={programFilterOptions} placeholder={t('allPrograms')} />
+            <div className="mt-filterbar">
+              <label className="mt-search">
+                <SearchIcon />
+                <input placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)} aria-label={t('search')} />
+              </label>
+              <select className="mt-filter" value={programFilter} onChange={e => setProgramFilter(e.target.value)} aria-label={t('program')}>
+                <option value="">{t('allPrograms')}</option>
+                {programs.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+              </select>
+              <select className="mt-filter" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} aria-label={t('allStatus')}>
+                <option value="">{t('allStatus')}</option>
+                <option value="active">{t('active')}</option>
+                <option value="inactive">{t('inactive')}</option>
+              </select>
+              <span className="mt-filterbar-spacer" />
+              <button type="button" className="mt-btn" onClick={() => setAddOpen(true)}>+ {t('addTrainee')}</button>
+              <span className="mt-count">{t('count')(filtered.length)}</span>
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-2)', whiteSpace: 'nowrap', cursor: 'pointer' }}>
-              <input type="checkbox" checked={includeInactive} onChange={e => setIncludeInactive(e.target.checked)} />
-              {t('includeInactive')}
-            </label>
-            <button className="btn-primary" onClick={() => setAddOpen(true)}>+ {t('addTrainee')}</button>
-          </div>
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>{t('name')}</th><th>{t('idNumber')}</th><th>{t('program')}</th>
-                  <th>{t('center')}</th><th>{t('country')}</th><th>{t('year')}</th>
-                  <th>{t('trainerCol')}</th><th>{t('active')}</th><th>{t('action')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 && (
-                  <tr><td colSpan={9} style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>{trainees.length === 0 ? t('none') : t('noMatch')}</td></tr>
-                )}
-                {filtered.map(tr => {
-                  const active = tr.isActive !== false;
-                  const yr = tr.trainingYear;
-                  const country = countryMap[idOf(tr.countryId)];
+
+            {pageItems.length === 0 ? (
+              <div className="mt-empty">
+                <div className="mt-empty-title">{trainees.length === 0 ? t('none') : t('noMatch')}</div>
+              </div>
+            ) : (
+              <div className="mt-acct-grid">
+                {pageItems.map((tr, i) => {
+                  const hasPending = pendingTargetIds.has(idOf(tr._id));
                   return (
-                    <tr key={tr._id}>
-                      <td><strong>{tr.name}</strong></td>
-                      <td>{tr.idNumber || '—'}</td>
-                      <td>{tr.programId?.name || '—'}</td>
-                      <td>{tr.hospitalId?.name || '—'}</td>
-                      <td>{country ? countryLabel(country) : '—'}</td>
-                      <td>{yr >= 1 && yr <= 6 ? <span className="badge badge-blue">Y{yr}</span> : '—'}</td>
-                      <td>{tr.supervisorId?.name || '—'}</td>
-                      <td>
-                        <span className={`badge ${active ? 'badge-green' : 'badge-blue'}`} style={active ? {} : { background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
-                          {active ? t('statusActive') : t('statusInactive')}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="action-btns">
-                          <button className="btn-action edit" title={t('editTrainee')} aria-label={t('editTrainee')} onClick={() => setEditTrainee(tr)}><IconPencil /></button>
-                        </div>
-                      </td>
-                    </tr>
+                    <RevealOnScroll key={tr._id} delay={i * 0.06}>
+                      <AccountCard
+                        name={tr.name}
+                        id={tr.idNumber}
+                        role={tr.isActive === false ? t('inactive') : t('role')}
+                        fields={[
+                          { label: t('country'), value: countryNameOf(tr) || t('na') },
+                          { label: t('city'), value: tr.city || t('na') },
+                          { label: t('program'), value: tr.programId?.name || t('na') },
+                          { label: t('email'), value: tr.email || t('na') },
+                        ]}
+                        canEdit={!hasPending}
+                        onEdit={() => setEditTrainee(tr)}
+                        history={historyLines(tr.changeHistory)}
+                      />
+                    </RevealOnScroll>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              </div>
+            )}
+
+            {filtered.length > PAGE_SIZE && (
+              <Pagination page={page} pageSize={PAGE_SIZE} total={filtered.length}
+                onPrev={() => setPage(p => Math.max(1, p - 1))}
+                onNext={() => setPage(p => p + 1)} />
+            )}
+          </>
+        )}
 
         {addOpen && (
-          <AddTraineeModal programs={programs} t={t} dir={dir}
+          <AddTraineeModal programs={programs} t={t}
             onClose={() => setAddOpen(false)}
-            onSaved={() => { setAddOpen(false); loadTrainees(); showToast(t('created')); }} />
+            onSaved={() => { setAddOpen(false); loadTrainees(); showToast(t('created'), 'ok'); }} />
         )}
+
         {editTrainee && (
-          <EditTraineeModal trainee={editTrainee} t={t} dir={dir}
+          <ApprovalModal
+            trainee={editTrainee}
+            program={programsById[idOf(editTrainee.programId)] || null}
+            t={t}
             onClose={() => setEditTrainee(null)}
-            onSaved={(res) => {
+            onSubmitted={(mode, id) => {
               setEditTrainee(null);
-              if (res?.pending) { showToast(t('pendingApproval')); loadPending(); }
-              else loadTrainees();
+              showToast(mode === 'delete' ? t('submittedDelete')(id) : t('submittedEdit')(id), 'warn');
+              loadPending();
             }} />
         )}
-        <Toast toasts={toasts} />
+
+        <MtToastHost toasts={toasts} />
       </main>
     </>
   );

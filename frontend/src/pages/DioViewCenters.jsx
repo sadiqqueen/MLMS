@@ -1,156 +1,217 @@
 // frontend/src/pages/DioViewCenters.jsx
 //
-// DIO / Sub-DIO center oversight — the caller's assigned centers, each expandable
-// to list its programs (with accreditation badges). Read-only.
+// DIO / Sub-DIO training-center oversight — restyled to the mt- design
+// (dashboards.md §4.8 · lists_views "DIO › training-centers"). A navy-header
+// table of the caller's assigned centers; each row expands to reveal that
+// center's programs with accreditation status. Fully read-only (RULINGS §43).
 // Contract: GET /api/dio-view/centers →
-//   [{ ...center, accreditationStatus, programs: [{ ...program, accreditationStatus }] }]
-import { useState, useEffect } from 'react';
+//   [{ ...center, idNumber, city, accreditationStatus, countryId, traineesCount?,
+//      programs: [{ ...program, specialtyId:{name}, programDirectorId:{name},
+//                   accreditationType, accreditationStatus }] }]
+// `traineesCount` is additive (Fable fix-wave / analyzer batch convention); the
+// Trainees column renders "—" until the backend supplies it.
+import { useState, useEffect, Fragment } from 'react';
 import { usePrefs } from '../context/PrefsContext';
 import Navbar from '../components/Navbar';
-import Toast from '../components/Toast';
 import AccreditationBadge from '../components/AccreditationBadge';
-import Sk from '../components/Skeleton';
-import { IconCaret } from '../components/icons';
+import Pagination from '../components/Pagination';
+import RevealOnScroll from '../components/RevealOnScroll';
+import { MtToastHost, useMtToast } from '../components/MtToast';
+import { IconCaret, IconBuilding } from '../components/icons';
 import api from '../api/axios';
+import './dioview.css';
+
+const PAGE_SIZE = 12;
 
 const STRINGS = {
   ar: {
-    search: 'ابحث باسم المركز…', programs: 'البرامج',
-    colName: 'اسم البرنامج', colSpecialty: 'الاختصاص', colPd: 'مدير البرنامج', colType: 'نوع الاعتماد',
-    partly: 'جزئي', fully: 'كامل', noPrograms: 'لا توجد برامج في هذا المركز.',
-    noCenters: 'لا توجد مراكز مسندة إلى حسابك بعد.', noMatch: 'لا توجد مراكز مطابقة.', loadFailed: 'فشل التحميل',
+    search: 'ابحث باسم المركز…', count: (n) => `${n} مركز`,
+    colCenter: 'المركز', colId: 'المعرف', colCity: 'المدينة', colPrograms: 'البرامج', colTrainees: 'المتدربون', colStatus: 'الاعتماد',
+    pName: 'البرنامج', pSpecialty: 'الاختصاص', pPd: 'مدير البرنامج', pStatus: 'الاعتماد',
+    noPrograms: 'لا توجد برامج في هذا المركز.',
+    noCenters: 'لا توجد مراكز مسندة إلى حسابك بعد.', noCentersSub: 'ستظهر مراكزك التدريبية هنا بمجرد إسنادها.',
+    noMatch: 'لا توجد مراكز مطابقة.', noMatchSub: 'جرّب تعديل البحث.', loadFailed: 'فشل التحميل',
   },
   en: {
-    search: 'Search by center name…', programs: 'Programs',
-    colName: 'Program', colSpecialty: 'Specialty', colPd: 'Program Director', colType: 'Accreditation',
-    partly: 'Partly', fully: 'Fully', noPrograms: 'No programs in this center.',
-    noCenters: 'No centers are assigned to your account yet.', noMatch: 'No centers match your search.', loadFailed: 'Failed to load',
+    search: 'Search by center name…', count: (n) => `${n} centers`,
+    colCenter: 'Center', colId: 'ID', colCity: 'City', colPrograms: 'Programs', colStatus: 'Accreditation',
+    pName: 'Program', pSpecialty: 'Specialty', pPd: 'Program Director', pStatus: 'Accreditation',
+    noPrograms: 'No programs in this center.',
+    noCenters: 'No centers are assigned to your account yet.', noCentersSub: 'Your training centers appear here once assigned.',
+    noMatch: 'No centers match.', noMatchSub: 'Try adjusting your search.', loadFailed: 'Failed to load',
   },
 };
 
+function SearchIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
+    </svg>
+  );
+}
+
 function refName(x) { return x?.name || '—'; }
+
+function ProgramsPanel({ center, t }) {
+  const programs = center.programs || [];
+  if (programs.length === 0) return <div className="dioview-pempty">{t('noPrograms')}</div>;
+  return (
+    <div className="dioview-plist">
+      <div className="dioview-phead">
+        <span>{t('pName')}</span><span>{t('pSpecialty')}</span><span>{t('pPd')}</span><span>{t('pStatus')}</span>
+      </div>
+      {programs.map((p) => (
+        <div className="dioview-prow" key={p._id}>
+          <span className="dioview-pname" title={p.name}>{p.name}</span>
+          <span className="dioview-pmuted" title={refName(p.specialtyId)}>{refName(p.specialtyId)}</span>
+          <span className="dioview-pmuted" title={refName(p.programDirectorId)}>{refName(p.programDirectorId)}</span>
+          <span><AccreditationBadge status={p.accreditationStatus} /></span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function DioViewCenters() {
   const { lang } = usePrefs();
-  const t = k => STRINGS[lang]?.[k] ?? STRINGS.ar[k] ?? k;
+  const t = (k) => STRINGS[lang]?.[k] ?? STRINGS.ar[k] ?? k;
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
+  const { toasts, showToast } = useMtToast();
 
   const [centers, setCenters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [noCenters, setNoCenters] = useState(false);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState({});
-  const [toasts, setToasts] = useState([]);
-
-  function showToast(message, type = 'error') {
-    const id = Date.now();
-    setToasts(p => [...p, { id, message, type }]);
-    setTimeout(() => setToasts(p => p.filter(x => x.id !== id)), 3200);
-  }
 
   useEffect(() => {
     api.get('/api/dio-view/centers')
-      .then(r => setCenters(r.data?.data || r.data || []))
-      .catch(err => { if (err.response?.status === 403) setNoCenters(true); else showToast(t('loadFailed')); })
+      .then((r) => setCenters(r.data?.data || r.data || []))
+      .catch((err) => { if (err.response?.status === 403) setNoCenters(true); else showToast(t('loadFailed'), 'dng'); })
       .finally(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function toggle(id) { setExpanded(e => ({ ...e, [id]: !e[id] })); }
+  useEffect(() => { setPage(1); }, [search]);
 
-  const filtered = centers.filter(c => {
+  function toggle(id) { setExpanded((e) => ({ ...e, [id]: !e[id] })); }
+
+  const filtered = centers.filter((c) => {
     const q = search.trim().toLowerCase();
     return !q || (c.name || '').toLowerCase().includes(q);
   });
+  const total = filtered.length;
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  if (loading) return (
-    <>
-      <Navbar />
-      <main className="admin-main" dir={dir}>
-        <div className="admin-card"><div className="admin-toolbar"><Sk h={36} r={8} style={{ flex: 1 }} /></div></div>
-        {[...Array(4)].map((_, i) => (
-          <div className="admin-card" key={i} style={{ marginTop: 12, padding: 18 }}><Sk w={200} h={16} /><div style={{ height: 8 }} /><Sk w={120} h={12} /></div>
-        ))}
-      </main>
-    </>
-  );
-
-  if (noCenters) return (
-    <>
-      <Navbar />
-      <main className="admin-main" dir={dir}>
-        <div className="admin-empty" style={{ padding: 56, textAlign: 'center' }}>{t('noCenters')}</div>
-      </main>
-    </>
-  );
+  if (noCenters) {
+    return (
+      <>
+        <Navbar />
+        <main className="mt-content" dir={dir}>
+          <div className="mt-empty">
+            <div className="mt-empty-icon"><IconBuilding size={22} /></div>
+            <div className="mt-empty-title">{t('noCenters')}</div>
+            <div className="mt-empty-sub">{t('noCentersSub')}</div>
+          </div>
+          <MtToastHost toasts={toasts} />
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
       <Navbar />
-      <main className="admin-main" dir={dir}>
-        <div className="admin-card" style={{ marginBottom: 12 }}>
-          <div className="admin-toolbar">
-            <input className="admin-search" style={{ flex: 1, minWidth: 200 }} placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)} />
+      <main className="mt-content" dir={dir}>
+        <div className="mt-filterbar">
+          <div className="mt-search">
+            <SearchIcon />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('search')} />
           </div>
+          <div className="mt-filterbar-spacer" />
+          {!loading && <span className="mt-count">{t('count')(total)}</span>}
         </div>
 
-        {filtered.length === 0 && (
-          <div className="admin-empty">{centers.length === 0 ? t('noCenters') : t('noMatch')}</div>
-        )}
-
-        {filtered.map(c => {
-          const isOpen = !!expanded[c._id];
-          const programs = c.programs || [];
-          return (
-            <div className="admin-card" key={c._id} style={{ marginBottom: 12, padding: 0, overflow: 'hidden' }}>
-              <button
-                onClick={() => toggle(c._id)}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '16px 18px', background: 'none', border: 'none', cursor: 'pointer', textAlign: dir === 'rtl' ? 'right' : 'left' }}
-              >
-                <span style={{ display: 'inline-flex', transform: isOpen ? 'rotate(180deg)' : 'none', color: 'var(--text-muted)', flexShrink: 0 }}>
-                  <IconCaret size={16} />
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--brand-secondary)' }}>{c.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                    {c.countryId?.name ? `${c.countryId.name}${c.countryId.code ? ` (${c.countryId.code})` : ''}` : '—'}{c.city ? ` · ${c.city}` : ''}
-                  </div>
-                </div>
-                <AccreditationBadge status={c.accreditationStatus} />
-                <span className="badge badge-blue" style={{ flexShrink: 0 }}>{t('programs')}: {programs.length}</span>
-              </button>
-
-              {isOpen && (
-                <div className="admin-table-wrap" style={{ borderTop: '1px solid var(--border)' }}>
-                  <table className="admin-table">
-                    <thead>
-                      <tr><th>{t('colName')}</th><th>{t('colSpecialty')}</th><th>{t('colPd')}</th><th>{t('colType')}</th></tr>
-                    </thead>
-                    <tbody>
-                      {programs.length === 0 && (
-                        <tr><td colSpan={4} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>{t('noPrograms')}</td></tr>
-                      )}
-                      {programs.map(p => (
-                        <tr key={p._id}>
-                          <td><strong>{p.name}</strong></td>
-                          <td>{refName(p.specialtyId)}</td>
-                          <td>{refName(p.programDirectorId)}</td>
-                          <td>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                              <span className="badge badge-blue">{p.accreditationType === 'fully' ? t('fully') : t('partly')}</span>
-                              <AccreditationBadge status={p.accreditationStatus} />
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+        {loading ? (
+          <div className="mt-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gap: 10, padding: 16 }}>
+              {[...Array(8)].map((_, i) => <div key={i} className="skeleton mt-skel" style={{ height: 26, borderRadius: 6 }} />)}
             </div>
-          );
-        })}
-
-        <Toast toasts={toasts} />
+          </div>
+        ) : total === 0 ? (
+          <div className="mt-empty">
+            <div className="mt-empty-icon"><IconBuilding size={22} /></div>
+            <div className="mt-empty-title">{centers.length === 0 ? t('noCenters') : t('noMatch')}</div>
+            <div className="mt-empty-sub">{centers.length === 0 ? t('noCentersSub') : t('noMatchSub')}</div>
+          </div>
+        ) : (
+          <>
+            <RevealOnScroll className="mt-card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div className="mt-table-wrap">
+                <table className="mt-table">
+                  <thead>
+                    <tr>
+                      <th className="mt-th">{t('colCenter')}</th>
+                      <th className="mt-th">{t('colId')}</th>
+                      <th className="mt-th">{t('colCity')}</th>
+                      <th className="mt-th">{t('colPrograms')}</th>
+                      <th className="mt-th">{t('colTrainees')}</th>
+                      <th className="mt-th">{t('colStatus')}</th>
+                      <th className="mt-th" aria-hidden="true" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paged.map((c) => {
+                      const isOpen = !!expanded[c._id];
+                      const nPrograms = (c.programs || []).length;
+                      return (
+                        <Fragment key={c._id}>
+                          <tr
+                            className="dioview-crow"
+                            onClick={() => toggle(c._id)}
+                            aria-expanded={isOpen}
+                          >
+                            <td className="mt-td mt-td--name">{c.name}</td>
+                            <td className="mt-td mt-td--mono">{c.idNumber || '—'}</td>
+                            <td className="mt-td">{c.city || '—'}</td>
+                            <td className="mt-td"><span className="mt-pill mt-pill--neutral">{nPrograms}</span></td>
+                            <td className="mt-td">{c.traineesCount ?? '—'}</td>
+                            <td className="mt-td"><AccreditationBadge status={c.accreditationStatus} /></td>
+                            <td className="mt-td mt-td--actions" style={{ textAlign: 'end' }}>
+                              <button
+                                type="button"
+                                className={'dioview-caret' + (isOpen ? ' is-open' : '')}
+                                onClick={(e) => { e.stopPropagation(); toggle(c._id); }}
+                                aria-expanded={isOpen}
+                                aria-label={c.name}
+                              >
+                                <IconCaret size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                          {isOpen && (
+                            <tr>
+                              <td className="dioview-detail-cell" colSpan={7}>
+                                <ProgramsPanel center={c} t={t} />
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </RevealOnScroll>
+            {total > PAGE_SIZE && (
+              <Pagination page={page} pageSize={PAGE_SIZE} total={total}
+                onPrev={() => setPage((p) => Math.max(1, p - 1))}
+                onNext={() => setPage((p) => p + 1)} />
+            )}
+          </>
+        )}
+        <MtToastHost toasts={toasts} />
       </main>
     </>
   );

@@ -3,7 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import Navbar from '../components/Navbar';
 import Sk from '../components/Skeleton';
-import { IconEye, IconTrash, IconPlus } from '../components/icons';
+import { IconEye, IconTrash, IconPlus, NavIcon } from '../components/icons';
+import './trainee.css';
 
 const API_BASE = '';
 
@@ -52,7 +53,6 @@ export default function CertificatesCourses() {
       setItems(prev => [created, ...prev]);
       setForm({ title: '', issuer: '', kind: 'certificate', completedDate: '' });
       setFile(null);
-      // clear the native file input
       const input = document.getElementById('cc-file-input');
       if (input) input.value = '';
     } catch (err) {
@@ -71,120 +71,97 @@ export default function CertificatesCourses() {
     }
   }
 
-  const fieldStyle = {
-    width: '100%', boxSizing: 'border-box', height: 42, padding: '0 12px',
-    borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)',
-    color: 'var(--text)', fontSize: 14,
-  };
-  const labelStyle = { display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 6 };
-
   return (
     <>
       <Navbar />
-      <main className="main">
-        <div className="card" style={{ marginBottom: 18 }}>
-          <div className="card-title" style={{ marginBottom: 4 }}>Certificates & Courses</div>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
-            Upload any course or certificate you have completed. These appear on your portfolio and are
-            visible to your Supervisor, Program Director and DIO.
+      <main className="mt-content">
+        <div className="mt-card" style={{ marginBlockEnd: 18 }}>
+          <div className="mt-card-head mt-card-head--tight">
+            <div style={{ minWidth: 0 }}>
+              <div className="mt-card-title">Add certificate or course</div>
+              <div className="mt-card-sub">
+                Upload any course or certificate you have completed. These appear on your portfolio and are visible to your evaluator, Program Director and DIO.
+              </div>
+            </div>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, alignItems: 'end' }}>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={labelStyle}>Title *</label>
-              <input style={fieldStyle} value={form.title} placeholder="e.g. Advanced Cardiac Life Support (ACLS)"
+          <form onSubmit={handleSubmit} className="mt-field-grid" style={{ marginBlockStart: 16, alignItems: 'end' }}>
+            <div className="mt-field mt-field-full">
+              <label className="mt-label">Title <span className="mt-label-req">*</span></label>
+              <input className="mt-input" value={form.title} placeholder="e.g. Advanced Cardiac Life Support (ACLS)"
                 onChange={e => setField('title', e.target.value)} />
             </div>
-            <div>
-              <label style={labelStyle}>Issuer / Provider</label>
-              <input style={fieldStyle} value={form.issuer} placeholder="e.g. American Heart Association"
+            <div className="mt-field">
+              <label className="mt-label">Issuer / Provider</label>
+              <input className="mt-input" value={form.issuer} placeholder="e.g. American Heart Association"
                 onChange={e => setField('issuer', e.target.value)} />
             </div>
-            <div>
-              <label style={labelStyle}>Type</label>
-              <select style={fieldStyle} value={form.kind} onChange={e => setField('kind', e.target.value)}>
+            <div className="mt-field">
+              <label className="mt-label">Type</label>
+              <select className="mt-select" value={form.kind} onChange={e => setField('kind', e.target.value)}>
                 <option value="certificate">Certificate</option>
                 <option value="course">Course</option>
               </select>
             </div>
-            <div>
-              <label style={labelStyle}>Completion Date</label>
-              <input style={fieldStyle} type="date" value={form.completedDate}
+            <div className="mt-field">
+              <label className="mt-label">Completion date</label>
+              <input className="mt-input" type="date" value={form.completedDate}
                 onChange={e => setField('completedDate', e.target.value)} />
             </div>
-            <div>
-              <label style={labelStyle}>File (PDF or image)</label>
-              <input id="cc-file-input" style={{ ...fieldStyle, height: 'auto', padding: 8 }} type="file"
+            <div className="mt-field">
+              <label className="mt-label">File (PDF or image)</label>
+              <input id="cc-file-input" className="mt-input" style={{ height: 'auto', padding: 8 }} type="file"
                 accept=".pdf,.jpg,.jpeg,.png" onChange={e => setFile(e.target.files?.[0] || null)} />
             </div>
-            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 14 }}>
-              <button type="submit" className="btn-purple" disabled={saving}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <div className="mt-field-full" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <button type="submit" className="mt-btn" disabled={saving}>
                 <IconPlus size={15} /> {saving ? 'Uploading…' : 'Add to portfolio'}
               </button>
-              {error && <span style={{ color: 'var(--danger-fg)', fontSize: 13 }}>{error}</span>}
+              {error && <span style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</span>}
             </div>
           </form>
         </div>
 
-        <div className="card">
-          <div className="card-title" style={{ marginBottom: 14 }}>
-            My uploads
-            <span className="badge badge-blue" style={{ marginInlineStart: 8 }}>{items.length}</span>
+        <div className="mt-card">
+          <div className="mt-card-head mt-card-head--tight" style={{ marginBlockEnd: 14 }}>
+            <div className="mt-card-title">My uploads</div>
+            <span className="mt-count">{items.length}</span>
           </div>
 
           {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {[0, 1, 2].map(i => <Sk key={i} h={64} r={10} />)}
-            </div>
+            <div className="tr-rows">{[0, 1, 2].map(i => <Sk key={i} h={64} r={10} />)}</div>
           ) : items.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 44, color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: 38, marginBottom: 10 }}>🎓</div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)', marginBottom: 4 }}>No certificates or courses yet</div>
-              <div style={{ fontSize: 13 }}>Use the form above to add your first one.</div>
+            <div className="mt-empty">
+              <span className="mt-empty-icon"><NavIcon name="award" size={24} /></span>
+              <div className="mt-empty-title">No certificates or courses yet</div>
+              <div className="mt-empty-sub">Use the form above to add your first one.</div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="tr-rows">
               {items.map(it => (
-                <div key={it._id} style={{
-                  display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-                  border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px',
-                  background: 'var(--surface-2)', borderLeft: '4px solid var(--accent)',
-                }}>
-                  <div style={{ flex: 1, minWidth: 180 }}>
+                <div key={it._id} className="tr-row" style={{ alignItems: 'center' }}>
+                  <div className="tr-row-main">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{
-                        fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em',
-                        padding: '2px 8px', borderRadius: 20,
-                        background: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)',
-                      }}>
+                      <span className={`mt-pill ${it.kind === 'course' ? 'mt-pill--capacity' : 'mt-pill--role'}`}>
                         {it.kind === 'course' ? 'Course' : 'Certificate'}
                       </span>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{it.title}</span>
+                      <span className="tr-row-title">{it.title}</span>
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                    <div className="tr-row-meta">
                       {it.issuer ? `${it.issuer} · ` : ''}{fmt(it.completedDate) !== '—' ? `Completed ${fmt(it.completedDate)}` : `Added ${fmt(it.createdAt)}`}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                     {it.fileUrl && (
-                      <a href={`${API_BASE}${it.fileUrl}`} target="_blank" rel="noreferrer"
+                      <a href={`${API_BASE}${it.fileUrl}`} target="_blank" rel="noreferrer" className="mt-icon-action"
                         title="Open file" aria-label="Open file"
-                        style={{
-                          width: 34, height: 34, borderRadius: 8, background: 'var(--surface)',
-                          border: '1px solid var(--border)', color: 'var(--link)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none',
-                        }}>
+                        style={{ width: 34, height: 34, border: '1px solid var(--border)', background: 'var(--surface)' }}>
                         <IconEye size={16} />
                       </a>
                     )}
-                    <button type="button" onClick={() => handleDelete(it._id)}
+                    <button type="button" className="mt-icon-action mt-icon-action--danger" onClick={() => handleDelete(it._id)}
                       title="Delete" aria-label="Delete"
-                      style={{
-                        width: 34, height: 34, borderRadius: 8, background: 'var(--surface)',
-                        border: '1px solid var(--border)', color: 'var(--danger-fg)', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
+                      style={{ width: 34, height: 34, border: '1px solid var(--border)', background: 'var(--surface)' }}>
                       <IconTrash size={16} />
                     </button>
                   </div>

@@ -10,15 +10,17 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { usePrefs } from '../context/PrefsContext';
 import Navbar from '../components/Navbar';
-import Toast from '../components/Toast';
+import MtToastHost, { useMtToast } from '../components/MtToast';
 import Sk from '../components/Skeleton';
-import { IconTrash, IconPlus } from '../components/icons';
+import { IconTrash, IconPlus, NavIcon } from '../components/icons';
 import api from '../api/axios';
+import './trainee.css';
 
 const STRINGS = {
   ar: {
     title: 'سجل الإجراءات',
-    intro: 'سجّل الإجراءات التي أجريتها. يراجعها مدربك ويعتمدها أو يرفضها.',
+    intro: 'سجّل الإجراءات التي أجريتها. يراجعها المُقيّم ويعتمدها أو يرفضها.',
+    newEntry: 'إضافة إدخال جديد',
     fDate: 'التاريخ', fProcedure: 'نوع الإجراء', fNotes: 'ملاحظات',
     procedurePh: 'مثال: بزل قطني', notesPh: 'ملاحظات إضافية (اختياري)',
     add: 'إضافة إلى السجل', adding: 'جارٍ الإضافة…',
@@ -30,8 +32,9 @@ const STRINGS = {
   },
   en: {
     title: 'Log Book',
-    intro: 'Record the procedures you performed. Your trainer reviews and signs them off or rejects them.',
-    fDate: 'Date', fProcedure: 'Procedure Type', fNotes: 'Notes',
+    intro: 'Record the procedures you performed. Your evaluator reviews and signs them off or rejects them.',
+    newEntry: 'New log book entry',
+    fDate: 'Date', fProcedure: 'Procedure type', fNotes: 'Notes',
     procedurePh: 'e.g. Lumbar puncture', notesPh: 'Additional notes (optional)',
     add: 'Add to log book', adding: 'Adding…',
     myEntries: 'My entries', none: 'No entries yet.',
@@ -49,14 +52,14 @@ function fmt(d) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function StatusChip({ status, t }) {
+function StatusPill({ status, t }) {
   const map = {
-    pending:    { label: t('statusPending'),  bg: 'var(--warning-bg)', fg: 'var(--warning-fg)' },
-    signed_off: { label: t('statusSigned'),   bg: 'var(--success-bg)', fg: 'var(--success-fg)' },
-    rejected:   { label: t('statusRejected'), bg: 'var(--danger-bg)',  fg: 'var(--danger-fg)' },
+    pending:    { cls: 'mt-pill--warn',     label: t('statusPending') },
+    signed_off: { cls: 'mt-pill--active',   label: t('statusSigned') },
+    rejected:   { cls: 'mt-pill--rejected', label: t('statusRejected') },
   };
   const s = map[status] || map.pending;
-  return <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: s.bg, color: s.fg }}>{s.label}</span>;
+  return <span className={`mt-pill ${s.cls}`}>{s.label}</span>;
 }
 
 export default function LogBook() {
@@ -70,13 +73,7 @@ export default function LogBook() {
   const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), procedureType: '', notes: '' });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
-  const [toasts, setToasts] = useState([]);
-
-  function showToast(message, type = 'success') {
-    const id = Date.now();
-    setToasts(p => [...p, { id, message, type }]);
-    setTimeout(() => setToasts(p => p.filter(x => x.id !== id)), 3200);
-  }
+  const { toasts, showToast } = useMtToast();
 
   function load() {
     api.get('/api/logbook/mine', { cache: false })
@@ -105,9 +102,9 @@ export default function LogBook() {
       const created = res.data?.data || res.data;
       setItems(prev => [created, ...prev]);
       setForm({ date: new Date().toISOString().slice(0, 10), procedureType: '', notes: '' });
-      showToast(t('added'));
+      showToast(t('added'), 'ok');
     } catch (err) {
-      showToast(err.response?.data?.message || t('saveFailed'), 'error');
+      showToast(err.response?.data?.message || t('saveFailed'), 'dng');
     } finally { setSaving(false); }
   }
 
@@ -116,76 +113,80 @@ export default function LogBook() {
     try {
       await api.delete(`/api/logbook/${id}`);
       setItems(prev => prev.filter(x => x._id !== id));
-      showToast(t('deleted'));
+      showToast(t('deleted'), 'ok');
     } catch (err) {
-      showToast(err.response?.data?.message || t('saveFailed'), 'error');
+      showToast(err.response?.data?.message || t('saveFailed'), 'dng');
     }
   }
 
-  const fieldStyle = { width: '100%', boxSizing: 'border-box', height: 42, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 14 };
-  const labelStyle = { display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 6 };
-
   return (
     <>
-      <Navbar />
-      <main className="main" dir={dir}>
-        <div className="card" style={{ marginBottom: 18 }}>
-          <div className="card-title" style={{ marginBottom: 4 }}>{t('title')}</div>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>{t('intro')}</div>
+      <Navbar title={t('title')} />
+      <main className="mt-content" dir={dir}>
 
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, alignItems: 'end' }}>
-            <div>
-              <label style={labelStyle}>{t('fDate')} *</label>
-              <input type="date" style={{ ...fieldStyle, borderColor: errors.date ? 'var(--danger)' : 'var(--border)' }} value={form.date} onChange={e => set('date', e.target.value)} />
+        <div className="mt-card" style={{ marginBlockEnd: 18 }}>
+          <div className="mt-card-head mt-card-head--tight">
+            <div style={{ minWidth: 0 }}>
+              <div className="mt-card-title">{t('newEntry')}</div>
+              <div className="mt-card-sub">{t('intro')}</div>
             </div>
-            <div>
-              <label style={labelStyle}>{t('fProcedure')} *</label>
-              <input style={{ ...fieldStyle, borderColor: errors.procedureType ? 'var(--danger)' : 'var(--border)' }} value={form.procedureType} placeholder={t('procedurePh')} onChange={e => set('procedureType', e.target.value)} />
+          </div>
+
+          <form onSubmit={handleSubmit} className="mt-field-grid" style={{ marginBlockStart: 16, alignItems: 'end' }}>
+            <div className="mt-field">
+              <label className="mt-label">{t('fDate')} <span className="mt-label-req">*</span></label>
+              <input type="date" className="mt-input" style={{ borderColor: errors.date ? 'var(--danger)' : undefined }}
+                value={form.date} onChange={e => set('date', e.target.value)} />
             </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={labelStyle}>{t('fNotes')}</label>
-              <textarea style={{ ...fieldStyle, height: 'auto', minHeight: 70, padding: '10px 12px', resize: 'vertical', fontFamily: 'inherit' }} value={form.notes} placeholder={t('notesPh')} onChange={e => set('notes', e.target.value)} />
+            <div className="mt-field">
+              <label className="mt-label">{t('fProcedure')} <span className="mt-label-req">*</span></label>
+              <input className="mt-input" style={{ borderColor: errors.procedureType ? 'var(--danger)' : undefined }}
+                value={form.procedureType} placeholder={t('procedurePh')} onChange={e => set('procedureType', e.target.value)} />
             </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <button type="submit" className="btn-purple" disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <div className="mt-field mt-field-full">
+              <label className="mt-label">{t('fNotes')}</label>
+              <textarea className="mt-textarea" value={form.notes} placeholder={t('notesPh')} onChange={e => set('notes', e.target.value)} />
+            </div>
+            <div className="mt-field-full">
+              <button type="submit" className="mt-btn" disabled={saving}>
                 <IconPlus size={15} /> {saving ? t('adding') : t('add')}
               </button>
             </div>
           </form>
         </div>
 
-        <div className="card">
-          <div className="card-title" style={{ marginBottom: 14 }}>
-            {t('myEntries')}
-            <span className="badge badge-blue" style={{ marginInlineStart: 8 }}>{items.length}</span>
+        <div className="mt-card">
+          <div className="mt-card-head mt-card-head--tight" style={{ marginBlockEnd: 14 }}>
+            <div className="mt-card-title">{t('myEntries')}</div>
+            <span className="mt-count">{items.length}</span>
           </div>
 
           {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="tr-rows">
               {[0, 1, 2].map(i => <Sk key={i} h={64} r={10} />)}
             </div>
           ) : items.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 44, color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: 38, marginBottom: 10 }}>📋</div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-2)' }}>{t('none')}</div>
+            <div className="mt-empty">
+              <span className="mt-empty-icon"><NavIcon name="book" size={24} /></span>
+              <div className="mt-empty-title">{t('none')}</div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="tr-rows">
               {items.map(it => (
-                <div key={it._id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', background: 'var(--surface-2)', borderInlineStart: '4px solid var(--accent)' }}>
-                  <div style={{ flex: 1, minWidth: 180 }}>
+                <div key={it._id} className="tr-row">
+                  <div className="tr-row-main">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{it.procedureType}</span>
-                      <StatusChip status={it.status} t={t} />
+                      <span className="tr-row-title">{it.procedureType}</span>
+                      <StatusPill status={it.status} t={t} />
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{fmt(it.date)}{it.notes ? ` · ${it.notes}` : ''}</div>
+                    <div className="tr-row-meta">{fmt(it.date)}{it.notes ? ` · ${it.notes}` : ''}</div>
                     {it.status === 'rejected' && it.reviewNote && (
-                      <div style={{ fontSize: 12, color: 'var(--danger-fg)', marginTop: 6 }}>{t('reviewNote')}: {it.reviewNote}</div>
+                      <div style={{ fontSize: 12, color: 'var(--danger)', marginBlockStart: 6 }}>{t('reviewNote')}: {it.reviewNote}</div>
                     )}
                   </div>
                   {it.status === 'pending' && (
-                    <button type="button" onClick={() => handleDelete(it._id)} title={t('delete')} aria-label={t('delete')}
-                      style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--danger-fg)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <button type="button" className="mt-icon-action mt-icon-action--danger" onClick={() => handleDelete(it._id)}
+                      title={t('delete')} aria-label={t('delete')}>
                       <IconTrash size={16} />
                     </button>
                   )}
@@ -194,7 +195,7 @@ export default function LogBook() {
             </div>
           )}
         </div>
-        <Toast toasts={toasts} />
+        <MtToastHost toasts={toasts} />
       </main>
     </>
   );

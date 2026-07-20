@@ -14,6 +14,10 @@
   --cat-1:#0984e3; --cat-2:#00B894; --cat-3:#8e44ad; --cat-4:#e17055; --cat-5:#d63031; --cat-6:#fdcb6e;
   --cat-1-bg:#E8F4FD; --cat-2-bg:#E8FDF3; --cat-3-bg:#F3E8FD; --cat-4-bg:#FDF3E8; --cat-5-bg:#FDE8EE;
   --chip-spec-bg:#EEEDFE; --chip-spec-fg:#3C3489; --on-brand:#FFFFFF;
+  /* mt- design system tokens (RULINGS §A1) — additive, do not touch existing tokens above */
+  --brand-primary-t:#E6F1FB; --accent-t:#FAEEDA; --accent-t-fg:#633806;
+  --shell-bg:#0C447C; --table-head-bg:#0C447C; --table-head-fg:#EAF1F9;
+  --card-shadow:0 1px 3px rgba(12,68,124,.06);
 }
 html[data-theme="dark"] {
   --app-bg:#141413; --surface:#1E1E1C; --surface-2:#262624; --surface-3:#2D2D2A; --elevated:#2A2A27;
@@ -28,6 +32,10 @@ html[data-theme="dark"] {
   --cat-1:#5AA0E6; --cat-2:#5ECB8B; --cat-3:#B79DE8; --cat-4:#F0997E; --cat-5:#FF6B74; --cat-6:#FFD98A;
   --cat-1-bg:rgba(90,160,230,.16); --cat-2-bg:rgba(94,203,139,.16); --cat-3-bg:rgba(183,157,232,.16); --cat-4-bg:rgba(240,153,126,.16); --cat-5-bg:rgba(255,107,116,.16);
   --chip-spec-bg:rgba(157,147,232,.16); --chip-spec-fg:#C4BCF2; --on-brand:#141413;
+  /* mt- design system tokens (RULINGS §A1) — dark values */
+  --brand-primary-t:rgba(62,124,196,.14); --accent-t:rgba(255,154,77,.14); --accent-t-fg:#E5B454;
+  --shell-bg:#0B1B2E; --table-head-bg:#10233D; --table-head-fg:#EAF1F9;
+  --card-shadow:0 1px 3px rgba(0,0,0,.35);
 }
 body { background: var(--app-bg); color: var(--text); transition: background .2s ease, color .2s ease; }
 

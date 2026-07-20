@@ -1,180 +1,119 @@
+// W2-Developer — Audit Log (lists_views §DEVELOPER audit-log). mt- restyle of the
+// existing read-only audit table; all functionality kept (server pagination,
+// client search) and the design's Result column added. Audit rows are post-hoc
+// records of COMPLETED actions, so Result is truthfully "Success" for every row.
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
-import Toast  from '../components/Toast';
-import api    from '../api/axios';
-import Sk     from '../components/Skeleton';
+import Pagination from '../components/Pagination';
+import RevealOnScroll from '../components/RevealOnScroll';
+import { MtToastHost, useMtToast } from '../components/MtToast';
+import { roleLabel } from '../config/roles';
+import api from '../api/axios';
+import { MagnifierIcon } from './devkit';
+import './developer.css';
+
+const LIMIT = 30;
 
 function fmt(d) {
   if (!d) return '—';
-  return new Date(d).toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return '—';
+  return dt.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-const ACTION_COLORS = {
-  create_user:          { bg:'#D1FAE5', color:'#065F46' },
-  update_user:          { bg:'#DBEAFE', color:'#1E40AF' },
-  deactivate_user:      { bg:'#FEE2E2', color:'#991B1B' },
-  create_trainee:       { bg:'#D1FAE5', color:'#065F46' },
-  update_trainee:       { bg:'#DBEAFE', color:'#1E40AF' },
-  create_supervisor:    { bg:'#D1FAE5', color:'#065F46' },
-  create_distribution:  { bg:'#EDE9FE', color:'#5B21B6' },
-  finalize_evaluation:  { bg:'#FEF3C7', color:'#92400E' },
-  grade_final_report:   { bg:'#FCE7F3', color:'#9D174D' },
-  issue_certificate:    { bg:'#D1FAE5', color:'#065F46' },
-  revoke_certificate:   { bg:'#FEE2E2', color:'#991B1B' },
-  create_hospital:      { bg:'#DBEAFE', color:'#1E40AF' },
-  create_specialty:     { bg:'#EDE9FE', color:'#5B21B6' },
-  upload_pdf_template:  { bg:'#FEF3C7', color:'#92400E' },
-};
-
-const ROLE_BADGE = {
-  super_admin:      { bg:'#1B1464', color:'#fff'     },
-  secretary:        { bg:'#FEF3C7', color:'#92400E'  },
-  dio:              { bg:'#FCE7F3', color:'#9D174D'  },
-  supervisor:       { bg:'#D1FAE5', color:'#065F46'  },
-  program_director: { bg:'#EDE9FE', color:'#5B21B6'  },
-  trainee:          { bg:'#DBEAFE', color:'#1E40AF'  },
-  president:        { bg:'#E0F2FE', color:'#075985'  },
-};
-
 export default function AuditLog() {
-  const [logs,    setLogs    ] = useState([]);
-  const [loading, setLoading ] = useState(true);
-  const [total,   setTotal   ] = useState(0);
-  const [page,    setPage    ] = useState(1);
-  const [search,  setSearch  ] = useState('');
-  const [toasts,  setToasts  ] = useState([]);
-  const LIMIT = 30;
-
-  function showToast(msg, type='error') {
-    const id = Date.now();
-    setToasts(p => [...p, { id, message:msg, type }]);
-    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3200);
-  }
+  const { toasts, showToast } = useMtToast();
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     setLoading(true);
-    api.get(`/api/admin/audit-log?page=${page}&limit=${LIMIT}`)
-      .then(r => {
-        setLogs(r.data?.data || r.data || []);
-        setTotal(r.data?.total || 0);
-      })
-      .catch(() => showToast('Failed to load audit log'))
+    api.get('/api/admin/audit-log', { params: { page, limit: LIMIT }, cache: false })
+      .then((r) => { setLogs(r.data?.data || r.data || []); setTotal(r.data?.total || 0); })
+      .catch(() => showToast('Failed to load audit log', 'dng'))
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  const filtered = logs.filter(l => {
-    const q = search.toLowerCase();
-    return !q
-      || l.action?.toLowerCase().includes(q)
-      || l.userId?.name?.toLowerCase().includes(q)
-      || l.userId?.email?.toLowerCase().includes(q)
-      || l.targetModel?.toLowerCase().includes(q);
-  });
-
-  const totalPages = Math.ceil(total / LIMIT);
+  const q = search.trim().toLowerCase();
+  const filtered = !q ? logs : logs.filter((l) =>
+    l.action?.toLowerCase().includes(q) ||
+    l.userId?.name?.toLowerCase().includes(q) ||
+    l.userId?.email?.toLowerCase().includes(q) ||
+    l.targetModel?.toLowerCase().includes(q));
 
   return (
     <>
-      <Navbar />
-      <main className="admin-main">
+      <Navbar title="Audit Log" subtitle="Developer" />
+      <main className="mt-content">
+        <div className="dev-intro">Every create, update, and delete action across the system.</div>
 
-        <div style={{ marginBottom:20 }}>
-          <div style={{ fontSize:22, fontWeight:700, color:'var(--brand-secondary)' }}>Audit Log</div>
-          <div style={{ fontSize:13, color:'var(--text-muted)', marginTop:2 }}>
-            Every create, update, and delete action across the system · {total} total entries
+        <div className="mt-filterbar">
+          <div className="mt-search">
+            <MagnifierIcon />
+            <input value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by action, user, or model…" aria-label="Search audit log" />
           </div>
+          <span className="mt-filterbar-spacer" />
+          <span className="mt-count">{total.toLocaleString('en-US')} events</span>
         </div>
 
-        <div className="admin-card">
-          <div className="admin-toolbar">
-            <input
-              className="admin-search"
-              style={{ flex:1, minWidth:200 }}
-              placeholder="Search by action, user, or model…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-            <span style={{ fontSize:13, color:'var(--text-muted)', flexShrink:0 }}>
-              Page {page} of {totalPages || 1}
-            </span>
-          </div>
-
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr><th>Time</th><th>User</th><th>Action</th><th>Collection</th><th>IP</th></tr>
-              </thead>
-              <tbody>
-                {loading && [...Array(10)].map((_,i) => (
-                  <tr key={i}>
-                    <td><Sk w={120} h={13} /></td>
-                    <td><Sk w={130} h={13} /></td>
-                    <td><Sk w={140} h={22} r={20} /></td>
-                    <td><Sk w={90}  h={13} /></td>
-                    <td><Sk w={80}  h={13} /></td>
-                  </tr>
-                ))}
-                {!loading && filtered.length === 0 && (
+        <RevealOnScroll>
+          <div className="mt-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="mt-table-wrap">
+              <table className="mt-table">
+                <thead>
                   <tr>
-                    <td colSpan={5} style={{ textAlign:'center', padding:40, color:'var(--text-muted)' }}>
-                      <div style={{ fontSize:32, marginBottom:8 }}>📋</div>
-                      <div style={{ fontSize:15, fontWeight:600, color:'var(--text-2)' }}>No audit entries found</div>
-                    </td>
+                    <th className="mt-th">Time</th><th className="mt-th">User</th>
+                    <th className="mt-th">Action</th><th className="mt-th">Target</th>
+                    <th className="mt-th">IP</th><th className="mt-th">Result</th>
                   </tr>
-                )}
-                {!loading && filtered.map(log => {
-                  const actionStyle = ACTION_COLORS[log.action] || { bg:'#F3F4F6', color:'#6B7280' };
-                  const roleStyle   = ROLE_BADGE[log.userId?.role] || { bg:'#F3F4F6', color:'#6B7280' };
-                  return (
-                    <tr key={log._id}>
-                      <td style={{ fontSize:12, color:'var(--text-muted)', whiteSpace:'nowrap' }}>
-                        {fmt(log.createdAt)}
-                      </td>
-                      <td>
-                        <div>
-                          <strong style={{ fontSize:13 }}>{log.userId?.name || 'Unknown'}</strong>
-                          <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:3 }}>
-                            <span style={{ fontSize:10, fontWeight:600, padding:'1px 6px', borderRadius:20, background:roleStyle.bg, color:roleStyle.color }}>
-                              {log.userId?.role || '—'}
-                            </span>
-                            <span style={{ fontSize:11, color:'var(--text-muted)' }}>{log.userId?.email || ''}</span>
-                          </div>
+                </thead>
+                <tbody>
+                  {loading && Array.from({ length: 8 }).map((_, i) => (
+                    <tr key={i}><td className="mt-td" colSpan={6}><div className="skeleton" style={{ height: 16, borderRadius: 6 }} /></td></tr>
+                  ))}
+                  {!loading && filtered.length === 0 && (
+                    <tr><td className="mt-td mt-td--muted" colSpan={6} style={{ textAlign: 'center', padding: 40 }}>
+                      No audit entries found.
+                    </td></tr>
+                  )}
+                  {!loading && filtered.map((l) => (
+                    <tr key={l._id}>
+                      <td className="mt-td mt-td--mono">{fmt(l.createdAt)}</td>
+                      <td className="mt-td">
+                        <div className="mt-td--name">{l.userId?.name || 'System'}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBlockStart: 3 }}>
+                          {l.userId?.role && <span className="mt-pill mt-pill--neutral">{roleLabel(l.userId.role)}</span>}
+                          {l.userId?.email && <span className="mt-td--muted" style={{ fontSize: 11 }}>{l.userId.email}</span>}
                         </div>
                       </td>
-                      <td>
-                        <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:actionStyle.bg, color:actionStyle.color, whiteSpace:'nowrap' }}>
-                          {log.action?.replace(/_/g, ' ')}
-                        </span>
+                      <td className="mt-td">{(l.action || '').replace(/_/g, ' ') || '—'}</td>
+                      <td className="mt-td mt-td--muted">
+                        {l.targetModel || '—'}{l.metadata?.name ? ` — ${l.metadata.name}` : ''}
                       </td>
-                      <td style={{ fontSize:13, color:'var(--text-2)' }}>{log.targetModel || '—'}</td>
-                      <td style={{ fontSize:12, color:'var(--text-muted)', fontFamily:'monospace' }}>{log.ip || '—'}</td>
+                      <td className="mt-td mt-td--mono">{l.ip || '—'}</td>
+                      <td className="mt-td"><span className="mt-pill mt-pill--active">Success</span></td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {totalPages > 1 && (
-            <div className="admin-pagination">
-              <span>Showing {(page-1)*LIMIT+1}–{Math.min(page*LIMIT, total)} of {total}</span>
-              <div className="pagination-btns">
-                <button className="pg-btn" disabled={page===1} onClick={() => setPage(1)}>«</button>
-                <button className="pg-btn" disabled={page===1} onClick={() => setPage(p => p-1)}>‹</button>
-                {Array.from({ length:Math.min(totalPages, 5) }, (_,i) => {
-                  const n = Math.max(1, Math.min(page-2, totalPages-4)) + i;
-                  return n <= totalPages ? (
-                    <button key={n} className={`pg-btn${n===page ? ' active-pg' : ''}`} onClick={() => setPage(n)}>{n}</button>
-                  ) : null;
-                })}
-                <button className="pg-btn" disabled={page===totalPages} onClick={() => setPage(p => p+1)}>›</button>
-                <button className="pg-btn" disabled={page===totalPages} onClick={() => setPage(totalPages)}>»</button>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          )}
-        </div>
+          </div>
+        </RevealOnScroll>
 
-        <Toast toasts={toasts} />
+        {!loading && total > LIMIT && (
+          <Pagination
+            page={page} pageSize={LIMIT} total={total}
+            onPrev={() => setPage((p) => Math.max(1, p - 1))}
+            onNext={() => setPage((p) => p + 1)}
+          />
+        )}
+
+        <MtToastHost toasts={toasts} />
       </main>
     </>
   );

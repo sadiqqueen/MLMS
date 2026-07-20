@@ -4,11 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import useBasePath from '../hooks/useBasePath';
 import Navbar from '../components/Navbar';
-import Toast from '../components/Toast';
+import { useMtToast, MtToastHost } from '../components/MtToast';
+import MtModal from '../components/MtModal';
 import ViewToggle from '../components/ViewToggle';
 import api from '../api/axios';
 import Sk from '../components/Skeleton';
-import { IconPrinter, IconBan, IconTrash } from '../components/icons';
+import { IconPrinter, IconBan, IconTrash, IconAward } from '../components/icons';
+import './dio.css';
 
 const CERT_TYPES = ['Completion', 'Training', 'Achievement', 'Attendance', 'Other'];
 
@@ -82,7 +84,7 @@ export default function DioCertificates() {
   const [submitting, setSubmitting] = useState(false);
   const [revoking, setRevoking] = useState(null);
   const [deleting, setDeleting] = useState(null);
-  const [toasts, setToasts] = useState([]);
+  const { toasts, showToast } = useMtToast();
   const dropdownRef = useRef(null);
 
   // ── List filtration (separate from the issue-form trainee search above) ──
@@ -90,12 +92,6 @@ export default function DioCertificates() {
   const [specialtyFilter, setSpecialtyFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // all | valid | revoked
-
-  function showToast(message, type = 'success') {
-    const id = Date.now();
-    setToasts(prev => safeArr(prev).concat({ id, message, type }));
-    setTimeout(() => setToasts(prev => safeArr(prev).filter(t => t.id !== id)), 3500);
-  }
 
   useEffect(() => {
     let alive = true;
@@ -108,7 +104,7 @@ export default function DioCertificates() {
         console.error('Failed to load certificates:', err);
         if (alive) {
           setCertificates([]);
-          showToast('Failed to load certificates', 'error');
+          showToast('Failed to load certificates', 'dng');
         }
       } finally {
         if (alive) setLoading(false);
@@ -119,6 +115,7 @@ export default function DioCertificates() {
     return () => {
       alive = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -186,7 +183,7 @@ export default function DioCertificates() {
 
   async function handleSubmit() {
     if (!form.student) {
-      showToast('Please select a trainee first', 'error');
+      showToast('Please select a trainee first', 'dng');
       return;
     }
 
@@ -202,9 +199,9 @@ export default function DioCertificates() {
       setCertificates(prev => [created, ...safeArr(prev)]);
       setShowForm(false);
       resetIssueForm();
-      showToast('Certificate issued successfully');
+      showToast('Certificate issued successfully', 'ok');
     } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to issue certificate', 'error');
+      showToast(err.response?.data?.message || 'Failed to issue certificate', 'dng');
     } finally {
       setSubmitting(false);
     }
@@ -221,10 +218,10 @@ export default function DioCertificates() {
       setCertificates(prev => safeArr(prev).map(c => (
         c?._id === cert._id ? { ...c, revokedAt: new Date().toISOString() } : c
       )));
-      showToast('Certificate revoked');
+      showToast('Certificate revoked', 'ok');
     } catch (err) {
       console.error('Revoke error:', err);
-      showToast('Failed to revoke certificate', 'error');
+      showToast('Failed to revoke certificate', 'dng');
     } finally {
       setRevoking(null);
     }
@@ -238,10 +235,10 @@ export default function DioCertificates() {
     try {
       await api.delete(`/api/dio/certificates/${cert._id}`);
       setCertificates(prev => safeArr(prev).filter(c => c?._id !== cert._id));
-      showToast('Certificate deleted');
+      showToast('Certificate deleted', 'ok');
     } catch (err) {
       console.error('Delete error:', err);
-      showToast('Failed to delete certificate', 'error');
+      showToast('Failed to delete certificate', 'dng');
     } finally {
       setDeleting(null);
     }
@@ -275,29 +272,47 @@ export default function DioCertificates() {
     return matchSearch && matchSpecialty && matchType && matchStatus;
   });
 
+  function rowActions(c) {
+    const trainee = traineeFromCertificate(c);
+    const isRevoked = !!c?.revokedAt;
+    return (
+      <div className="mt-row-actions">
+        {!isRevoked && (
+          <button type="button" className="mt-icon-action" title="Print certificate"
+            aria-label={`Print certificate for ${trainee?.name || 'trainee'}`}
+            onClick={() => navigate(bp + `/dio/certificates/${c?._id}/print`)} disabled={!c?._id}>
+            <IconPrinter size={15} />
+          </button>
+        )}
+        {!isRevoked && canManageCert(c) && (
+          <button type="button" className="mt-icon-action mt-icon-action--danger" title="Revoke"
+            aria-label={`Revoke certificate for ${trainee?.name || 'trainee'}`}
+            onClick={() => handleRevoke(c)} disabled={revoking === c?._id}>
+            <IconBan size={15} />
+          </button>
+        )}
+        {canManageCert(c) && (
+          <button type="button" className="mt-icon-action mt-icon-action--danger" title="Delete"
+            aria-label={`Delete certificate for ${trainee?.name || 'trainee'}`}
+            onClick={() => handleDelete(c)} disabled={deleting === c?._id}>
+            <IconTrash size={15} />
+          </button>
+        )}
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <>
         <Navbar />
-        <main className="admin-main">
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-            <Sk w={200} h={28} r={6} />
-            <Sk w={140} h={36} r={8} />
+        <main className="mt-content">
+          <div className="dio-page-head" style={{ justifyContent: 'space-between' }}>
+            <Sk w={200} h={26} r={6} />
+            <Sk w={150} h={38} r={9} />
           </div>
-          <div className="admin-card">
-            <div className="admin-table-wrap">
-              <table className="admin-table">
-                <tbody>
-                  {safeArr([0, 1, 2, 3, 4, 5]).map(i => (
-                    <tr key={i}>
-                      {safeArr([120, 140, 110, 100, 90, 70, 80]).map((w, j) => (
-                        <td key={j}><Sk w={w} h={13} /></td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="mt-card">
+            {[0, 1, 2, 3, 4, 5].map(i => <Sk key={i} h={40} r={8} style={{ marginBottom: 8 }} />)}
           </div>
         </main>
       </>
@@ -307,325 +322,244 @@ export default function DioCertificates() {
   return (
     <>
       <Navbar />
-      <main className="admin-main">
-        {/* Page header — title + counts on the left, Issue button on the right */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+      <main className="mt-content">
+        {/* Page header — title + counts on the start, Issue button on the end */}
+        <div className="dio-page-head" style={{ justifyContent: 'space-between' }}>
           <div>
-            <div className="admin-page-title">Certificates</div>
-            <div className="admin-page-sub">{validCount} valid · {revokedCount} revoked · {totalCount} total</div>
+            <div className="dio-page-title">Certificates</div>
+            <div className="mt-card-sub">{validCount} valid · {revokedCount} revoked · {totalCount} total</div>
           </div>
           {canIssue && (
-            <button className="btn-purple" onClick={openIssueForm}>
-              + Issue Certificate
-            </button>
+            <button className="mt-btn" onClick={openIssueForm}>+ Issue Certificate</button>
           )}
         </div>
 
         {totalCount === 0 ? (
-          <div style={{ textAlign: 'center', padding: 56, color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6 }}>No certificates issued yet</div>
-            {canIssue && <div style={{ fontSize: 13 }}>Click "+ Issue Certificate" to issue the first certificate.</div>}
+          <div className="mt-empty">
+            <div className="mt-empty-icon"><IconAward size={22} /></div>
+            <div className="mt-empty-title">No certificates issued yet</div>
+            {canIssue && <div className="mt-empty-sub">Click "+ Issue Certificate" to issue the first certificate.</div>}
           </div>
         ) : (
-          <div className="admin-card">
+          <div className="mt-card">
             {/* Search + filters toolbar */}
-            <div className="admin-toolbar" style={{ flexWrap: 'wrap', gap: 8 }}>
-              <input
-                className="admin-search"
-                style={{ flex: 1, minWidth: 200 }}
-                placeholder="Search by trainee name or student ID…"
-                value={filterText}
-                onChange={e => setFilterText(e.target.value)}
-              />
-              <select className="admin-search" style={{ width: 'auto', height: 36 }}
-                value={specialtyFilter} onChange={e => setSpecialtyFilter(e.target.value)}>
+            <div className="mt-filterbar">
+              <div className="mt-search">
+                <input
+                  placeholder="Search by trainee name or student ID…"
+                  value={filterText}
+                  onChange={e => setFilterText(e.target.value)}
+                />
+              </div>
+              <select className="mt-filter" value={specialtyFilter} onChange={e => setSpecialtyFilter(e.target.value)}>
                 <option value="">All Specialties</option>
                 {specialtyOptions.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
-              <select className="admin-search" style={{ width: 'auto', height: 36 }}
-                value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+              <select className="mt-filter" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
                 <option value="">All Types</option>
                 {typeOptions.map(tp => <option key={tp} value={tp}>{tp}</option>)}
               </select>
-              <div className="filter-tabs">
-                {[['all', `All (${totalCount})`], ['valid', `Valid (${validCount})`], ['revoked', `Revoked (${revokedCount})`]].map(([val, label]) => (
-                  <button key={val} type="button"
-                    className={`filter-tab${statusFilter === val ? ' active' : ''}`}
-                    onClick={() => setStatusFilter(val)}>
-                    {label}
-                  </button>
-                ))}
-              </div>
+              <select className="mt-filter" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                <option value="all">All ({totalCount})</option>
+                <option value="valid">Valid ({validCount})</option>
+                <option value="revoked">Revoked ({revokedCount})</option>
+              </select>
+              <div className="mt-filterbar-spacer" />
               <ViewToggle value={view} onChange={setView} />
-              <span style={{ fontSize: 13, color: 'var(--text-muted)', flexShrink: 0 }}>
-                {filtered.length} result{filtered.length !== 1 ? 's' : ''}
-              </span>
+              <span className="mt-count">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
             </div>
 
             {/* Keyed wrapper → subtle crossfade when filters/view change */}
             <div key={`${filterText}|${specialtyFilter}|${typeFilter}|${statusFilter}|${view}`} style={{ animation: 'fadeIn .18s ease-out' }}>
-            {view === 'list' && (
-            <div className="admin-table-wrap">
-              <table className="admin-table admin-table--stack">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Trainee</th>
-                    <th>Student ID</th>
-                    <th>Specialty</th>
-                    <th>Type</th>
-                    <th>Issue Date</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
+              {view === 'list' && (
+                <div className="mt-table-wrap">
+                  <table className="mt-table mt-table--stack">
+                    <thead>
+                      <tr>
+                        <th className="mt-th">#</th>
+                        <th className="mt-th">Trainee</th>
+                        <th className="mt-th">Student ID</th>
+                        <th className="mt-th">Specialty</th>
+                        <th className="mt-th">Type</th>
+                        <th className="mt-th">Issue Date</th>
+                        <th className="mt-th">Status</th>
+                        <th className="mt-th">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.length === 0 && (
+                        <tr>
+                          <td className="mt-td mt-td--muted" colSpan={8} style={{ textAlign: 'center', padding: 40 }}>
+                            No certificates match your filters.
+                          </td>
+                        </tr>
+                      )}
+                      {filtered.map((c, i) => {
+                        const trainee = traineeFromCertificate(c);
+                        const isRevoked = !!c?.revokedAt;
+                        return (
+                          <tr key={c?._id || i} style={{ opacity: isRevoked ? 0.65 : 1 }}>
+                            <td className="mt-td mt-td--muted">{i + 1}</td>
+                            <td className="mt-td mt-td--name" data-label="Trainee">
+                              <div>{trainee?.name || '-'}</div>
+                              {trainee?.email && <div className="mt-acct-id">{trainee.email}</div>}
+                            </td>
+                            <td className="mt-td mt-td--mono" data-label="Student ID">{trainee?.studentId || '-'}</td>
+                            <td className="mt-td mt-td--muted" data-label="Specialty">{textValue(c?.specialty)}</td>
+                            <td className="mt-td" data-label="Type">
+                              <span className="mt-pill mt-pill--role">{c?.type || 'Completion'}</span>
+                              <span className="mt-pill mt-pill--neutral" style={{ marginInlineStart: 6 }}>
+                                {certTrack(c) === 'basic' ? 'Basic' : 'Advanced'}
+                              </span>
+                            </td>
+                            <td className="mt-td mt-td--mono" data-label="Issue Date">{fmt(c?.issueDate || c?.issuedAt)}</td>
+                            <td className="mt-td" data-label="Status">
+                              <span className={`mt-pill ${isRevoked ? 'mt-pill--rejected' : 'mt-pill--active'}`}>
+                                {isRevoked ? `Revoked ${fmt(c?.revokedAt)}` : 'Valid'}
+                              </span>
+                            </td>
+                            <td className="mt-td mt-td--actions" data-label="Actions">{rowActions(c)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {view === 'card' && (
+                <div className="mt-acct-grid">
                   {filtered.length === 0 && (
-                    <tr>
-                      <td colSpan={8} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
-                        No certificates match your filters.
-                      </td>
-                    </tr>
+                    <div className="mt-empty" style={{ gridColumn: '1/-1' }}>
+                      <div className="mt-empty-sub">No certificates match your filters.</div>
+                    </div>
                   )}
                   {filtered.map((c, i) => {
                     const trainee = traineeFromCertificate(c);
                     const isRevoked = !!c?.revokedAt;
                     return (
-                      <tr key={c?._id || i} style={{ opacity: isRevoked ? 0.65 : 1 }}>
-                        <td style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
-                        <td data-label="Trainee">
-                          <div>
-                            <div style={{ fontWeight: 600 }}>{trainee?.name || '-'}</div>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{trainee?.email || ''}</div>
-                          </div>
-                        </td>
-                        <td data-label="Student ID" style={{ fontSize: 13, color: 'var(--text-2)' }}>{trainee?.studentId || '-'}</td>
-                        <td data-label="Specialty" style={{ fontSize: 13, color: 'var(--text-2)' }}>{textValue(c?.specialty)}</td>
-                        <td data-label="Type">
-                          <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)' }}>
-                            {c?.type || 'Completion'}
-                          </span>
-                          <span style={{ marginInlineStart: 6, fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20, background: 'var(--surface-2)', color: 'var(--text-2)' }}>
-                            {certTrack(c) === 'basic' ? 'Basic' : 'Advanced'}
-                          </span>
-                        </td>
-                        <td data-label="Issue Date" style={{ fontSize: 13, color: 'var(--text-2)' }}>{fmt(c?.issueDate || c?.issuedAt)}</td>
-                        <td data-label="Status">
-                          <span style={{
-                            fontSize: 11,
-                            fontWeight: 600,
-                            padding: '3px 9px',
-                            borderRadius: 20,
-                            background: isRevoked ? 'var(--danger-bg)' : 'var(--success-bg)',
-                            color: isRevoked ? 'var(--danger-fg)' : 'var(--success-fg)',
-                          }}>
+                      <div className="mt-card" key={c?._id || i} style={{ opacity: isRevoked ? 0.65 : 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{trainee?.name || '-'}</div>
+                          <div className="mt-acct-id">{trainee?.studentId || 'No student ID'}</div>
+                        </div>
+                        <div className="dio-chip-row">
+                          <span className="mt-pill mt-pill--role">{c?.type || 'Completion'}</span>
+                          <span className="mt-pill mt-pill--neutral">{certTrack(c) === 'basic' ? 'Basic' : 'Advanced'}</span>
+                          <span className={`mt-pill ${isRevoked ? 'mt-pill--rejected' : 'mt-pill--active'}`}>
                             {isRevoked ? `Revoked ${fmt(c?.revokedAt)}` : 'Valid'}
                           </span>
-                        </td>
-                        <td data-label="Actions">
-                          <div className="action-btns">
-                            {!isRevoked && (
-                              <button type="button" className="btn-action print"
-                                title="Print Certificate"
-                                aria-label={`Print certificate for ${trainee?.name || 'trainee'}`}
-                                onClick={() => navigate(bp + `/dio/certificates/${c?._id}/print`)}
-                                disabled={!c?._id}>
-                                <IconPrinter />
-                              </button>
-                            )}
-                            {!isRevoked && canManageCert(c) && (
-                              <button type="button" className="btn-action revoke"
-                                title="Revoke"
-                                aria-label={`Revoke certificate for ${trainee?.name || 'trainee'}`}
-                                onClick={() => handleRevoke(c)}
-                                disabled={revoking === c?._id}>
-                                <IconBan />
-                              </button>
-                            )}
-                            {canManageCert(c) && (
-                              <button type="button" className="btn-action delete"
-                                title="Delete"
-                                aria-label={`Delete certificate for ${trainee?.name || 'trainee'}`}
-                                onClick={() => handleDelete(c)}
-                                disabled={deleting === c?._id}>
-                                <IconTrash />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
+                        </div>
+                        <div className="mt-card-sub">{textValue(c?.specialty)} · {fmt(c?.issueDate || c?.issuedAt)}</div>
+                        <div className="mt-row-actions" style={{ justifyContent: 'flex-start' }}>{rowActions(c)}</div>
+                      </div>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
-            )}
-            {view === 'card' && (
-              <div className="management-card-grid">
-                {filtered.length === 0 && (
-                  <div className="admin-empty" style={{ gridColumn: '1/-1' }}>No certificates match your filters.</div>
-                )}
-                {filtered.map((c, i) => {
-                  const trainee = traineeFromCertificate(c);
-                  const isRevoked = !!c?.revokedAt;
-                  return (
-                    <div className="management-card" key={c?._id || i} style={{ opacity: isRevoked ? 0.65 : 1 }}>
-                      <div>
-                        <div className="management-card-title">{trainee?.name || '-'}</div>
-                        <div className="management-card-sub">{trainee?.studentId || 'No student ID'}</div>
-                      </div>
-                      <div className="management-card-meta">
-                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--chip-spec-bg)', color: 'var(--chip-spec-fg)' }}>
-                          {c?.type || 'Completion'}
-                        </span>
-                        <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 20, background: 'var(--surface-2)', color: 'var(--text-2)' }}>
-                          {certTrack(c) === 'basic' ? 'Basic' : 'Advanced'}
-                        </span>
-                        <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20, background: isRevoked ? 'var(--danger-bg)' : 'var(--success-bg)', color: isRevoked ? 'var(--danger-fg)' : 'var(--success-fg)' }}>
-                          {isRevoked ? `Revoked ${fmt(c?.revokedAt)}` : 'Valid'}
-                        </span>
-                      </div>
-                      <div className="management-card-sub">{textValue(c?.specialty)} - {fmt(c?.issueDate || c?.issuedAt)}</div>
-                      <div className="management-card-actions">
-                        {!isRevoked && (
-                          <button type="button" className="btn-action print" title="Print Certificate" aria-label={`Print certificate for ${trainee?.name || 'trainee'}`} onClick={() => navigate(bp + `/dio/certificates/${c?._id}/print`)} disabled={!c?._id}>
-                            <IconPrinter />
-                          </button>
-                        )}
-                        {!isRevoked && canManageCert(c) && (
-                          <button type="button" className="btn-action revoke" title="Revoke" aria-label={`Revoke certificate for ${trainee?.name || 'trainee'}`} onClick={() => handleRevoke(c)} disabled={revoking === c?._id}>
-                            <IconBan />
-                          </button>
-                        )}
-                        {canManageCert(c) && (
-                          <button type="button" className="btn-action delete" title="Delete" aria-label={`Delete certificate for ${trainee?.name || 'trainee'}`} onClick={() => handleDelete(c)} disabled={deleting === c?._id}>
-                            <IconTrash />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {canIssue && showForm && (
-          <div
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-            onClick={e => e.target === e.currentTarget && closeIssueForm()}
+        {canIssue && (
+          <MtModal
+            open={showForm}
+            title="Issue Certificate"
+            onClose={closeIssueForm}
+            footer={(
+              <>
+                <button type="button" className="mt-btn--cancel" onClick={closeIssueForm}>Cancel</button>
+                <button type="button" className="mt-btn" onClick={handleSubmit} disabled={!form.student || submitting}>
+                  {submitting ? 'Issuing…' : 'Issue Certificate'}
+                </button>
+              </>
+            )}
           >
-            <div style={{ background: 'var(--surface)', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,.2)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 10 }}>
-                <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--brand-secondary)' }}>Issue Certificate</div>
-                <button type="button" onClick={closeIssueForm} style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--surface-2)', border: 'none', fontSize: 18, color: 'var(--text-muted)', cursor: 'pointer' }}>x</button>
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div ref={dropdownRef} className="mt-field" style={{ position: 'relative' }}>
+                <label className="mt-label">Search Trainee <span className="mt-label-req">*</span></label>
+                <input
+                  className="mt-input"
+                  placeholder="Type trainee name or student ID…"
+                  value={searchQuery}
+                  onChange={e => searchTrainees(e.target.value)}
+                  autoComplete="off"
+                />
 
-              <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
-                <div ref={dropdownRef} style={{ position: 'relative' }}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>
-                    Search Trainee *
-                  </label>
-                  <input
-                    className="admin-search"
-                    style={{ width: '100%', boxSizing: 'border-box', height: 42 }}
-                    placeholder="Type trainee name or student ID..."
-                    value={searchQuery}
-                    onChange={e => searchTrainees(e.target.value)}
-                    autoComplete="off"
-                  />
-
-                  {searchLoading && (
-                    <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--text-muted)', boxShadow: '0 4px 12px rgba(0,0,0,.1)', zIndex: 500 }}>
-                      Searching...
-                    </div>
-                  )}
-
-                  {!searchLoading && safeArr(searchResults).length > 0 && (
-                    <ul style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 500, margin: 0, padding: 0, listStyle: 'none', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.12)', maxHeight: 220, overflowY: 'auto' }}>
-                      {safeArr(searchResults).map((t, i) => (
-                        <li key={t?._id || i}>
-                          <button
-                            type="button"
-                            onMouseDown={e => { e.preventDefault(); selectTrainee(t); }}
-                            style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--border-soft)', padding: '10px 14px', cursor: 'pointer', display: 'block', fontSize: 13 }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#f0f3ff'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
-                          >
-                            <strong>{t?.name || 'Unknown'}</strong>
-                            {t?.studentId && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text-muted)' }}>{t?.studentId}</span>}
-                            {t?.specialtyId?.name && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--brand-secondary)' }}>{t?.specialtyId?.name}</span>}
-                            {t?.hospitalId?.name && <span style={{ marginLeft: 8, fontSize: 11, color: '#059669' }}>{t?.hospitalId?.name}</span>}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-
-                  {!searchLoading && searchQuery.trim().length > 1 && safeArr(searchResults).length === 0 && (
-                    <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--text-muted)', boxShadow: '0 4px 12px rgba(0,0,0,.1)', zIndex: 500 }}>
-                      No trainees found for "{searchQuery}"
-                    </div>
-                  )}
-                </div>
-
-                {form.student && (
-                  <div style={{ background: 'var(--success-bg)', border: '1px solid #BBF7D0', borderRadius: 10, padding: '14px 16px' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--success-fg)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>Selected Trainee</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: 13 }}>
-                      {safeArr([
-                        ['Name', form.studentName || '-'],
-                        ['Student ID', form.studentId || '-'],
-                        ['Hospital', form.hospital || '-'],
-                        ['Supervisor', form.supervisor || '-'],
-                        ['Specialty', form.specialty || '-'],
-                      ]).map(([label, value]) => (
-                        <div key={label}>
-                          <div style={{ color: 'var(--text-muted)', fontSize: 11, marginBottom: 2 }}>{label}</div>
-                          <div style={{ fontWeight: 600, color: 'var(--brand-secondary)' }}>{value}</div>
-                        </div>
-                      ))}
-                    </div>
+                {searchLoading && (
+                  <div style={{ position: 'absolute', insetBlockStart: 'calc(100% + 4px)', insetInline: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--text-2)', boxShadow: '0 4px 12px rgba(0,0,0,.1)', zIndex: 500 }}>
+                    Searching…
                   </div>
                 )}
 
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>Certificate Type</label>
-                  <select className="admin-search" style={{ width: '100%', boxSizing: 'border-box', height: 42 }} value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))}>
-                    {safeArr(CERT_TYPES).map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
+                {!searchLoading && safeArr(searchResults).length > 0 && (
+                  <ul style={{ position: 'absolute', insetBlockStart: 'calc(100% + 4px)', insetInline: 0, zIndex: 500, margin: 0, padding: 0, listStyle: 'none', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.12)', maxHeight: 220, overflowY: 'auto' }}>
+                    {safeArr(searchResults).map((tr, i) => (
+                      <li key={tr?._id || i}>
+                        <button
+                          type="button"
+                          onMouseDown={e => { e.preventDefault(); selectTrainee(tr); }}
+                          style={{ width: '100%', textAlign: 'start', background: 'none', border: 'none', borderBlockEnd: '1px solid var(--border)', padding: '10px 14px', cursor: 'pointer', display: 'block', fontSize: 13, color: 'var(--text)' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--brand-primary-t)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+                        >
+                          <strong>{tr?.name || 'Unknown'}</strong>
+                          {tr?.studentId && <span style={{ marginInlineStart: 8, fontSize: 11, color: 'var(--text-2)' }}>{tr?.studentId}</span>}
+                          {tr?.specialtyId?.name && <span style={{ marginInlineStart: 8, fontSize: 11, color: 'var(--brand-primary)' }}>{tr?.specialtyId?.name}</span>}
+                          {tr?.hospitalId?.name && <span style={{ marginInlineStart: 8, fontSize: 11, color: 'var(--success)' }}>{tr?.hospitalId?.name}</span>}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>Issue Date</label>
-                  <input type="date" className="admin-search" style={{ width: '100%', boxSizing: 'border-box', height: 42 }} value={form.issueDate} onChange={e => setForm(prev => ({ ...prev, issueDate: e.target.value }))} />
-                </div>
+                {!searchLoading && searchQuery.trim().length > 1 && safeArr(searchResults).length === 0 && (
+                  <div style={{ position: 'absolute', insetBlockStart: 'calc(100% + 4px)', insetInline: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--text-2)', boxShadow: '0 4px 12px rgba(0,0,0,.1)', zIndex: 500 }}>
+                    No trainees found for "{searchQuery}"
+                  </div>
+                )}
+              </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>Notes (optional)</label>
-                  <textarea className="admin-search" style={{ width: '100%', boxSizing: 'border-box', minHeight: 80, padding: '10px 12px', resize: 'vertical', fontFamily: 'inherit', fontSize: 13 }} placeholder="Any additional notes..." value={form.notes} onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))} />
+              {form.student && (
+                <div className="mt-dropzone-strip" style={{ background: 'var(--success-bg)', display: 'block' }}>
+                  <div className="mt-acct-hist-title" style={{ color: 'var(--success)', marginBottom: 10 }}>Selected Trainee</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: 13 }}>
+                    {safeArr([
+                      ['Name', form.studentName || '-'],
+                      ['Student ID', form.studentId || '-'],
+                      ['Hospital', form.hospital || '-'],
+                      ['Supervisor', form.supervisor || '-'],
+                      ['Specialty', form.specialty || '-'],
+                    ]).map(([label, value]) => (
+                      <div key={label}>
+                        <div className="mt-acct-k">{label}</div>
+                        <div style={{ fontWeight: 600, color: 'var(--text)' }}>{value}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+              )}
 
-                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 4 }}>
-                  <button type="button" className="btn-red" onClick={closeIssueForm}>Cancel</button>
-                  <button
-                    type="button"
-                    className="btn-purple"
-                    onClick={handleSubmit}
-                    disabled={!form.student || submitting}
-                    style={{ opacity: (!form.student || submitting) ? 0.6 : 1 }}
-                  >
-                    {submitting ? 'Issuing...' : 'Issue Certificate'}
-                  </button>
-                </div>
+              <div className="mt-field">
+                <label className="mt-label">Certificate Type</label>
+                <select className="mt-select" value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))}>
+                  {safeArr(CERT_TYPES).map(tp => <option key={tp} value={tp}>{tp}</option>)}
+                </select>
+              </div>
+
+              <div className="mt-field">
+                <label className="mt-label">Issue Date</label>
+                <input type="date" className="mt-input" value={form.issueDate} onChange={e => setForm(prev => ({ ...prev, issueDate: e.target.value }))} />
+              </div>
+
+              <div className="mt-field">
+                <label className="mt-label">Notes (optional)</label>
+                <textarea className="mt-textarea" placeholder="Any additional notes…" value={form.notes} onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))} />
               </div>
             </div>
-          </div>
+          </MtModal>
         )}
 
-        <Toast toasts={toasts} />
+        <MtToastHost toasts={toasts} />
       </main>
     </>
   );

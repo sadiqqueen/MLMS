@@ -6,7 +6,9 @@ const { allowRoles } = require('../middleware/roles');
 
 const STAFF       = ['super_admin', 'dio', 'program_director', 'president'];
 const SENIOR      = ['super_admin', 'dio', 'program_director'];
-const CAN_SUBMIT  = ['super_admin', 'dio', 'supervisor'];
+// program_director joins authors in the redesign (RULINGS §D20); supervisor is
+// kept server-side for legacy trainer evaluations.
+const CAN_SUBMIT  = ['super_admin', 'dio', 'program_director', 'supervisor'];
 const MONTHLY_CAP = 5;
 
 // GET /api/evaluations — all evaluations (staff only)

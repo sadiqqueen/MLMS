@@ -1,0 +1,52 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   PD suite (W2-PD) page-local CSS — co-located, owned by ProgramDirector*.jsx.
+   Only `.pd-` classes here; every color is a token, every box property is
+   logical (RTL-safe). Motion is neutralized by the global reduced-motion block
+   in index.css and the shared mt- components. NEVER restyles mt-/existing
+   classes — this layer only adds PD-specific layout the shared kit doesn't ship
+   (the 2-up charts grid, the program facts header, and the log-book sign-off
+   card that has no shared component).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Dashboard: 2-up charts grid (stacks < 1100px, per dashboards.md §1) ───── */
+.pd-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-block-start: 16px; }
+@media (max-width: 1100px) { .pd-charts { grid-template-columns: 1fr; } }
+.pd-chart-empty { font-size: 12.5px; color: var(--text-2); padding: 28px 4px; text-align: center; }
+
+/* ── Program header + facts (dashboard header card & My Program) ────────────── */
+.pd-prog { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-block-end: 14px; }
+.pd-prog-name { font-size: 20px; font-weight: 700; color: var(--text); min-width: 0; }
+.pd-prog-kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px 18px; }
+.pd-kv-label { font-size: 11px; color: var(--text-2); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-block-end: 3px; }
+.pd-kv-value { font-size: 14px; color: var(--text); font-weight: 600; word-break: break-word; }
+
+/* ── Trainee / faculty detail modal (inside MtModal body) ──────────────────── */
+.pd-detail-title { font-size: 12px; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: .05em; margin: 18px 0 10px; }
+.pd-detail-title:first-child { margin-block-start: 0; }
+.pd-detail-kv { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; }
+.pd-detail-k { font-size: 10.5px; color: var(--text-2); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-block-end: 2px; }
+.pd-detail-v { font-size: 13.5px; color: var(--text); font-weight: 500; }
+.pd-detail-row { background: var(--surface-2); border-radius: 10px; padding: 12px 14px; margin-block-end: 8px; }
+.pd-detail-row-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-block-end: 6px; }
+.pd-detail-link { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--surface-2); border-radius: 10px; padding: 10px 14px; margin-block-end: 8px; }
+.pd-detail-open { font-size: 12px; font-weight: 700; color: var(--brand-primary); flex: none; text-decoration: none; }
+.pd-detail-open:hover { text-decoration: underline; }
+.pd-detail-empty { font-size: 13px; color: var(--text-2); padding: 4px 0; }
+
+/* ── LOG BOOK sign-off (lists_views.md §7) — no shared component ────────────── */
+.pd-signlist { max-width: 880px; display: flex; flex-direction: column; gap: 14px; }
+.pd-sign { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--card-shadow); overflow: hidden; }
+.pd-sign-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px 8px; flex-wrap: wrap; }
+.pd-sign-avatar { width: 36px; height: 36px; flex: none; border-radius: 50%; background: var(--brand-primary); color: #fff; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.pd-sign-idwrap { min-width: 0; }
+.pd-sign-title { font-size: 13.5px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pd-sign-sub { font-size: 11.5px; color: var(--text-2); }
+.pd-sign-head-spacer { flex: 1; }
+.pd-sign-date { font-size: 11.5px; color: var(--text-2); white-space: nowrap; }
+.pd-sign-note { padding: 0 18px 12px; font-size: 13px; color: var(--text-2); line-height: 1.6; white-space: pre-wrap; }
+.pd-sign-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 11px 18px; border-block-start: 1px solid var(--border); background: var(--surface-2); }
+.pd-sign-foot .mt-input { flex: 1; min-width: 170px; height: 36px; }
+.pd-sign-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 13px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+
+/* Small helper: a plain flex list column used by evaluations / empty states */
+.pd-liststack { display: flex; flex-direction: column; gap: 14px; }

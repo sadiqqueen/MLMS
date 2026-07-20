@@ -1,28 +1,27 @@
-// frontend/src/pages/AdminSystem.jsx
-//
-// Developer (super_admin) system overview. Country cards — each shows the number
-// of training centers and users; clicking a card expands it in-place to list the
-// country's centers and its user count. An "Unassigned" card collects centers /
-// users with no countryId.
+// W2-Developer — System overview (RULINGS §B14: "System = current AdminSystem
+// content, restyled"). mt- restyle of the country → centers/users overview; all
+// behaviour kept (expandable cards + "Unassigned" bucket + i18n).
 // Contract: GET /api/admin/system →
-//   { success, data: { countries: [{ _id, country, code, centers:[{_id,name,city}],
-//                       userCount }], unassigned: { centers:[…], userCount } } }
+//   { data: { countries:[{ _id, country, code, centers:[{_id,name,city}], userCount }],
+//             unassigned:{ centers:[…], userCount } } }
 import { useState, useEffect } from 'react';
 import { usePrefs } from '../context/PrefsContext';
 import Navbar from '../components/Navbar';
-import Sk from '../components/Skeleton';
+import RevealOnScroll from '../components/RevealOnScroll';
+import { IconBuilding } from '../components/icons';
 import api from '../api/axios';
+import './developer.css';
 
 const STRINGS = {
   ar: {
-    title: 'نظرة عامة على النظام',
-    centers: 'المراكز', users: 'المستخدمون', city: 'المدينة',
+    intro: 'كل دولة مع مراكزها التدريبية وعدد مستخدميها.',
+    centers: 'المراكز', users: 'المستخدمون',
     unassigned: 'غير مُسند', noCenters: 'لا توجد مراكز', noData: 'لا توجد بيانات.',
     loadFailed: 'فشل تحميل بيانات النظام',
   },
   en: {
-    title: 'System Overview',
-    centers: 'Centers', users: 'Users', city: 'City',
+    intro: 'Every country with its training centers and user count.',
+    centers: 'Centers', users: 'Users',
     unassigned: 'Unassigned', noCenters: 'No centers', noData: 'No data.',
     loadFailed: 'Failed to load system data',
   },
@@ -30,8 +29,7 @@ const STRINGS = {
 
 export default function AdminSystem() {
   const { lang } = usePrefs();
-  const t = k => STRINGS[lang]?.[k] ?? STRINGS.ar[k] ?? k;
-  const dir = lang === 'ar' ? 'rtl' : 'ltr';
+  const t = (k) => STRINGS[lang]?.[k] ?? STRINGS.en[k] ?? k;
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -40,86 +38,86 @@ export default function AdminSystem() {
 
   useEffect(() => {
     api.get('/api/admin/system', { cache: false })
-      .then(r => setData(r.data?.data || r.data || null))
+      .then((r) => setData(r.data?.data || r.data || null))
       .catch(() => setErr(t('loadFailed')))
       .finally(() => setLoading(false));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  if (loading) return (
-    <>
-      <Navbar />
-      <main className="admin-main" dir={dir}>
-        <div className="management-card-grid">
-          {[...Array(6)].map((_, i) => (
-            <div className="management-card" key={i}>
-              <Sk w="60%" h={18} style={{ marginBottom: 8 }} />
-              <Sk w="35%" h={12} style={{ marginBottom: 12 }} />
-              <Sk w="80%" h={22} r={20} />
-            </div>
-          ))}
-        </div>
-      </main>
-    </>
-  );
+  if (loading) {
+    return (
+      <>
+        <Navbar title="System" subtitle="Developer" />
+        <main className="mt-content">
+          <div className="dev-sys-grid">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="skeleton mt-skel" style={{ height: 96, animationDelay: `${(i * 0.08).toFixed(2)}s` }} />
+            ))}
+          </div>
+        </main>
+      </>
+    );
+  }
 
   const countries = data?.countries || [];
   const unassigned = data?.unassigned || { centers: [], userCount: 0 };
   const showUnassigned = (unassigned.centers?.length || 0) > 0 || (unassigned.userCount || 0) > 0;
 
-  // Render one expandable card (a country, or the unassigned bucket).
-  const renderCard = (id, name, code, centers, userCount) => {
+  const renderCard = (id, name, code, centers, userCount, i) => {
     const isOpen = expanded === id;
     return (
-      <div
-        className="management-card"
-        key={id}
+      <RevealOnScroll key={id} delay={i * 0.05}
+        className="mt-card dev-sys-card" role="button" tabIndex={0}
         onClick={() => setExpanded(isOpen ? null : id)}
-        style={{ cursor: 'pointer' }}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(isOpen ? null : id); } }}
       >
-        <div>
-          <div className="management-card-title">{name}</div>
-          {code ? <div className="management-card-sub">{code}</div> : null}
-        </div>
-        <div className="management-card-meta" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <span className="badge badge-blue">{centers.length} {t('centers')}</span>
-          <span className="badge badge-green">{userCount} {t('users')}</span>
+        <div className="dev-sys-head">
+          <div style={{ minWidth: 0 }}>
+            <div className="dev-sys-name">{name}</div>
+            {code ? <div className="dev-sys-code">{code}</div> : null}
+          </div>
+          <div className="dev-sys-badges">
+            <span className="mt-pill mt-pill--capacity">{centers.length} {t('centers')}</span>
+            <span className="mt-pill mt-pill--active">{userCount} {t('users')}</span>
+          </div>
         </div>
         {isOpen && (
-          <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }} onClick={e => e.stopPropagation()}>
+          <div className="dev-sys-expand" onClick={(e) => e.stopPropagation()}>
             {centers.length === 0 ? (
-              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('noCenters')}</div>
+              <div className="mt-td--muted" style={{ fontSize: 13 }}>{t('noCenters')}</div>
             ) : (
-              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {centers.map(c => (
-                  <li key={c._id} style={{ fontSize: 13, color: 'var(--text)', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <span style={{ fontWeight: 600 }}>{c.name}</span>
-                    <span style={{ color: 'var(--text-muted)' }}>{c.city || '—'}</span>
-                  </li>
-                ))}
-              </ul>
+              centers.map((c) => (
+                <div key={c._id} className="dev-sys-center-row">
+                  <b>{c.name}</b><span className="mt-td--muted">{c.city || '—'}</span>
+                </div>
+              ))
             )}
-            <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)' }}>
-              {t('users')}: <strong style={{ color: 'var(--text-2)' }}>{userCount}</strong>
+            <div className="mt-td--muted" style={{ fontSize: 12, marginBlockStart: 8 }}>
+              {t('users')}: <b style={{ color: 'var(--text)' }}>{userCount}</b>
             </div>
           </div>
         )}
-      </div>
+      </RevealOnScroll>
     );
   };
 
   return (
     <>
-      <Navbar />
-      <main className="admin-main" dir={dir}>
+      <Navbar title="System" subtitle="Developer" />
+      <main className="mt-content">
+        <div className="dev-intro">{t('intro')}</div>
         {err && (
-          <div style={{ marginBottom: 16, background: 'var(--danger-bg)', color: 'var(--danger-fg)', borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>{err}</div>
+          <div className="mt-banner" style={{ background: 'var(--danger-bg)', borderInlineStartColor: 'var(--danger)' }}>{err}</div>
         )}
         {countries.length === 0 && !showUnassigned ? (
-          <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>{t('noData')}</div>
+          <div className="mt-empty">
+            <div className="mt-empty-icon"><IconBuilding size={22} /></div>
+            <div className="mt-empty-title">{t('noData')}</div>
+          </div>
         ) : (
-          <div className="management-card-grid">
-            {countries.map(co => renderCard(co._id, co.country, co.code, co.centers || [], co.userCount || 0))}
-            {showUnassigned && renderCard('__unassigned__', t('unassigned'), '', unassigned.centers || [], unassigned.userCount || 0)}
+          <div className="dev-sys-grid">
+            {countries.map((co, i) => renderCard(co._id, co.country, co.code, co.centers || [], co.userCount || 0, i))}
+            {showUnassigned && renderCard('__unassigned__', t('unassigned'), '', unassigned.centers || [], unassigned.userCount || 0, countries.length)}
           </div>
         )}
       </main>

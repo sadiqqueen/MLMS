@@ -2,12 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useBasePath from '../hooks/useBasePath';
 import Navbar from '../components/Navbar';
-import Toast  from '../components/Toast';
+import { useMtToast, MtToastHost } from '../components/MtToast';
+import MtModal from '../components/MtModal';
 import SearchableSelect from '../components/SearchableSelect';
 import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 import { IconPencil, IconBan } from '../components/icons';
+import './dio.css';
 
 const API_BASE = '';
 
@@ -17,24 +19,26 @@ function textValue(value, fallback = '—') {
   if (typeof value === 'object') return value.name || value.title || fallback;
   return fallback;
 }
+function initialsOf(u) {
+  return u.initials || u.name?.trim()?.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?';
+}
+function AvatarCell({ u, size = 34 }) {
+  return u.photoUrl
+    ? <img src={`${API_BASE}${u.photoUrl}`} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }} />
+    : <span className="mt-acct-avatar" style={{ width: size, height: size, fontSize: size < 30 ? 11 : 13 }}>{initialsOf(u)}</span>;
+}
 
-function ConfirmModal({ title, message, confirmLabel, confirmClass, onConfirm, onCancel }) {
-  useEffect(() => {
-    const h = e => { if (e.key === 'Escape') onCancel(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [onCancel]);
+function ConfirmModal({ title, message, confirmLabel, onConfirm, onCancel }) {
   return (
-    <div className="confirm-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
-      <div className="confirm-box">
-        <h3>{title}</h3>
-        <p>{message}</p>
-        <div className="confirm-btns">
-          <button className="btn-outline" onClick={onCancel}>Cancel</button>
-          <button className={confirmClass || 'btn-red'} onClick={onConfirm}>{confirmLabel}</button>
-        </div>
-      </div>
-    </div>
+    <MtModal open title={title} onClose={onCancel}
+      footer={(
+        <>
+          <button className="mt-btn--cancel" onClick={onCancel}>Cancel</button>
+          <button className="mt-btn--danger-solid" onClick={onConfirm}>{confirmLabel}</button>
+        </>
+      )}>
+      <div style={{ fontSize: 13.5, color: 'var(--text)' }}>{message}</div>
+    </MtModal>
   );
 }
 
@@ -52,12 +56,6 @@ function SupervisorModal({ supervisor, hospitals, specialties, onClose, onSaved 
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [apiErr, setApiErr] = useState('');
-
-  useEffect(() => {
-    const h = e => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
-  }, [onClose]);
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: false })); setApiErr(''); }
 
@@ -102,77 +100,61 @@ function SupervisorModal({ supervisor, hospitals, specialties, onClose, onSaved 
   const specialtyOptions = specialties.map(s => ({ value: s._id, label: s.name }));
 
   return (
-    <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="admin-modal admin-modal-lg">
-        <div className="admin-modal-header">
-          <div className="admin-modal-title">{isEdit ? 'Edit Supervisor' : 'Add New Supervisor'}</div>
-          <button className="admin-modal-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="admin-modal-body">
-          <div className="admin-form-grid">
-            <div className="admin-field">
-              <label>Full Name *</label>
-              <input className={errors.name ? 'invalid' : ''} value={form.name}
-                onChange={e => set('name', e.target.value)} placeholder="Dr. Jane Smith" />
-            </div>
-            {!isEdit && (
-              <div className="admin-field">
-                <label>Email *</label>
-                <input className={errors.email ? 'invalid' : ''} type="email" value={form.email}
-                  onChange={e => set('email', e.target.value)} />
-              </div>
-            )}
-            {!isEdit && (
-              <div className="admin-field">
-                <label>Password * (min 6 chars)</label>
-                <input className={errors.password ? 'invalid' : ''} type="password" value={form.password}
-                  onChange={e => set('password', e.target.value)} placeholder="••••••••" autoComplete="new-password" />
-              </div>
-            )}
-            <div className="admin-field">
-              <label>Phone *</label>
-              <input className={errors.phone ? 'invalid' : ''} value={form.phone}
-                onChange={e => set('phone', e.target.value)} placeholder="+964 …" />
-            </div>
-            <div className="admin-field">
-              <label>Department</label>
-              <input value={form.department} onChange={e => set('department', e.target.value)} />
-            </div>
-            <div className="admin-field">
-              <label>Hospital *</label>
-              <SearchableSelect
-                value={form.hospitalId}
-                onChange={v => set('hospitalId', v)}
-                options={hospitalOptions}
-                placeholder="Search hospital..."
-                error={errors.hospitalId}
-              />
-            </div>
-            <div className="admin-field">
-              <label>Specialty *</label>
-              <SearchableSelect
-                value={form.specialtyId}
-                onChange={v => set('specialtyId', v)}
-                options={specialtyOptions}
-                placeholder="Search specialty..."
-                error={errors.specialtyId}
-              />
-            </div>
-          </div>
-          {apiErr && (
-            <div style={{ marginTop:14, background:'var(--danger-bg)', color:'var(--danger-fg)', borderRadius:8, padding:'10px 14px', fontSize:13 }}>
-              {apiErr}
-            </div>
-          )}
-        </div>
-        <div className="admin-modal-footer">
-          <button className="btn-outline" onClick={onClose}>Cancel</button>
-          <button className="btn-purple" onClick={handleSave} disabled={saving}>
+    <MtModal open title={isEdit ? 'Edit Supervisor' : 'Add New Supervisor'} onClose={onClose}
+      footer={(
+        <>
+          <button className="mt-btn--cancel" onClick={onClose}>Cancel</button>
+          <button className="mt-btn" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Supervisor'}
           </button>
+        </>
+      )}>
+      <div className="mt-field-grid">
+        <div className="mt-field">
+          <label className="mt-label">Full Name <span className="mt-label-req">*</span></label>
+          <input className="mt-input" style={{ borderColor: errors.name ? 'var(--danger)' : undefined }}
+            value={form.name} onChange={e => set('name', e.target.value)} placeholder="Dr. Jane Smith" />
+        </div>
+        {!isEdit && (
+          <div className="mt-field">
+            <label className="mt-label">Email <span className="mt-label-req">*</span></label>
+            <input className="mt-input" style={{ borderColor: errors.email ? 'var(--danger)' : undefined }}
+              type="email" value={form.email} onChange={e => set('email', e.target.value)} />
+          </div>
+        )}
+        {!isEdit && (
+          <div className="mt-field">
+            <label className="mt-label">Password <span className="mt-label-req">*</span> (min 6 chars)</label>
+            <input className="mt-input" style={{ borderColor: errors.password ? 'var(--danger)' : undefined }}
+              type="password" value={form.password} onChange={e => set('password', e.target.value)} placeholder="••••••••" autoComplete="new-password" />
+          </div>
+        )}
+        <div className="mt-field">
+          <label className="mt-label">Phone <span className="mt-label-req">*</span></label>
+          <input className="mt-input" style={{ borderColor: errors.phone ? 'var(--danger)' : undefined }}
+            value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+964 …" />
+        </div>
+        <div className="mt-field">
+          <label className="mt-label">Department</label>
+          <input className="mt-input" value={form.department} onChange={e => set('department', e.target.value)} />
+        </div>
+        <div className="mt-field">
+          <label className="mt-label">Hospital <span className="mt-label-req">*</span></label>
+          <SearchableSelect value={form.hospitalId} onChange={v => set('hospitalId', v)}
+            options={hospitalOptions} placeholder="Search hospital…" error={errors.hospitalId} />
+        </div>
+        <div className="mt-field">
+          <label className="mt-label">Specialty <span className="mt-label-req">*</span></label>
+          <SearchableSelect value={form.specialtyId} onChange={v => set('specialtyId', v)}
+            options={specialtyOptions} placeholder="Search specialty…" error={errors.specialtyId} />
         </div>
       </div>
-    </div>
+      {apiErr && (
+        <div className="mt-banner" style={{ background: 'var(--danger-bg)', borderInlineStartColor: 'var(--danger)', color: 'var(--danger)', marginBlock: '14px 0' }}>
+          {apiErr}
+        </div>
+      )}
+    </MtModal>
   );
 }
 
@@ -184,19 +166,13 @@ export default function DioSupervisors() {
   const [hospitals,     setHospitals    ] = useState([]);
   const [specialties,   setSpecialties  ] = useState([]);
   const [loading,       setLoading      ] = useState(true);
-  const [view,         setView        ] = useState('list');
+  const [view,          setView         ] = useState('list');
   const [search,        setSearch       ] = useState('');
   const [showInactive,  setShowInactive ] = useState(false);
   const [showModal,     setShowModal    ] = useState(false);
   const [editItem,      setEditItem     ] = useState(null);
   const [confirmDeact,  setConfirmDeact ] = useState(null);
-  const [toasts,        setToasts       ] = useState([]);
-
-  function showToast(message, type = 'success') {
-    const id = Date.now();
-    setToasts(p => [...p, { id, message, type }]);
-    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3200);
-  }
+  const { toasts, showToast } = useMtToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -212,8 +188,9 @@ export default function DioSupervisors() {
       setHospitals(hRes.data?.data || hRes.data || []);
       setSpecialties(spRes.data?.data || spRes.data || []);
       setTraineesBySup(tRes?.data?.data || {});
-    } catch { showToast('Failed to load supervisors', 'error'); }
+    } catch { showToast('Failed to load supervisors', 'dng'); }
     finally { setLoading(false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showInactive]);
 
   useEffect(() => { load(); }, [load]);
@@ -231,10 +208,10 @@ export default function DioSupervisors() {
   function handleSaved(saved, isEdit) {
     if (isEdit) {
       setSupervisors(prev => prev.map(s => s._id === saved._id ? { ...s, ...saved } : s));
-      showToast('Supervisor updated');
+      showToast('Supervisor updated', 'ok');
     } else {
       setSupervisors(prev => [saved, ...prev]);
-      showToast('Supervisor created');
+      showToast('Supervisor created', 'ok');
     }
   }
 
@@ -244,31 +221,18 @@ export default function DioSupervisors() {
       setSupervisors(prev => showInactive
         ? prev.map(s => s._id === confirmDeact._id ? { ...s, isActive: false } : s)
         : prev.filter(s => s._id !== confirmDeact._id));
-      showToast(`${confirmDeact.name} deactivated`);
-    } catch (err) { showToast(err.response?.data?.message || 'Deactivate failed', 'error'); }
+      showToast(`${confirmDeact.name} deactivated`, 'ok');
+    } catch (err) { showToast(err.response?.data?.message || 'Deactivate failed', 'dng'); }
     finally { setConfirmDeact(null); }
   }
 
   if (loading) return (
     <>
       <Navbar />
-      <main className="admin-main">
-        <div className="admin-card">
-          <div className="admin-toolbar"><Sk h={36} r={8} style={{ flex:1 }} /></div>
-          <div className="admin-table-wrap">
-            <table className="admin-table"><tbody>
-              {[...Array(7)].map((_,i) => (
-                <tr key={i}>
-                  <td><Sk w={20} h={13} /></td>
-                  <td><div style={{ display:'flex', alignItems:'center', gap:8 }}><Sk w={36} h={36} r="50%" /><Sk w={130} h={13} /></div></td>
-                  <td><Sk w={90} h={22} r={20} /></td>
-                  <td><Sk w={80} h={13} /></td>
-                  <td><Sk w={22} h={22} r={20} /></td>
-                  <td><div style={{ display:'flex', gap:6 }}><Sk w={48} h={28} r={6} /><Sk w={60} h={28} r={6} /></div></td>
-                </tr>
-              ))}
-            </tbody></table>
-          </div>
+      <main className="mt-content">
+        <div className="mt-card">
+          <div className="mt-filterbar"><Sk h={38} r={8} style={{ flex:1 }} /></div>
+          {[...Array(7)].map((_,i) => <Sk key={i} h={44} r={8} style={{ marginBottom:8 }} />)}
         </div>
       </main>
     </>
@@ -277,81 +241,62 @@ export default function DioSupervisors() {
   return (
     <>
       <Navbar />
-      <main className="admin-main">
-        <div className="admin-card">
-          <div className="admin-toolbar">
-            <input className="admin-search" style={{ flex:1, minWidth:180 }}
-              placeholder="Search by name, email, specialty, department…"
-              value={search} onChange={e => setSearch(e.target.value)} />
-            <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'var(--text-2)', cursor:'pointer' }}>
-              <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
-              Show inactive
-            </label>
+      <main className="mt-content">
+        <div className="mt-card">
+          <div className="mt-filterbar">
+            <div className="mt-search">
+              <input placeholder="Search by name, email, specialty, department…"
+                value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            <label className="mt-check-label"><input className="mt-check" type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} /> Show inactive</label>
+            <div className="mt-filterbar-spacer" />
             <ViewToggle value={view} onChange={setView} />
-            <span style={{ fontSize:13, color:'var(--text-muted)', flexShrink:0 }}>
-              {filtered.length} supervisor{filtered.length !== 1 ? 's' : ''}
-            </span>
-            <button className="btn-purple" onClick={() => { setEditItem(null); setShowModal(true); }}>+ Add Supervisor</button>
+            <span className="mt-count">{filtered.length} supervisor{filtered.length !== 1 ? 's' : ''}</span>
+            <button className="mt-btn mt-btn--small" onClick={() => { setEditItem(null); setShowModal(true); }}>+ Add Supervisor</button>
           </div>
-          {view === 'list' && <div className="admin-table-wrap">
-            <table className="admin-table">
+
+          {view === 'list' && <div className="mt-table-wrap">
+            <table className="mt-table mt-table--stack">
               <thead>
-                <tr><th>#</th><th>Supervisor</th><th>Specialty</th><th>Hospital</th><th>Status</th><th>Actions</th></tr>
+                <tr>
+                  <th className="mt-th">#</th><th className="mt-th">Supervisor</th><th className="mt-th">Specialty</th>
+                  <th className="mt-th">Hospital</th><th className="mt-th">Status</th><th className="mt-th">Actions</th>
+                </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={6} style={{ textAlign:'center', padding:40 }}>
-                      <div style={{ fontSize:32, marginBottom:8 }}>👨‍⚕️</div>
-                      <div style={{ fontSize:15, fontWeight:600, color:'var(--text-2)' }}>
-                        {supervisors.length === 0 ? 'No supervisors yet.' : 'No match.'}
-                      </div>
-                    </td>
-                  </tr>
+                  <tr><td className="mt-td mt-td--muted" colSpan={6} style={{ textAlign:'center', padding:32 }}>
+                    {supervisors.length === 0 ? 'No supervisors yet.' : 'No match.'}
+                  </td></tr>
                 )}
                 {filtered.map((s, i) => {
                   const active = s.isActive !== false;
                   return (
                     <tr key={s._id} style={{ opacity: active ? 1 : 0.65 }}>
-                      <td style={{ color:'var(--text-muted)' }}>{i+1}</td>
-                      <td>
-                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                          {s.photoUrl
-                            ? <img src={`${API_BASE}${s.photoUrl}`} alt="" className="cell-photo" />
-                            : <div className="cell-initials">{s.initials || s.name?.[0] || '?'}</div>
-                          }
+                      <td className="mt-td mt-td--muted">{i+1}</td>
+                      <td className="mt-td" data-label="Supervisor">
+                        <div style={{ display:'flex', alignItems:'center', gap:9 }}>
+                          <AvatarCell u={s} />
                           <div>
-                            <strong>{s.name}</strong>
-                            <div style={{ fontSize:11, color:'var(--text-muted)' }}>{s.email}</div>
+                            <div style={{ fontWeight:600, color:'var(--text)' }}>{s.name}</div>
+                            {s.email && <div className="mt-acct-id">{s.email}</div>}
                           </div>
                         </div>
                       </td>
-                      <td>
-                        <span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'var(--chip-spec-bg)', color:'var(--chip-spec-fg)' }}>
-                          {textValue(s.specialtyId || s.specialty)}
-                        </span>
+                      <td className="mt-td" data-label="Specialty">
+                        <span className="mt-pill mt-pill--role">{textValue(s.specialtyId || s.specialty)}</span>
                       </td>
-                      <td style={{ fontSize:13, color:'var(--text-2)' }}>{s.hospitalId?.name || s.hospital?.name || '—'}</td>
-                      <td>
-                        <span style={{ fontSize:11, fontWeight:600, padding:'3px 8px', borderRadius:20,
-                          background: active ? 'var(--success-bg)' : 'var(--danger-bg)',
-                          color:      active ? 'var(--success-fg)' : 'var(--danger-fg)' }}>
-                          {active ? 'Active' : 'Inactive'}
-                        </span>
+                      <td className="mt-td mt-td--muted" data-label="Hospital">{s.hospitalId?.name || s.hospital?.name || '—'}</td>
+                      <td className="mt-td" data-label="Status">
+                        <span className={`mt-pill ${active ? 'mt-pill--active' : 'mt-pill--rejected'}`}>{active ? 'Active' : 'Inactive'}</span>
                       </td>
-                      <td>
-                        <div className="action-btns">
-                          <button className="btn-action edit"
-                            title="Edit" aria-label={`Edit ${s.name}`}
-                            onClick={() => { setEditItem(s); setShowModal(true); }}>
-                            <IconPencil />
-                          </button>
+                      <td className="mt-td mt-td--actions" data-label="Actions">
+                        <div className="mt-row-actions">
+                          <button className="mt-icon-action" title="Edit" aria-label={`Edit ${s.name}`}
+                            onClick={() => { setEditItem(s); setShowModal(true); }}><IconPencil size={15} /></button>
                           {active && (
-                            <button className="btn-action delete"
-                              title="Deactivate" aria-label={`Deactivate ${s.name}`}
-                              onClick={() => setConfirmDeact(s)}>
-                              <IconBan />
-                            </button>
+                            <button className="mt-icon-action mt-icon-action--danger" title="Deactivate" aria-label={`Deactivate ${s.name}`}
+                              onClick={() => setConfirmDeact(s)}><IconBan size={15} /></button>
                           )}
                         </div>
                       </td>
@@ -361,54 +306,56 @@ export default function DioSupervisors() {
               </tbody>
             </table>
           </div>}
+
           {view === 'card' && (
-            <div className="management-card-grid">
-              {filtered.length === 0 && <div className="admin-empty" style={{ gridColumn:'1/-1' }}>{supervisors.length === 0 ? 'No supervisors yet.' : 'No match.'}</div>}
+            <div className="mt-acct-grid">
+              {filtered.length === 0 && <div className="mt-empty" style={{ gridColumn:'1/-1' }}><div className="mt-empty-sub">{supervisors.length === 0 ? 'No supervisors yet.' : 'No match.'}</div></div>}
               {filtered.map(s => {
                 const active = s.isActive !== false;
-                const specialty = textValue(s.specialtyId || s.specialty, '-');
-                const hospital = s.hospitalId?.name || s.hospital?.name || '-';
+                const specialty = textValue(s.specialtyId || s.specialty, '—');
+                const hospital = s.hospitalId?.name || s.hospital?.name || '—';
+                const list = traineesBySup[s._id] || [];
                 return (
-                  <div className="management-card" key={s._id} style={{ opacity: active ? 1 : 0.65 }}>
+                  <div className="mt-card" key={s._id} style={{ opacity: active ? 1 : 0.65, display:'flex', flexDirection:'column', gap:10 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      {s.photoUrl ? <img src={`${API_BASE}${s.photoUrl}`} alt="" className="cell-photo" /> : <div className="cell-initials">{s.initials || s.name?.[0] || '?'}</div>}
-                      <div><div className="management-card-title">{s.name}</div><div className="management-card-sub">{s.email}</div></div>
+                      <AvatarCell u={s} />
+                      <div style={{ minWidth:0 }}>
+                        <div style={{ fontWeight:600, fontSize:14, color:'var(--text)' }}>{s.name}</div>
+                        <div className="mt-acct-id">{s.email}</div>
+                      </div>
                     </div>
-                    <div className="management-card-meta"><span style={{ fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:20, background:'var(--chip-spec-bg)', color:'var(--chip-spec-fg)' }}>{specialty}</span><span style={{ fontSize:11, fontWeight:600, padding:'3px 8px', borderRadius:20, background: active ? 'var(--success-bg)' : 'var(--danger-bg)', color: active ? 'var(--success-fg)' : 'var(--danger-fg)' }}>{active ? 'Active' : 'Inactive'}</span></div>
-                    <div className="management-card-sub">{hospital}</div>
-                    {(() => {
-                      const list = traineesBySup[s._id] || [];
-                      return (
-                        <div style={{ marginTop:2 }}>
-                          <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.04em', marginBottom:6 }}>
-                            Trainees ({list.length})
-                          </div>
-                          {list.length === 0 ? (
-                            <div style={{ fontSize:12, color:'var(--text-muted)' }}>No trainees assigned</div>
-                          ) : (
-                            <div style={{ display:'flex', flexDirection:'column', gap:4, maxHeight:180, overflowY:'auto' }}>
-                              {list.map(t => (
-                                <button type="button" key={t._id}
-                                  onClick={() => navigate(bp + `/dio/users/${t._id}`)}
-                                  aria-label={`View ${t.name}`}
-                                  style={{ display:'flex', alignItems:'center', gap:8, width:'100%', textAlign:'left',
-                                    background:'var(--surface-2)', border:'1px solid var(--border-soft)', borderRadius:8,
-                                    padding:'6px 8px', cursor:'pointer' }}>
-                                  {t.photoUrl
-                                    ? <img src={`${API_BASE}${t.photoUrl}`} alt="" className="cell-photo" style={{ width:26, height:26 }} />
-                                    : <div className="cell-initials" style={{ width:26, height:26, fontSize:11 }}>{t.initials || t.name?.[0] || '?'}</div>}
-                                  <div style={{ minWidth:0, flex:1 }}>
-                                    <div style={{ fontSize:12, fontWeight:600, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.name}</div>
-                                    <div style={{ fontSize:10, color:'var(--text-muted)' }}>{t.studentId || t.specialty || ''}</div>
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          )}
+                    <div className="dio-chip-row">
+                      <span className="mt-pill mt-pill--role">{specialty}</span>
+                      <span className={`mt-pill ${active ? 'mt-pill--active' : 'mt-pill--rejected'}`}>{active ? 'Active' : 'Inactive'}</span>
+                    </div>
+                    <div className="mt-card-sub">{hospital}</div>
+                    <div>
+                      <div className="mt-acct-k" style={{ marginBlockEnd: 6 }}>Trainees ({list.length})</div>
+                      {list.length === 0 ? (
+                        <div className="mt-card-sub">No trainees assigned</div>
+                      ) : (
+                        <div style={{ display:'flex', flexDirection:'column', gap:4, maxHeight:180, overflowY:'auto' }}>
+                          {list.map(t => (
+                            <button type="button" key={t._id}
+                              onClick={() => navigate(bp + `/dio/users/${t._id}`)}
+                              aria-label={`View ${t.name}`}
+                              style={{ display:'flex', alignItems:'center', gap:8, width:'100%', textAlign:'start',
+                                background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:8,
+                                padding:'6px 8px', cursor:'pointer' }}>
+                              <AvatarCell u={t} size={26} />
+                              <div style={{ minWidth:0, flex:1 }}>
+                                <div style={{ fontSize:12, fontWeight:600, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.name}</div>
+                                <div className="mt-acct-id">{t.studentId || t.specialty || ''}</div>
+                              </div>
+                            </button>
+                          ))}
                         </div>
-                      );
-                    })()}
-                    <div className="management-card-actions"><button className="btn-action edit" title="Edit" aria-label={`Edit ${s.name}`} onClick={() => { setEditItem(s); setShowModal(true); }}><IconPencil /></button>{active && <button className="btn-action delete" title="Deactivate" aria-label={`Deactivate ${s.name}`} onClick={() => setConfirmDeact(s)}><IconBan /></button>}</div>
+                      )}
+                    </div>
+                    <div className="mt-row-actions" style={{ justifyContent:'flex-start' }}>
+                      <button className="mt-icon-action" title="Edit" aria-label={`Edit ${s.name}`} onClick={() => { setEditItem(s); setShowModal(true); }}><IconPencil size={15} /></button>
+                      {active && <button className="mt-icon-action mt-icon-action--danger" title="Deactivate" aria-label={`Deactivate ${s.name}`} onClick={() => setConfirmDeact(s)}><IconBan size={15} /></button>}
+                    </div>
                   </div>
                 );
               })}
@@ -434,7 +381,7 @@ export default function DioSupervisors() {
             onCancel={() => setConfirmDeact(null)}
           />
         )}
-        <Toast toasts={toasts} />
+        <MtToastHost toasts={toasts} />
       </main>
     </>
   );

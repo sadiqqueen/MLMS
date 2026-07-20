@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePrefs } from '../context/PrefsContext';
 import Navbar from '../components/Navbar';
-import Toast from '../components/Toast';
+import { useMtToast, MtToastHost } from '../components/MtToast';
+import DiffTable from '../components/DiffTable';
 import api from '../api/axios';
 import Sk from '../components/Skeleton';
-import { IconEye } from '../components/icons';
+import { IconEye, IconInbox, IconBuilding, IconFlask } from '../components/icons';
+import './dio.css';
 
 const API_BASE = '';
 
@@ -94,13 +96,7 @@ export default function DioApprovals() {
   const [promos, setPromos] = useState([]);
   const [research, setResearch] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [toasts, setToasts] = useState([]);
-
-  function showToast(message, type = 'success') {
-    const id = Date.now();
-    setToasts(p => [...p, { id, message, type }]);
-    setTimeout(() => setToasts(p => p.filter(x => x.id !== id)), 3000);
-  }
+  const { toasts, showToast } = useMtToast();
 
   const load = useCallback(() => {
     setLoading(true);
@@ -118,31 +114,31 @@ export default function DioApprovals() {
     try {
       await api.patch(`/api/dio/change-requests/${id}/approve`);
       setPromos(prev => prev.filter(x => x._id !== id));
-      showToast(t('approved'));
-    } catch (err) { showToast(err.response?.data?.message || t('failed'), 'error'); }
+      showToast(t('approved'), 'ok');
+    } catch (err) { showToast(err.response?.data?.message || t('failed'), 'dng'); }
   }
   async function rejectPromo(id) {
     const note = window.prompt(t('rejectReason')) ?? '';
     try {
       await api.patch(`/api/dio/change-requests/${id}/reject`, { note });
       setPromos(prev => prev.filter(x => x._id !== id));
-      showToast(t('rejectedMsg'));
-    } catch (err) { showToast(err.response?.data?.message || t('failed'), 'error'); }
+      showToast(t('rejectedMsg'), 'ok');
+    } catch (err) { showToast(err.response?.data?.message || t('failed'), 'dng'); }
   }
   async function approveResearch(id) {
     try {
       await api.patch(`/api/research/${id}/final-approve`);
       setResearch(prev => prev.filter(x => x._id !== id));
-      showToast(t('published'));
-    } catch (err) { showToast(err.response?.data?.message || t('failed'), 'error'); }
+      showToast(t('published'), 'ok');
+    } catch (err) { showToast(err.response?.data?.message || t('failed'), 'dng'); }
   }
   async function rejectResearch(id) {
     const note = window.prompt(t('rejectReason')) ?? '';
     try {
       await api.patch(`/api/research/${id}/reject`, { note });
       setResearch(prev => prev.filter(x => x._id !== id));
-      showToast(t('rejectedMsg'));
-    } catch (err) { showToast(err.response?.data?.message || t('failed'), 'error'); }
+      showToast(t('rejectedMsg'), 'ok');
+    } catch (err) { showToast(err.response?.data?.message || t('failed'), 'dng'); }
   }
 
   // One pending feed, two kinds: account edits vs capacity exception requests.
@@ -150,184 +146,157 @@ export default function DioApprovals() {
   const capacityReqs   = promos.filter(x => x.requestType === 'capacity_exception');
 
   const tabs = [
-    { key: 'promotions', label: `${t('tabPromotions')} (${accountChanges.length})` },
-    { key: 'capacity',   label: `${t('tabCapacity')} (${capacityReqs.length})` },
-    { key: 'research',   label: `${t('tabResearch')} (${research.length})` },
+    { key: 'promotions', label: t('tabPromotions'), count: accountChanges.length },
+    { key: 'capacity',   label: t('tabCapacity'),   count: capacityReqs.length },
+    { key: 'research',   label: t('tabResearch'),   count: research.length },
   ];
+
+  const diffLabels = { field: t('field'), before: t('from'), after: t('to') };
 
   return (
     <>
       <Navbar />
-      <main className="admin-main" dir={dir}>
-        <div className="filter-tabs" style={{ marginBottom: 16 }}>
+      <main className="mt-content" dir={dir}>
+        <div className="dio-tabs">
           {tabs.map(x => (
-            <button key={x.key} className={`filter-tab${tab === x.key ? ' active' : ''}`} onClick={() => setTab(x.key)}>
+            <button key={x.key} className={`dio-tab${tab === x.key ? ' is-active' : ''}`} onClick={() => setTab(x.key)}>
               {x.label}
+              <span className="dio-tab-badge">{x.count}</span>
             </button>
           ))}
         </div>
 
-        <div className="admin-card">
+        <div className="mt-card">
           {tab === 'promotions' ? (
             <>
-              <div style={{ padding: '4px 2px 16px' }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--brand-secondary)' }}>{t('promoTitle')}</div>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>{t('promoSubtitle')}</div>
+              <div className="mt-card-head">
+                <div style={{ minWidth: 0 }}>
+                  <div className="mt-card-title">{t('promoTitle')}</div>
+                  <div className="mt-card-sub">{t('promoSubtitle')}</div>
+                </div>
+                <div className="mt-divider" />
               </div>
               {loading ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{[0, 1].map(i => <Sk key={i} h={90} r={10} />)}</div>
               ) : accountChanges.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
-                  <div style={{ fontSize: 38, marginBottom: 10 }}>📝</div>
-                  <div style={{ fontSize: 14, color: 'var(--text-2)' }}>{t('promoEmpty')}</div>
-                </div>
+                <EmptyState icon={<IconInbox size={22} />} text={t('promoEmpty')} />
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {accountChanges.map(cr => (
-                    <div key={cr._id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', background: 'var(--surface-2)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
-                            {t('target')}: {cr.targetLabel || '—'}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {accountChanges.map(cr => {
+                    const rows = (cr.display && cr.display.length
+                      ? cr.display.map(d => ({ field: d.label, before: d.from, after: d.to }))
+                      : Object.keys(cr.changes || {}).filter(k => k !== 'supervisor')
+                          .map(k => ({ field: FIELD_LABELS[k] || k, before: showVal(cr.before?.[k]), after: showVal(cr.changes[k]) }))
+                    );
+                    return (
+                      <div key={cr._id} className="mt-card" style={{ background: 'var(--surface-2)' }}>
+                        <div className="dio-detail-head" style={{ justifyContent: 'space-between', marginBottom: 12 }}>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                              {t('target')}: {cr.targetLabel || '—'}
+                            </div>
+                            <div className="mt-card-sub" style={{ marginTop: 2 }}>
+                              {t('requestedBy')}: {cr.requestedBy?.name || '—'} · {fmt(cr.createdAt)}
+                            </div>
                           </div>
-                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                            {t('requestedBy')}: {cr.requestedBy?.name || '—'} · {fmt(cr.createdAt)}
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                            <button type="button" className="mt-btn mt-btn--small" onClick={() => approvePromo(cr._id)}>{t('approve')}</button>
+                            <button type="button" className="mt-btn--danger" onClick={() => rejectPromo(cr._id)}>{t('reject')}</button>
                           </div>
                         </div>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                          <button type="button" onClick={() => approvePromo(cr._id)}
-                            style={{ padding: '8px 14px', fontSize: 13, fontWeight: 700, borderRadius: 8, border: 'none', cursor: 'pointer', background: 'var(--success-fg)', color: '#fff' }}>
-                            {t('approve')}
-                          </button>
-                          <button type="button" onClick={() => rejectPromo(cr._id)}
-                            style={{ padding: '8px 14px', fontSize: 13, fontWeight: 700, borderRadius: 8, cursor: 'pointer', background: 'var(--surface)', color: 'var(--danger-fg)', border: '1px solid var(--border)' }}>
-                            {t('reject')}
-                          </button>
-                        </div>
+                        {rows.length > 0 && <DiffTable rows={rows} labels={diffLabels} />}
                       </div>
-                      {/* Field-by-field diff */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr', gap: '6px 12px', fontSize: 13 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('field')}</div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('from')}</div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('to')}</div>
-                        {(cr.display && cr.display.length
-                          ? cr.display
-                          : Object.keys(cr.changes || {}).filter(k => k !== 'supervisor').map(k => ({ label: FIELD_LABELS[k] || k, from: showVal(cr.before?.[k]), to: showVal(cr.changes[k]) }))
-                        ).map((d, i) => (
-                          <FragmentRow key={i} label={d.label} from={d.from} to={d.to} />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </>
           ) : tab === 'capacity' ? (
             <>
-              <div style={{ padding: '4px 2px 16px' }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--brand-secondary)' }}>{t('capTitle')}</div>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>{t('capSubtitle')}</div>
+              <div className="mt-card-head">
+                <div style={{ minWidth: 0 }}>
+                  <div className="mt-card-title">{t('capTitle')}</div>
+                  <div className="mt-card-sub">{t('capSubtitle')}</div>
+                </div>
+                <div className="mt-divider" />
               </div>
               {loading ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{[0, 1].map(i => <Sk key={i} h={90} r={10} />)}</div>
               ) : capacityReqs.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
-                  <div style={{ fontSize: 38, marginBottom: 10 }}>🏥</div>
-                  <div style={{ fontSize: 14, color: 'var(--text-2)' }}>{t('capEmpty')}</div>
-                </div>
+                <EmptyState icon={<IconBuilding size={22} />} text={t('capEmpty')} />
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {capacityReqs.map(cr => (
-                    <div key={cr._id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', background: 'var(--surface-2)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
-                            {t('capTrainee')}: {cr.targetLabel || '—'}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {capacityReqs.map(cr => {
+                    const rows = (cr.display || []).map(d => ({ field: d.label, before: showVal(d.from), after: showVal(d.to) }));
+                    return (
+                      <div key={cr._id} className="mt-card" style={{ background: 'var(--surface-2)' }}>
+                        <div className="dio-detail-head" style={{ justifyContent: 'space-between', marginBottom: 12 }}>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                              {t('capTrainee')}: {cr.targetLabel || '—'}
+                            </div>
+                            <div className="mt-card-sub" style={{ marginTop: 2 }}>
+                              {t('requestedBy')}: {cr.requestedBy?.name || '—'} · {fmt(cr.createdAt)}
+                            </div>
+                            <div className="mt-card-sub" style={{ marginTop: 4 }}>
+                              {t('capHospital')}: {cr.hospitalId?.name || '—'} · {t('capSpecialty')}: {cr.specialtyId?.name || '—'}
+                            </div>
                           </div>
-                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                            {t('requestedBy')}: {cr.requestedBy?.name || '—'} · {fmt(cr.createdAt)}
-                          </div>
-                          <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>
-                            🏥 {t('capHospital')}: {cr.hospitalId?.name || '—'} · {t('capSpecialty')}: {cr.specialtyId?.name || '—'}
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                            <button type="button" className="mt-btn mt-btn--small" onClick={() => approvePromo(cr._id)}>{t('approve')}</button>
+                            <button type="button" className="mt-btn--danger" onClick={() => rejectPromo(cr._id)}>{t('reject')}</button>
                           </div>
                         </div>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                          <button type="button" onClick={() => approvePromo(cr._id)}
-                            style={{ padding: '8px 14px', fontSize: 13, fontWeight: 700, borderRadius: 8, border: 'none', cursor: 'pointer', background: 'var(--success-fg)', color: '#fff' }}>
-                            {t('approve')}
-                          </button>
-                          <button type="button" onClick={() => rejectPromo(cr._id)}
-                            style={{ padding: '8px 14px', fontSize: 13, fontWeight: 700, borderRadius: 8, cursor: 'pointer', background: 'var(--surface)', color: 'var(--danger-fg)', border: '1px solid var(--border)' }}>
-                            {t('reject')}
-                          </button>
-                        </div>
+                        {rows.length > 0 && <DiffTable rows={rows} labels={diffLabels} />}
                       </div>
-                      {/* Trainee / hospital / specialty / capacity details from the backend `display` rows */}
-                      {(cr.display || []).length > 0 && (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr', gap: '6px 12px', fontSize: 13 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('field')}</div>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('from')}</div>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('to')}</div>
-                          {cr.display.map((d, i) => (
-                            <FragmentRow key={i} label={d.label} from={showVal(d.from)} to={showVal(d.to)} />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </>
           ) : (
             <>
-              <div style={{ padding: '4px 2px 16px' }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--brand-secondary)' }}>{t('researchTitle')}</div>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>{t('researchSubtitle')}</div>
+              <div className="mt-card-head">
+                <div style={{ minWidth: 0 }}>
+                  <div className="mt-card-title">{t('researchTitle')}</div>
+                  <div className="mt-card-sub">{t('researchSubtitle')}</div>
+                </div>
+                <div className="mt-divider" />
               </div>
               {loading ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{[0, 1].map(i => <Sk key={i} h={80} r={10} />)}</div>
               ) : research.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
-                  <div style={{ fontSize: 38, marginBottom: 10 }}>🔬</div>
-                  <div style={{ fontSize: 14, color: 'var(--text-2)' }}>{t('researchEmpty')}</div>
-                </div>
+                <EmptyState icon={<IconFlask size={22} />} text={t('researchEmpty')} />
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {research.map(r => (
-                    <div key={r._id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', background: 'var(--surface-2)' }}>
+                    <div key={r._id} className="mt-card" style={{ background: 'var(--surface-2)' }}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                         <div style={{ flex: 1, minWidth: 200 }}>
                           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{r.title}</div>
-                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
+                          <div className="mt-card-sub" style={{ marginTop: 3 }}>
                             {t('by')}: {r.trainee?.name || '—'}
                             {[r.authors, r.journal].filter(Boolean).length ? ` · ${[r.authors, r.journal].filter(Boolean).join(' · ')}` : ''}
                           </div>
                           {r.signedByName && (
                             <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--border)' }}>
-                              <div style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontStyle: 'italic', fontSize: 20, color: 'var(--brand-secondary)' }}>
+                              <div style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontStyle: 'italic', fontSize: 20, color: 'var(--brand-primary)' }}>
                                 /s/ {r.signatureName || r.signedByName}
                               </div>
-                              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                              <div className="mt-card-sub" style={{ marginTop: 2 }}>
                                 {t('signedBy')} {r.signedByName}{r.signedAt ? ` · ${fmt(r.signedAt)}` : ''}
                               </div>
                             </div>
                           )}
                         </div>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                           {r.fileUrl && (
-                            <a href={`${API_BASE}${r.fileUrl}`} target="_blank" rel="noreferrer" title={t('view')} aria-label={t('view')}
-                              style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--surface)', color: 'var(--text-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
+                            <a href={`${API_BASE}${r.fileUrl}`} target="_blank" rel="noreferrer" title={t('view')} aria-label={t('view')} className="mt-icon-action">
                               <IconEye size={16} />
                             </a>
                           )}
-                          <button type="button" onClick={() => approveResearch(r._id)}
-                            style={{ padding: '8px 14px', fontSize: 13, fontWeight: 700, borderRadius: 8, border: 'none', cursor: 'pointer', background: 'var(--accent)', color: '#fff' }}>
-                            {t('finalApprove')}
-                          </button>
-                          <button type="button" onClick={() => rejectResearch(r._id)}
-                            style={{ padding: '8px 14px', fontSize: 13, fontWeight: 700, borderRadius: 8, cursor: 'pointer', background: 'var(--surface)', color: 'var(--danger-fg)', border: '1px solid var(--border)' }}>
-                            {t('reject')}
-                          </button>
+                          <button type="button" className="mt-btn mt-btn--small" onClick={() => approveResearch(r._id)}>{t('finalApprove')}</button>
+                          <button type="button" className="mt-btn--danger" onClick={() => rejectResearch(r._id)}>{t('reject')}</button>
                         </div>
                       </div>
                     </div>
@@ -337,18 +306,17 @@ export default function DioApprovals() {
             </>
           )}
         </div>
-        <Toast toasts={toasts} />
+        <MtToastHost toasts={toasts} />
       </main>
     </>
   );
 }
 
-function FragmentRow({ label, from, to }) {
+function EmptyState({ icon, text }) {
   return (
-    <>
-      <div style={{ fontWeight: 600, color: 'var(--text-2)' }}>{label}</div>
-      <div style={{ color: 'var(--text-muted)' }}>{from}</div>
-      <div style={{ color: 'var(--brand-secondary)', fontWeight: 600 }}>{to}</div>
-    </>
+    <div className="mt-empty">
+      <div className="mt-empty-icon">{icon}</div>
+      <div className="mt-empty-sub" style={{ marginTop: 10 }}>{text}</div>
+    </div>
   );
 }

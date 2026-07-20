@@ -13,6 +13,12 @@ const hospitalSchema = new mongoose.Schema(
     // V2 NEW FIELDS
     governorate:    { type: String, default: '' },
     dioId:          { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    // Redesign v2 — the Sub-DIO assigned to this center on the training-center
+    // form (the DIO's assignedCenterIds is dual-written for scope; the Sub-DIO
+    // resolves centers through its parent DIO). Optional center identifier field
+    // from the Add-Center modal ("ID", distinct from accreditationNumber).
+    subDioId:       { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    idNumber:       { type: String, default: '', trim: true },
     presidentId:    { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
     // Registry v2 — training-center country + accreditation (expiry may be stored

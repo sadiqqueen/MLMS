@@ -4,20 +4,14 @@ import api    from '../api/axios';
 import Navbar from '../components/Navbar';
 import Sk     from '../components/Skeleton';
 import ReportModal from '../components/ReportModal';
-import { IconCheck, IconClock, IconXCircle, IconUserCheck } from '../components/icons';
+import { IconCheck, IconClock, IconXCircle, IconUserCheck, IconPlus, NavIcon } from '../components/icons';
+import './trainee.css';
 
 const API_BASE = '';
 
 function fmt(d) {
   if (!d) return '—';
   const date = new Date(d);
-  if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
-}
-
-function fmtShort(dateStr) {
-  if (!dateStr) return '—';
-  const date = new Date(dateStr);
   if (Number.isNaN(date.getTime())) return '—';
   return date.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 }
@@ -39,6 +33,23 @@ function ReportStatus({ status, grade }) {
   if (grade === 'Competent')
     return <span className="status-ic status-ic-green" title="Competent"><IconUserCheck size={15} /></span>;
   return <span className="status-ic status-ic-green" title="Assessed"><IconCheck size={15} /></span>;
+}
+
+// One clickable report row (opens the detail modal).
+function ReportRow({ r, fallbackTitle, onOpen, meta }) {
+  return (
+    <div className="tr-row tr-clickable" style={{ alignItems: 'center' }} onClick={() => onOpen(r)}>
+      <div className="tr-row-main">
+        <div className="tr-row-title">{r.title || fallbackTitle}</div>
+        <div className="tr-row-meta" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{meta}</div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <ReportStatus status={r.status} grade={r.grade} />
+        {r.grade && !['Competent', 'Not-Competent'].includes(r.grade) && <div className="grade-circle">{r.grade}</div>}
+        <NavIcon name="eye" size={16} style={{ color: 'var(--text-2)' }} />
+      </div>
+    </div>
+  );
 }
 
 // ── MAIN REPORTS PAGE ──────────────────────────────────────────────────────
@@ -177,22 +188,17 @@ export default function Reports() {
   if (loading) return (
     <>
       <Navbar />
-      <main className="main">
-        <div className="card">
+      <main className="mt-content">
+        <div className="mt-card" style={{ marginBlockEnd: 18 }}>
           <Sk w={200} h={16} style={{ marginBottom:16 }} />
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
-            {[0,1,2].map(i => <Sk key={i} h={100} r={10} />)}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:12 }}>
+            {[0,1,2].map(i => <Sk key={i} h={80} r={10} />)}
           </div>
         </div>
-        {[0,1,2].map(i => (
-          <div className="card" key={i}>
+        {[0,1].map(i => (
+          <div className="mt-card" key={i} style={{ marginBlockEnd: 18 }}>
             <Sk w={180} h={16} style={{ marginBottom:14 }} />
-            {[0,1].map(j => (
-              <div key={j} className="report-row">
-                <div className="report-info"><Sk w={150} h={13} /><Sk w={80} h={11} style={{ marginTop:4 }} /></div>
-                <div className="report-right"><Sk w={60} h={20} r={20} /></div>
-              </div>
-            ))}
+            {[0,1].map(j => <Sk key={j} h={58} r={10} style={{ marginBottom: 10 }} />)}
           </div>
         ))}
       </main>
@@ -202,113 +208,98 @@ export default function Reports() {
   return (
     <>
       <Navbar />
-      <main className="main">
+      <main className="mt-content">
 
         {/* ── UPLOAD A REPORT — shown when assigned to a specialty ── */}
         {distribution && (
-          <div className="card">
-            <div className="card-title" style={{ marginBottom:16 }}>
-              ⬆ Upload a Report
-              {specialty?.name && <span className="badge badge-blue" style={{ marginInlineStart:8 }}>{specialty.name}</span>}
+          <div className="mt-card" style={{ marginBlockEnd: 18 }}>
+            <div className="mt-card-head mt-card-head--tight" style={{ marginBlockEnd: 16 }}>
+              <div className="mt-card-title">Upload a report</div>
+              {specialty?.name && <span className="mt-pill mt-pill--role">{specialty.name}</span>}
             </div>
 
-            <div style={{ display:'flex', gap:12, flexWrap:'wrap', alignItems:'flex-end' }}>
-              <div className="field" style={{ flex:'1 1 150px', marginBottom:0 }}>
-                <label>Report type</label>
-                <select value={uploadType} onChange={e => setUploadType(e.target.value)}>
+            <div className="mt-field-grid" style={{ alignItems: 'end' }}>
+              <div className="mt-field">
+                <label className="mt-label">Report type</label>
+                <select className="mt-select" value={uploadType} onChange={e => setUploadType(e.target.value)}>
                   <option value="weekly">Weekly</option>
                   <option value="monthly">Monthly</option>
                   <option value="final">Final</option>
                 </select>
               </div>
-              <div className="field" style={{ flex:'2 1 240px', marginBottom:0 }}>
-                <label>Report name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Week 4 Report"
-                  value={uploadName}
-                  onChange={e => setUploadName(e.target.value)}
-                />
+              <div className="mt-field">
+                <label className="mt-label">Report name</label>
+                <input className="mt-input" type="text" placeholder="e.g. Week 4 Report"
+                  value={uploadName} onChange={e => setUploadName(e.target.value)} />
+              </div>
+              <div className="mt-field mt-field-full">
+                <label className="mt-label">Report file (PDF · max 10MB)</label>
+                <label className="mt-dropzone">
+                  <input ref={fileRef} type="file" accept=".pdf,application/pdf" style={{ display:'none' }}
+                    onChange={e => setUploadFile(e.target.files?.[0] || null)} />
+                  <div className="mt-dropzone-ic"><NavIcon name="doc" size={22} /></div>
+                  <div className="mt-dropzone-title">{uploadFile ? uploadFile.name : 'Click to choose a PDF file'}</div>
+                  <div className="mt-dropzone-sub">{uploadFile ? 'Click to change' : 'PDF only · under 10MB'}</div>
+                </label>
               </div>
             </div>
 
-            <div className="field" style={{ marginTop:14, marginBottom:0 }}>
-              <label>Report file (PDF · max 10MB)</label>
-              <label className="file-drop">
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  style={{ display:'none' }}
-                  onChange={e => setUploadFile(e.target.files?.[0] || null)}
-                />
-                <span className="file-drop-icon">📎</span>
-                <span className="file-drop-text">
-                  {uploadFile ? uploadFile.name : 'Click to choose a PDF file'}
-                </span>
-                {uploadFile && <span className="file-drop-change">Change</span>}
-              </label>
-            </div>
-
-            <button
-              className="btn-primary"
-              style={{ marginTop:16 }}
-              onClick={handleUpload}
-              disabled={uploading || !uploadFile}
-            >
-              {uploading ? 'Uploading…' : '⬆ Upload report'}
+            <button className="mt-btn" style={{ marginBlockStart: 16 }} onClick={handleUpload} disabled={uploading || !uploadFile}>
+              <NavIcon name="doc" size={15} /> {uploading ? 'Uploading…' : 'Upload report'}
             </button>
 
-            {error    && <div className="upload-msg upload-err">{error}</div>}
-            {uploadMsg && <div className="upload-msg upload-ok">✓ {uploadMsg}</div>}
+            {error    && <div style={{ marginBlockStart: 12, fontSize: 13, color: 'var(--danger)' }}>{error}</div>}
+            {uploadMsg && <div style={{ marginBlockStart: 12, fontSize: 13, color: 'var(--success)' }}>✓ {uploadMsg}</div>}
           </div>
         )}
 
         {/* No active distribution — show legacy submit form */}
         {!distribution && !loading && (
           <>
-            <div className="card" style={{ textAlign:'center', padding:40, color:'var(--text-muted)' }}>
-              <div style={{ fontSize:36, marginBottom:12 }}>📋</div>
-              <div style={{ fontSize:16, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>Not assigned to a specialty yet</div>
-              <div style={{ fontSize:13 }}>Once your secretary assigns you to a specialty, your report templates will appear here.</div>
-            </div>
-
-            <div className="page-header">
-              <button className="btn-primary" onClick={() => { setShowForm(v => !v); setFormError(''); }}>
-                {showForm ? 'Cancel' : '+ Submit report'}
+            <div className="mt-empty" style={{ marginBlockEnd: 18 }}>
+              <span className="mt-empty-icon"><NavIcon name="doc" size={24} /></span>
+              <div className="mt-empty-title">Not assigned to a specialty yet</div>
+              <div className="mt-empty-sub">Once your secretary assigns you to a specialty, your report templates will appear here.</div>
+              <button className="mt-btn" onClick={() => { setShowForm(v => !v); setFormError(''); }}>
+                {showForm ? 'Cancel' : <><IconPlus size={15} /> Submit report</>}
               </button>
             </div>
 
             {showForm && (
-              <div className="card">
-                <div className="card-title">Submit a new report</div>
-                <form onSubmit={handleLegacySubmit}>
-                  <div className="form-row">
-                    <div className="field">
-                      <label>Report title</label>
-                      <input type="text" placeholder="e.g. Week 4 Report" value={form.title} onChange={e => setForm(f => ({ ...f, title:e.target.value }))} required />
-                    </div>
-                    <div className="field">
-                      <label>Report type</label>
-                      <select value={form.type} onChange={e => setForm(f => ({ ...f, type:e.target.value }))}>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="final">Final</option>
-                      </select>
-                    </div>
-                    <div className="field">
-                      <label>Date</label>
-                      <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date:e.target.value }))} required />
-                    </div>
-                    <div className="field">
-                      <label>Attachment (PDF / image, optional)</label>
-                      <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => setForm(f => ({ ...f, file:e.target.files[0] }))} />
-                    </div>
+              <div className="mt-card" style={{ marginBlockEnd: 18 }}>
+                <div className="mt-card-head mt-card-head--tight" style={{ marginBlockEnd: 14 }}>
+                  <div className="mt-card-title">Submit a new report</div>
+                </div>
+                <form onSubmit={handleLegacySubmit} className="mt-field-grid">
+                  <div className="mt-field">
+                    <label className="mt-label">Report title</label>
+                    <input className="mt-input" type="text" placeholder="e.g. Week 4 Report" value={form.title}
+                      onChange={e => setForm(f => ({ ...f, title:e.target.value }))} required />
                   </div>
-                  {formError && <p className="error-msg">{formError}</p>}
-                  <button className="btn-primary" type="submit" disabled={submitting}>
-                    {submitting ? 'Submitting…' : 'Submit report'}
-                  </button>
+                  <div className="mt-field">
+                    <label className="mt-label">Report type</label>
+                    <select className="mt-select" value={form.type} onChange={e => setForm(f => ({ ...f, type:e.target.value }))}>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="final">Final</option>
+                    </select>
+                  </div>
+                  <div className="mt-field">
+                    <label className="mt-label">Date</label>
+                    <input className="mt-input" type="date" value={form.date}
+                      onChange={e => setForm(f => ({ ...f, date:e.target.value }))} required />
+                  </div>
+                  <div className="mt-field">
+                    <label className="mt-label">Attachment (PDF / image, optional)</label>
+                    <input className="mt-input" style={{ height: 'auto', padding: 8 }} type="file" accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={e => setForm(f => ({ ...f, file:e.target.files[0] }))} />
+                  </div>
+                  <div className="mt-field-full">
+                    {formError && <div style={{ fontSize: 13, color: 'var(--danger)', marginBlockEnd: 10 }}>{formError}</div>}
+                    <button className="mt-btn" type="submit" disabled={submitting}>
+                      {submitting ? 'Submitting…' : 'Submit report'}
+                    </button>
+                  </div>
                 </form>
               </div>
             )}
@@ -316,101 +307,81 @@ export default function Reports() {
         )}
 
         {/* ── SUBMITTED REPORTS ── */}
-        <div className="report-search-bar">
-          <input
-            type="text"
-            className="report-search-input"
-            placeholder="Search reports by name…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-          <select className="report-sort-select" value={sort} onChange={e => setSort(e.target.value)}>
+        <div className="mt-filterbar">
+          <div className="mt-search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+            </svg>
+            <input type="text" placeholder="Search reports by name…" value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          <select className="mt-filter" value={sort} onChange={e => setSort(e.target.value)}>
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
             <option value="name">Name (A–Z)</option>
           </select>
         </div>
 
-        <div className="filter-tabs">
+        <div className="tr-tabs">
           {FILTERS.map(f => (
-            <button key={f} className={`filter-tab${filter === f ? ' active' : ''}`} onClick={() => setFilter(f)}>{f}</button>
+            <button key={f} className={`tr-tab${filter === f ? ' is-active' : ''}`} onClick={() => setFilter(f)}>{f}</button>
           ))}
         </div>
 
         {distribution ? (
           // grouped by type when V2
           [
-            { label:'Weekly Reports',  items:weekly,  badge:'badge-blue',  type:'weekly'  },
-            { label:'Monthly Reports', items:monthly, badge:'badge-amber', type:'monthly' },
-            { label:'Final Reports',   items:final,   badge:'badge-red',   type:'final'   },
+            { label:'Weekly Reports',  items:weekly,  type:'weekly'  },
+            { label:'Monthly Reports', items:monthly, type:'monthly' },
+            { label:'Final Reports',   items:final,   type:'final'   },
           ].filter(({ type }) => {
             if (filter === 'All')     return true;
             if (filter === 'Weekly')  return type === 'weekly';
             if (filter === 'Monthly') return type === 'monthly';
             if (filter === 'Final')   return type === 'final';
             return true;
-          }).map(({ label, items, badge, type }) => {
+          }).map(({ label, items, type }) => {
             const visibleItems = filter === 'Graded'  ? items.filter(r => r.status === 'graded')
                                : filter === 'Pending' ? items.filter(r => r.status === 'pending')
                                : items;
             return (
-              <div className="card" key={type}>
-                <div className="card-title">
-                  {label} <span className={`badge ${badge}`}>{visibleItems.length}</span>
+              <div className="mt-card" key={type} style={{ marginBlockEnd: 18 }}>
+                <div className="mt-card-head mt-card-head--tight" style={{ marginBlockEnd: 14 }}>
+                  <div className="mt-card-title">{label}</div>
+                  <span className="mt-count">{visibleItems.length}</span>
                 </div>
-                {visibleItems.length === 0 && <div className="empty-row">No {type} reports submitted yet</div>}
-                {visibleItems.map(r => (
-                  <div className="report-row report-row-lg report-row-clickable" key={r._id} onClick={() => setSelected(r)}>
-                    <div className="report-info">
-                      <div className="report-name">{r.title || `${type.charAt(0).toUpperCase()+type.slice(1)} Report`}</div>
-                      <div className="report-date">{fmt(r.date)}</div>
-                    </div>
-                    <div className="report-right">
-                      <ReportStatus status={r.status} grade={r.grade} />
-                      {r.grade && !['Competent','Not-Competent'].includes(r.grade) && <div className="grade-circle">{r.grade}</div>}
-                      {r.fileUrl && (
-                        <button
-                          type="button"
-                          onClick={e => { e.stopPropagation(); setSelected(r); }}
-                          style={{ background:'none', border:'none', padding:0, cursor:'pointer', fontSize:12, color:'var(--link)', fontWeight:500 }}
-                          title="View report"
-                        >
-                          View ↗
-                        </button>
-                      )}
-                      <span className="row-arrow">›</span>
-                    </div>
+                {visibleItems.length === 0 ? (
+                  <div style={{ fontSize: 13, color: 'var(--text-2)', padding: '10px 2px' }}>No {type} reports submitted yet</div>
+                ) : (
+                  <div className="tr-rows">
+                    {visibleItems.map(r => (
+                      <ReportRow key={r._id} r={r} onOpen={setSelected}
+                        fallbackTitle={`${type.charAt(0).toUpperCase()+type.slice(1)} Report`}
+                        meta={fmt(r.date)} />
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             );
           })
         ) : (
           // flat list when V1
-          <div className="card">
-            {filtered.length === 0 && (
-              <div className="empty-row">
+          <div className="mt-card">
+            {filtered.length === 0 ? (
+              <div style={{ fontSize: 13, color: 'var(--text-2)', padding: '10px 2px' }}>
                 {reportList.length === 0 ? 'No reports yet. Submit your first report above.' : 'No reports match this filter.'}
               </div>
-            )}
-            {filtered.map(r => (
-              <div className="report-row report-row-lg report-row-clickable" key={r._id} onClick={() => setSelected(r)}>
-                <div className="report-info">
-                  <div className="report-name">{r.title}</div>
-                  <div className="report-meta">
-                    <span className="badge badge-blue">{r.type}</span>
-                    <span className="report-date">{fmtShort(r.date)}</span>
-                    {r.hospital?.name && <span className="report-hospital">{r.hospital.name}</span>}
-                  </div>
-                </div>
-                <div className="report-right">
-                  {r.locked && <span className="lock-icon" title="Locked">🔒</span>}
-                  <ReportStatus status={r.status} grade={r.grade} />
-                  {r.grade && !['Competent','Not-Competent'].includes(r.grade) && <div className="grade-circle">{r.grade}</div>}
-                  <span className="row-arrow">›</span>
-                </div>
+            ) : (
+              <div className="tr-rows">
+                {filtered.map(r => (
+                  <ReportRow key={r._id} r={r} onOpen={setSelected} fallbackTitle={r.title}
+                    meta={<>
+                      <span className="mt-pill mt-pill--role">{r.type}</span>
+                      <span>{fmt(r.date)}</span>
+                      {r.hospital?.name && <span>{r.hospital.name}</span>}
+                    </>} />
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
 

@@ -47,7 +47,7 @@ export default function CertificatePrint() {
   if (error || !cert) return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'100vh', gap:16 }}>
       <div style={{ color:'var(--danger)', fontSize:15 }}>{error || 'Certificate not found'}</div>
-      <button onClick={() => navigate(-1)} style={{ padding:'8px 20px', borderRadius:8, background:'#1B1464', color:'#fff', border:'none', cursor:'pointer' }}>Go Back</button>
+      <button className="mt-btn" onClick={() => navigate(-1)}>Go Back</button>
     </div>
   );
 
@@ -64,20 +64,15 @@ export default function CertificatePrint() {
   return (
     <div className="cert-print-root">
 
-      {/* Screen-only action bar */}
+      {/* Screen-only action bar (chrome restyled to mt-; the certificate document
+          below keeps its fixed print colors + print CSS untouched). */}
       <div className="cert-actions no-print">
-        <button onClick={() => navigate(-1)}
-          style={{ padding:'9px 20px', borderRadius:8, background:'#fff', color:'#374151', border:'1px solid #D1D5DB', fontWeight:500, fontSize:14, cursor:'pointer' }}>
-          ← Back
-        </button>
+        <button className="mt-btn--outline" onClick={() => navigate(-1)}>← Back</button>
         {!isRevoked && (
-          <button onClick={() => window.print()}
-            style={{ padding:'9px 24px', borderRadius:8, background:'#1B1464', color:'#fff', border:'none', fontWeight:700, fontSize:14, cursor:'pointer' }}>
-            🖨 Print Certificate
-          </button>
+          <button className="mt-btn" onClick={() => window.print()}>🖨 Print Certificate</button>
         )}
         {isRevoked && (
-          <div style={{ background:'#FEE2E2', color:'#991B1B', borderRadius:8, padding:'9px 16px', fontSize:13, fontWeight:600 }}>
+          <div className="mt-pill mt-pill--rejected" style={{ padding:'9px 16px', fontSize:13 }}>
             ⚠ This certificate has been revoked and cannot be printed.
           </div>
         )}

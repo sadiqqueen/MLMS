@@ -1,0 +1,117 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Developer (super_admin) — page-local styles (W2-Developer owned).
+   Only fills gaps the shared mt- design system (styles/mtms-design.css) does
+   not cover. Every color is a token; logical properties for RTL; motion is
+   auto-neutralised by the global prefers-reduced-motion block.
+   Pages: AdminDashboard, Users, AuditLog, AdminSystem, AdminSpecialties,
+          HospitalsUniversities, Distributions, EventFeedback.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Small muted intro line under the topbar title (page description). */
+.dev-intro { font-size: 13px; color: var(--text-2); margin-block-end: 16px; margin-block-start: -4px; }
+
+/* ── Dashboard charts grid (dashboards.md §1: 1fr 1fr, stacks < 1100px) ─────── */
+.dev-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-block-start: 16px; }
+@media (max-width: 1100px) { .dev-charts { grid-template-columns: 1fr; } }
+.dev-chart-full { grid-column: 1 / -1; }
+
+/* Section heading row (e.g. "Latest audit events" + View-all). */
+.dev-section { display: flex; align-items: center; gap: 10px; margin-block: 22px 12px; }
+.dev-section-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.dev-section-spacer { flex: 1; }
+
+/* ── Tabs (Users role split / Hospitals-Universities / Event Feedback) ──────── */
+.dev-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-block-end: 16px; border-block-end: 1px solid var(--border); }
+.dev-tab {
+  padding: 9px 16px; border: none; background: transparent; cursor: pointer;
+  font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--text-2);
+  border-block-end: 2px solid transparent; margin-block-end: -1px;
+  transition: color .15s ease, border-color .15s ease;
+}
+.dev-tab:hover { color: var(--text); }
+.dev-tab.is-active { color: var(--brand-primary); border-block-end-color: var(--accent); }
+
+/* ── System overview — expandable country cards ────────────────────────────── */
+.dev-sys-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.dev-sys-card { cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
+.dev-sys-card:hover { border-color: var(--brand-primary); }
+.dev-sys-head { display: flex; align-items: flex-start; gap: 10px; }
+.dev-sys-name { font-size: 15px; font-weight: 700; color: var(--text); }
+.dev-sys-code { font-size: 12px; font-family: 'IBM Plex Mono', ui-monospace, monospace; color: var(--text-2); margin-block-start: 2px; }
+.dev-sys-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-inline-start: auto; }
+.dev-sys-expand { margin-block-start: 12px; border-block-start: 1px solid var(--border); padding-block-start: 12px; }
+.dev-sys-center-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding-block: 3px; }
+.dev-sys-center-row b { color: var(--text); font-weight: 600; }
+
+/* ── Specialties — council groups + template modal ─────────────────────────── */
+.dev-spec-group { margin-block-end: 22px; }
+.dev-spec-group-head { display: flex; align-items: baseline; gap: 10px; margin-block-end: 10px; }
+.dev-spec-group-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.dev-spec-group-sub { font-size: 12px; color: var(--text-2); }
+.dev-spec-group-hoc { margin-inline-start: auto; font-size: 12px; color: var(--text-2); }
+.dev-spec-group-hoc b { color: var(--text); font-weight: 600; }
+
+.dev-tpl-section-label {
+  font-size: 12px; font-weight: 700; color: var(--text-2);
+  text-transform: uppercase; letter-spacing: .05em; margin-block: 4px 10px;
+}
+.dev-tpl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-block-end: 18px; }
+.dev-tpl-slot {
+  border: 1px solid var(--border); border-radius: 10px; padding: 14px 12px;
+  background: var(--surface-2); display: flex; flex-direction: column; gap: 9px;
+}
+.dev-tpl-slot-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.dev-tpl-slot-state { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
+.dev-tpl-link { color: var(--brand-primary); font-weight: 500; text-decoration: none; }
+.dev-tpl-link:hover { text-decoration: underline; }
+
+/* ── Users / Distributions / Hospitals — action-rich mt card (card view) ────── */
+.dev-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; box-shadow: var(--card-shadow);
+  padding: 16px 18px; display: flex; flex-direction: column; align-items: center;
+  gap: 6px; text-align: center;
+}
+.dev-card-avatar {
+  width: 56px; height: 56px; border-radius: 50%; object-fit: cover;
+  background: var(--brand-primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 19px; font-weight: 600;
+}
+.dev-card-name { font-size: 14.5px; font-weight: 600; color: var(--text); }
+.dev-card-sub { font-size: 12.5px; color: var(--text-2); }
+.dev-card-actions { display: flex; gap: 4px; margin-block-start: 6px; flex-wrap: wrap; justify-content: center; }
+
+/* Row-action modifiers layered on the F-owned .mt-icon-action base as compound
+   selectors (added, never restyling the base alone; they only apply when the
+   dev- modifier is also present — the same BEM-modifier pattern F uses). */
+.mt-icon-action.dev-act-danger:hover { background: var(--danger-bg); color: var(--danger); }
+.mt-icon-action.dev-act-danger-solid { background: var(--danger); color: #fff; }
+.mt-icon-action.dev-act-danger-solid:hover { opacity: .88; }
+.mt-icon-action.dev-act:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Field-level validation message + invalid-input outline (compound dev- modifier). */
+.dev-field-err { font-size: 11px; color: var(--danger); }
+.mt-input.dev-invalid, .mt-select.dev-invalid { border-color: var(--danger); }
+
+/* Inline confirm dialog body copy. */
+.dev-confirm-text { font-size: 13.5px; color: var(--text-2); line-height: 1.6; }
+.dev-confirm-text strong { color: var(--text); }
+
+/* Photo picker inside the user modal. */
+.dev-photo-wrap { display: flex; align-items: center; gap: 14px; }
+.dev-photo-preview { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); }
+.dev-photo-placeholder {
+  width: 60px; height: 60px; border-radius: 50%; background: var(--surface-2);
+  display: flex; align-items: center; justify-content: center; color: var(--text-2); font-size: 24px;
+}
+
+/* Event Feedback — code / QR share panel + tabs reuse .dev-tabs. */
+.dev-share {
+  display: flex; gap: 24px; align-items: center; flex-wrap: wrap;
+}
+.dev-share-qr { background: #fff; padding: 10px; border-radius: 12px; border: 1px solid var(--border); }
+.dev-share-code {
+  font-size: 32px; font-weight: 800; letter-spacing: .12em;
+  color: var(--accent-hover); font-family: 'IBM Plex Mono', ui-monospace, monospace;
+}
