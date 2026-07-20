@@ -6,13 +6,13 @@ import { IconSun, IconMoon, IconBell, IconCaret, NavIcon } from './icons';
 import api from '../api/axios';
 import NotificationPanel from './NotificationPanel';
 import ProfileDropdown from './ProfileDropdown';
-import Topbar from './Topbar';
 import { APP_NAV_LABEL } from './memo/MemoPrefs';
 import { ROLE_HOME, ROLE_LINKS, roleLabel, baseRole, basePathForRole } from '../config/roles';
 
-// The 10 redesigned "design roles" render the new mt- top-nav + Topbar shell.
-// Every other role (president, ASG, secretary, supervisor, basic-track b_*) keeps
-// the existing navbar EXACTLY as-is. No role switcher in either shell.
+// The 10 redesigned "design roles" render the new mt- top-nav shell (single bar:
+// centered links + right-side controls, no logo, no separate title row). Every
+// other role (president, ASG, secretary, supervisor, basic-track b_*) keeps the
+// existing navbar EXACTLY as-is. No role switcher in either shell.
 const MT_SHELL_ROLES = new Set([
   'super_admin', 'hoc', 'central_secretary', 'data_analyzer', 'data_entry',
   'secretary_general', 'assistant_secretary', 'dio', 'dio_view', 'sub_dio',
@@ -146,7 +146,7 @@ export default function Navbar({ title, subtitle }) {
     if (!isMt) return undefined;
     const el = navrowRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return undefined;
-    const measure = () => setNavOver(el.scrollHeight > 52);
+    const measure = () => setNavOver(el.scrollHeight > 60);
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
@@ -184,16 +184,10 @@ export default function Navbar({ title, subtitle }) {
 
   // ── mt- redesigned shell (10 design roles) ────────────────────────────────
   if (isMt) {
-    // Page title: explicit prop, else the active nav link's label; subtitle: the
-    // role name (or an explicit override).
-    const path = location.pathname;
-    let activeLink = null;
-    for (const l of links) {
-      if (path === l.to || path.startsWith(l.to + '/')) {
-        if (!activeLink || l.to.length > activeLink.to.length) activeLink = l;
-      }
-    }
-    const pageTitle = title != null ? title : (activeLink ? linkLabel(activeLink) : '');
+    // No separate page-title row: the active nav link already shows the page, and
+    // the role label rides beside the avatar. `title`/`subtitle` props are kept in
+    // the signature for the legacy shell + callers, but only `subtitle` (role
+    // override) is consumed here.
     const roleSub = subtitle != null ? subtitle : roleLabel(user.role, lang);
 
     const controls = (
@@ -245,19 +239,11 @@ export default function Navbar({ title, subtitle }) {
 
     return (
       <div className="mt-shell-top">
-        {/* TOP-NAV — logo + centered links + More expander. dir="ltr" keeps the
-            bar layout fixed in both languages; only the labels translate. */}
+        {/* Single taller top-nav: centered links + right-side controls (theme,
+            language, notifications, profile). No logo and no separate title row.
+            dir="ltr" keeps the bar layout fixed in both languages; only the
+            labels translate. */}
         <nav className="mt-nav" dir="ltr">
-          <button
-            type="button" className="mt-nav-brand" aria-label="Home"
-            onClick={() => navigate(ROLE_HOME[user?.role] || '/')}
-          >
-            <img
-              className="mt-nav-logo" src="/logo-light.png" alt="MTMS"
-              onError={e => { e.currentTarget.style.display = 'none'; }}
-            />
-          </button>
-
           <div className={'mt-navrow' + (navOver && !navExp ? ' is-collapsed' : '')} ref={navrowRef}>
             {links.map(l => (
               <NavLink
@@ -278,9 +264,11 @@ export default function Navbar({ title, subtitle }) {
               <IconCaret size={14} style={{ transform: navExp ? 'rotate(180deg)' : 'none' }} />
             </button>
           )}
-        </nav>
 
-        <Topbar title={pageTitle} subtitle={roleSub} right={controls} />
+          <div className="mt-nav-controls">
+            {controls}
+          </div>
+        </nav>
       </div>
     );
   }

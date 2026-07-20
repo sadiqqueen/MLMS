@@ -14,21 +14,15 @@
    ══════════════════════════════════════════════════════════════════════════ */
 
 /* ── SHELL CHROME (sticky nav + topbar as one pinned unit) ─────────────────── */
-.mt-shell-top { position: sticky; inset-block-start: 0; z-index: 60; }
+.mt-shell-top { position: sticky; inset-block-start: 0; z-index: 60; box-shadow: 0 2px 10px rgba(0,0,0,.10); }
 
-/* ── TOP-NAV BAR (shell_tokens §b) — ~45px row, wraps + "More" expander ─────── */
+/* ── TOP-NAV BAR — single taller bar: centered links + right-side controls ──── */
 .mt-nav {
   background: var(--shell-bg);
   display: flex; align-items: center; gap: 6px;
-  padding-inline: 16px; padding-block: 0;
+  padding-inline: 22px; padding-block: 0;
   min-width: 0;
 }
-.mt-nav-brand {
-  flex: none; display: flex; align-items: center;
-  height: 45px; cursor: pointer; margin-inline-end: 4px;
-  background: none; border: none; padding: 0;
-}
-.mt-nav-logo { height: 30px; width: auto; display: block; }
 .mt-navrow {
   flex: 1 1 auto; display: flex; align-items: center; justify-content: center;
   gap: 2px; flex-wrap: wrap; min-width: 0; overflow: hidden;
@@ -36,12 +30,12 @@
   scrollbar-width: none;
 }
 .mt-navrow::-webkit-scrollbar { display: none; }
-.mt-navrow.is-collapsed { max-height: 45px; }
+.mt-navrow.is-collapsed { max-height: 56px; }
 
 .mt-navlink {
   display: flex; align-items: center; gap: 8px;
-  padding-block: 13px 11px; padding-inline: 12px;
-  cursor: pointer; font-size: 13px; white-space: nowrap; flex: none;
+  padding-block: 18px 16px; padding-inline: 15px;
+  cursor: pointer; font-size: 14.5px; white-space: nowrap; flex: none;
   font-weight: 500; text-decoration: none;
   color: rgba(255,255,255,.75); background: transparent;
   border: none; border-radius: 0;
@@ -58,13 +52,34 @@
 
 .mt-nav-more {
   display: flex; align-items: center; gap: 5px;
-  padding-block: 13px 11px; padding-inline: 10px;
-  cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap;
+  padding-block: 18px 16px; padding-inline: 12px;
+  cursor: pointer; font-size: 12.5px; font-weight: 600; white-space: nowrap;
   color: rgba(255,255,255,.85); background: transparent; border: none;
   border-radius: 6px; flex: none;
   transition: background .15s ease;
 }
 .mt-nav-more:hover { background: rgba(255,255,255,.09); }
+
+/* Controls (theme, language, notifications, profile) relocated into the dark
+   top-nav — restyled light-on-dark from their original light-topbar look. */
+.mt-nav-controls {
+  flex: none; display: flex; align-items: center; gap: 8px;
+  margin-inline-start: 12px;
+}
+.mt-nav-controls .mt-iconbtn {
+  border-color: rgba(255,255,255,.20);
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,.85);
+}
+.mt-nav-controls .mt-iconbtn:hover {
+  color: #fff; background: rgba(255,255,255,.16);
+  border-color: rgba(255,255,255,.32);
+}
+.mt-nav-controls .mt-bell-dot { border-color: var(--shell-bg); }
+.mt-nav-controls .mt-topbar-avatar { background: rgba(255,255,255,.20); color: #fff; }
+.mt-nav-controls .mt-avatar-wrap:hover .mt-topbar-avatar { background: rgba(255,255,255,.30); }
+.mt-nav-controls .mt-topbar-uname-name { color: #fff; }
+.mt-nav-controls .mt-topbar-uname-role { color: rgba(255,255,255,.65); }
 
 /* ── TOPBAR (shell_tokens §c) — 62px title + subtitle + right controls ─────── */
 .mt-topbar {
