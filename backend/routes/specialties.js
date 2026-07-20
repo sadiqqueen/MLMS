@@ -12,14 +12,20 @@ const Specialty      = require('../models/Specialty');
 
 // Any authenticated user may list specialties (needed for dropdowns)
 const READ_ROLES  = ['super_admin', 'secretary', 'dio', 'supervisor', 'trainee', 'president', 'program_director', 'data_analyzer'];
+// Edit/delete + legacy PDF-template management stay with super_admin + dio.
 const WRITE_ROLES = ['super_admin', 'dio'];
+// Who may CREATE a specialty. The data analyzer manages the council taxonomy
+// (add specialties + sub-specialties) but is NOT granted edit/delete.
+const CREATE_ROLES = ['super_admin', 'dio', 'data_analyzer'];
 const SPECIALTY_FIELDS = ['name', 'hospitalId', 'secretaryId', 'weeklyReportPdf',
   'monthlyReportPdf', 'finalReportPdf', 'evaluationPdf1', 'evaluationPdf2',
   'evaluationPdf3', 'evaluationPdf4', 'evaluationPdf5', 'isActive',
-  // Global council-taxonomy fields (super_admin only, enforced below).
+  // Global council-taxonomy fields (taxonomy roles only, enforced below).
   'nameEn', 'type', 'code', 'councilId'];
-// Fields only super_admin may set (dio is limited to legacy per-hospital specialty fields).
-const SUPER_ADMIN_ONLY_FIELDS = ['nameEn', 'type', 'code', 'councilId'];
+// Council-taxonomy fields — only super_admin + data_analyzer may set them
+// (dio is limited to legacy per-hospital specialty fields).
+const TAXONOMY_FIELDS = ['nameEn', 'type', 'code', 'councilId'];
+const TAXONOMY_ROLES  = ['super_admin', 'data_analyzer'];
 
 function pick(body, allowed) {
   const data = {};
@@ -118,16 +124,17 @@ router.get('/:id', auth, allowRoles(...READ_ROLES), async (req, res) => {
   }
 });
 
-// POST /api/specialties — super_admin or dio only
+// POST /api/specialties — super_admin, dio, or data_analyzer.
+// Only super_admin + data_analyzer may set the council-taxonomy fields.
 router.post('/',
   auth,
-  allowRoles(...WRITE_ROLES),
+  allowRoles(...CREATE_ROLES),
   auditLog('create_specialty', 'Specialty'),
   async (req, res) => {
     try {
       const data = pick(req.body, SPECIALTY_FIELDS);
-      if (req.user.role !== 'super_admin') {
-        SUPER_ADMIN_ONLY_FIELDS.forEach(k => delete data[k]);
+      if (!TAXONOMY_ROLES.includes(req.user.role)) {
+        TAXONOMY_FIELDS.forEach(k => delete data[k]);
       }
       data.track = req.track; // specialty belongs to the creator's training track
       const specialty = await Specialty.create(data);
@@ -153,8 +160,8 @@ router.patch('/:id',
     try {
       if (!(await ensureSpecialtyInTrack(req, res, req.params.id))) return;
       const updateData = pick(req.body, SPECIALTY_FIELDS);
-      if (req.user.role !== 'super_admin') {
-        SUPER_ADMIN_ONLY_FIELDS.forEach(k => delete updateData[k]);
+      if (!TAXONOMY_ROLES.includes(req.user.role)) {
+        TAXONOMY_FIELDS.forEach(k => delete updateData[k]);
       }
       const specialty = await Specialty.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true })
         .populate('hospitalId',  'name city')

@@ -137,7 +137,7 @@ export function CardGrid({ children }) {
 export function ListShell({
   title, subtitle, filters, count, error,
   loading, empty, skeleton = 'table', children,
-  page, total, onPrev, onNext, pageInfo,
+  page, total, onPrev, onNext, pageInfo, actions,
 }) {
   return (
     <>
@@ -153,6 +153,7 @@ export function ListShell({
           {filters}
           <span className="mt-filterbar-spacer" />
           {count != null && !loading && <span className="mt-count">{count}</span>}
+          {actions}
         </div>
 
         {loading ? <ListSkeleton variant={skeleton} />

@@ -428,6 +428,15 @@ router.get('/hocs', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+// GET /api/analyzer/councils — the 20 Scientific Councils (for the Add-specialty
+// council selector). Read-only reference list.
+router.get('/councils', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const councils = await ScientificCouncil.find({}).select('name nameEn').sort({ name: 1 });
+    res.json({ success: true, data: councils });
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
 // GET /api/analyzer/specialties?type=&councilId= — with council label.
 router.get('/specialties', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
   try {
