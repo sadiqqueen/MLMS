@@ -268,25 +268,15 @@ export default function Navbar({ title, subtitle }) {
             {visibleLinks.map(renderLink)}
 
             {overflowLinks.length > 0 && (
-              <div className="mt-more-wrap">
-                <button
-                  type="button"
-                  className={'mt-nav-more' + (activeInMore ? ' is-active' : '') + (menuMore ? ' is-open' : '')}
-                  onClick={toggleMore}
-                  aria-expanded={menuMore}
-                >
-                  {lang === 'ar' ? 'المزيد' : 'More'}
-                  <IconCaret size={14} style={{ transform: menuMore ? 'rotate(180deg)' : 'none' }} />
-                </button>
-                {menuMore && (
-                  <>
-                    <div className="mt-more-backdrop" onClick={() => setMenuMore(false)} />
-                    <div className="mt-more-menu">
-                      {overflowLinks.map(renderLink)}
-                    </div>
-                  </>
-                )}
-              </div>
+              <button
+                type="button"
+                className={'mt-nav-more' + (activeInMore ? ' is-active' : '') + (menuMore ? ' is-open' : '')}
+                onClick={toggleMore}
+                aria-expanded={menuMore}
+              >
+                {menuMore ? (lang === 'ar' ? 'أقل' : 'Less') : (lang === 'ar' ? 'المزيد' : 'More')}
+                <IconCaret size={14} style={{ transform: menuMore ? 'rotate(180deg)' : 'none' }} />
+              </button>
             )}
           </div>
 
@@ -294,6 +284,14 @@ export default function Navbar({ title, subtitle }) {
             {controls}
           </div>
         </nav>
+
+        {/* "More" expands the nav DOWNWARD into a second row of the overflow links,
+            pushing page content down (rather than floating over it). */}
+        {menuMore && overflowLinks.length > 0 && (
+          <div className="mt-nav-more-row" dir="ltr">
+            {overflowLinks.map(renderLink)}
+          </div>
+        )}
       </div>
     );
   }
