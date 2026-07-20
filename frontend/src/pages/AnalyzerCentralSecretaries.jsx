@@ -13,8 +13,6 @@ import {
 } from './AnalyzerListKit';
 import './Analyzer.css';
 
-const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
-
 export default function AnalyzerCentralSecretaries() {
   const [search, setSearch] = useState('');
   const [type, setType] = useState('');
@@ -27,7 +25,8 @@ export default function AnalyzerCentralSecretaries() {
   const { pageRows, total } = useClientList(scoped, { search, fields: ['name', 'idNumber', 'email'], page });
   const isEmpty = !loading && total === 0;
 
-  const specialtyValue = (u) => u.councilId?.name || (u.secretaryType === 'precise' ? 'All precise specialties' : '—');
+  const specialtyValue = (u) => u.councilId?.name || (u.secretaryType === 'precise' ? 'All sub-specialties' : '—');
+  const typeLabel = (u) => (u.secretaryType === 'precise' ? 'Sub-specialty' : 'Specialty');
 
   return (
     <ListShell
@@ -35,7 +34,7 @@ export default function AnalyzerCentralSecretaries() {
       filters={<>
         <SearchBox value={search} onChange={reset(setSearch)} placeholder="Search by name or ID…" />
         <FilterSelect value={type} onChange={reset(setType)} allLabel="Type: All"
-          options={[{ value: 'main', label: 'Main' }, { value: 'precise', label: 'Precise' }]} />
+          options={[{ value: 'main', label: 'Specialty' }, { value: 'precise', label: 'Sub-specialty' }]} />
       </>}
       count={`${total.toLocaleString('en-US')} central secretaries`}
       loading={loading} error={error} empty={isEmpty} skeleton="cards"
@@ -52,7 +51,7 @@ export default function AnalyzerCentralSecretaries() {
             <RevealOnScroll key={u._id} delay={i * 0.06}>
               <AccountCard
                 name={u.name} id={u.idNumber}
-                role={`Central Secretary · ${cap(u.secretaryType || 'main')}`}
+                role={`Central Secretary · ${typeLabel(u)}`}
                 fields={[
                   { label: 'Specialty', value: specialtyValue(u) },
                   { label: 'Phone', value: u.phone || '—' },

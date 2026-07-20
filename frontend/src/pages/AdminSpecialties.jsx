@@ -38,7 +38,7 @@ function AddSpecialtyModal({ councils, onCreate, onClose, saving }) {
     onCreate(f);
   }
   return (
-    <MtModal open title="Add specialty" sub="Main or precise specialty" meta="Developer" onClose={onClose}
+    <MtModal open title="Add specialty" sub="Specialty or sub-specialty" meta="Developer" onClose={onClose}
       footer={<>
         <button type="button" className="mt-btn--cancel" onClick={onClose}>Cancel</button>
         <button type="button" className="mt-btn" onClick={submit} disabled={saving}>{saving ? 'Creating…' : 'Create specialty'}</button>
@@ -50,8 +50,8 @@ function AddSpecialtyModal({ councils, onCreate, onClose, saving }) {
         <div className="mt-field">
           <label className="mt-label">Type</label>
           <div className="mt-radio-group">
-            <label className="mt-check-label"><input type="radio" className="mt-check" name="spType" checked={f.type === 'main'} onChange={() => set('type', 'main')} /> Main</label>
-            <label className="mt-check-label"><input type="radio" className="mt-check" name="spType" checked={f.type === 'precise'} onChange={() => set('type', 'precise')} /> Precise</label>
+            <label className="mt-check-label"><input type="radio" className="mt-check" name="spType" checked={f.type === 'main'} onChange={() => set('type', 'main')} /> Specialty</label>
+            <label className="mt-check-label"><input type="radio" className="mt-check" name="spType" checked={f.type === 'precise'} onChange={() => set('type', 'precise')} /> Sub-specialty</label>
           </div>
         </div>
         <div className="mt-field"><label className="mt-label">Code</label><input className="mt-input mt-input--mono" value={f.code} onChange={(e) => set('code', e.target.value)} placeholder='e.g. "05" or "05d1"' /></div>
@@ -180,14 +180,14 @@ export default function AdminSpecialties() {
     });
 
   const typePill = (t) => t === 'main'
-    ? <span className="mt-pill mt-pill--warn">Main</span>
-    : <span className="mt-pill mt-pill--active">Precise</span>;
+    ? <span className="mt-pill mt-pill--warn">Specialty</span>
+    : <span className="mt-pill mt-pill--active">Sub-specialty</span>;
 
   return (
     <>
       <Navbar title="Specialties" subtitle="Developer" />
       <main className="mt-content">
-        <div className="dev-intro">20 Scientific Councils → their main &amp; precise specialties with codes.</div>
+        <div className="dev-intro">20 Scientific Councils → their specialties &amp; sub-specialties with codes.</div>
 
         <div className="mt-filterbar">
           <div className="mt-search">
@@ -195,7 +195,7 @@ export default function AdminSpecialties() {
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or code…" aria-label="Search specialties" />
           </div>
           <select className="mt-filter" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} aria-label="Type filter">
-            <option value="">Type: All</option><option value="main">Main</option><option value="precise">Precise</option>
+            <option value="">Type: All</option><option value="main">Specialty</option><option value="precise">Sub-specialty</option>
           </select>
           <select className="mt-filter" value={councilFilter} onChange={(e) => setCouncilFilter(e.target.value)} aria-label="Council filter">
             <option value="">Council: All</option>

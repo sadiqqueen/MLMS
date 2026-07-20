@@ -29,11 +29,11 @@ import './HocDashboard.css';
 
 const STRINGS = {
   ar: {
-    scope: 'إشراف للقراءة فقط على مجلس {council} — الاختصاصات الرئيسية والدقيقة.',
+    scope: 'إشراف للقراءة فقط على مجلس {council} — الاختصاصات والاختصاصات الفرعية.',
     scopeNoCouncil: 'لم يُسنَد مجلس علمي لهذا الحساب بعد.',
     centers: 'مراكز التدريب', dios: 'DIOs', programs: 'البرامج', programDirectors: 'مدراء البرامج',
     trainees: 'المتدربون', specialties: 'الاختصاصات',
-    mainPrecise: '{main} رئيسي · {precise} دقيق',
+    mainPrecise: '{main} اختصاص · {precise} اختصاص فرعي',
     progBySpecialty: 'البرامج حسب الاختصاص', withinCouncil: 'ضمن المجلس',
     centersByCountry: 'مراكز التدريب حسب الدولة', centersScope: 'نطاق المجلس · {n} مركز',
     progDonut: 'البرامج حسب الاختصاص', progScope: '{n} برنامج',
@@ -42,11 +42,11 @@ const STRINGS = {
     loadFailed: 'فشل تحميل لوحة المعلومات',
   },
   en: {
-    scope: 'Read-only oversight of {council} — main + precise specialties.',
+    scope: 'Read-only oversight of {council} — specialties + sub-specialties.',
     scopeNoCouncil: 'No Scientific Council is assigned to this account yet.',
     centers: 'Training centers', dios: 'DIOs', programs: 'Programs', programDirectors: 'Program directors',
     trainees: 'Trainees', specialties: 'Specialties',
-    mainPrecise: '{main} main · {precise} precise',
+    mainPrecise: '{main} specialties · {precise} sub-specialties',
     progBySpecialty: 'Programs by specialty', withinCouncil: 'Within the council',
     centersByCountry: 'Training centers by country', centersScope: 'Council scope · {n} centers',
     progDonut: 'Programs by specialty', progScope: '{n} programs',

@@ -206,7 +206,7 @@ function HocModal({ councils, onCreate, onClose, saving }) {
         <div className="mt-field"><label className="mt-label">Email</label><input className="mt-input" type="email" value={f.email} onChange={(e) => set('email', e.target.value)} placeholder="name@mtms.med" /></div>
         <div className="mt-field"><label className="mt-label">Password <span className="mt-label-req">*</span></label><input className={`mt-input${errors.password ? ' dev-invalid' : ''}`} type="password" value={f.password} onChange={(e) => set('password', e.target.value)} placeholder="Min. 6 characters" />{errors.password && <span className="dev-field-err">At least 6 characters required</span>}</div>
         <div className="mt-field mt-field-full">
-          <label className="mt-label">Main specialty <span className="mt-label-req">*</span></label>
+          <label className="mt-label">Specialty <span className="mt-label-req">*</span></label>
           <select className={`mt-select${errors.councilId ? ' dev-invalid' : ''}`} value={f.councilId} onChange={(e) => set('councilId', e.target.value)}>
             <option value="">— Select council —</option>
             {councils.map((c) => <option key={c._id} value={c._id}>{councilLabel(c)}</option>)}
@@ -235,7 +235,7 @@ function CentralSecretaryModal({ councils, onCreate, onClose, saving }) {
     onCreate({ ...f, councilId: isMain ? f.councilId : '' });
   }
   return (
-    <MtModal open title="Add Central Secretary" sub="Main or precise specialty secretary" meta="Developer" onClose={onClose}
+    <MtModal open title="Add Central Secretary" sub="Specialty or sub-specialty secretary" meta="Developer" onClose={onClose}
       footer={<>
         <button type="button" className="mt-btn--cancel" onClick={onClose}>Cancel</button>
         <button type="button" className="mt-btn" onClick={submit} disabled={saving}>{saving ? 'Creating…' : 'Create secretary'}</button>
@@ -250,21 +250,21 @@ function CentralSecretaryModal({ councils, onCreate, onClose, saving }) {
         <div className="mt-field mt-field-full">
           <label className="mt-label">Specialty type</label>
           <div className="mt-radio-group">
-            <label className="mt-check-label"><input type="radio" className="mt-check" name="secretaryType" checked={isMain} onChange={() => set('secretaryType', 'main')} /> Main</label>
-            <label className="mt-check-label"><input type="radio" className="mt-check" name="secretaryType" checked={!isMain} onChange={() => set('secretaryType', 'precise')} /> Precise</label>
+            <label className="mt-check-label"><input type="radio" className="mt-check" name="secretaryType" checked={isMain} onChange={() => set('secretaryType', 'main')} /> Specialty</label>
+            <label className="mt-check-label"><input type="radio" className="mt-check" name="secretaryType" checked={!isMain} onChange={() => set('secretaryType', 'precise')} /> Sub-specialty</label>
           </div>
         </div>
         {isMain && (
           <div className="mt-field mt-field-full">
-            <label className="mt-label">Main specialty <span className="mt-label-req">*</span></label>
+            <label className="mt-label">Specialty <span className="mt-label-req">*</span></label>
             <select className={`mt-select${errors.councilId ? ' dev-invalid' : ''}`} value={f.councilId} onChange={(e) => set('councilId', e.target.value)}>
               <option value="">— Select council —</option>
               {councils.map((c) => <option key={c._id} value={c._id}>{councilLabel(c)}</option>)}
             </select>
-            <span className="dev-field-err" style={{ color: 'var(--text-2)' }}>Required when the type is Main.</span>
+            <span className="dev-field-err" style={{ color: 'var(--text-2)' }}>Required when the type is Specialty.</span>
           </div>
         )}
-        {!isMain && <div className="mt-field mt-field-full"><span className="dev-field-err" style={{ color: 'var(--text-2)' }}>A precise secretary covers every precise specialty — no council needed.</span></div>}
+        {!isMain && <div className="mt-field mt-field-full"><span className="dev-field-err" style={{ color: 'var(--text-2)' }}>A sub-specialty secretary covers every sub-specialty — no council needed.</span></div>}
       </div>
     </MtModal>
   );

@@ -31,9 +31,9 @@ export default function AnalyzerSpecialties() {
       filters={<>
         <SearchBox value={search} onChange={reset(setSearch)} placeholder="Search…" />
         <FilterSelect value={type} onChange={reset(setType)} allLabel="Type: All"
-          options={[{ value: 'main', label: 'Main' }, { value: 'precise', label: 'Precise' }]} />
+          options={[{ value: 'main', label: 'Specialty' }, { value: 'precise', label: 'Sub-specialty' }]} />
       </>}
-      count={`${total.toLocaleString('en-US')} specialties · ${mainCount} main, ${preciseCount} precise`}
+      count={`${total.toLocaleString('en-US')} total · ${mainCount} specialties, ${preciseCount} sub-specialties`}
       loading={loading} error={error} empty={isEmpty}
       page={page} total={total}
       onPrev={() => setPage((p) => Math.max(1, p - 1))}
@@ -52,7 +52,7 @@ export default function AnalyzerSpecialties() {
                   ? <span className="mt-td--muted" style={{ fontWeight: 400 }}> · {s.nameEn}</span> : null}
               </td>
               <td className="mt-td">
-                {s.type === 'main' ? <Pill tone="warn">Main</Pill> : <Pill tone="ok">Precise</Pill>}
+                {s.type === 'main' ? <Pill tone="warn">Specialty</Pill> : <Pill tone="ok">Sub-specialty</Pill>}
               </td>
               <td className="mt-td mt-td--muted">{s.councilId?.name || '—'}</td>
               <td className="mt-td mt-td--mono">{s.code || '—'}</td>

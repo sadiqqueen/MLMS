@@ -31,9 +31,9 @@ export default function AnalyzerHocs() {
       title="HOCs" subtitle="Data Analyzer"
       filters={<>
         <SearchBox value={search} onChange={reset(setSearch)} placeholder="Search by name or ID…" />
-        <FilterSelect value={council} onChange={reset(setCouncil)} allLabel="Main specialty: All" options={councilOpts} />
+        <FilterSelect value={council} onChange={reset(setCouncil)} allLabel="Specialty: All" options={councilOpts} />
       </>}
-      count={`${total.toLocaleString('en-US')} HOCs — one per main specialty`}
+      count={`${total.toLocaleString('en-US')} HOCs — one per specialty`}
       loading={loading} error={error} empty={isEmpty} skeleton="cards"
       page={page} total={total}
       onPrev={() => setPage((p) => Math.max(1, p - 1))}
@@ -49,7 +49,7 @@ export default function AnalyzerHocs() {
               <AccountCard
                 name={u.name} id={u.idNumber} role="HOC"
                 fields={[
-                  { label: 'Main specialty', value: u.councilId?.name || '—' },
+                  { label: 'Specialty', value: u.councilId?.name || '—' },
                   { label: 'City', value: u.city || '—' },
                   { label: 'Phone', value: u.phone || '—' },
                   { label: 'Email', value: u.email || '—' },

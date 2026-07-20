@@ -22,7 +22,7 @@ const PAGE_SIZE = 12;
 const STRINGS = {
   ar: {
     search: 'ابحث عن اختصاص…', count: n => `${n} اختصاص`,
-    allTypes: 'كل الأنواع', main: 'رئيسي', precise: 'دقيق',
+    allTypes: 'كل الأنواع', main: 'اختصاص', precise: 'اختصاص فرعي',
     colNum: '#', colName: 'الاختصاص', colType: 'النوع', colCode: 'الرمز',
     noneTitle: 'لا توجد اختصاصات بعد.', noneSub: 'ستظهر الاختصاصات هنا عند إضافتها.',
     noMatchTitle: 'لا توجد نتائج مطابقة.', noMatchSub: 'جرّب تعديل البحث أو عامل التصفية.',
@@ -30,7 +30,7 @@ const STRINGS = {
   },
   en: {
     search: 'Search specialties…', count: n => `${n} specialties`,
-    allTypes: 'All types', main: 'Main', precise: 'Precise',
+    allTypes: 'All types', main: 'Specialty', precise: 'Sub-specialty',
     colNum: '#', colName: 'Specialty', colType: 'Type', colCode: 'Code',
     noneTitle: 'No specialties yet.', noneSub: 'Specialties appear here once added.',
     noMatchTitle: 'No matching results.', noMatchSub: 'Try adjusting your search or filter.',
