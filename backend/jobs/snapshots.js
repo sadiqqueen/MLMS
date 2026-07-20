@@ -99,6 +99,32 @@ async function datasetToCsv({ model, select }) {
   return { csv: buildCsv(header, rows), count: docs.length };
 }
 
+// Combined single-file export: the core entities as ONE sectioned CSV. Reuses the
+// WHITELIST configs (so the User projection still strips credentials) and the same
+// per-dataset builder. Each entity becomes a "=== LABEL (count) ===" section with
+// its own header + rows, so heterogeneous collections read cleanly in one file.
+const COMBINED_EXPORT = [
+  ['User',        'USERS'],
+  ['Hospital',    'TRAINING CENTERS'],
+  ['Country',     'COUNTRIES'],
+  ['Program',     'PROGRAMS'],
+  ['Evaluation',  'EVALUATIONS'],
+  ['Certificate', 'CERTIFICATES'],
+];
+
+async function buildCombinedCsv() {
+  const blocks = [];
+  for (const [name, label] of COMBINED_EXPORT) {
+    const cfg = WHITELIST[name];
+    if (!cfg) continue; // defensive: only ever export whitelisted collections
+    const { csv, count } = await datasetToCsv(cfg);
+    const body = csv.replace(/^﻿/, ''); // drop the per-block BOM; one BOM added below
+    blocks.push(`"=== ${label} (${count}) ==="\r\n${body}`);
+  }
+  // Single UTF-8 BOM at the top; a blank line separates each section.
+  return '﻿' + blocks.join('\r\n\r\n') + '\r\n';
+}
+
 // Run a snapshot for one range now. Writes one CSV per whitelist dataset and
 // one DataSnapshot document per file. Returns the created documents.
 async function runSnapshot(range) {
@@ -145,4 +171,4 @@ function scheduleSnapshots() {
   console.log('[snapshots] scheduled weekly/monthly/yearly export jobs');
 }
 
-module.exports = { runSnapshot, scheduleSnapshots, WHITELIST, RANGES, SNAPSHOTS_DIR };
+module.exports = { runSnapshot, scheduleSnapshots, buildCombinedCsv, WHITELIST, RANGES, SNAPSHOTS_DIR };

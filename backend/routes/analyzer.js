@@ -13,7 +13,7 @@ const { decodeOriginalName } = require('../utils/filename');
 const { accreditationExpiry, accreditationStatus } = require('../utils/accreditation');
 const { changeHistoryFor } = require('../utils/changeHistory');
 const { applyChangeRequest } = require('../utils/applyChangeRequest');
-const { runSnapshot, RANGES, SNAPSHOTS_DIR } = require('../jobs/snapshots');
+const { runSnapshot, buildCombinedCsv, RANGES, SNAPSHOTS_DIR } = require('../jobs/snapshots');
 const { trainingYear } = require('../utils/trainingYear');
 const User           = require('../models/User');
 const Hospital       = require('../models/Hospital');
@@ -568,6 +568,24 @@ router.get('/snapshots', auth, allowRoles(...ANALYZER_ROLES), async (req, res) =
     res.json({ success: true, data: snapshots });
   } catch (err) {
     console.error('[analyzer] snapshots list:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/analyzer/snapshots/combined — build + stream ONE combined CSV of the
+// core entities (users, training centers, countries, programs, evaluations,
+// certificates) generated on the fly. Reuses the snapshot whitelist projections
+// (User credentials are never exported). Declared before the ':id' route.
+router.get('/snapshots/combined', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    const csv = await buildCombinedCsv();
+    const date = new Date().toISOString().slice(0, 10);
+    await writeAudit(req, 'analyzer_export_combined', 'DataSnapshot', null, { datasets: 6 });
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="mtms-export-${date}.csv"`);
+    res.send(csv);
+  } catch (err) {
+    console.error('[analyzer] combined export:', err.message);
     res.status(500).json({ message: err.message });
   }
 });

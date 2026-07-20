@@ -32,6 +32,7 @@ const STRINGS = {
     noSnapshots: 'لا توجد لقطات بعد.', noReports: 'لم تقم برفع أي تقارير بعد.',
     file: 'الملف (PDF / PPT / PPTX)', name: 'الاسم',
     upload: 'رفع', uploading: 'جارٍ الرفع…', selectRange: '— اختر النطاق —',
+    downloadAll: 'تنزيل الكل (CSV)', downloadingAll: 'جارٍ التنزيل…',
     running: 'جارٍ التشغيل…', snapshotDone: 'تم إنشاء اللقطة', runFailed: 'فشل تشغيل اللقطة',
     uploaded: 'تم رفع التقرير', uploadFailed: 'فشل رفع التقرير',
     downloadFailed: 'فشل التنزيل', loadFailed: 'فشل التحميل',
@@ -46,6 +47,7 @@ const STRINGS = {
     noSnapshots: 'No snapshots yet.', noReports: 'You have not uploaded any reports yet.',
     file: 'File (PDF / PPT / PPTX)', name: 'Name',
     upload: 'Upload', uploading: 'Uploading…', selectRange: '— Select range —',
+    downloadAll: 'Download all (CSV)', downloadingAll: 'Downloading…',
     running: 'Running…', snapshotDone: 'Snapshot created', runFailed: 'Snapshot run failed',
     uploaded: 'Report uploaded', uploadFailed: 'Report upload failed',
     downloadFailed: 'Download failed', loadFailed: 'Failed to load',
@@ -76,6 +78,7 @@ export default function AnalyzerExports() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState('');
   const [downloadingId, setDownloadingId] = useState('');
+  const [downloadingAll, setDownloadingAll] = useState(false);
   const [uploadRange, setUploadRange] = useState('');
   const [uploadFile, setUploadFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -118,6 +121,20 @@ export default function AnalyzerExports() {
     finally { setDownloadingId(''); }
   }
 
+  async function downloadCombined() {
+    setDownloadingAll(true);
+    try {
+      const res = await api.get('/api/analyzer/snapshots/combined', { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+      a.href = url; a.download = `mtms-export-${date}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch { notify(t('downloadFailed'), 'error'); }
+    finally { setDownloadingAll(false); }
+  }
+
   async function submitReport(e) {
     e.preventDefault();
     if (!RANGES.includes(uploadRange)) { notify(t('pickRange'), 'error'); return; }
@@ -156,6 +173,10 @@ export default function AnalyzerExports() {
                 {running === r ? t('running') : t(r)}
               </button>
             ))}
+            <span className="mt-filterbar-spacer" />
+            <button type="button" className="mt-btn" disabled={downloadingAll} onClick={downloadCombined}>
+              {downloadingAll ? t('downloadingAll') : `⬇ ${t('downloadAll')}`}
+            </button>
           </div>
 
           <div className="mt-table-wrap">
