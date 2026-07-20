@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePrefs } from '../context/PrefsContext';
@@ -96,10 +96,9 @@ export default function Navbar({ title, subtitle }) {
   const [showProfile,   setShowProfile  ] = useState(false);
   const [menuOpen,      setMenuOpen     ] = useState(false);
 
-  // mt- nav overflow ("More"/"Less") — clamp to one row until expanded.
-  const navrowRef = useRef(null);
-  const [navOver, setNavOver] = useState(false);
-  const [navExp,  setNavExp ] = useState(false);
+  // mt- nav overflow: show the first MAX_VISIBLE_LINKS inline; any extra go into a
+  // "More" dropdown (menuMore = open state).
+  const [menuMore, setMenuMore] = useState(false);
 
   // The consultant-memo feature has its own عربي/EN toggle; its navbar item
   // here follows that choice (persisted as cm-lang).
@@ -140,19 +139,8 @@ export default function Navbar({ title, subtitle }) {
   const links = user ? (ROLE_LINKS[user.role] || []) : [];
   const isMt = !!user && MT_SHELL_ROLES.has(user.role);
 
-  // Measure the mt- nav row: if links wrap past one row, show the More expander
-  // and clamp the row until expanded (shell_tokens §b).
-  useEffect(() => {
-    if (!isMt) return undefined;
-    const el = navrowRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return undefined;
-    const measure = () => setNavOver(el.scrollHeight > 60);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    window.addEventListener('resize', measure);
-    return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
-  }, [isMt, links, lang]);
+  // mt- shell: at most this many links show inline; the rest fold into "More".
+  const MAX_VISIBLE_LINKS = 6;
 
   async function handleRead(id) {
     await api.put(`/api/notifications/${id}/read`);
@@ -179,8 +167,9 @@ export default function Navbar({ title, subtitle }) {
     } catch {}
   }
 
-  function toggleNotif()   { setShowNotif(v => !v);   setShowProfile(false); setMenuOpen(false); }
-  function toggleProfile() { setShowProfile(v => !v); setShowNotif(false);   setMenuOpen(false); }
+  function toggleNotif()   { setShowNotif(v => !v);   setShowProfile(false); setMenuOpen(false); setMenuMore(false); }
+  function toggleProfile() { setShowProfile(v => !v); setShowNotif(false);   setMenuOpen(false); setMenuMore(false); }
+  function toggleMore()    { setMenuMore(v => !v);    setShowNotif(false);   setShowProfile(false); }
 
   // ── mt- redesigned shell (10 design roles) ────────────────────────────────
   if (isMt) {
@@ -237,33 +226,69 @@ export default function Navbar({ title, subtitle }) {
       </>
     );
 
+    // Show the first 6 links inline; fold any extra into a "More" dropdown. If the
+    // active page is one of the folded links, flag the More button as active.
+    const visibleLinks  = links.slice(0, MAX_VISIBLE_LINKS);
+    const overflowLinks = links.slice(MAX_VISIBLE_LINKS);
+    const path = location.pathname;
+    const activeInMore = overflowLinks.some(l => path === l.to || path.startsWith(l.to + '/'));
+
+    const renderLink = l => (
+      <NavLink
+        key={l.to}
+        to={l.to}
+        end={l.to === '/'}
+        className={({ isActive }) => 'mt-navlink' + (isActive ? ' is-active' : '')}
+        onClick={() => setMenuMore(false)}
+      >
+        {l.ic && <NavIcon name={l.ic} size={16} />}
+        {linkLabel(l)}
+      </NavLink>
+    );
+
     return (
       <div className="mt-shell-top">
-        {/* Single taller top-nav: centered links + right-side controls (theme,
-            language, notifications, profile). No logo and no separate title row.
-            dir="ltr" keeps the bar layout fixed in both languages; only the
-            labels translate. */}
+        {/* Single taller top-nav: [logo slot] · [centered links + More] · [controls].
+            dir="ltr" keeps the bar layout fixed in both languages; only the labels
+            translate. */}
         <nav className="mt-nav" dir="ltr">
-          <div className={'mt-navrow' + (navOver && !navExp ? ' is-collapsed' : '')} ref={navrowRef}>
-            {links.map(l => (
-              <NavLink
-                key={l.to}
-                to={l.to}
-                end={l.to === '/'}
-                className={({ isActive }) => 'mt-navlink' + (isActive ? ' is-active' : '')}
-              >
-                {l.ic && <NavIcon name={l.ic} size={16} />}
-                {linkLabel(l)}
-              </NavLink>
-            ))}
+          <div className="mt-nav-logo-slot">
+            <button
+              type="button" className="mt-nav-brand" aria-label="Home"
+              onClick={() => navigate(ROLE_HOME[user?.role] || '/')}
+            >
+              <img
+                className="mt-nav-logo" src="/logo-light.png" alt="MTMS"
+                onError={e => { e.currentTarget.style.display = 'none'; }}
+              />
+            </button>
           </div>
 
-          {navOver && (
-            <button type="button" className="mt-nav-more" onClick={() => setNavExp(v => !v)}>
-              {navExp ? 'Less' : 'More'}
-              <IconCaret size={14} style={{ transform: navExp ? 'rotate(180deg)' : 'none' }} />
-            </button>
-          )}
+          <div className="mt-navcenter">
+            {visibleLinks.map(renderLink)}
+
+            {overflowLinks.length > 0 && (
+              <div className="mt-more-wrap">
+                <button
+                  type="button"
+                  className={'mt-nav-more' + (activeInMore ? ' is-active' : '') + (menuMore ? ' is-open' : '')}
+                  onClick={toggleMore}
+                  aria-expanded={menuMore}
+                >
+                  {lang === 'ar' ? 'المزيد' : 'More'}
+                  <IconCaret size={14} style={{ transform: menuMore ? 'rotate(180deg)' : 'none' }} />
+                </button>
+                {menuMore && (
+                  <>
+                    <div className="mt-more-backdrop" onClick={() => setMenuMore(false)} />
+                    <div className="mt-more-menu">
+                      {overflowLinks.map(renderLink)}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="mt-nav-controls">
             {controls}
