@@ -475,7 +475,7 @@ export default function App() {
               DATA ANALYZER — filterable dashboard + staff management.
           ══════════════════════════════════════════════════════════ */}
           <Route path="/analyzer/dashboard" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}>
               <AnalyzerDashboard />
             </ProtectedRoute>
           } />
@@ -793,37 +793,37 @@ export default function App() {
 
           {/* Analyzer — 13-item nav: registry read-only views + Pending inbox */}
           <Route path="/analyzer/pending" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerPending /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerPending /></ProtectedRoute>
           } />
           <Route path="/analyzer/countries" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerCountries /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerCountries /></ProtectedRoute>
           } />
           <Route path="/analyzer/centers" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerCenters /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerCenters /></ProtectedRoute>
           } />
           <Route path="/analyzer/dios" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerDios /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerDios /></ProtectedRoute>
           } />
           <Route path="/analyzer/programs" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerPrograms /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerPrograms /></ProtectedRoute>
           } />
           <Route path="/analyzer/pds" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerPds /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerPds /></ProtectedRoute>
           } />
           <Route path="/analyzer/clerks" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerClerks /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerClerks /></ProtectedRoute>
           } />
           <Route path="/analyzer/hocs" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerHocs /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerHocs /></ProtectedRoute>
           } />
           <Route path="/analyzer/specialties" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerSpecialties /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerSpecialties /></ProtectedRoute>
           } />
           <Route path="/analyzer/central-secretaries" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerCentralSecretaries /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerCentralSecretaries /></ProtectedRoute>
           } />
           <Route path="/analyzer/trainees" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}><AnalyzerTrainees /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerTrainees /></ProtectedRoute>
           } />
 
           {/* DIO (dio_view) — ODIOs list + Add-ODIO (its only write) */}
@@ -843,7 +843,7 @@ export default function App() {
           } />
 
           <Route path="/profile" element={
-            <ProtectedRoute allowedRoles={['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president', 'super_admin', 'b_trainee', 'b_supervisor', 'b_program_director', 'b_secretary', 'b_dio', 'b_president', 'secretary_general', 'assistant_secretary', 'data_analyzer', 'data_entry', 'central_secretary', 'hoc', 'dio_view', 'sub_dio', 'sub_pd']}>
+            <ProtectedRoute allowedRoles={['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president', 'super_admin', 'b_trainee', 'b_supervisor', 'b_program_director', 'b_secretary', 'b_dio', 'b_president', 'secretary_general', 'assistant_secretary', 'data_analyzer', 'head_cs', 'data_entry', 'central_secretary', 'hoc', 'dio_view', 'sub_dio', 'sub_pd']}>
               <Profile />
             </ProtectedRoute>
           } />

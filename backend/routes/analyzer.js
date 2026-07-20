@@ -30,7 +30,10 @@ const Evaluation     = require('../models/Evaluation');
 const Research       = require('../models/Research');
 const ScientificCouncil = require('../models/ScientificCouncil');
 
-const ANALYZER_ROLES = ['data_analyzer', 'super_admin'];
+// head_cs mirrors the data analyzer for every read/approve/staff endpoint, but is
+// EXCLUDED from Exports & Reports (snapshots + analysis reports) — see EXPORT_ROLES.
+const ANALYZER_ROLES = ['data_analyzer', 'super_admin', 'head_cs'];
+const EXPORT_ROLES   = ['data_analyzer', 'super_admin'];
 // The only account types the legacy /staff endpoint creates/manages. Creation of
 // clerks/CS is also a developer (adminV2) capability in the redesign (RULINGS §37);
 // this endpoint is retained and now persists CS council/type when present.
@@ -562,7 +565,7 @@ router.patch('/change-requests/:id/reject', auth, allowRoles(...ANALYZER_ROLES),
 // ── SNAPSHOTS ──────────────────────────────────────────────────────────────
 
 // GET /api/analyzer/snapshots — the generated snapshot files, newest first.
-router.get('/snapshots', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+router.get('/snapshots', auth, allowRoles(...EXPORT_ROLES), async (req, res) => {
   try {
     const snapshots = await DataSnapshot.find().sort({ createdAt: -1 }).limit(1000);
     res.json({ success: true, data: snapshots });
@@ -576,7 +579,7 @@ router.get('/snapshots', auth, allowRoles(...ANALYZER_ROLES), async (req, res) =
 // core entities (users, training centers, countries, programs, evaluations,
 // certificates) generated on the fly. Reuses the snapshot whitelist projections
 // (User credentials are never exported). Declared before the ':id' route.
-router.get('/snapshots/combined', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+router.get('/snapshots/combined', auth, allowRoles(...EXPORT_ROLES), async (req, res) => {
   try {
     const csv = await buildCombinedCsv();
     const date = new Date().toISOString().slice(0, 10);
@@ -593,7 +596,7 @@ router.get('/snapshots/combined', auth, allowRoles(...ANALYZER_ROLES), async (re
 // GET /api/analyzer/snapshots/:id/download — stream a stored CSV. The path is
 // built ONLY from the stored fileName joined under uploads/snapshots; no
 // client-supplied path is ever used, and the resolved path must stay inside it.
-router.get('/snapshots/:id/download', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+router.get('/snapshots/:id/download', auth, allowRoles(...EXPORT_ROLES), async (req, res) => {
   try {
     const snap = await DataSnapshot.findById(req.params.id);
     if (!snap) return res.status(404).json({ message: 'Snapshot not found' });
@@ -612,7 +615,7 @@ router.get('/snapshots/:id/download', auth, allowRoles(...ANALYZER_ROLES), async
 
 // POST /api/analyzer/snapshots/run  { range } — run a snapshot now (first-run /
 // testing). Returns 202 with the created DataSnapshot documents.
-router.post('/snapshots/run', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+router.post('/snapshots/run', auth, allowRoles(...EXPORT_ROLES), async (req, res) => {
   try {
     const { range } = req.body || {};
     if (!RANGES.includes(range)) {
@@ -632,7 +635,7 @@ router.post('/snapshots/run', auth, allowRoles(...ANALYZER_ROLES), async (req, r
 // POST /api/analyzer/analysis-reports — upload a PDF/PPTX report for the
 // Secretary General + Assistant Secretary inbox. Multer runs inside the handler
 // so filter/size errors surface as 400 (never 500).
-router.post('/analysis-reports', auth, allowRoles(...ANALYZER_ROLES), (req, res) => {
+router.post('/analysis-reports', auth, allowRoles(...EXPORT_ROLES), (req, res) => {
   uploadReport.single('file')(req, res, async err => {
     if (err) return res.status(400).json({ message: err.message });
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
@@ -678,7 +681,7 @@ router.post('/analysis-reports', auth, allowRoles(...ANALYZER_ROLES), (req, res)
 });
 
 // GET /api/analyzer/analysis-reports — the analyzer's own uploads, newest first.
-router.get('/analysis-reports', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+router.get('/analysis-reports', auth, allowRoles(...EXPORT_ROLES), async (req, res) => {
   try {
     const reports = await AnalysisReport.find({ uploadedBy: req.user._id }).sort({ createdAt: -1 });
     res.json({ success: true, data: reports });

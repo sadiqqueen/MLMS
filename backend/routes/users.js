@@ -67,6 +67,8 @@ const ROLE_RANK = {
   // Head of Council — read-only council oversight, created/managed by the developer.
   hoc: 80,
   data_analyzer: 85,
+  // Head CS — mirrors the data analyzer (minus exports); developer-managed.
+  head_cs: 85,
   assistant_secretary: 88,
   secretary_general: 90,
   // ASG.1 / ASG.2 sit just below super_admin so ONLY super_admin can
@@ -77,7 +79,7 @@ const ROLE_RANK = {
 };
 
 // ASG + oversight accounts are visible to super_admin only.
-const HIDDEN_FROM_NON_ADMIN = ['asg1', 'asg2', 'secretary_general', 'assistant_secretary', 'data_analyzer', 'hoc'];
+const HIDDEN_FROM_NON_ADMIN = ['asg1', 'asg2', 'secretary_general', 'assistant_secretary', 'data_analyzer', 'hoc', 'head_cs'];
 
 // A DIO oversees its whole training track (Advanced for `dio`, Basic for
 // `b_dio`). On the generic /api/users reads it sees every user in that track —

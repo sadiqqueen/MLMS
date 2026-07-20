@@ -16,12 +16,12 @@ const Hospital       = require('../models/Hospital');
 const Distribution   = require('../models/Distribution');
 
 // Any authenticated user may list specialties (needed for dropdowns)
-const READ_ROLES  = ['super_admin', 'secretary', 'dio', 'supervisor', 'trainee', 'president', 'program_director', 'data_analyzer'];
+const READ_ROLES  = ['super_admin', 'secretary', 'dio', 'supervisor', 'trainee', 'president', 'program_director', 'data_analyzer', 'head_cs'];
 // Edit/delete + legacy PDF-template management stay with super_admin + dio.
 const WRITE_ROLES = ['super_admin', 'dio'];
 // Who may CREATE a specialty. The data analyzer manages the council taxonomy
 // (add specialties + sub-specialties) but is NOT granted edit/delete.
-const CREATE_ROLES = ['super_admin', 'dio', 'data_analyzer'];
+const CREATE_ROLES = ['super_admin', 'dio', 'data_analyzer', 'head_cs'];
 const SPECIALTY_FIELDS = ['name', 'hospitalId', 'secretaryId', 'weeklyReportPdf',
   'monthlyReportPdf', 'finalReportPdf', 'evaluationPdf1', 'evaluationPdf2',
   'evaluationPdf3', 'evaluationPdf4', 'evaluationPdf5', 'isActive',
@@ -30,7 +30,7 @@ const SPECIALTY_FIELDS = ['name', 'hospitalId', 'secretaryId', 'weeklyReportPdf'
 // Council-taxonomy fields — only super_admin + data_analyzer may set them
 // (dio is limited to legacy per-hospital specialty fields).
 const TAXONOMY_FIELDS = ['nameEn', 'type', 'code', 'councilId'];
-const TAXONOMY_ROLES  = ['super_admin', 'data_analyzer'];
+const TAXONOMY_ROLES  = ['super_admin', 'data_analyzer', 'head_cs'];
 
 function pick(body, allowed) {
   const data = {};

@@ -39,6 +39,7 @@ export const ROLE_LABELS = {
   secretary_general:   { en: 'Secretary General',    ar: 'الأمين العام' },
   assistant_secretary: { en: 'Assistant Secretary',  ar: 'مساعد الأمين العام' },
   data_analyzer:       { en: 'Data Analyzer',        ar: 'محلل البيانات' },
+  head_cs:             { en: 'Head CS',              ar: 'رئيس السكرتارية' },
   data_entry:          { en: 'Data Entry',           ar: 'مدخل البيانات' },
   central_secretary:   { en: 'Central Secretary',    ar: 'السكرتير المركزي' },
   hoc:                 { en: 'HOC',                  ar: 'HOC' },
@@ -86,6 +87,7 @@ const ADVANCED_HOME = {
   secretary_general:   '/sg/dashboard',
   assistant_secretary: '/sg/dashboard',
   data_analyzer:       '/analyzer/dashboard',
+  head_cs:             '/analyzer/dashboard',
   data_entry:          '/registry/dashboard',
   central_secretary:   '/central/dashboard',
   sub_dio:             '/dio-view/dashboard',
@@ -207,6 +209,21 @@ const ADVANCED_LINKS = {
     { to: '/analyzer/trainees',            key: 'trainees',            label: 'Trainees',            ic: 'grad'     },
     { to: '/analyzer/pending',             key: 'pending',             label: 'Pending Changes',     ic: 'inbox'    },
     { to: '/analyzer/exports',             key: 'exports',             label: 'Exports & Reports',   ic: 'doc'      },
+  ],
+  // Head CS (head_cs) — same suite as the data analyzer WITHOUT Exports & Reports.
+  head_cs: [
+    { to: '/analyzer/dashboard',           key: 'dashboard',           label: 'Dashboard',           ic: 'grid'     },
+    { to: '/analyzer/countries',           key: 'countries',           label: 'Countries',           ic: 'globe'    },
+    { to: '/analyzer/centers',             key: 'centers',             label: 'Training Centers',    ic: 'building' },
+    { to: '/analyzer/dios',                key: 'dios',                label: 'DIOs',                ic: 'brief'    },
+    { to: '/analyzer/programs',            key: 'programs',            label: 'Programs',            ic: 'layers'   },
+    { to: '/analyzer/pds',                 key: 'pds',                 label: 'PDs',                 ic: 'users'    },
+    { to: '/analyzer/clerks',              key: 'clerks',              label: 'Data Entry Clerks',   ic: 'edit'     },
+    { to: '/analyzer/hocs',                key: 'hocs',                label: 'HOCs',                ic: 'book'     },
+    { to: '/analyzer/specialties',         key: 'specialties',         label: 'Specialties',         ic: 'book'     },
+    { to: '/analyzer/central-secretaries', key: 'central_secretaries', label: 'Central Secretaries', ic: 'users'    },
+    { to: '/analyzer/trainees',            key: 'trainees',            label: 'Trainees',            ic: 'grad'     },
+    { to: '/analyzer/pending',             key: 'pending',             label: 'Pending Changes',     ic: 'inbox'    },
   ],
   // Central Secretary — design nav (dashboards.md §4.3). Trainers link retired
   // per RULINGS §D21 (trainer entity removed from redesigned roles' UI).

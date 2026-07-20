@@ -14,7 +14,7 @@ import { ROLE_HOME, ROLE_LINKS, roleLabel, baseRole, basePathForRole } from '../
 // other role (president, ASG, secretary, supervisor, basic-track b_*) keeps the
 // existing navbar EXACTLY as-is. No role switcher in either shell.
 const MT_SHELL_ROLES = new Set([
-  'super_admin', 'hoc', 'central_secretary', 'data_analyzer', 'data_entry',
+  'super_admin', 'hoc', 'central_secretary', 'data_analyzer', 'head_cs', 'data_entry',
   'secretary_general', 'assistant_secretary', 'dio', 'dio_view', 'sub_dio',
   'program_director', 'sub_pd', 'trainee',
 ]);
@@ -177,7 +177,9 @@ export default function Navbar({ title, subtitle }) {
     // the role label rides beside the avatar. `title`/`subtitle` props are kept in
     // the signature for the legacy shell + callers, but only `subtitle` (role
     // override) is consumed here.
-    const roleSub = subtitle != null ? subtitle : roleLabel(user.role, lang);
+    // Avatar role label always reflects the actual signed-in role (pages may pass
+    // a fixed subtitle like "Data Analyzer" that must not override e.g. Head CS).
+    const roleSub = roleLabel(user.role, lang);
 
     const controls = (
       <>
