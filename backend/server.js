@@ -102,6 +102,7 @@ app.use('/api/logbook', writeMethodsOnly);
 app.use('/api/central', writeMethodsOnly);
 app.use('/api/registry', writeMethodsOnly);
 app.use('/api/analyzer', writeMethodsOnly);
+app.use('/api/head-ad', writeMethodsOnly);
 app.use('/api/dio-view', writeMethodsOnly);
 app.use('/api/announcements', writeMethodsOnly);
 
@@ -137,6 +138,7 @@ app.use('/api/countries',         require('./routes/countries'));
 app.use('/api/registry',          require('./routes/registry'));
 app.use('/api/programs',          require('./routes/programs'));
 app.use('/api/analyzer',          require('./routes/analyzer'));
+app.use('/api/head-ad',           require('./routes/headAd'));
 app.use('/api/central',           require('./routes/centralSecretary'));
 app.use('/api/hoc',               require('./routes/hoc'));
 app.use('/api/sg',                require('./routes/sg'));

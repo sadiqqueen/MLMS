@@ -40,6 +40,7 @@ export const ROLE_LABELS = {
   assistant_secretary: { en: 'Assistant Secretary',  ar: 'مساعد الأمين العام' },
   data_analyzer:       { en: 'Data Analyzer',        ar: 'محلل البيانات' },
   head_cs:             { en: 'Head CS',              ar: 'رئيس السكرتارية' },
+  head_ad:             { en: 'Head AD',              ar: 'Head AD' },
   data_entry:          { en: 'Data Entry',           ar: 'مدخل البيانات' },
   central_secretary:   { en: 'Central Secretary',    ar: 'السكرتير المركزي' },
   hoc:                 { en: 'HOC',                  ar: 'HOC' },
@@ -89,6 +90,7 @@ const ADVANCED_HOME = {
   data_analyzer:       '/analyzer/dashboard',
   head_cs:             '/analyzer/dashboard',
   data_entry:          '/registry/dashboard',
+  head_ad:             '/registry/dashboard',
   central_secretary:   '/central/dashboard',
   sub_dio:             '/dio-view/dashboard',
   sub_pd:              '/program-director/dashboard',
@@ -192,6 +194,18 @@ const ADVANCED_LINKS = {
     { to: '/registry/programs',  key: 'programs',  label: 'Programs',         ic: 'layers'   },
     { to: '/registry/dios',      key: 'dios',      label: 'DIOs',             ic: 'brief'    },
     { to: '/registry/pds',       key: 'pds',       label: 'PDs',              ic: 'users'    },
+  ],
+  // Head AD (head_ad) — the clerk's six registry pages, READ-ONLY (mutations
+  // hidden client-side + 403'd server-side), plus a Permissions inbox: its only
+  // write, where it approves/rejects the clerk's edit & delete requests.
+  head_ad: [
+    { to: '/registry/dashboard',   key: 'dashboard',   label: 'Dashboard',        ic: 'grid'     },
+    { to: '/registry/countries',   key: 'countries',   label: 'Countries',        ic: 'globe'    },
+    { to: '/registry/centers',     key: 'centers',     label: 'Training Centers', ic: 'building' },
+    { to: '/registry/programs',    key: 'programs',    label: 'Programs',         ic: 'layers'   },
+    { to: '/registry/dios',        key: 'dios',        label: 'DIOs',             ic: 'brief'    },
+    { to: '/registry/pds',         key: 'pds',         label: 'PDs',              ic: 'users'    },
+    { to: '/registry/permissions', key: 'permissions', label: 'Permissions',      ic: 'inbox'    },
   ],
   // Analyzer — 13-item read-only registry + Pending-Changes inbox + Exports.
   // (Old /analyzer/staff route stays in App.jsx, unlinked.)

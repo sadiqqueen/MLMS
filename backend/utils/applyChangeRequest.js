@@ -66,11 +66,11 @@ async function applyChangeRequest(cr) {
     return createTraineeFromCapacityRequest(cr);
   }
 
-  // Redesign clerk/CS registry edits/deletes are reviewed by the Data Analyzer
-  // and applied by the dedicated registry engine (Hospital/Program/Country and
-  // every account role). The legacy DIO-reviewed trainee/supervisor path below
-  // is unchanged.
-  if (cr.reviewerRole === 'data_analyzer') {
+  // Redesign registry edits/deletes are applied by the dedicated registry engine
+  // (Hospital/Program/Country and every account role): the central secretary's
+  // requests are reviewed by the Data Analyzer, the data-entry clerk's by Head AD.
+  // The legacy DIO-reviewed trainee/supervisor path below is unchanged.
+  if (cr.reviewerRole === 'data_analyzer' || cr.reviewerRole === 'head_ad') {
     return applyRegistryChange(cr);
   }
 

@@ -116,6 +116,7 @@ const CentralCenters            = lazy(() => import('./pages/CentralCenters'));
 const CentralPrograms           = lazy(() => import('./pages/CentralPrograms'));
 const RegistryDashboard         = lazy(() => import('./pages/RegistryDashboard'));
 const RegistryPrograms          = lazy(() => import('./pages/RegistryPrograms'));
+const RegistryPermissions       = lazy(() => import('./pages/RegistryPermissions'));
 const AnalyzerPending           = lazy(() => import('./pages/AnalyzerPending'));
 const AnalyzerCountries         = lazy(() => import('./pages/AnalyzerCountries'));
 const AnalyzerCenters           = lazy(() => import('./pages/AnalyzerCenters'));
@@ -441,32 +442,32 @@ export default function App() {
               REGISTRY — Data-entry clerk (+ Developer). Global, unscoped.
           ══════════════════════════════════════════════════════════ */}
           <Route path="/registry/centers" element={
-            <ProtectedRoute allowedRoles={['data_entry', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['data_entry', 'super_admin', 'head_ad']}>
               <RegistryCenters />
             </ProtectedRoute>
           } />
           <Route path="/registry/centers/:id" element={
-            <ProtectedRoute allowedRoles={['data_entry', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['data_entry', 'super_admin', 'head_ad']}>
               <RegistryCenterDetail />
             </ProtectedRoute>
           } />
           <Route path="/registry/countries" element={
-            <ProtectedRoute allowedRoles={['data_entry', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['data_entry', 'super_admin', 'head_ad']}>
               <RegistryCountries />
             </ProtectedRoute>
           } />
           <Route path="/registry/specialties" element={
-            <ProtectedRoute allowedRoles={['data_entry', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['data_entry', 'super_admin', 'head_ad']}>
               <RegistrySpecialties />
             </ProtectedRoute>
           } />
           <Route path="/registry/dios" element={
-            <ProtectedRoute allowedRoles={['data_entry', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['data_entry', 'super_admin', 'head_ad']}>
               <RegistryDios />
             </ProtectedRoute>
           } />
           <Route path="/registry/pds" element={
-            <ProtectedRoute allowedRoles={['data_entry', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['data_entry', 'super_admin', 'head_ad']}>
               <RegistryPds />
             </ProtectedRoute>
           } />
@@ -785,10 +786,14 @@ export default function App() {
 
           {/* Clerk (data_entry) — new dashboard + programs list */}
           <Route path="/registry/dashboard" element={
-            <ProtectedRoute allowedRoles={['data_entry', 'super_admin']}><RegistryDashboard /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_entry', 'super_admin', 'head_ad']}><RegistryDashboard /></ProtectedRoute>
           } />
           <Route path="/registry/programs" element={
-            <ProtectedRoute allowedRoles={['data_entry', 'super_admin']}><RegistryPrograms /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_entry', 'super_admin', 'head_ad']}><RegistryPrograms /></ProtectedRoute>
+          } />
+          {/* Head AD only — the clerk must never review its own requests. */}
+          <Route path="/registry/permissions" element={
+            <ProtectedRoute allowedRoles={['head_ad', 'super_admin']}><RegistryPermissions /></ProtectedRoute>
           } />
 
           {/* Analyzer — 13-item nav: registry read-only views + Pending inbox */}
@@ -843,7 +848,7 @@ export default function App() {
           } />
 
           <Route path="/profile" element={
-            <ProtectedRoute allowedRoles={['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president', 'super_admin', 'b_trainee', 'b_supervisor', 'b_program_director', 'b_secretary', 'b_dio', 'b_president', 'secretary_general', 'assistant_secretary', 'data_analyzer', 'head_cs', 'data_entry', 'central_secretary', 'hoc', 'dio_view', 'sub_dio', 'sub_pd']}>
+            <ProtectedRoute allowedRoles={['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president', 'super_admin', 'b_trainee', 'b_supervisor', 'b_program_director', 'b_secretary', 'b_dio', 'b_president', 'secretary_general', 'assistant_secretary', 'data_analyzer', 'head_cs', 'head_ad', 'data_entry', 'central_secretary', 'hoc', 'dio_view', 'sub_dio', 'sub_pd']}>
               <Profile />
             </ProtectedRoute>
           } />

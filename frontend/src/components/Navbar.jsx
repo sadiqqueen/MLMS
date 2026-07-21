@@ -14,7 +14,7 @@ import { ROLE_HOME, ROLE_LINKS, roleLabel, baseRole, basePathForRole } from '../
 // other role (president, ASG, secretary, supervisor, basic-track b_*) keeps the
 // existing navbar EXACTLY as-is. No role switcher in either shell.
 const MT_SHELL_ROLES = new Set([
-  'super_admin', 'hoc', 'central_secretary', 'data_analyzer', 'head_cs', 'data_entry',
+  'super_admin', 'hoc', 'central_secretary', 'data_analyzer', 'head_cs', 'head_ad', 'data_entry',
   'secretary_general', 'assistant_secretary', 'dio', 'dio_view', 'sub_dio',
   'program_director', 'sub_pd', 'trainee',
 ]);
@@ -71,6 +71,9 @@ function notifLink(message = '', role) {
         break;
       case 'data_analyzer':
         if (has(/change|approval|request|pending/)) return '/analyzer/pending';
+        break;
+      case 'head_ad':
+        if (has(/change|approval|request|pending/)) return '/registry/permissions';
         break;
       case 'secretary_general':
       case 'assistant_secretary':

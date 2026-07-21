@@ -15,7 +15,7 @@ import RevealOnScroll from '../components/RevealOnScroll';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import { IconEdit } from '../components/icons';
 import {
-  AddCenterModal, AddProgramModal, ApprovalModal, normId, refName, toDateInput,
+  AddCenterModal, AddProgramModal, ApprovalModal, normId, refName, toDateInput, useCanWriteRegistry,
 } from './registryShared';
 import api from '../api/axios';
 import './registry.css';
@@ -75,6 +75,7 @@ export default function RegistryCountries() {
   const [addCenterOpen, setAddCenterOpen] = useState(false);
   const [addProgramOpen, setAddProgramOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
+  const canWrite = useCanWriteRegistry();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -150,9 +151,9 @@ export default function RegistryCountries() {
   const crumbRight = center
     ? (atCap
       ? <span className="mt-pill mt-pill--rejected">{t('atCapacity')}</span>
-      : <button type="button" className="mt-btn mt-btn--small" onClick={() => setAddProgramOpen(true)}>+ {t('addProgram')}</button>)
+      : canWrite && <button type="button" className="mt-btn mt-btn--small" onClick={() => setAddProgramOpen(true)}>+ {t('addProgram')}</button>)
     : (country
-      ? <button type="button" className="mt-btn mt-btn--small" onClick={() => setAddCenterOpen(true)}>+ {t('addCenter')}</button>
+      ? (canWrite && <button type="button" className="mt-btn mt-btn--small" onClick={() => setAddCenterOpen(true)}>+ {t('addCenter')}</button>)
       : null);
 
   return (
@@ -258,8 +259,10 @@ export default function RegistryCountries() {
                             <td className="mt-td">{p.durationYears ? `${p.durationYears} ${t('yrs')}` : '—'}</td>
                             <td className="mt-td mt-td--actions">
                               <div className="mt-row-actions">
-                                <button type="button" className="mt-icon-action" title={t('edit')} aria-label={t('edit')}
-                                  onClick={() => setEditItem(p)}><IconEdit size={15} /></button>
+                                {canWrite && (
+                                  <button type="button" className="mt-icon-action" title={t('edit')} aria-label={t('edit')}
+                                    onClick={() => setEditItem(p)}><IconEdit size={15} /></button>
+                                )}
                               </div>
                             </td>
                           </tr>

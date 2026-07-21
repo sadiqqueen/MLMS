@@ -39,11 +39,13 @@ const changeRequestSchema = new mongoose.Schema(
     before:      { type: mongoose.Schema.Types.Mixed, default: {} },      // raw snapshot of the same keys
     display:     { type: [mongoose.Schema.Types.Mixed], default: [] },    // [{ label, from, to }] diff
 
-    // Who approves this request: 'dio' (legacy secretary/CS→DIO/ODIO inbox) or
-    // 'data_analyzer' (redesign clerk/CS→Analyzer inbox). Legacy rows have no
-    // value and are treated as 'dio' by the DIO inbox's { $ne:'data_analyzer' }
-    // filter, so the two pipelines never cross.
-    reviewerRole: { type: String, enum: ['dio', 'data_analyzer'], default: 'dio', index: true },
+    // Who approves this request: 'dio' (legacy secretary/CS→DIO/ODIO inbox),
+    // 'data_analyzer' (redesign central-secretary→Analyzer inbox), or 'head_ad'
+    // (Head AD reviews the data-entry clerk's registry edits/deletes). Legacy
+    // rows have no value and are treated as 'dio'; the DIO inbox filters
+    // { $nin:['data_analyzer','head_ad'] } and each redesign inbox filters its
+    // own reviewerRole, so the pipelines never cross.
+    reviewerRole: { type: String, enum: ['dio', 'data_analyzer', 'head_ad'], default: 'dio', index: true },
 
     // Required book-of-changes PDF for clerk/CS analyzer-reviewed requests.
     bookOfChangesPdf: {

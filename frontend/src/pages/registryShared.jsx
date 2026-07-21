@@ -20,6 +20,15 @@ import MtModal from '../components/MtModal';
 import PdfDropzone from '../components/PdfDropzone';
 import SearchableSelect from '../components/SearchableSelect';
 import { IconCheck } from '../components/icons';
+import { useAuth } from '../context/AuthContext';
+
+// Registry pages are the clerk's workspace; Head AD sees the same pages but is
+// read-only (its mutations 403 server-side). Gate every client-side write control
+// with this so only the roles that can actually write ever see Add/Edit/Delete.
+export function useCanWriteRegistry() {
+  const { user } = useAuth();
+  return ['data_entry', 'super_admin'].includes(user?.role);
+}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 export function normId(v) { return v && typeof v === 'object' ? (v._id || '') : (v || ''); }
@@ -52,14 +61,14 @@ const STR = {
     newCenter: 'مركز تدريبي جديد', newCenterSub: 'سجل مركز تدريبي جديد',
     newProgram: 'برنامج جديد', newProgramSub: 'برنامج جديد — يُحتسب ضمن حد 100 برنامج للمركز',
     // approval
-    editBanner: 'التعديلات لا تُطبّق فورًا — يُرسَل طلب التغيير إلى محلل البيانات للموافقة، مع إرفاق كتاب التغييرات المطلوب.',
-    deleteTitle: 'حذف السجل — يتطلب موافقة', deleteNote: 'سيُحذف هذا السجل بعد موافقة محلل البيانات:',
+    editBanner: 'التعديلات لا تُطبّق فورًا — يُرسَل طلب التغيير إلى Head AD للموافقة، مع إرفاق كتاب التغييرات المطلوب.',
+    deleteTitle: 'حذف السجل — يتطلب موافقة', deleteNote: 'سيُحذف هذا السجل بعد موافقة Head AD:',
     requestDeletion: 'طلب الحذف بدلاً من ذلك', backToEdit: 'العودة للتعديل',
     uploadBoc: 'رفع كتاب التغييرات', submitForApproval: 'إرسال للموافقة', submitDeletion: 'إرسال طلب الحذف',
     submitting: 'جارٍ الإرسال…', submitFailed: 'فشل الإرسال', noChanges: 'لا توجد تغييرات للإرسال',
     reqTitle: 'تم إرسال طلب التغيير', reqDelTitle: 'تم إرسال طلب الحذف',
-    reqSub: 'سيراجع محلل البيانات الطلب. بعد الموافقة تُطبّق التغييرات وتُختم في سجل تغييرات الحساب.',
-    pendingReview: 'بانتظار مراجعة محلل البيانات', changeHistory: 'سجل التغييرات',
+    reqSub: 'سيراجع Head AD الطلب. بعد الموافقة تُطبّق التغييرات وتُختم في سجل تغييرات الحساب.',
+    pendingReview: 'بانتظار مراجعة Head AD', changeHistory: 'سجل التغييرات',
   },
   en: {
     cancel: 'Cancel', close: 'Close', done: 'Done', saving: 'Saving…', create: 'Create',
@@ -73,14 +82,14 @@ const STR = {
     newCenter: 'New training center', newCenterSub: 'New training center record',
     newProgram: 'New program', newProgramSub: 'New program — counts toward the center’s 100-program cap',
     // approval
-    editBanner: 'Edits do not take effect immediately — this change request goes to a Data Analyzer for approval, with the required book of changes attached.',
-    deleteTitle: 'Delete record — requires approval', deleteNote: 'This record will be removed once a Data Analyzer approves:',
+    editBanner: 'Edits do not take effect immediately — this change request goes to a Head AD for approval, with the required book of changes attached.',
+    deleteTitle: 'Delete record — requires approval', deleteNote: 'This record will be removed once a Head AD approves:',
     requestDeletion: 'Request deletion instead', backToEdit: 'Back to editing',
     uploadBoc: 'Upload book of changes', submitForApproval: 'Submit for approval', submitDeletion: 'Submit deletion',
     submitting: 'Submitting…', submitFailed: 'Submit failed', noChanges: 'No changes to submit',
     reqTitle: 'Change request submitted', reqDelTitle: 'Deletion request submitted',
-    reqSub: 'A Data Analyzer will review the request. Once approved, the changes apply and are stamped into the account’s change history.',
-    pendingReview: 'Pending Data Analyzer review', changeHistory: 'Change history',
+    reqSub: 'A Head AD will review the request. Once approved, the changes apply and are stamped into the account’s change history.',
+    pendingReview: 'Pending Head AD review', changeHistory: 'Change history',
   },
 };
 const S = (lang, k) => STR[lang]?.[k] ?? STR.en[k] ?? k;

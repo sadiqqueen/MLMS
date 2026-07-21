@@ -156,6 +156,14 @@ async function notifyAnalyzers(message) {
     Notification.create({ user: a._id, message, category: 'promotions' }).catch(() => {})));
 }
 
+// Notify every active Head AD that a clerk request is awaiting review. Same
+// contract as notifyAnalyzers (keep "approval" in the message for notifLink).
+async function notifyHeadAds(message) {
+  const heads = await User.find({ role: 'head_ad', isActive: { $ne: false } }).select('_id');
+  await Promise.all(heads.map(a =>
+    Notification.create({ user: a._id, message, category: 'promotions' }).catch(() => {})));
+}
+
 function httpError(message, status) {
   const err = new Error(message);
   err.status = status;
@@ -273,5 +281,6 @@ module.exports = {
   buildRegistryChangePayload,
   syncCenterDioAssignment,
   notifyAnalyzers,
+  notifyHeadAds,
   applyRegistryChange,
 };

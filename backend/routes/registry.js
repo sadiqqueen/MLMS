@@ -16,7 +16,7 @@ const { accreditationExpiry, accreditationStatus } = require('../utils/accredita
 const { changeHistoryFor } = require('../utils/changeHistory');
 const { bocUpload, BOC_URL_PREFIX } = require('../utils/bookOfChanges');
 const {
-  ROUTE_TARGETS, buildRegistryChangePayload, syncCenterDioAssignment, notifyAnalyzers,
+  ROUTE_TARGETS, buildRegistryChangePayload, syncCenterDioAssignment, notifyHeadAds,
 } = require('../utils/registryChanges');
 const User          = require('../models/User');
 const Hospital      = require('../models/Hospital');
@@ -31,6 +31,10 @@ function escapeRegex(str) {
 }
 
 const REGISTRY_ROLES = ['data_entry', 'super_admin'];
+// Head AD reads every registry list but never writes: it gets the read-only GETs
+// via REGISTRY_READ_ROLES and 403s on every POST/PATCH/DELETE (which keep
+// REGISTRY_ROLES). This split is the server-side read-only guarantee.
+const REGISTRY_READ_ROLES = [...REGISTRY_ROLES, 'head_ad'];
 // The only account types a data-entry clerk manages/sees.
 const MANAGED_ROLES = ['dio_view', 'dio', 'sub_dio', 'program_director', 'sub_pd'];
 
@@ -162,7 +166,7 @@ function submitRegistryChange(routeKey, requestType) {
           targetId: doc._id,
           hospitalId: hospitalId || null,
           routeKey,
-          reviewerRole: 'data_analyzer',
+          reviewerRole: 'head_ad',
           targetLabel: doc.name || t.label,
           changes: fields,
           before,
@@ -176,7 +180,7 @@ function submitRegistryChange(routeKey, requestType) {
           track: req.track,
         });
 
-        await notifyAnalyzers(`${req.user.name} submitted a ${requestType === 'delete' ? 'deletion' : 'change'} to ${doc.name || t.label} for approval.`);
+        await notifyHeadAds(`${req.user.name} submitted a ${requestType === 'delete' ? 'deletion' : 'change'} to ${doc.name || t.label} for approval.`);
         await writeAudit(req, `registry_submit_${requestType}`, t.model, doc._id, { routeKey });
         res.status(202).json({ success: true, pending: true, data: viewChangeRequest(cr) });
       } catch (e) {
@@ -192,7 +196,7 @@ function submitRegistryChange(routeKey, requestType) {
 // ── DASHBOARD ────────────────────────────────────────────────────────────────
 
 // GET /api/registry/stats — clerk dashboard counts (advanced track).
-router.get('/stats', auth, allowRoles(...REGISTRY_ROLES), async (req, res) => {
+router.get('/stats', auth, allowRoles(...REGISTRY_READ_ROLES), async (req, res) => {
   try {
     const tf = trackFilter(req.track);
     const [countries, centers, programs, specialties, dios, pds, pendingChanges] = await Promise.all([
@@ -202,7 +206,11 @@ router.get('/stats', auth, allowRoles(...REGISTRY_ROLES), async (req, res) => {
       Specialty.countDocuments({ ...tf, isActive: { $ne: false } }),
       User.countDocuments({ role: 'dio_view', isActive: { $ne: false } }),
       User.countDocuments({ role: 'program_director', isActive: { $ne: false } }),
-      ChangeRequest.countDocuments({ requestedBy: req.user._id, status: 'pending' }),
+      // Head AD's card counts requests awaiting its approval; the clerk's counts
+      // its own queued (reviewer-agnostic by requestedBy) requests.
+      req.user.role === 'head_ad'
+        ? ChangeRequest.countDocuments({ reviewerRole: 'head_ad', status: 'pending' })
+        : ChangeRequest.countDocuments({ requestedBy: req.user._id, status: 'pending' }),
     ]);
     res.json({ success: true, data: { countries, centers, programs, specialties, dios, pds, pendingChanges } });
   } catch (err) {
@@ -214,7 +222,7 @@ router.get('/stats', auth, allowRoles(...REGISTRY_ROLES), async (req, res) => {
 // ── TRAINING CENTERS ────────────────────────────────────────────────────────
 
 // GET /api/registry/centers?countryId=&search=
-router.get('/centers', auth, allowRoles(...REGISTRY_ROLES), async (req, res) => {
+router.get('/centers', auth, allowRoles(...REGISTRY_READ_ROLES), async (req, res) => {
   try {
     const { countryId, search } = req.query;
     const query = { ...trackFilter(req.track) };
@@ -234,7 +242,7 @@ router.get('/centers', auth, allowRoles(...REGISTRY_ROLES), async (req, res) => 
 });
 
 // GET /api/registry/centers/:id — center + its active programs.
-router.get('/centers/:id', auth, allowRoles(...REGISTRY_ROLES), async (req, res) => {
+router.get('/centers/:id', auth, allowRoles(...REGISTRY_READ_ROLES), async (req, res) => {
   try {
     const center = await Hospital.findById(req.params.id)
       .populate('countryId', 'name code')
@@ -299,7 +307,7 @@ router.delete('/centers/:id', auth, allowRoles(...REGISTRY_ROLES), submitRegistr
 const SPECIALTY_FIELDS = ['name', 'isActive'];
 
 // GET /api/registry/specialties?type=&councilId=
-router.get('/specialties', auth, allowRoles(...REGISTRY_ROLES), async (req, res) => {
+router.get('/specialties', auth, allowRoles(...REGISTRY_READ_ROLES), async (req, res) => {
   try {
     const query = { ...trackFilter(req.track) };
     if (req.query.type) query.type = req.query.type;
@@ -497,7 +505,7 @@ router.delete('/countries/:id', auth, allowRoles(...REGISTRY_ROLES), submitRegis
 // ── USERS (clerk's managed accounts) ────────────────────────────────────────
 
 // GET /api/registry/users?role=&countryId=&specialtyId=&search=
-router.get('/users', auth, allowRoles(...REGISTRY_ROLES), async (req, res) => {
+router.get('/users', auth, allowRoles(...REGISTRY_READ_ROLES), async (req, res) => {
   try {
     const { role, countryId, specialtyId, search } = req.query;
     const query = { isActive: { $ne: false } };

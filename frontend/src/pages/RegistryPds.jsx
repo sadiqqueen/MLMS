@@ -17,7 +17,7 @@ import MtModal from '../components/MtModal';
 import SearchableSelect from '../components/SearchableSelect';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import {
-  SearchBox, ApprovalModal, ViewModal, normId, refName, histLine,
+  SearchBox, ApprovalModal, ViewModal, normId, refName, histLine, useCanWriteRegistry,
 } from './registryShared';
 import api from '../api/axios';
 import './registry.css';
@@ -159,6 +159,7 @@ export default function RegistryPds() {
   const [addPd, setAddPd] = useState(false);
   const [addSub, setAddSub] = useState(false);
   const [editItem, setEditItem] = useState(null);   // { user, kind }
+  const canWrite = useCanWriteRegistry();
   const [viewItem, setViewItem] = useState(null);
 
   const load = useCallback(async () => {
@@ -246,8 +247,8 @@ export default function RegistryPds() {
             {countries.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
           </select>
           <span className="mt-filterbar-spacer" />
-          <button type="button" className="mt-btn" onClick={() => setAddPd(true)}>+ {t('addPd')}</button>
-          <button type="button" className="mt-btn" onClick={() => setAddSub(true)}>+ {t('addSubPd')}</button>
+          {canWrite && <button type="button" className="mt-btn" onClick={() => setAddPd(true)}>+ {t('addPd')}</button>}
+          {canWrite && <button type="button" className="mt-btn" onClick={() => setAddSub(true)}>+ {t('addSubPd')}</button>}
           <span className="mt-count">{t('count')(rows.length)}</span>
         </div>
 
@@ -264,7 +265,7 @@ export default function RegistryPds() {
                 <AccountCard
                   name={row.u.name} id={row.u.idNumber}
                   role={row.kind === 'sub' ? t('badgeSub') : t('badgePd')}
-                  fields={fieldsFor(row)} canEdit
+                  fields={fieldsFor(row)} canEdit={canWrite}
                   history={(row.u.changeHistory || []).map(histLine)}
                   onView={() => setViewItem(row)} onEdit={() => setEditItem(row)}
                 />

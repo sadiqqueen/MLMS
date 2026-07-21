@@ -1151,12 +1151,12 @@ router.get('/supervisors/trainees-map', auth, allowRoles(...DIO, 'super_admin'),
 // ── PROMOTIONS: secretary account-edit approvals ────────────────────────────
 
 // GET /api/dio/change-requests?status=pending — edit requests in the DIO's track.
-// EXCLUDES analyzer-reviewed clerk/CS registry requests (reviewerRole
-// 'data_analyzer') so the DIO inbox only ever shows its own secretary/CS→DIO
-// flow — the two approval pipelines never cross (RULINGS §E23).
+// EXCLUDES the redesign registry requests (reviewerRole 'data_analyzer' → Analyzer
+// inbox, 'head_ad' → Head AD inbox) so the DIO inbox only ever shows its own
+// secretary/CS→DIO flow — the approval pipelines never cross (RULINGS §E23).
 router.get('/change-requests', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
   try {
-    const query = { ...trackFilter(req.track), reviewerRole: { $ne: 'data_analyzer' } };
+    const query = { ...trackFilter(req.track), reviewerRole: { $nin: ['data_analyzer', 'head_ad'] } };
     if (req.query.status) query.status = req.query.status;
     if (req.query.requestType) query.requestType = req.query.requestType;
     const items = await ChangeRequest.find(query)
@@ -1175,7 +1175,7 @@ router.get('/change-requests', auth, allowRoles(...DIO, 'super_admin'), async (r
 // PATCH /api/dio/change-requests/:id/approve — apply the queued change
 router.patch('/change-requests/:id/approve', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
   try {
-    const query = { _id: req.params.id, status: 'pending', ...trackFilter(req.track), reviewerRole: { $ne: 'data_analyzer' } };
+    const query = { _id: req.params.id, status: 'pending', ...trackFilter(req.track), reviewerRole: { $nin: ['data_analyzer', 'head_ad'] } };
     const cr = await ChangeRequest.findOne(query);
     if (!cr) return res.status(404).json({ success: false, message: 'Pending request not found' });
 
@@ -1218,7 +1218,7 @@ router.patch('/change-requests/:id/approve', auth, allowRoles(...DIO, 'super_adm
 // PATCH /api/dio/change-requests/:id/reject
 router.patch('/change-requests/:id/reject', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
   try {
-    const query = { _id: req.params.id, status: 'pending', ...trackFilter(req.track), reviewerRole: { $ne: 'data_analyzer' } };
+    const query = { _id: req.params.id, status: 'pending', ...trackFilter(req.track), reviewerRole: { $nin: ['data_analyzer', 'head_ad'] } };
     const cr = await ChangeRequest.findOne(query);
     if (!cr) return res.status(404).json({ success: false, message: 'Pending request not found' });
 

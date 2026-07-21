@@ -11,6 +11,7 @@ import Toast from '../components/Toast';
 import Sk from '../components/Skeleton';
 import { IconPencil, IconBan, IconUserCheck } from '../components/icons';
 import api from '../api/axios';
+import { useCanWriteRegistry } from './registryShared';
 
 const STRINGS = {
   ar: {
@@ -97,6 +98,7 @@ export default function RegistrySpecialties() {
   const [showInactive, setShowInactive] = useState(false);
   const [modal, setModal] = useState(null);
   const [toasts, setToasts] = useState([]);
+  const canWrite = useCanWriteRegistry();
 
   function showToast(message, type = 'success') {
     const id = Date.now();
@@ -162,7 +164,7 @@ export default function RegistrySpecialties() {
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-2)', cursor: 'pointer' }}>
               <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} /> {t('showInactive')}
             </label>
-            <button className="btn-primary" onClick={() => setModal({ item: null })}>+ {t('add')}</button>
+            {canWrite && <button className="btn-primary" onClick={() => setModal({ item: null })}>+ {t('add')}</button>}
           </div>
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -182,10 +184,14 @@ export default function RegistrySpecialties() {
                       <td><span className={active ? 'badge badge-green' : 'badge'} style={active ? undefined : { background: 'var(--surface-2)', color: 'var(--text-muted)' }}>{active ? t('active') : t('inactive')}</span></td>
                       <td>
                         <div className="action-btns">
-                          <button className="btn-action edit" title={t('edit')} aria-label={t('edit')} onClick={() => setModal({ item: s })}><IconPencil /></button>
-                          {active
-                            ? <button className="btn-action delete" title={t('deactivate')} aria-label={t('deactivate')} onClick={() => toggleActive(s)}><IconBan /></button>
-                            : <button className="btn-action reactivate" title={t('reactivate')} aria-label={t('reactivate')} onClick={() => toggleActive(s)}><IconUserCheck /></button>}
+                          {canWrite ? (
+                            <>
+                              <button className="btn-action edit" title={t('edit')} aria-label={t('edit')} onClick={() => setModal({ item: s })}><IconPencil /></button>
+                              {active
+                                ? <button className="btn-action delete" title={t('deactivate')} aria-label={t('deactivate')} onClick={() => toggleActive(s)}><IconBan /></button>
+                                : <button className="btn-action reactivate" title={t('reactivate')} aria-label={t('reactivate')} onClick={() => toggleActive(s)}><IconUserCheck /></button>}
+                            </>
+                          ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                         </div>
                       </td>
                     </tr>

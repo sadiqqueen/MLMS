@@ -1,10 +1,11 @@
-// W1-Analyzer — Pending Changes inbox (lists_views §6, proto_modals §4).
-// The analyzer reviews clerk/CS edit & delete requests: before→after diff,
-// attached book-of-changes PDF, then Approve (applies immediately) or Reject
-// (review note REQUIRED). Contracts:
-//   GET   /api/analyzer/change-requests?status=pending|approved|rejected
-//   PATCH /api/analyzer/change-requests/:id/approve { note? }
-//   PATCH /api/analyzer/change-requests/:id/reject  { note* }   (400 if missing)
+// Head AD — Permissions inbox. Head AD's ONE actionable screen (every other
+// registry page it sees is read-only). It reviews the data-entry clerk's edit &
+// delete requests: before→after diff, attached book-of-changes PDF, then Approve
+// (applies immediately) or Reject (review note REQUIRED). Mirror of the analyzer
+// Pending-Changes inbox, retargeted to the head-ad pipeline. Contracts:
+//   GET   /api/head-ad/change-requests?status=pending|approved|rejected
+//   PATCH /api/head-ad/change-requests/:id/approve { note? }
+//   PATCH /api/head-ad/change-requests/:id/reject  { note* }   (400 if missing)
 import { useEffect, useRef, useState } from 'react';
 import { usePrefs } from '../context/PrefsContext';
 import { roleLabel } from '../config/roles';
@@ -26,7 +27,7 @@ const STATUS_OPTS = [
   { value: 'rejected', label: 'Rejected' },
 ];
 
-export default function AnalyzerPending() {
+export default function RegistryPermissions() {
   const { lang } = usePrefs();
   const { toasts, showToast } = useMtToast();
 
@@ -43,7 +44,7 @@ export default function AnalyzerPending() {
     if (isFirst) setLoading(true);
     setError('');
     try {
-      const res = await api.get('/api/analyzer/change-requests', { params: { status }, cache: false });
+      const res = await api.get('/api/head-ad/change-requests', { params: { status }, cache: false });
       setItems(res.data?.data || []);
     } catch (e) {
       setError(e.response?.data?.message || 'Failed to load pending changes.');
@@ -60,7 +61,7 @@ export default function AnalyzerPending() {
     setCardBusy(cr._id, true);
     try {
       const note = (notes[cr._id] || '').trim();
-      await api.patch(`/api/analyzer/change-requests/${cr._id}/approve`, note ? { note } : {});
+      await api.patch(`/api/head-ad/change-requests/${cr._id}/approve`, note ? { note } : {});
       showToast(`Approved — changes applied to ${cr.targetLabel || 'the record'}`, 'ok');
       setItems((list) => list.filter((x) => x._id !== cr._id));
     } catch (e) {
@@ -79,7 +80,7 @@ export default function AnalyzerPending() {
     }
     setCardBusy(cr._id, true);
     try {
-      await api.patch(`/api/analyzer/change-requests/${cr._id}/reject`, { note });
+      await api.patch(`/api/head-ad/change-requests/${cr._id}/reject`, { note });
       showToast(`Rejected — returned to ${cr.requestedBy?.name || 'the requester'} with your note`, 'dng');
       setItems((list) => list.filter((x) => x._id !== cr._id));
     } catch (e) {
@@ -117,7 +118,7 @@ export default function AnalyzerPending() {
 
   return (
     <>
-      <Navbar title="Pending Changes" subtitle="Data Analyzer" />
+      <Navbar title="Permissions" subtitle="Head AD" />
       <main className="mt-content">
         <div className="mt-filterbar">
           <SearchBox value={search} onChange={setSearch} placeholder="Search requester or target…" />
@@ -130,7 +131,7 @@ export default function AnalyzerPending() {
 
         {status === 'pending' && (
           <div className="mt-banner" style={{ maxWidth: 920 }}>
-            Approving a request applies the changes immediately and stamps the account's change history.
+            Approving a request applies the changes immediately and stamps the record's change history.
             Rejections require a review note.
           </div>
         )}
@@ -147,7 +148,7 @@ export default function AnalyzerPending() {
           <div style={{ maxWidth: 920 }}>
             <EmptyState icon={<IconInbox size={22} />}
               title={status === 'pending' ? 'Inbox zero — no pending changes' : `No ${status} requests`}
-              sub={status === 'pending' ? 'New central-secretary edit requests will appear here for review.' : 'Reviewed requests appear here.'} />
+              sub={status === 'pending' ? 'New data-entry clerk edit & delete requests will appear here for review.' : 'Reviewed requests appear here.'} />
           </div>
         ) : (
           <div className="mt-az-inbox">

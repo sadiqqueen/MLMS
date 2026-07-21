@@ -16,7 +16,7 @@ import RevealOnScroll from '../components/RevealOnScroll';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import { IconEdit } from '../components/icons';
 import {
-  AddProgramModal, ApprovalModal, normId, refName, fmtDate, toDateInput, histLine,
+  AddProgramModal, ApprovalModal, normId, refName, fmtDate, toDateInput, histLine, useCanWriteRegistry,
 } from './registryShared';
 import api from '../api/axios';
 import './registry.css';
@@ -67,6 +67,7 @@ export default function RegistryCenterDetail() {
   const [notFound, setNotFound] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
+  const canWrite = useCanWriteRegistry();
 
   const load = useCallback(async () => {
     setLoading(true); setNotFound(false);
@@ -191,7 +192,7 @@ export default function RegistryCenterDetail() {
             <span className="mt-filterbar-spacer" />
             {atCap
               ? <span className="mt-pill mt-pill--rejected">{t('atCapacity')}</span>
-              : <button type="button" className="mt-btn mt-btn--small" onClick={() => setAddOpen(true)}>+ {t('addProgram')}</button>}
+              : canWrite && <button type="button" className="mt-btn mt-btn--small" onClick={() => setAddOpen(true)}>+ {t('addProgram')}</button>}
           </div>
           <div className="mt-table-wrap">
             <table className="mt-table">
@@ -217,8 +218,10 @@ export default function RegistryCenterDetail() {
                     <td className="mt-td">{p.durationYears ? `${p.durationYears} ${t('yrs')}` : '—'}</td>
                     <td className="mt-td mt-td--actions">
                       <div className="mt-row-actions">
-                        <button type="button" className="mt-icon-action" title={t('edit')} aria-label={t('edit')}
-                          onClick={() => setEditItem(p)}><IconEdit size={15} /></button>
+                        {canWrite && (
+                          <button type="button" className="mt-icon-action" title={t('edit')} aria-label={t('edit')}
+                            onClick={() => setEditItem(p)}><IconEdit size={15} /></button>
+                        )}
                       </div>
                     </td>
                   </tr>

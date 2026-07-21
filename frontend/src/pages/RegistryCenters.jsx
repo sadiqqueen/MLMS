@@ -15,7 +15,7 @@ import Pagination from '../components/Pagination';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import { IconEye, IconEdit } from '../components/icons';
 import {
-  SearchBox, AddCenterModal, ApprovalModal, normId, refName, toDateInput,
+  SearchBox, AddCenterModal, ApprovalModal, normId, refName, toDateInput, useCanWriteRegistry,
 } from './registryShared';
 import api from '../api/axios';
 import './registry.css';
@@ -73,6 +73,7 @@ export default function RegistryCenters() {
   const [page, setPage] = useState(1);
   const [addOpen, setAddOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
+  const canWrite = useCanWriteRegistry();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -153,7 +154,7 @@ export default function RegistryCenters() {
             {countries.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
           </select>
           <span className="mt-filterbar-spacer" />
-          <button type="button" className="mt-btn" onClick={() => setAddOpen(true)}>+ {t('add')}</button>
+          {canWrite && <button type="button" className="mt-btn" onClick={() => setAddOpen(true)}>+ {t('add')}</button>}
           <span className="mt-count">{t('count')(filtered.length)}</span>
         </div>
 
@@ -194,8 +195,10 @@ export default function RegistryCenters() {
                         <div className="mt-row-actions">
                           <button type="button" className="mt-icon-action" title={t('view')} aria-label={t('view')}
                             onClick={() => navigate(`/registry/centers/${c._id}`)}><IconEye size={15} /></button>
-                          <button type="button" className="mt-icon-action" title={t('edit')} aria-label={t('edit')}
-                            onClick={() => setEditItem(c)}><IconEdit size={15} /></button>
+                          {canWrite && (
+                            <button type="button" className="mt-icon-action" title={t('edit')} aria-label={t('edit')}
+                              onClick={() => setEditItem(c)}><IconEdit size={15} /></button>
+                          )}
                         </div>
                       </td>
                     </tr>

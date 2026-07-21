@@ -16,7 +16,7 @@ function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-const READ_ROLES = ['data_entry', 'data_analyzer', 'super_admin', 'central_secretary',
+const READ_ROLES = ['data_entry', 'data_analyzer', 'super_admin', 'head_ad', 'central_secretary',
   'dio', 'dio_view', 'sub_dio', 'hoc', 'secretary_general', 'assistant_secretary',
   'program_director', 'sub_pd'];
 // Create + PD-candidate lookup: the clerk creates programs directly.

@@ -25,7 +25,7 @@ import './developer.css';
 const ROLES = [
   'trainee', 'supervisor', 'program_director', 'sub_pd', 'secretary', 'data_entry',
   'central_secretary', 'hoc', 'dio', 'dio_view', 'sub_dio', 'president', 'asg1', 'asg2',
-  'data_analyzer', 'head_cs', 'assistant_secretary', 'secretary_general', 'super_admin',
+  'data_analyzer', 'head_cs', 'head_ad', 'assistant_secretary', 'secretary_general', 'super_admin',
 ];
 const BASIC_CAPABLE = ['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president'];
 const effectiveRole = (baseR, track) => (track === 'basic' && BASIC_CAPABLE.includes(baseR) ? 'b_' + baseR : baseR);
@@ -36,7 +36,7 @@ const ROLE_FIELDS = {
   program_director: ['hospitalId', 'department', 'phone'],
   sub_pd: ['phone'], secretary: ['specialtyId', 'phone'], data_entry: ['phone'],
   central_secretary: ['phone'], hoc: ['councilId', 'phone'], dio: ['phone'], dio_view: ['phone'], sub_dio: ['phone'],
-  president: ['phone'], asg1: ['phone'], asg2: ['phone'], data_analyzer: ['phone'], head_cs: ['phone'],
+  president: ['phone'], asg1: ['phone'], asg2: ['phone'], data_analyzer: ['phone'], head_cs: ['phone'], head_ad: ['phone'],
   assistant_secretary: ['phone'], secretary_general: ['phone'], super_admin: [],
 };
 const showField = (role, field) => (ROLE_FIELDS[role] || []).includes(field);
