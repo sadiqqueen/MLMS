@@ -23,8 +23,10 @@
   padding-inline: 20px; padding-block: 0;
   min-width: 0;
 }
-/* Left + right zones share equal flex so the centre block stays truly centred. */
-.mt-nav-logo-slot { flex: 1 1 0; display: flex; align-items: center; min-width: 0; }
+/* Logo + controls take their natural width and are pinned to the edges; the
+   centre link zone gets all the space between them and scrolls INSIDE its own box
+   when it can't fit — so links never overflow and overlap the logo/controls. */
+.mt-nav-logo-slot { flex: 0 0 auto; display: flex; align-items: center; min-width: 0; }
 .mt-nav-brand {
   flex: none; display: flex; align-items: center; height: 52px;
   cursor: pointer; background: none; border: none; padding: 0;
@@ -32,42 +34,58 @@
 .mt-nav-logo { height: 34px; width: auto; display: block; }
 
 .mt-navcenter {
-  flex: 0 1 auto; display: flex; align-items: center; justify-content: center;
-  gap: 2px; min-width: 0; flex-wrap: nowrap;
+  flex: 1 1 auto; display: flex; align-items: center; justify-content: flex-start;
+  gap: 4px; min-width: 0; flex-wrap: nowrap;
+  /* Bounded scroll: if the links can't fit they scroll within this zone instead
+     of spilling over the logo/controls (the overlap bug). Scrollbar hidden. */
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
 }
+.mt-navcenter::-webkit-scrollbar { display: none; }
 
 .mt-navlink {
+  position: relative; isolation: isolate; overflow: hidden;
   display: flex; align-items: center; gap: 8px;
-  padding-block: 18px 16px; padding-inline: 15px;
+  margin-block: 8px; padding-block: 9px; padding-inline: 14px;
   cursor: pointer; font-size: 14.5px; white-space: nowrap; flex: none;
   font-weight: 500; text-decoration: none;
   color: rgba(255,255,255,.75); background: transparent;
-  border: none; border-radius: 0;
+  border: none; border-radius: 10px;            /* rounder corners */
   box-shadow: none;
-  transition: background .15s ease, color .15s ease;
+  transition: background .18s ease, color .18s ease;
+}
+/* Orange fill that rises bottom→top when a link becomes active (on click/nav).
+   transform-only + clipped to the rounded corners; z-index:-1 keeps it under the
+   label. Duration 1s per request (reduced-motion path zeroes it below). */
+.mt-navlink::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: var(--accent); border-radius: inherit;
+  transform: scaleY(0); transform-origin: bottom;
+  transition: transform 1s cubic-bezier(.22, 1, .36, 1);
 }
 .mt-navlink svg { flex: none; }
 .mt-navlink:hover { background: rgba(255,255,255,.09); color: #fff; }
-.mt-navlink.is-active {
-  color: #fff; background: rgba(255,255,255,.11);
-  box-shadow: inset 0 -3px 0 0 var(--accent);   /* accent underline, layout-stable */
-  font-weight: 600;
-}
+.mt-navlink.is-active { color: #fff; font-weight: 600; background: transparent; }
+.mt-navlink.is-active::before { transform: scaleY(1); }
 
 /* "More" button — matches a nav link; toggles a second row of the overflow links. */
 .mt-nav-more {
+  position: relative; isolation: isolate; overflow: hidden;
   display: flex; align-items: center; gap: 5px;
-  padding-block: 18px 16px; padding-inline: 15px;
+  margin-block: 8px; padding-block: 9px; padding-inline: 14px;
   cursor: pointer; font-size: 14.5px; font-weight: 500; white-space: nowrap;
   color: rgba(255,255,255,.75); background: transparent; border: none;
-  box-shadow: none; flex: none;
-  transition: background .15s ease, color .15s ease;
+  border-radius: 10px; box-shadow: none; flex: none;
+  transition: background .18s ease, color .18s ease;
+}
+.mt-nav-more::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: var(--accent); border-radius: inherit;
+  transform: scaleY(0); transform-origin: bottom;
+  transition: transform 1s cubic-bezier(.22, 1, .36, 1);
 }
 .mt-nav-more:hover, .mt-nav-more.is-open { background: rgba(255,255,255,.09); color: #fff; }
-.mt-nav-more.is-active {
-  color: #fff; background: rgba(255,255,255,.11);
-  box-shadow: inset 0 -3px 0 0 var(--accent); font-weight: 600;
-}
+.mt-nav-more.is-active { color: #fff; font-weight: 600; background: transparent; }
+.mt-nav-more.is-active::before { transform: scaleY(1); }
 
 /* Second nav row: revealed by "More", expands the bar downward (in normal flow,
    so page content is pushed down rather than overlaid). */
@@ -82,7 +100,7 @@
 /* Controls (theme, language, notifications, profile) on the right of the dark
    top-nav — restyled light-on-dark from their original light-topbar look. */
 .mt-nav-controls {
-  flex: 1 1 0; display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  flex: 0 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 8px;
 }
 .mt-nav-controls .mt-iconbtn {
   border-color: rgba(255,255,255,.20);
@@ -98,6 +116,34 @@
 .mt-nav-controls .mt-avatar-wrap:hover .mt-topbar-avatar { background: rgba(255,255,255,.30); }
 .mt-nav-controls .mt-topbar-uname-name { color: #fff; }
 .mt-nav-controls .mt-topbar-uname-role { color: rgba(255,255,255,.65); }
+
+/* ── Hamburger + mobile links drawer (mt- shell small-screen layout) ─────────
+   Hidden on desktop. Below 760px the inline links collapse into this drawer so
+   nothing overlaps and the bar works on phones. */
+.mt-nav-burger {
+  display: none; flex: none;
+  width: 40px; height: 40px; align-items: center; justify-content: center;
+  border: 1px solid rgba(255,255,255,.20); border-radius: 10px;
+  background: rgba(255,255,255,.08); color: #fff; cursor: pointer;
+  transition: background .18s ease;
+}
+.mt-nav-burger:hover { background: rgba(255,255,255,.16); }
+.mt-nav-mobile {
+  display: none; flex-direction: column; gap: 4px;
+  background: var(--shell-bg);
+  border-block-start: 1px solid rgba(255,255,255,.10);
+  padding: 8px 12px 12px;
+}
+.mt-nav-mobile .mt-navlink { width: 100%; margin-block: 0; }
+
+@media (max-width: 760px) {
+  .mt-nav { gap: 8px; padding-inline: 12px; }
+  .mt-navcenter { display: none; }
+  .mt-nav-burger { display: flex; }
+  .mt-nav-mobile.is-open { display: flex; }
+  .mt-nav-logo { height: 28px; }
+  .mt-nav-controls { gap: 6px; }
+}
 
 /* ── TOPBAR (shell_tokens §c) — 62px title + subtitle + right controls ─────── */
 .mt-topbar {
@@ -118,7 +164,7 @@
 .mt-iconbtn {
   position: relative;
   width: 36px; height: 36px; flex: none;
-  border: 1px solid var(--border); border-radius: 8px;
+  border: 1px solid var(--border); border-radius: 10px;
   background: var(--surface); color: var(--text-2);
   display: flex; align-items: center; justify-content: center; cursor: pointer;
   transition: color .15s ease, background .15s ease, border-color .15s ease;
@@ -160,6 +206,8 @@
    not *delay*, so staggered chart parts would flash hidden. Force final state. */
 @media (prefers-reduced-motion: reduce) {
   .mt-reveal { opacity: 1 !important; transform: none !important; }
+  /* No animated fill — the active link snaps to its orange state. */
+  .mt-navlink::before, .mt-nav-more::before { transition: none !important; }
   .mt-bar { animation: none !important; transform: none !important; }
   .mt-bar-val { animation: none !important; opacity: 1 !important; }
   .mt-chart-svg polyline,

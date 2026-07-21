@@ -244,7 +244,7 @@ export default function Navbar({ title, subtitle }) {
         to={l.to}
         end={l.to === '/'}
         className={({ isActive }) => 'mt-navlink' + (isActive ? ' is-active' : '')}
-        onClick={() => setMenuMore(false)}
+        onClick={() => { setMenuMore(false); setMenuOpen(false); }}
       >
         {l.ic && <NavIcon name={l.ic} size={16} />}
         {linkLabel(l)}
@@ -288,6 +288,18 @@ export default function Navbar({ title, subtitle }) {
           <div className="mt-nav-controls">
             {controls}
           </div>
+
+          {/* Phone-only hamburger — collapses the links into the drawer below so
+              nothing overlaps on small screens. Hidden on desktop via CSS. */}
+          <button
+            type="button" className="mt-nav-burger" aria-label="Menu" aria-expanded={menuOpen}
+            onClick={() => { setMenuOpen(v => !v); setShowNotif(false); setShowProfile(false); setMenuMore(false); }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M3 6h18M3 12h18M3 18h18" />
+            </svg>
+          </button>
         </nav>
 
         {/* "More" expands the nav DOWNWARD into a second row of the overflow links,
@@ -295,6 +307,14 @@ export default function Navbar({ title, subtitle }) {
         {menuMore && overflowLinks.length > 0 && (
           <div className="mt-nav-more-row" dir="ltr">
             {overflowLinks.map(renderLink)}
+          </div>
+        )}
+
+        {/* Phone drawer: every link stacked vertically. CSS reveals it only below
+            760px when open; on desktop the hamburger is hidden so it never shows. */}
+        {menuOpen && (
+          <div className="mt-nav-mobile is-open" dir="ltr">
+            {links.map(renderLink)}
           </div>
         )}
       </div>
