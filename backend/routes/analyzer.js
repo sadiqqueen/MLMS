@@ -400,9 +400,9 @@ router.get('/pds', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
       const prog = await Program.findById(req.query.programId).select('programDirectorId');
       query._id = prog ? prog.programDirectorId : null;
     }
-    const pds = await User.find(query).select('-password').populate('specialtyId', 'name').populate('countryId', 'name code').sort({ name: 1 });
+    const pds = await User.find(query).select('-password').populate('specialtyId', 'name nameEn').populate('countryId', 'name code').sort({ name: 1 });
     const subPds = await User.find({ role: 'sub_pd', pdId: { $in: pds.map(p => p._id) }, isActive: { $ne: false } })
-      .select('-password').populate('specialtyId', 'name').populate('pdId', 'name').sort({ name: 1 });
+      .select('-password').populate('specialtyId', 'name nameEn').populate('pdId', 'name').sort({ name: 1 });
     const hist = await changeHistoryFor([...pds.map(p => p._id), ...subPds.map(s => s._id)]);
     const stamp = u => ({ ...u.toObject(), changeHistory: hist[String(u._id)] || [] });
     res.json({ success: true, data: { pds: pds.map(stamp), subPds: subPds.map(stamp) } });
@@ -434,12 +434,15 @@ router.get('/central-secretaries', auth, allowRoles(...ANALYZER_ROLES), async (r
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// GET /api/analyzer/hocs — Heads of Council with their council.
+// GET /api/analyzer/hocs — Heads of Council with their main specialty + council.
 router.get('/hocs', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
   try {
     const query = { role: 'hoc' };
     if (req.query.includeInactive !== 'true') query.isActive = { $ne: false };
-    const list = await User.find(query).select('-password').populate('councilId', 'name nameEn').sort({ name: 1 });
+    const list = await User.find(query).select('-password')
+      .populate('specialtyId', 'name nameEn type')
+      .populate('councilId', 'name nameEn')
+      .sort({ name: 1 });
     const hist = await changeHistoryFor(list.map(h => h._id));
     res.json({ success: true, data: list.map(h => ({ ...h.toObject(), changeHistory: hist[String(h._id)] || [] })) });
   } catch (err) { res.status(500).json({ message: err.message }); }
@@ -492,7 +495,7 @@ router.get('/trainees', auth, allowRoles(...ANALYZER_ROLES), async (req, res) =>
       }
     }
     const trainees = await User.find(query).select('-password')
-      .populate('programId', 'name').populate('hospitalId', 'name').populate('specialtyId', 'name')
+      .populate('programId', 'name').populate('hospitalId', 'name').populate('specialtyId', 'name nameEn')
       .populate('pdId', 'name').populate('countryId', 'name code').sort({ name: 1 }).limit(1000);
     const hist = await changeHistoryFor(trainees.map(t => t._id));
     const data = trainees.map(t => ({ ...t.toObject(), trainingYear: trainingYear(t), changeHistory: hist[String(t._id)] || [] }));
@@ -518,7 +521,7 @@ router.get('/trainees/:id/details', auth, allowRoles(...ANALYZER_ROLES), async (
       .select('-password')
       .populate('hospitalId', 'name city governorate')
       .populate('hospital', 'name city governorate')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .populate('programId', 'name')
       .populate('countryId', 'name code')
       .populate('pdId', 'name email')
@@ -530,7 +533,7 @@ router.get('/trainees/:id/details', auth, allowRoles(...ANALYZER_ROLES), async (
       Rotation.find({ $or: [{ traineeId: trainee._id }, { student: trainee._id }] })
         .sort({ startDate: 1 })
         .populate('hospitalId', 'name city').populate('hospital', 'name city')
-        .populate('specialtyId', 'name')
+        .populate('specialtyId', 'name nameEn')
         .populate('supervisorId', 'name').populate('doctor', 'name'),
       Report.find({ student: trainee._id })                    // Report links via `student` only
         .populate('hospital', 'name city')
@@ -595,7 +598,7 @@ router.get('/change-requests', auth, allowRoles(...ANALYZER_ROLES), async (req, 
       .populate('requestedBy', 'name role')
       .populate('reviewedBy', 'name')
       .populate('hospitalId', 'name')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .sort({ createdAt: -1 })
       .limit(300);
     res.json({ success: true, data: items.map(viewChangeRequest) });

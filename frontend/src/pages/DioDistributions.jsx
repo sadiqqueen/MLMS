@@ -19,6 +19,7 @@ import ViewToggle       from '../components/ViewToggle';
 import api  from '../api/axios';
 import Sk   from '../components/Skeleton';
 import { IconPencil, IconBan, IconUserCheck } from '../components/icons';
+import { specialtyName } from '../utils/specialtyName';
 import './dio.css';
 
 const STATUS_OPTS = ['active', 'inactive'];
@@ -79,7 +80,7 @@ function DistModal({ item, supervisors, specialties, hospitals, onSave, onClose,
     value: s._id,
     label: s.name + (textValue(s.specialty || s.specialtyId, '') ? ` - ${textValue(s.specialty || s.specialtyId)}` : ''),
   }));
-  const specialtyOpts = safeArr(specialties).map(s => ({ value: s._id, label: s.name }));
+  const specialtyOpts = safeArr(specialties).map(s => ({ value: s._id, label: specialtyName(s) }));
   const hospitalOpts  = safeArr(hospitals).map(h => ({
     value: h._id,
     label: h.name + (h.city ? ` (${h.city})` : ''),

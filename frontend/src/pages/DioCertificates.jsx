@@ -10,6 +10,7 @@ import ViewToggle from '../components/ViewToggle';
 import api from '../api/axios';
 import Sk from '../components/Skeleton';
 import { IconPrinter, IconBan, IconTrash, IconAward } from '../components/icons';
+import { specialtyName } from '../utils/specialtyName';
 import './dio.css';
 
 const CERT_TYPES = ['Completion', 'Training', 'Achievement', 'Attendance', 'Other'];
@@ -504,7 +505,7 @@ export default function DioCertificates() {
                         >
                           <strong>{tr?.name || 'Unknown'}</strong>
                           {tr?.studentId && <span style={{ marginInlineStart: 8, fontSize: 11, color: 'var(--text-2)' }}>{tr?.studentId}</span>}
-                          {tr?.specialtyId?.name && <span style={{ marginInlineStart: 8, fontSize: 11, color: 'var(--brand-primary)' }}>{tr?.specialtyId?.name}</span>}
+                          {tr?.specialtyId && <span style={{ marginInlineStart: 8, fontSize: 11, color: 'var(--brand-primary)' }}>{specialtyName(tr.specialtyId)}</span>}
                           {tr?.hospitalId?.name && <span style={{ marginInlineStart: 8, fontSize: 11, color: 'var(--success)' }}>{tr?.hospitalId?.name}</span>}
                         </button>
                       </li>

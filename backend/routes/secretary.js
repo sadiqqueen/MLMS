@@ -91,7 +91,7 @@ function populateRotation(query) {
     .populate('student', 'name email initials photoUrl studentId')
     .populate('supervisorId', 'name specialty initials')
     .populate('doctor', 'name specialty initials')
-    .populate('specialtyId', 'name')
+    .populate('specialtyId', 'name nameEn')
     .populate('hospitalId', 'name city')
     .populate('hospital', 'name city');
 }
@@ -264,7 +264,7 @@ router.get('/trainees', auth, allowRoles(...SECRETARY), async (req, res) => {
       .select('-password')
       .populate('hospitalId',  'name city')
       .populate('hospital',    'name city')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .populate('supervisorId', 'name email')
       .populate('researchSupervisorId', 'name email')
       .sort({ name: 1 });
@@ -317,7 +317,7 @@ router.post('/trainees',
       const saved = await User.findById(user._id)
         .select('-password')
         .populate('hospitalId',  'name city')
-        .populate('specialtyId', 'name')
+        .populate('specialtyId', 'name nameEn')
         .populate('supervisorId', 'name email')
         .populate('researchSupervisorId', 'name email');
 
@@ -484,7 +484,7 @@ router.get('/supervisors', auth, allowRoles(...SECRETARY), async (req, res) => {
     })
       .select('-password')
       .populate('hospitalId',  'name city')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .sort({ name: 1 });
 
     res.json({ success: true, data: supervisors });
@@ -515,7 +515,7 @@ router.post('/supervisors',
       const saved = await User.findById(user._id)
         .select('-password')
         .populate('hospitalId',  'name city')
-        .populate('specialtyId', 'name');
+        .populate('specialtyId', 'name nameEn');
 
       res.status(201).json({ success: true, data: saved });
     } catch (err) {
@@ -573,7 +573,7 @@ router.get('/change-requests', auth, allowRoles(...SECRETARY), async (req, res) 
     if (req.query.requestType) query.requestType = req.query.requestType;
     const items = await ChangeRequest.find(query)
       .populate('hospitalId', 'name')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .sort({ createdAt: -1 })
       .limit(200);
     res.json({ success: true, data: items.map(viewChangeRequest) });
@@ -613,7 +613,7 @@ router.get('/program-directors', auth, allowRoles(...SECRETARY), async (req, res
     const pds = await User.find(query)
       .select('-password')
       .populate('hospitalId',  'name city')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .sort({ name: 1 });
 
     res.json({ success: true, data: pds });
@@ -652,7 +652,7 @@ router.post('/program-directors',
       const saved = await User.findById(user._id)
         .select('-password')
         .populate('hospitalId', 'name city')
-        .populate('specialtyId', 'name');
+        .populate('specialtyId', 'name nameEn');
 
       res.status(201).json({ success: true, data: saved });
     } catch (err) {

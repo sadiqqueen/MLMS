@@ -18,6 +18,7 @@ import DonutChart from '../components/charts/DonutChart';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import { refName } from './registryShared';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 import './registry.css';
 
 const STRINGS = {
@@ -112,7 +113,7 @@ export default function RegistryDashboard() {
   const line = last14(programs);
   const bars = topGroups(programs, (p) => refName(p.trainingCenterId), 6, t('other')).slice(0, 6);
   const donutCountries = topGroups(centers, (c) => refName(c.countryId), 5, t('other'));
-  const donutSpecialties = topGroups(programs, (p) => refName(p.specialtyId), 5, t('other'));
+  const donutSpecialties = topGroups(programs, (p) => specialtyName(p.specialtyId), 5, t('other'));
 
   const cards = stats ? [
     { label: t('centers'), value: stats.centers, icon: 'building' },

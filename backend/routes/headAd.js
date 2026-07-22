@@ -53,7 +53,7 @@ router.get('/change-requests', auth, allowRoles(...HEAD_AD_ROLES), async (req, r
       .populate('requestedBy', 'name role')
       .populate('reviewedBy', 'name')
       .populate('hospitalId', 'name')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .sort({ createdAt: -1 })
       .limit(300);
     res.json({ success: true, data: items.map(viewChangeRequest) });

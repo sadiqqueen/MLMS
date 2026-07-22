@@ -21,6 +21,7 @@ import PdfDropzone from '../components/PdfDropzone';
 import SearchableSelect from '../components/SearchableSelect';
 import { IconCheck } from '../components/icons';
 import { useAuth } from '../context/AuthContext';
+import { specialtyName } from '../utils/specialtyName';
 
 // Registry pages are the clerk's workspace; Head AD sees the same pages but is
 // read-only (its mutations 403 server-side). Gate every client-side write control
@@ -307,7 +308,7 @@ export function AddProgramModal({ open, lang, centers = [], specialties = [], su
   }
 
   const centerOpts = centers.map((c) => ({ value: c._id, label: c.name }));
-  const specialtyOpts = specialties.map((s) => ({ value: s._id, label: s.type === 'precise' ? `${s.name} (${tr('subTag')})` : s.name }));
+  const specialtyOpts = specialties.map((s) => ({ value: s._id, label: s.type === 'precise' ? `${specialtyName(s, lang)} (${tr('subTag')})` : specialtyName(s, lang) }));
   const pdOpts = pdCands.map((p) => ({ value: p._id, label: `${p.name}${p.idNumber ? ` · ${p.idNumber}` : ''}` }));
   const subPdOpts = subPds.map((p) => ({ value: p._id, label: p.name }));
 

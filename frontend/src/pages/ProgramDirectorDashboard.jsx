@@ -24,6 +24,7 @@ import LineChart from '../components/charts/LineChart';
 import BarChart from '../components/charts/BarChart';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 import './pd.css';
 
 const STRINGS = {
@@ -175,7 +176,7 @@ export default function ProgramDirectorDashboard() {
           <div className="pd-prog-kv">
             {[
               [t('center'), p.trainingCenterId?.name ? `${p.trainingCenterId.name}${p.trainingCenterId.city ? ` · ${p.trainingCenterId.city}` : ''}` : '—'],
-              [t('specialty'), p.specialtyId?.name || '—'],
+              [t('specialty'), specialtyName(p.specialtyId) || '—'],
               // DIO + Sub-PD fill in once the backend populates them (§Fable fix-wave); hidden until then.
               ...(p.trainingCenterId?.dioId?.name ? [[t('odio'), p.trainingCenterId.dioId.name]] : []),
               ...(p.subProgramDirectorId?.name ? [[t('subPd'), p.subProgramDirectorId.name]] : []),

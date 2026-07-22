@@ -147,7 +147,7 @@ router.get('/programs', auth, allowRoles(...SG_ROLES), async (req, res) => {
   try {
     const programs = await Program.find({ isActive: { $ne: false } })
       .populate('trainingCenterId', 'name accreditationNumber countryId')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .populate('programDirectorId', 'name')
       .sort({ createdAt: -1 });
     res.json({ success: true, data: programs.map(withAccreditation) });
@@ -162,9 +162,9 @@ router.get('/pds', auth, allowRoles(...SG_ROLES), async (req, res) => {
   try {
     const [pds, subPds] = await Promise.all([
       User.find({ role: 'program_director', isActive: { $ne: false } })
-        .select('-password').populate('specialtyId', 'name').sort({ name: 1 }),
+        .select('-password').populate('specialtyId', 'name nameEn').sort({ name: 1 }),
       User.find({ role: 'sub_pd', pdId: { $ne: null }, isActive: { $ne: false } })
-        .select('-password').populate('specialtyId', 'name').populate('pdId', 'name').sort({ name: 1 }),
+        .select('-password').populate('specialtyId', 'name nameEn').populate('pdId', 'name').sort({ name: 1 }),
     ]);
     res.json({ success: true, data: { pds, subPds } });
   } catch (err) {

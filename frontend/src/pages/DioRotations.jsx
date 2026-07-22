@@ -19,6 +19,7 @@ import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 import { IconPencil, IconXCircle } from '../components/icons';
+import { specialtyName } from '../utils/specialtyName';
 import './dio.css';
 
 const ROTATION_STATUSES = ['upcoming', 'current', 'completed', 'cancelled'];
@@ -106,7 +107,7 @@ function RotationModal({ item, trainees, supervisors, hospitals, specialties, on
   const traineeOptions = trainees.map(t => ({ value: t._id, label: `${t.name}${t.studentId ? ` (${t.studentId})` : ''}` }));
   const hospitalOptions = hospitals.map(h => ({ value: h._id, label: `${h.name}${h.city ? ` (${h.city})` : ''}` }));
   const supervisorOptions = supervisors.map(s => ({ value: s._id, label: `${s.name}${textValue(s.specialty || s.specialtyId, '') ? ` - ${textValue(s.specialty || s.specialtyId)}` : ''}` }));
-  const specialtyOptions = specialties.map(s => ({ value: s._id, label: s.name }));
+  const specialtyOptions = specialties.map(s => ({ value: s._id, label: specialtyName(s) }));
 
   return (
     <MtModal open title={isEdit ? 'Edit Rotation' : 'Add Rotation'} onClose={onClose}

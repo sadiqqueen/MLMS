@@ -18,6 +18,7 @@ import ViewToggle from '../components/ViewToggle';
 import api from '../api/axios';
 import Sk from '../components/Skeleton';
 import { IconEye, IconPencil, IconBan } from '../components/icons';
+import { specialtyName as specLabel } from '../utils/specialtyName';
 import { roleLabel } from '../config/roles';
 import './dio.css';
 
@@ -43,7 +44,7 @@ function textValue(value, fallback = '—') {
   if (typeof value === 'object') return value.name || value.title || fallback;
   return fallback;
 }
-function specialtyName(u) { return textValue(u?.specialtyId || u?.specialty); }
+function specialtyName(u) { return u?.specialtyId ? specLabel(u.specialtyId) : textValue(u?.specialty); }
 function hospitalName(u)  { return u?.hospitalId?.name || u?.hospital?.name || '—'; }
 function hospitalIdOf(u)  { const h = u?.hospitalId || u?.hospital; return (h?._id || h || '').toString(); }
 function specialtyIdOf(u) { const s = u?.specialtyId; return (s?._id || s || '').toString(); }
@@ -169,7 +170,7 @@ function UserFormModal({ user, initialRole, hospitals, specialties, supervisors,
   }
 
   const hospitalOptions  = hospitals.map(h => ({ value: h._id, label: `${h.name}${h.city ? ` (${h.city})` : ''}` }));
-  const specialtyOptions = specialties.map(s => ({ value: s._id, label: s.name }));
+  const specialtyOptions = specialties.map(s => ({ value: s._id, label: specLabel(s) }));
 
   // Supervisor options, narrowed to the chosen hospital/specialty when possible.
   // Falls back to the full list if the filter would be empty, so the field is
@@ -436,7 +437,7 @@ export default function DioUsers() {
   }
 
   const hospitalFilterOptions  = [{ value: '', label: 'All Hospitals' }, ...hospitals.map(h => ({ value: h._id, label: h.name }))];
-  const specialtyFilterOptions = [{ value: '', label: 'All Specialties' }, ...specialties.map(s => ({ value: s._id, label: s.name }))];
+  const specialtyFilterOptions = [{ value: '', label: 'All Specialties' }, ...specialties.map(s => ({ value: s._id, label: specLabel(s) }))];
 
   function rowActions(u, active) {
     return (

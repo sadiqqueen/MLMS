@@ -7,6 +7,7 @@ import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 import { IconPencil, IconBan } from '../components/icons';
+import { specialtyName } from '../utils/specialtyName';
 import './dio.css';
 
 const API_BASE = '';
@@ -86,7 +87,7 @@ function SecretaryModal({ secretary, hospitals, specialties, onClose, onSaved })
     value: h._id,
     label: `${h.name}${h.city ? ` (${h.city})` : ''}`,
   }));
-  const specialtyOptions = specialties.map(s => ({ value: s._id, label: s.name }));
+  const specialtyOptions = specialties.map(s => ({ value: s._id, label: specialtyName(s) }));
 
   return (
     <MtModal open title={isEdit ? 'Edit Secretary' : 'Add Secretary'} onClose={onClose}
@@ -179,7 +180,7 @@ export default function DioSecretaries() {
     return !q
       || s.name?.toLowerCase().includes(q)
       || s.email?.toLowerCase().includes(q)
-      || (s.specialtyId?.name || '').toLowerCase().includes(q)
+      || (specialtyName(s.specialtyId) || '').toLowerCase().includes(q)
       || (s.hospitalId?.name || s.hospital?.name || '').toLowerCase().includes(q);
   });
 
@@ -243,7 +244,7 @@ export default function DioSecretaries() {
                 )}
                 {filtered.map((s, i) => {
                   const active  = s.isActive !== false;
-                  const specName = s.specialtyId?.name || '—';
+                  const specName = specialtyName(s.specialtyId) || '—';
                   return (
                     <tr key={s._id} style={{ opacity: active ? 1 : 0.65 }}>
                       <td className="mt-td mt-td--muted">{i+1}</td>
@@ -285,7 +286,7 @@ export default function DioSecretaries() {
               {filtered.length === 0 && <div className="mt-empty" style={{ gridColumn:'1/-1' }}><div className="mt-empty-sub">{secretaries.length === 0 ? 'No secretaries yet.' : 'No match.'}</div></div>}
               {filtered.map(s => {
                 const active = s.isActive !== false;
-                const specName = s.specialtyId?.name || '—';
+                const specName = specialtyName(s.specialtyId) || '—';
                 const hospital = s.hospitalId?.name || s.hospital?.name || '—';
                 return (
                   <div className="mt-card" key={s._id} style={{ opacity: active ? 1 : 0.65, display:'flex', flexDirection:'column', gap:10 }}>

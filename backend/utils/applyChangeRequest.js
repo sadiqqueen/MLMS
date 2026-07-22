@@ -48,7 +48,7 @@ async function createTraineeFromCapacityRequest(cr) {
     return User.findById(user._id)
       .select('-password')
       .populate('hospitalId', 'name city')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .populate('supervisorId', 'name email')
       .populate('researchSupervisorId', 'name email');
   } catch (e) {
@@ -187,7 +187,7 @@ async function applyChangeRequest(cr) {
   const updated = await User.findByIdAndUpdate(cr.targetId, fields, { new: true })
     .select('-password')
     .populate('hospitalId', 'name city')
-    .populate('specialtyId', 'name')
+    .populate('specialtyId', 'name nameEn')
     .populate('supervisorId', 'name email')
     .populate('researchSupervisorId', 'name email');
   return updated;

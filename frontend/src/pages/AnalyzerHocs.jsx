@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { IconBook } from '../components/icons';
 import AccountCard from '../components/AccountCard';
 import RevealOnScroll from '../components/RevealOnScroll';
+import { specialtyName } from '../utils/specialtyName';
 import {
   ListShell, CardGrid, SearchBox, FilterSelect, EmptyState,
   useAnalyzerList, useClientList, distinctOptions, getField, histLines, PAGE_SIZE,
@@ -49,7 +50,7 @@ export default function AnalyzerHocs() {
               <AccountCard
                 name={u.name} id={u.idNumber} role="HOC"
                 fields={[
-                  { label: 'Specialty', value: u.councilId?.name || '—' },
+                  { label: 'Specialty', value: specialtyName(u.specialtyId) || u.councilId?.name || '—' },
                   { label: 'City', value: u.city || '—' },
                   { label: 'Phone', value: u.phone || '—' },
                   { label: 'Email', value: u.email || '—' },

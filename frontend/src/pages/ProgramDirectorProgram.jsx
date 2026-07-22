@@ -12,6 +12,7 @@ import RevealOnScroll from '../components/RevealOnScroll';
 import MtSkeleton from '../components/MtSkeleton';
 import AccreditationBadge from '../components/AccreditationBadge';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 import './pd.css';
 
 const STRINGS = {
@@ -78,7 +79,7 @@ export default function ProgramDirectorProgram() {
     { label: t('programNo'), value: p.accreditationNumber || '—', mono: true },
     { label: t('center'), value: p.trainingCenterId?.name ? `${p.trainingCenterId.name}${p.trainingCenterId.city ? ` · ${p.trainingCenterId.city}` : ''}` : '—' },
     { label: t('country'), value: country?.name ? `${country.name}${country.code ? ` (${country.code})` : ''}` : '—' },
-    { label: t('specialty'), value: p.specialtyId?.name || '—' },
+    { label: t('specialty'), value: specialtyName(p.specialtyId) || '—' },
     { label: t('pd'), value: p.programDirectorId?.name || '—' },
     { label: t('odio'), value: p.trainingCenterId?.dioId?.name || '—' },
     { label: t('subPd'), value: p.subProgramDirectorId?.name || '—' },

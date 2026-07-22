@@ -14,6 +14,7 @@ import SearchableSelect from '../components/SearchableSelect';
 import Sk               from '../components/Skeleton';
 import { IconBriefcase } from '../components/icons';
 import api              from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 import './dio.css';
 
 const API_BASE = '';
@@ -63,7 +64,7 @@ export function ProgramDirectorsPanel() {
   // The PD's stored specialtyId may be any per-hospital row of its name; map it
   // to the representative id so the dropdown shows the current selection.
   function currentValue(pd) {
-    const name = pd.specialtyId?.name;
+    const name = specialtyName(pd.specialtyId);
     return name ? (repIdByName[name] || '') : '';
   }
 
@@ -74,7 +75,7 @@ export function ProgramDirectorsPanel() {
       const res = await api.patch(`/api/dio/program-directors/${pd._id}`, { specialtyId });
       const saved = res.data?.data || res.data;
       setPds(prev => prev.map(p => p._id === pd._id ? { ...p, ...saved } : p));
-      showToast(`${pd.name} assigned to ${saved.specialtyId?.name || 'specialty'}`, 'ok');
+      showToast(`${pd.name} assigned to ${specialtyName(saved.specialtyId) || 'specialty'}`, 'ok');
     } catch (err) {
       showToast(err.response?.data?.message || 'Assignment failed', 'dng');
     } finally { setSavingId(null); }
@@ -85,7 +86,7 @@ export function ProgramDirectorsPanel() {
     return !q
       || p.name?.toLowerCase().includes(q)
       || (p.email || '').toLowerCase().includes(q)
-      || (p.specialtyId?.name || '').toLowerCase().includes(q);
+      || (specialtyName(p.specialtyId) || '').toLowerCase().includes(q);
   });
 
   if (loading) return (

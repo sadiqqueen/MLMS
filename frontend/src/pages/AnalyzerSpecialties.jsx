@@ -7,6 +7,7 @@ import { IconBook } from '../components/icons';
 import MtModal from '../components/MtModal';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 import {
   ListShell, TableCard, SearchBox, FilterSelect, Pill, EmptyState,
   useAnalyzerList, useClientList, PAGE_SIZE,
@@ -103,9 +104,9 @@ export default function AnalyzerSpecialties() {
             {pageRows.map((s) => (
               <tr key={s._id}>
                 <td className="mt-td mt-td--name">
-                  {s.name}
-                  {s.nameEn && s.nameEn !== s.name
-                    ? <span className="mt-td--muted" style={{ fontWeight: 400 }}> · {s.nameEn}</span> : null}
+                  {specialtyName(s)}
+                  {s.name && s.name !== specialtyName(s)
+                    ? <span className="mt-td--muted" style={{ fontWeight: 400 }}> · {s.name}</span> : null}
                 </td>
                 <td className="mt-td">
                   {s.type === 'main' ? <Pill tone="warn">Specialty</Pill> : <Pill tone="ok">Sub-specialty</Pill>}

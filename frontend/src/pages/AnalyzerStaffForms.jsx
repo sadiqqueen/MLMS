@@ -10,6 +10,7 @@
 import { useState } from 'react';
 import MtModal from '../components/MtModal';
 import SpecialtyMultiPicker from '../components/SpecialtyMultiPicker';
+import { specialtyName } from '../utils/specialtyName';
 import api from '../api/axios';
 
 const errStyle = (bad) => (bad ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 3px var(--danger-bg)' } : undefined);
@@ -46,7 +47,7 @@ export function StaffFormModal({ role: roleProp, mode, staff, specialties = [], 
     const seen = new Set(specialties.map((o) => String(o.value)));
     const extra = (isEdit ? staff?.specialtyIds || [] : [])
       .filter((s) => s && s._id && !seen.has(String(s._id)))
-      .map((s) => ({ value: s._id, label: s.type === 'precise' ? `${s.name} (sub)` : s.name }));
+      .map((s) => ({ value: s._id, label: s.type === 'precise' ? `${specialtyName(s)} (sub)` : specialtyName(s) }));
     return [...specialties, ...extra];
   })();
 

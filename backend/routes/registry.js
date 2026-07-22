@@ -456,7 +456,7 @@ router.post('/pds', auth, allowRoles(...REGISTRY_ROLES), auditLog('registry_crea
     const user = new User(payload);
     await user.save();
     const saved = await User.findById(user._id).select('-password')
-      .populate('specialtyId', 'name').populate('countryId', 'name code');
+      .populate('specialtyId', 'name nameEn').populate('countryId', 'name code');
     res.status(201).json({ success: true, data: saved });
   } catch (err) {
     if (handleDuplicate(err, res)) return;
@@ -493,7 +493,7 @@ router.post('/pds/:id/sub-pd', auth, allowRoles(...REGISTRY_ROLES), auditLog('re
     await user.save();
 
     const saved = await User.findById(user._id).select('-password')
-      .populate('pdId', 'name').populate('specialtyId', 'name');
+      .populate('pdId', 'name').populate('specialtyId', 'name nameEn');
     res.status(201).json({ success: true, data: saved });
   } catch (err) {
     if (handleDuplicate(err, res)) return;
@@ -537,7 +537,7 @@ router.get('/users', auth, allowRoles(...REGISTRY_READ_ROLES), async (req, res) 
     const users = await User.find(query)
       .select('-password')
       .populate('countryId', 'name code')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .populate('assignedCenterIds', 'name')
       .populate('dioId', 'name')
       .populate('pdId', 'name')

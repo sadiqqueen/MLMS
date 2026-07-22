@@ -14,6 +14,7 @@ import RevealOnScroll from '../components/RevealOnScroll';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import { IconLayers } from '../components/icons';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 import './sg.css';
 
 const PAGE_SIZE = 12;
@@ -72,7 +73,7 @@ export default function SgPrograms() {
     return !q
       || (p.name || '').toLowerCase().includes(q)
       || refName(p.trainingCenterId).toLowerCase().includes(q)
-      || refName(p.specialtyId).toLowerCase().includes(q);
+      || specialtyName(p.specialtyId).toLowerCase().includes(q);
   });
 
   const total = filtered.length;
@@ -123,7 +124,7 @@ export default function SgPrograms() {
                       <tr key={p._id}>
                         <td className="mt-td mt-td--name" data-label={t('colName')}>{p.name}</td>
                         <td className="mt-td" data-label={t('colCenter')}>{refName(p.trainingCenterId)}</td>
-                        <td className="mt-td" data-label={t('colSpecialty')}>{refName(p.specialtyId)}</td>
+                        <td className="mt-td" data-label={t('colSpecialty')}>{specialtyName(p.specialtyId)}</td>
                         <td className="mt-td" data-label={t('colPd')}>{refName(p.programDirectorId)}</td>
                         <td className="mt-td mt-td--muted" data-label={t('colDuration')}>{p.durationYears ? t('years')(p.durationYears) : '—'}</td>
                         <td className="mt-td" data-label={t('colAccred')}><AccreditationBadge status={p.accreditationStatus} /></td>

@@ -6,6 +6,7 @@ import DiffTable from '../components/DiffTable';
 import api from '../api/axios';
 import Sk from '../components/Skeleton';
 import { IconEye, IconInbox, IconBuilding, IconFlask } from '../components/icons';
+import { specialtyName } from '../utils/specialtyName';
 import './dio.css';
 
 const API_BASE = '';
@@ -239,7 +240,7 @@ export default function DioApprovals() {
                               {t('requestedBy')}: {cr.requestedBy?.name || '—'} · {fmt(cr.createdAt)}
                             </div>
                             <div className="mt-card-sub" style={{ marginTop: 4 }}>
-                              {t('capHospital')}: {cr.hospitalId?.name || '—'} · {t('capSpecialty')}: {cr.specialtyId?.name || '—'}
+                              {t('capHospital')}: {cr.hospitalId?.name || '—'} · {t('capSpecialty')}: {specialtyName(cr.specialtyId) || '—'}
                             </div>
                           </div>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>

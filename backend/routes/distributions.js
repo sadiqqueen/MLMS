@@ -171,7 +171,7 @@ async function validateDistributionPayload(data, res, { creating = false, existi
 function populateDistribution(query) {
   return query
     .populate('supervisorId', 'name email specialty photoUrl initials')
-    .populate('specialtyId', 'name')
+    .populate('specialtyId', 'name nameEn')
     .populate('hospitalId', 'name city')
     .populate('doctor', 'name email specialty photoUrl initials')
     .populate('hospital', 'name city')

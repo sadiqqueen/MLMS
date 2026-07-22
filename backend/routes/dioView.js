@@ -96,7 +96,7 @@ router.get('/centers', auth, allowRoles(...VIEW_ROLES), async (req, res) => {
       Hospital.find({ _id: { $in: set }, isActive: { $ne: false } })
         .populate('countryId', 'name code').sort({ name: 1 }),
       Program.find({ trainingCenterId: { $in: set }, isActive: { $ne: false } })
-        .populate('specialtyId', 'name').populate('programDirectorId', 'name').sort({ createdAt: -1 }),
+        .populate('specialtyId', 'name nameEn').populate('programDirectorId', 'name').sort({ createdAt: -1 }),
     ]);
     const traineeCounts = centers.length
       ? await User.aggregate([
@@ -147,9 +147,9 @@ router.get('/program-directors', auth, allowRoles(...VIEW_ROLES), async (req, re
 
     const [programDirectors, subPds] = await Promise.all([
       User.find({ _id: { $in: pdIds }, role: 'program_director' })
-        .select('-password').populate('specialtyId', 'name').sort({ name: 1 }),
+        .select('-password').populate('specialtyId', 'name nameEn').sort({ name: 1 }),
       User.find({ role: 'sub_pd', pdId: { $in: pdIds }, isActive: { $ne: false } })
-        .select('-password').populate('specialtyId', 'name').populate('pdId', 'name').sort({ name: 1 }),
+        .select('-password').populate('specialtyId', 'name nameEn').populate('pdId', 'name').sort({ name: 1 }),
     ]);
     const withProgram = u => ({ ...u.toObject(), ...(programByPdId.get(String(u._id)) || {}) });
 
@@ -181,7 +181,7 @@ async function listMembers(req, res, role, injectYear) {
   const users = await User.find(query).select('-password')
     .populate('programId', 'name')
     .populate('hospitalId', 'name')
-    .populate('specialtyId', 'name')
+    .populate('specialtyId', 'name nameEn')
     .sort({ name: 1 })
     .limit(500);
 

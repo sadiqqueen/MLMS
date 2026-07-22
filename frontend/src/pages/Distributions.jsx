@@ -14,6 +14,7 @@ import { MtToastHost, useMtToast } from '../components/MtToast';
 import { IconPencil, IconPower } from '../components/icons';
 import api from '../api/axios';
 import { MagnifierIcon } from './devkit';
+import { specialtyName } from '../utils/specialtyName';
 import './developer.css';
 
 const ROWS_OPT = [8, 16, 32];
@@ -52,7 +53,7 @@ function DistModal({ item, supervisors, hospitals, specialties, onSave, onClose,
 
   const supervisorOptions = safeArr(supervisors).map((s) => ({ value: s._id, label: `${s.name}${textValue(s.specialty || s.specialtyId, '') !== '—' ? ` (${textValue(s.specialty || s.specialtyId)})` : ''}` }));
   const hospitalOptions = safeArr(hospitals).map((h) => ({ value: h._id, label: `${h.name}${h.city ? ` (${h.city})` : ''}` }));
-  const specialtyOptions = safeArr(specialties).map((s) => ({ value: s._id, label: s.name }));
+  const specialtyOptions = safeArr(specialties).map((s) => ({ value: s._id, label: specialtyName(s) }));
 
   return (
     <MtModal open title={item ? 'Edit distribution' : 'Add distribution'} sub="Assign a trainer to a hospital & specialty"

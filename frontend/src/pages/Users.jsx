@@ -2,12 +2,15 @@
 // user CRUD (create/edit the developer's creatable roles, photo, password,
 // lock/unlock, deactivate/reactivate, permanent-delete with structural blockers)
 // PLUS the developer's HOC create flow:
-//   • Add HOC → POST /api/admin/hocs  (one Scientific Council)
+//   • Add HOC → POST /api/admin/hocs  (one MAIN specialty; the sub-specialties of
+//     its council are inherited automatically — never the consultant-memo councils)
 // The generic Add-user form is restricted to CREATABLE_ROLES (the oversight /
 // leadership accounts). Data Entry + Central Secretary are added by the Data
 // Analyzer, not the Developer (role redesign). Creates apply directly (toast).
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { usePrefs } from '../context/PrefsContext';
+import { specialtyName } from '../utils/specialtyName';
 import Navbar from '../components/Navbar';
 import MtModal from '../components/MtModal';
 import Pagination from '../components/Pagination';
@@ -41,7 +44,7 @@ const ROLE_FIELDS = {
   trainer: ['hospitalId', 'specialtyId', 'department', 'phone', 'gender', 'city'],
   program_director: ['hospitalId', 'department', 'phone'],
   sub_pd: ['phone'], secretary: ['specialtyId', 'phone'], data_entry: ['phone'],
-  central_secretary: ['phone'], hoc: ['councilId', 'phone'], odio: ['phone'], dio: ['phone'], sub_dio: ['phone'],
+  central_secretary: ['phone'], hoc: ['phone'], odio: ['phone'], dio: ['phone'], sub_dio: ['phone'],
   asg1: ['phone'], asg2: ['phone'], data_analyzer: ['phone'], head_cs: ['phone'], head_ad: ['phone'],
   assistant_secretary: ['phone'], secretary_general: ['phone'], developer: [],
 };
@@ -53,6 +56,7 @@ const councilLabel = (c) => `${c.name}${c.nameEn ? ` — ${c.nameEn}` : ''}`;
 
 // ── generic Add / Edit user modal ────────────────────────────────────────────
 function UserModal({ editUser, hospitals, supervisors, specialties, councils = [], onSave, onClose, saving }) {
+  const { lang } = usePrefs();
   const [form, setForm] = useState(editUser ? {
     name: editUser.name || '', email: editUser.email || '', password: '',
     role: baseRole(editUser.role || 'trainee'), track: (editUser.role || '').startsWith('b_') ? 'basic' : 'advanced',
@@ -94,7 +98,7 @@ function UserModal({ editUser, hospitals, supervisors, specialties, councils = [
   const role = form.role;
   const inTrack = (item) => (form.track === 'basic' ? item?.track === 'basic' : item?.track !== 'basic');
   const filteredSupervisors = supervisors.filter((s) => inTrack(s) && (!form.specialtyId || (s.specialtyId?._id || s.specialtyId)?.toString() === form.specialtyId));
-  const specialtyOptions = specialties.filter(inTrack).map((s) => ({ value: s._id, label: s.name }));
+  const specialtyOptions = specialties.filter(inTrack).map((s) => ({ value: s._id, label: specialtyName(s, lang) }));
   const hospitalOptions = hospitals.filter(inTrack).map((h) => ({ value: h._id, label: h.name }));
   const supervisorOptions = filteredSupervisors.map((s) => ({ value: s._id, label: s.name }));
 
@@ -192,22 +196,29 @@ function UserModal({ editUser, hospitals, supervisors, specialties, councils = [
 }
 
 // ── Add HOC (Head of Council) ────────────────────────────────────────────────
-function HocModal({ councils, onCreate, onClose, saving }) {
-  const [f, setF] = useState({ name: '', idNumber: '', phone: '', email: '', password: '', councilId: '' });
+function HocModal({ specialties, onCreate, onClose, saving }) {
+  const { lang } = usePrefs();
+  const [f, setF] = useState({ name: '', idNumber: '', phone: '', email: '', password: '', specialtyId: '' });
   const [errors, setErrors] = useState({});
   const set = (k, v) => { setF((s) => ({ ...s, [k]: v })); setErrors((e) => ({ ...e, [k]: false })); };
+  // Only MAIN specialties are selectable (sub-specialties of the same council are
+  // inherited automatically). Sourced from real specialties that carry a councilId,
+  // so the shared consultant-memo councils never appear.
+  const specialtyOptions = (specialties || [])
+    .filter((s) => s.type === 'main' && s.councilId)
+    .map((s) => ({ value: s._id, label: specialtyName(s, lang) }));
   function submit() {
     const e = {};
     if (!f.name.trim()) e.name = true;
     if (!f.idNumber.trim()) e.idNumber = true;
     if (f.password.length < 6) e.password = true;
-    if (!f.councilId) e.councilId = true;
+    if (!f.specialtyId) e.specialtyId = true;
     setErrors(e);
     if (Object.keys(e).length) return;
     onCreate(f);
   }
   return (
-    <MtModal open tone="user" title="Add HOC" sub="Head of Council — one per council" meta="Developer" onClose={onClose}
+    <MtModal open tone="user" title="Add HOC" sub="Head of Council — one per specialty" meta="Developer" onClose={onClose}
       footer={<>
         <button type="button" className="mt-btn--cancel" onClick={onClose}>Cancel</button>
         <button type="button" className="mt-btn" onClick={submit} disabled={saving}>{saving ? 'Creating…' : 'Create HOC'}</button>
@@ -221,11 +232,9 @@ function HocModal({ councils, onCreate, onClose, saving }) {
         <div className="mt-field"><label className="mt-label">Password <span className="mt-label-req">*</span></label><input className={`mt-input${errors.password ? ' dev-invalid' : ''}`} type="password" value={f.password} onChange={(e) => set('password', e.target.value)} placeholder="Min. 6 characters" />{errors.password && <span className="dev-field-err">At least 6 characters required</span>}</div>
         <div className="mt-field mt-field-full">
           <label className="mt-label">Specialty <span className="mt-label-req">*</span></label>
-          <select className={`mt-select${errors.councilId ? ' dev-invalid' : ''}`} value={f.councilId} onChange={(e) => set('councilId', e.target.value)}>
-            <option value="">— Select council —</option>
-            {councils.map((c) => <option key={c._id} value={c._id}>{councilLabel(c)}</option>)}
-          </select>
-          <span className="dev-field-err" style={{ color: 'var(--text-2)' }}>One HOC per council (a warning shows if it already has one).</span>
+          <SearchableSelect value={f.specialtyId} onChange={(v) => set('specialtyId', v)} options={specialtyOptions}
+            placeholder="Search a main specialty…" error={errors.specialtyId} />
+          <span className="dev-field-err" style={{ color: 'var(--text-2)' }}>The sub-specialties under the same council are included automatically. One HOC per specialty (a warning shows if it already has one).</span>
         </div>
       </div>
     </MtModal>
@@ -363,7 +372,7 @@ export default function Users() {
   async function handleCreateHoc(f) {
     setSaving(true);
     try {
-      const res = await api.post('/api/admin/hocs', { name: f.name, idNumber: f.idNumber, phone: f.phone, email: f.email, password: f.password, councilId: f.councilId });
+      const res = await api.post('/api/admin/hocs', { name: f.name, idNumber: f.idNumber, phone: f.phone, email: f.email, password: f.password, specialtyId: f.specialtyId });
       const created = res.data?.data || res.data;
       setUsers((prev) => [created, ...prev]);
       showToast('HOC created', 'ok');
@@ -523,7 +532,7 @@ export default function Users() {
           <UserModal editUser={editUser} hospitals={hospitals} supervisors={supervisors} specialties={specialties} councils={councils}
             onSave={handleSaveUser} onClose={() => { setModal(null); setEditUser(null); }} saving={saving} />
         )}
-        {modal === 'hoc' && <HocModal councils={councils} onCreate={handleCreateHoc} onClose={() => setModal(null)} saving={saving} />}
+        {modal === 'hoc' && <HocModal specialties={specialties} onCreate={handleCreateHoc} onClose={() => setModal(null)} saving={saving} />}
         {passUserId && <PasswordModal userId={passUserId} onClose={() => setPassUserId(null)} showToast={showToast} />}
         {deleteUser && <ConfirmSimple title="Deactivate user" danger confirmLabel="Deactivate" onConfirm={confirmDelete} onCancel={() => setDeleteUser(null)}
           body={<>Deactivate <strong>{deleteUser.name}</strong>? The account will no longer be active.</>} />}

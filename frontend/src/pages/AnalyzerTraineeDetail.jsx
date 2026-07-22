@@ -11,6 +11,7 @@ import Navbar from '../components/Navbar';
 import { IconBack, IconFileText } from '../components/icons';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 import './Analyzer.css';
 
 function fmtDate(v) {
@@ -78,7 +79,7 @@ export default function AnalyzerTraineeDetail() {
 
   const info = t ? [
     ['ID', t.studentId || t.idNumber || '—'],
-    ['Specialty', t.specialtyId?.name || '—'],
+    ['Specialty', specialtyName(t.specialtyId) || '—'],
     ['Program', t.programId?.name || '—'],
     ['Center', centerName(t)],
     ['Country', t.countryId?.name || '—'],
@@ -131,7 +132,7 @@ export default function AnalyzerTraineeDetail() {
                   {rotations.map(r => (
                     <tr key={r._id}>
                       <td className="mt-td" data-label="Center">{centerName(r)}</td>
-                      <td className="mt-td mt-td--muted" data-label="Specialty">{r.specialtyId?.name || '—'}</td>
+                      <td className="mt-td mt-td--muted" data-label="Specialty">{specialtyName(r.specialtyId) || '—'}</td>
                       <td className="mt-td mt-td--muted" data-label="Trainer">{nameOf(r.supervisorId, r.doctor)}</td>
                       <td className="mt-td" data-label="Start">{fmtDate(r.startDate)}</td>
                       <td className="mt-td" data-label="End">{fmtDate(r.endDate)}</td>

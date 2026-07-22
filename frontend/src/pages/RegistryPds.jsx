@@ -20,6 +20,7 @@ import {
   SearchBox, ApprovalModal, ViewModal, normId, refName, histLine, useCanWriteRegistry,
 } from './registryShared';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 import './registry.css';
 
 const STR = {
@@ -71,7 +72,7 @@ function AddPdModal({ lang, countries, specialties = [], onClose, onSaved }) {
     } catch (ex) { setApiErr(ex.response?.data?.message || t('saveFailed')); } finally { setSaving(false); }
   }
   const countryOpts = countries.map((c) => ({ value: c._id, label: c.code ? `${c.name} (${c.code})` : c.name }));
-  const specialtyOpts = specialties.map((s) => ({ value: s._id, label: s.type === 'precise' ? `${s.name} (${t('subTag')})` : s.name }));
+  const specialtyOpts = specialties.map((s) => ({ value: s._id, label: s.type === 'precise' ? `${specialtyName(s)} (${t('subTag')})` : specialtyName(s) }));
   return (
     <MtModal open tone="user" title={t('newPd')} sub={t('newPdSub')} onClose={onClose}
       footer={<><button type="button" className="mt-btn--cancel" onClick={onClose}>{t('cancel')}</button>
@@ -131,7 +132,7 @@ function AddSubPdModal({ lang, pds, specialties = [], onClose, onSaved }) {
     } catch (ex) { setApiErr(ex.response?.data?.message || t('saveFailed')); } finally { setSaving(false); }
   }
   const pdOpts = pds.map((p) => ({ value: p._id, label: `${p.name}${p.idNumber ? ` · ${p.idNumber}` : ''}` }));
-  const specialtyOpts = specialties.map((s) => ({ value: s._id, label: s.type === 'precise' ? `${s.name} (${t('subTag')})` : s.name }));
+  const specialtyOpts = specialties.map((s) => ({ value: s._id, label: s.type === 'precise' ? `${specialtyName(s)} (${t('subTag')})` : specialtyName(s) }));
   return (
     <MtModal open tone="user" title={t('newSubPd')} sub={t('newSubPdSub')} onClose={onClose}
       footer={<><button type="button" className="mt-btn--cancel" onClick={onClose}>{t('cancel')}</button>
@@ -224,9 +225,9 @@ export default function RegistryPds() {
 
   function fieldsFor({ u, kind }) {
     return kind === 'sub'
-      ? [{ label: t('specialty'), value: refName(u.specialtyId) }, { label: t('assignedPd'), value: refName(u.pdId) },
+      ? [{ label: t('specialty'), value: specialtyName(u.specialtyId) }, { label: t('assignedPd'), value: refName(u.pdId) },
          { label: t('city'), value: u.city || '—' }, { label: t('email'), value: u.email || '—' }]
-      : [{ label: t('specialty'), value: refName(u.specialtyId) }, { label: t('program'), value: pdProgram.get(u._id) || '—' },
+      : [{ label: t('specialty'), value: specialtyName(u.specialtyId) }, { label: t('program'), value: pdProgram.get(u._id) || '—' },
          { label: t('country'), value: refName(u.countryId) }, { label: t('email'), value: u.email || '—' }];
   }
 

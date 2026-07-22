@@ -9,6 +9,7 @@ import api from '../api/axios';
 import Sk from '../components/Skeleton';
 import { IconPencil, IconPlus, IconPrinter, IconBack } from '../components/icons';
 import { roleLabel } from '../config/roles';
+import { specialtyName } from '../utils/specialtyName';
 import './dio.css';
 
 const API_BASE = '';
@@ -487,7 +488,7 @@ function RotationTimeline({ rotations, navigate }) {
             {bucket.items.map(r => {
               const hospital   = r.hospitalId  || r.hospital   || {};
               const supervisor = r.supervisorId || r.doctor    || {};
-              const specialty  = r.specialtyId?.name || r.specialty || null;
+              const specialty  = specialtyName(r.specialtyId) || r.specialty || null;
               const st         = ROT_STATUS[r.status] || { pill: 'mt-pill--neutral', label: r.status };
               const canEdit    = r.status === 'upcoming' || r.status === 'current';
               return (

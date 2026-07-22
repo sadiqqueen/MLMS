@@ -484,7 +484,7 @@ router.post('/trainees', auth, allowRoles(...CENTRAL_ROLES), async (req, res) =>
     const saved = await User.findById(user._id).select('-password')
       .populate('programId', 'name')
       .populate('hospitalId', 'name')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .populate('pdId', 'name')
       .populate('dioId', 'name')
       .populate('supervisorId', 'name')
@@ -521,7 +521,7 @@ router.get('/trainees', auth, allowRoles(...CENTRAL_ROLES), async (req, res) => 
     const trainees = await User.find(query).select('-password')
       .populate('programId', 'name')
       .populate('hospitalId', 'name')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .populate('pdId', 'name')
       .populate('supervisorId', 'name')
       .populate('researchSupervisorId', 'name')
@@ -580,7 +580,7 @@ router.post('/trainers', auth, allowRoles(...CENTRAL_ROLES), async (req, res) =>
     const saved = await User.findById(user._id).select('-password')
       .populate('programId', 'name')
       .populate('hospitalId', 'name')
-      .populate('specialtyId', 'name');
+      .populate('specialtyId', 'name nameEn');
     res.status(201).json({ success: true, data: saved });
   } catch (err) {
     if (handleDuplicate(err, res)) return;
@@ -607,7 +607,7 @@ router.get('/trainers', auth, allowRoles(...CENTRAL_ROLES), async (req, res) => 
     const trainers = await User.find(query).select('-password')
       .populate('programId', 'name')
       .populate('hospitalId', 'name')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .sort({ name: 1 });
     res.json({ success: true, data: trainers });
   } catch (err) {
@@ -665,7 +665,7 @@ router.get('/change-requests', auth, allowRoles(...CENTRAL_ROLES), async (req, r
     if (req.query.requestType) query.requestType = req.query.requestType;
     const items = await ChangeRequest.find(query)
       .populate('hospitalId', 'name')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .sort({ createdAt: -1 })
       .limit(200);
     res.json({ success: true, data: items.map(viewChangeRequest) });

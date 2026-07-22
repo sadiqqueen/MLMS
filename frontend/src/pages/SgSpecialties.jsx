@@ -15,6 +15,7 @@ import RevealOnScroll from '../components/RevealOnScroll';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import { IconBook } from '../components/icons';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 import './sg.css';
 
 const PAGE_SIZE = 12;
@@ -135,8 +136,8 @@ export default function SgSpecialties() {
                       <tr key={s._id}>
                         <td className="mt-td mt-td--muted" data-label={t('colNum')}>{(page - 1) * PAGE_SIZE + i + 1}</td>
                         <td className="mt-td mt-td--name" data-label={t('colName')}>
-                          {s.name}
-                          {s.nameEn && <div className="sg-subname">{s.nameEn}</div>}
+                          {specialtyName(s)}
+                          {s.name && s.name !== specialtyName(s) && <div className="sg-subname">{s.name}</div>}
                         </td>
                         <td className="mt-td" data-label={t('colType')}>{typePill(s.type)}</td>
                         <td className="mt-td mt-td--mono" data-label={t('colCode')}>{s.code || '—'}</td>

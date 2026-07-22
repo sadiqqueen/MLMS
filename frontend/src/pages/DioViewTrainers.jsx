@@ -10,6 +10,7 @@ import Navbar from '../components/Navbar';
 import Toast from '../components/Toast';
 import Sk from '../components/Skeleton';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 
 const STRINGS = {
   ar: {
@@ -106,7 +107,7 @@ export default function DioViewTrainers() {
                     <td>{tr.idNumber || '—'}</td>
                     <td>{tr.programId?.name || '—'}</td>
                     <td>{tr.hospitalId?.name || '—'}</td>
-                    <td>{tr.specialtyId?.name || tr.specialty || '—'}</td>
+                    <td>{specialtyName(tr.specialtyId) || tr.specialty || '—'}</td>
                     <td>{tr.phone || '—'}</td>
                   </tr>
                 ))}

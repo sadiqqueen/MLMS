@@ -40,6 +40,7 @@ const USER_UPDATE_FIELDS = ['name', 'email', 'role', 'phone', 'gender',
   'isActive', 'locked', 'lockUntil', 'loginAttempts'];
 
 function handleDuplicate(err, res) {
+  if (err && err.name === 'CastError') { res.status(400).json({ message: 'Invalid id provided' }); return true; }
   if (err && err.code === 11000) {
     if (err.keyPattern && err.keyPattern.idNumber) { res.status(409).json({ message: 'ID number already exists' }); return true; }
     if (err.keyPattern && err.keyPattern.email)    { res.status(409).json({ message: 'Email already exists' }); return true; }
@@ -169,7 +170,7 @@ router.get('/users', auth, allowRoles(...ADMIN), async (req, res) => {
         .select('-password')
         .populate('hospitalId',  'name city')
         .populate('hospital',    'name city')
-        .populate('specialtyId', 'name')
+        .populate('specialtyId', 'name nameEn')
         .populate('councilId',   'name nameEn')
         .sort({ createdAt: -1 })
         .skip((pageNumber - 1) * limitNumber)
@@ -195,7 +196,7 @@ router.post('/users',
       const saved = await User.findById(user._id)
         .select('-password')
         .populate('hospitalId',  'name city')
-        .populate('specialtyId', 'name');
+        .populate('specialtyId', 'name nameEn');
       res.status(201).json({ success: true, data: saved });
     } catch (err) {
       if (err.code === 11000) return res.status(400).json({ message: 'Email already exists' });
@@ -215,7 +216,7 @@ router.patch('/users/:id',
       const user = await User.findByIdAndUpdate(req.params.id, fields, { new: true })
         .select('-password')
         .populate('hospitalId',  'name city')
-        .populate('specialtyId', 'name');
+        .populate('specialtyId', 'name nameEn');
       if (!user) return res.status(404).json({ message: 'User not found' });
       res.json({ success: true, data: user });
     } catch (err) {
@@ -501,31 +502,40 @@ router.get('/councils', auth, allowRoles(...ADMIN), async (req, res) => {
   }
 });
 
-// POST /api/admin/hocs — create a Head of Council. One HOC per council is a soft
+// POST /api/admin/hocs — create a Head of Council. The HOC is selected by a MAIN
+// specialty and oversees that specialty PLUS the sub-specialties under its council
+// (routes/hoc.js resolveScope). The owning council is derived from the specialty
+// (never the shared consultant-memo councils). One HOC per specialty is a soft
 // rule (warn, do not block — RULINGS §39).
 router.post('/hocs', auth, allowRoles(...ADMIN), auditLog('create_hoc', 'User'), async (req, res) => {
   try {
-    const { name, idNumber, phone, email, password, councilId } = req.body;
+    const { name, idNumber, phone, email, password, specialtyId } = req.body;
     if (!name || !String(name).trim()) return res.status(400).json({ message: 'Name is required' });
     if (!idNumber || !String(idNumber).trim()) return res.status(400).json({ message: 'ID number is required' });
     if (!password || String(password).length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' });
-    if (!councilId) return res.status(400).json({ message: 'A council is required' });
-    const council = await ScientificCouncil.findById(councilId).select('_id');
-    if (!council) return res.status(400).json({ message: 'Council not found' });
+    if (!specialtyId) return res.status(400).json({ message: 'A specialty is required' });
+    // Only a MAIN specialty is selectable; the council is derived from it.
+    const specialty = await Specialty.findById(specialtyId).select('_id type councilId');
+    if (!specialty || specialty.type !== 'main') return res.status(400).json({ message: 'Select a main specialty' });
 
-    const clash = await User.findOne({ role: 'hoc', councilId, isActive: { $ne: false } }).select('name');
+    const clash = await User.findOne({ role: 'hoc', specialtyId, isActive: { $ne: false } }).select('name');
 
-    const payload = { name: String(name).trim(), idNumber: String(idNumber).trim(), password: String(password), role: 'hoc', councilId };
+    const payload = {
+      name: String(name).trim(), idNumber: String(idNumber).trim(), password: String(password),
+      role: 'hoc', specialtyId, councilId: specialty.councilId || null,
+    };
     if (email && String(email).trim()) payload.email = String(email).trim();
     if (phone !== undefined) payload.phone = String(phone).trim();
 
     const user = new User(payload);
     await user.save();
-    const saved = await User.findById(user._id).select('-password').populate('councilId', 'name nameEn');
+    const saved = await User.findById(user._id).select('-password')
+      .populate('specialtyId', 'name nameEn type')
+      .populate('councilId', 'name nameEn');
     res.status(201).json({
       success: true,
       data: saved,
-      warning: clash ? `This council already has an active Head of Council (${clash.name}).` : undefined,
+      warning: clash ? `This specialty already has an active HOC (${clash.name}).` : undefined,
     });
   } catch (err) {
     if (handleDuplicate(err, res)) return;
@@ -707,7 +717,7 @@ router.get('/distributions', auth, allowRoles(...ADMIN), async (req, res) => {
       Distribution.find(query)
         .populate('traineeId',   'name email initials photoUrl')
         .populate('supervisorId','name specialty initials')
-        .populate('specialtyId', 'name')
+        .populate('specialtyId', 'name nameEn')
         .populate('hospitalId',  'name city')
         .sort({ createdAt: -1 })
         .skip((pageNumber - 1) * limitNumber)

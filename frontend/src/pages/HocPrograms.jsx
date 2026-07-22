@@ -13,6 +13,7 @@ import Pagination from '../components/Pagination';
 import MtToastHost, { useMtToast } from '../components/MtToast';
 import { NavIcon } from '../components/icons';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 
 const PAGE_SIZE = 8;
 
@@ -44,7 +45,7 @@ function SearchIcon() {
   );
 }
 
-const specialtyOf = p => p?.specialtyId?.name || '';
+const specialtyOf = p => (p?.specialtyId ? specialtyName(p.specialtyId) : '');
 const countryOf = p => p?.trainingCenterId?.countryId?.name || '';
 
 export default function HocPrograms() {

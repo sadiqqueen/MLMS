@@ -16,6 +16,7 @@ import RevealOnScroll from '../components/RevealOnScroll';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import { IconUsers } from '../components/icons';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 import './sg.css';
 
 const PAGE_SIZE = 9;
@@ -77,7 +78,7 @@ export default function SgPds() {
   const seen = new Set();
   pds.forEach((pd) => {
     const id = pd.specialtyId?._id || pd.specialtyId;
-    if (id && !seen.has(id) && pd.specialtyId?.name) { seen.add(id); specialtyOptions.push({ value: id, label: pd.specialtyId.name }); }
+    if (id && !seen.has(id) && specialtyName(pd.specialtyId)) { seen.add(id); specialtyOptions.push({ value: id, label: specialtyName(pd.specialtyId) }); }
   });
 
   const filtered = pds.filter((pd) => {
@@ -91,7 +92,7 @@ export default function SgPds() {
 
   function fieldsFor(pd) {
     const fields = [
-      { label: t('specialty'), value: pd.specialtyId?.name || '—' },
+      { label: t('specialty'), value: specialtyName(pd.specialtyId) || '—' },
       { label: t('city'), value: pd.city || '—' },
       { label: t('phone'), value: pd.phone || '—' },
       { label: t('email'), value: pd.email || '—' },

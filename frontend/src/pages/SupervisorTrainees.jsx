@@ -6,6 +6,7 @@ import api          from '../api/axios';
 import Sk           from '../components/Skeleton';
 import { IconEye, IconPrinter, IconCheck, IconClock, IconXCircle } from '../components/icons';
 import { printEvaluation } from '../utils/printEvaluation';
+import { specialtyName } from '../utils/specialtyName';
 
 const API_BASE = '';
 
@@ -142,7 +143,7 @@ function getTraineeId(dist) {
 }
 
 function getSpecialty(dist) {
-  return dist.specialtyId?.name || dist.specialty || '—';
+  return specialtyName(dist.specialtyId) || dist.specialty || '—';
 }
 
 function getHospital(dist) {

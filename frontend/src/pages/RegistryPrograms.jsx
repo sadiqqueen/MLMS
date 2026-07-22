@@ -17,6 +17,7 @@ import {
   normId, refName, fmtDate, toDateInput, histLine,
 } from './registryShared';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 import './registry.css';
 
 const PAGE = 10;
@@ -109,7 +110,7 @@ export default function RegistryPrograms() {
   const paged = filtered.slice((page - 1) * PAGE, page * PAGE);
 
   const centerOpts = centers.map((c) => ({ value: c._id, label: c.name }));
-  const specialtyOpts = specialties.map((s) => ({ value: s._id, label: s.name }));
+  const specialtyOpts = specialties.map((s) => ({ value: s._id, label: specialtyName(s) }));
   const pdOpts = pds.map((p) => ({ value: p._id, label: p.name }));
   const subPdOpts = subPds.map((p) => ({ value: p._id, label: p.name }));
 
@@ -184,7 +185,7 @@ export default function RegistryPrograms() {
                   <tr key={p._id}>
                     <td className="mt-td mt-td--name">{p.name}</td>
                     <td className="mt-td mt-td--mono">{p.idNumber || '—'}</td>
-                    <td className="mt-td">{refName(p.specialtyId)}</td>
+                    <td className="mt-td">{specialtyName(p.specialtyId)}</td>
                     <td className="mt-td mt-td--muted">{refName(p.trainingCenterId)}</td>
                     <td className="mt-td mt-td--muted">{refName(p.programDirectorId)}</td>
                     <td className="mt-td">{p.yearlyCapacity != null ? `${p.yearlyCapacity} ${t('perYr')}` : '—'}</td>
@@ -225,7 +226,7 @@ export default function RegistryPrograms() {
         {viewItem && (
           <ViewModal open lang={lang} title={viewItem.name} sub={refName(viewItem.trainingCenterId)}
             rows={[
-              { label: t('cSpecialty'), value: refName(viewItem.specialtyId) },
+              { label: t('cSpecialty'), value: specialtyName(viewItem.specialtyId) },
               { label: t('cCenter'), value: refName(viewItem.trainingCenterId) },
               { label: t('pd'), value: refName(viewItem.programDirectorId) },
               { label: t('subPd'), value: refName(viewItem.subProgramDirectorId) },

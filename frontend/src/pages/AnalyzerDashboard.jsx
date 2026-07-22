@@ -25,6 +25,7 @@ import { IconFileText } from '../components/icons';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import api from '../api/axios';
 import { fmtDate, initialsOf, reqId } from './AnalyzerListKit';
+import { specialtyName } from '../utils/specialtyName';
 import './Analyzer.css';
 
 const MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -157,7 +158,7 @@ export default function AnalyzerDashboard() {
   const line = monthlyCounts(crs);
   const bars = topN(groupCount(programs, (p) => p.trainingCenterId?.countryId?.name), 8);
   const donutCenters = topN(groupCount(centers, (c) => c.countryId?.name), 5);
-  const donutPrograms = topN(groupCount(programs, (p) => p.specialtyId?.name), 5);
+  const donutPrograms = topN(groupCount(programs, (p) => specialtyName(p.specialtyId)), 5);
   const growSeries = [
     { name: 'Programs', color: 'var(--brand-primary)', values: cumulativeSeries(programs) },
     { name: 'Training centers', color: 'var(--accent)', values: cumulativeSeries(centers) },

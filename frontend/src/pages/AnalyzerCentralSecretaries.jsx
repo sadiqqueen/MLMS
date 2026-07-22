@@ -14,12 +14,13 @@ import {
   useAnalyzerList, useClientList, useOptions, histLines, fmtDate, PAGE_SIZE,
 } from './AnalyzerListKit';
 import { StaffFormModal } from './AnalyzerStaffForms';
+import { specialtyName } from '../utils/specialtyName';
 import './Analyzer.css';
 
 // The specialties a CS is scoped to, as a readable string. New-model accounts
 // carry an explicit specialtyIds list; legacy accounts fall back to council/type.
 function specialtyText(u) {
-  const names = (u.specialtyIds || []).map((s) => s?.name).filter(Boolean);
+  const names = (u.specialtyIds || []).map((s) => specialtyName(s)).filter((x) => x && x !== '—');
   if (names.length) {
     const shown = names.slice(0, 3).join(', ');
     return names.length > 3 ? `${shown} +${names.length - 3} more` : shown;
@@ -44,7 +45,7 @@ export default function AnalyzerCentralSecretaries() {
   const { data, loading, error, reload } = useAnalyzerList('/api/analyzer/central-secretaries');
   const specialties = useOptions('/api/analyzer/specialties', (s) => ({
     value: s._id,
-    label: s.type === 'precise' ? `${s.name} (sub)` : s.name,
+    label: s.type === 'precise' ? `${specialtyName(s)} (sub)` : specialtyName(s),
   }));
   const rows = Array.isArray(data) ? data : [];
   const { pageRows, total } = useClientList(rows, { search, fields: ['name', 'idNumber', 'email'], page });

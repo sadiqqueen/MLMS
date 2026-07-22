@@ -19,6 +19,7 @@ import {
   AddProgramModal, ApprovalModal, normId, refName, fmtDate, toDateInput, histLine, useCanWriteRegistry,
 } from './registryShared';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 import './registry.css';
 
 const CAP = 100;
@@ -91,7 +92,7 @@ export default function RegistryCenterDetail() {
 
   const pdOpts = pds.map((p) => ({ value: p._id, label: p.name }));
   const subPdOpts = subPds.map((p) => ({ value: p._id, label: p.name }));
-  const specialtyOpts = specialties.map((s) => ({ value: s._id, label: s.name }));
+  const specialtyOpts = specialties.map((s) => ({ value: s._id, label: specialtyName(s) }));
 
   function editFields() {
     return [
@@ -215,7 +216,7 @@ export default function RegistryCenterDetail() {
                   <tr key={p._id}>
                     <td className="mt-td mt-td--name">{p.name}</td>
                     <td className="mt-td mt-td--mono">{p.idNumber || '—'}</td>
-                    <td className="mt-td">{refName(p.specialtyId)}</td>
+                    <td className="mt-td">{specialtyName(p.specialtyId)}</td>
                     <td className="mt-td mt-td--muted">{refName(p.programDirectorId)}</td>
                     <td className="mt-td">{p.yearlyCapacity != null ? `${p.yearlyCapacity} ${t('perYr')}` : '—'}</td>
                     <td className="mt-td">{p.durationYears ? `${p.durationYears} ${t('yrs')}` : '—'}</td>

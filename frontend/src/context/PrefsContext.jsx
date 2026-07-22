@@ -6,13 +6,14 @@ import dict from '../i18n';
 // html[data-theme="dark"] and html[dir="rtl"]. Persisted in localStorage
 // under both mlms-* (new) and cm-* (legacy) keys, and dispatches
 // 'cm-lang-changed' so the Navbar memo-label listener keeps working.
-// Defaults: lang="ar", theme="light".
+// Defaults: lang="en" (LTR), theme="light". A previously-saved Arabic choice is
+// respected; only unset/new sessions default to English.
 
 const PrefsContext = createContext(null);
 
 function readLang() {
   const v = localStorage.getItem('mlms-lang') ?? localStorage.getItem('cm-lang');
-  return v === 'en' ? 'en' : 'ar';
+  return v === 'ar' ? 'ar' : 'en';
 }
 
 function readTheme() {
@@ -22,7 +23,18 @@ function readTheme() {
 
 export function PrefsProvider({ children }) {
   const [theme, setTheme] = useState(readTheme);
-  const [lang, setLang]   = useState(readLang);
+  const [lang, setLangState] = useState(readLang);
+
+  // Write localStorage SYNCHRONOUSLY on every language change (before React
+  // re-renders consumers) so helpers that read the language directly from storage
+  // — e.g. utils/specialtyName — resolve the new language on the same render.
+  const setLang = useCallback((next) => {
+    setLangState((prev) => {
+      const v = typeof next === 'function' ? next(prev) : next;
+      try { localStorage.setItem('mlms-lang', v); localStorage.setItem('cm-lang', v); } catch { /* ignore */ }
+      return v;
+    });
+  }, []);
 
   // Persist theme to both new + legacy keys.
   useEffect(() => {

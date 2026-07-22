@@ -24,6 +24,7 @@ import BarChart from '../components/charts/BarChart';
 import DonutChart from '../components/charts/DonutChart';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 import './sg.css';
 
 const STRINGS = {
@@ -102,7 +103,7 @@ export default function SgDashboard() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const centersByCountry = topWithOther(tally(centers, (c) => c.countryId?.name), 5, t('other'));
-  const progBySpecialty  = topWithOther(tally(programs, (p) => p.specialtyId?.name), 5, t('other'));
+  const progBySpecialty  = topWithOther(tally(programs, (p) => specialtyName(p.specialtyId)), 5, t('other'));
   const progByCenter     = tally(programs, (p) => p.trainingCenterId?.name).slice(0, 6);
 
   // Only render chart cards that have real data behind them.

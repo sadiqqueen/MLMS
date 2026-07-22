@@ -30,7 +30,7 @@ router.get('/trainees', auth, allowRoles(...SUPERVISOR), async (req, res) => {
       isActive: { $ne: false }
     })
       .select('name email studentId specialtyId hospitalId photoUrl initials year phone')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .populate('hospitalId', 'name city');
 
     const rotationDocs = await Rotation.find({
@@ -62,7 +62,7 @@ router.get('/trainees', auth, allowRoles(...SUPERVISOR), async (req, res) => {
       .populate('hospitalId', 'name city')
       .populate('doctor', 'name email')
       .populate('hospital', 'name city')
-      .populate('specialtyId','name')
+      .populate('specialtyId','name nameEn')
       .sort({ startDate: -1 });
 
     const legacyDistributionDocs = await Distribution.find({
@@ -91,7 +91,7 @@ router.get('/trainees', auth, allowRoles(...SUPERVISOR), async (req, res) => {
       })
       .populate('supervisorId', 'name email')
       .populate('hospitalId', 'name city')
-      .populate('specialtyId','name')
+      .populate('specialtyId','name nameEn')
       .sort({ startDate: -1 });
 
     const seen = new Set();

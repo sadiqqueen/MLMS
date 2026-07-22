@@ -17,6 +17,7 @@ import MtSkeleton from '../components/MtSkeleton';
 import Pagination from '../components/Pagination';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 import './pd.css';
 
 const PAGE_SIZE = 9;
@@ -60,7 +61,7 @@ function weeksBetween(a, b) {
   if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return null;
   return Math.max(1, Math.ceil((e - s) / (7 * 24 * 60 * 60 * 1000)));
 }
-function specName(x) { return x?.specialtyId?.name || x?.specialty || '—'; }
+function specName(x) { return x?.specialtyId ? specialtyName(x.specialtyId) : (x?.specialty || '—'); }
 function hospName(x) { return x?.hospitalId?.name || x?.hospital?.name || '—'; }
 function distsFor(trainee, dists) {
   return dists.filter((d) => {
@@ -119,7 +120,7 @@ function TraineeDetail({ trainee, distributions, onClose, t }) {
 
       <div className="pd-detail-title">{t('rotations')}</div>
       {mine.length === 0 ? <div className="pd-detail-empty">{t('noRotations')}</div> : mine.map((d) => {
-        const sp = d.specialtyId?.name || d.specialty || '—';
+        const sp = specialtyName(d.specialtyId) || d.specialty || '—';
         const sup = d.supervisorId?.name || d.doctor?.name || '—';
         const status = d.status || 'upcoming';
         const dur = d.durationWeeks || weeksBetween(d.startDate, d.endDate);
@@ -245,7 +246,7 @@ export default function ProgramDirectorTrainees() {
                       fields={[
                         { label: t('specialty'), value: specName(tr) },
                         { label: t('hospital'), value: hospName(tr) },
-                        { label: t('rotation'), value: cur ? (cur.specialtyId?.name || cur.specialty || cur.status || '—') : '—' },
+                        { label: t('rotation'), value: cur ? (specialtyName(cur.specialtyId) || cur.specialty || cur.status || '—') : '—' },
                         { label: t('email'), value: tr.email || '—' },
                       ]}
                       canEdit={false}

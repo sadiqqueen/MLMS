@@ -6,6 +6,8 @@
 // the trainee's center; year is appended to the Program value.
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { usePrefs } from '../context/PrefsContext';
+import { specialtyName } from '../utils/specialtyName';
 import { IconGrad } from '../components/icons';
 import AccountCard from '../components/AccountCard';
 import RevealOnScroll from '../components/RevealOnScroll';
@@ -17,6 +19,7 @@ import './Analyzer.css';
 
 export default function AnalyzerTrainees() {
   const navigate = useNavigate();
+  const { lang } = usePrefs();
   const [search, setSearch] = useState('');
   const [countryId, setCountryId] = useState('');
   const [centerId, setCenterId] = useState('');
@@ -29,7 +32,7 @@ export default function AnalyzerTrainees() {
   const countryOpts = useOptions('/api/analyzer/countries', (c) => ({ value: c._id, label: c.name }));
   const centerOpts = useOptions('/api/analyzer/centers', (c) => ({ value: c._id, label: c.name }));
   const programOpts = useOptions('/api/analyzer/programs', (p) => ({ value: p._id, label: p.name }));
-  const specialtyOpts = useOptions('/api/analyzer/specialties', (s) => ({ value: s._id, label: s.name }));
+  const specialtyOpts = useOptions('/api/analyzer/specialties', (s) => ({ value: s._id, label: specialtyName(s, lang) }));
 
   const { data, loading, error } = useAnalyzerList('/api/analyzer/trainees', { countryId, centerId, programId, specialtyId });
   const rows = Array.isArray(data) ? data : [];

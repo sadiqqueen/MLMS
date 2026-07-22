@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar';
 import Toast  from '../components/Toast';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
+import { specialtyName as specLabel } from '../utils/specialtyName';
 
 // Bilingual strings for the (new) capacity fields only — the rest of this page
 // is English-only by convention.
@@ -38,7 +39,7 @@ function hospitalIdOf(person) {
 }
 
 function specialtyName(person) {
-  return person?.specialtyId?.name || person?.specialty || 'No specialty';
+  return person?.specialtyId ? specLabel(person.specialtyId) : (person?.specialty || 'No specialty');
 }
 
 function initialsFor(person) {
@@ -235,7 +236,7 @@ function PersonInfoModal({ person, kind, onClose }) {
     return () => document.removeEventListener('keydown', h);
   }, [onClose]);
 
-  const specialty = person.specialtyId?.name || person.specialty || '—';
+  const specialty = person.specialtyId ? specLabel(person.specialtyId) : (person.specialty || '—');
   const hospital  = person.hospitalId?.name || person.hospital?.name || '—';
 
   const rows = [

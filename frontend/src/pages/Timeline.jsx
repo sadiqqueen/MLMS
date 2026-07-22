@@ -8,6 +8,7 @@ import BarChart from '../components/charts/BarChart';
 import RevealOnScroll from '../components/RevealOnScroll';
 import MtSkeleton from '../components/MtSkeleton';
 import { NavIcon } from '../components/icons';
+import { specialtyName } from '../utils/specialtyName';
 import './trainee.css';
 
 function fmt(d) {
@@ -26,7 +27,7 @@ function normalize(item = {}) {
   if (item.traineeId || item.supervisorId || item.specialtyId) {
     return {
       _id:          item._id,
-      specialty:    item.specialtyId?.name || item.specialty || 'Specialty Training',
+      specialty:    specialtyName(item.specialtyId) || item.specialty || 'Specialty Training',
       hospital:     item.hospitalId?.name  || item.hospital?.name || '—',
       supervisor:   item.supervisorId?.name || item.doctor?.name  || '—',
       startDate:    item.startDate,

@@ -16,6 +16,7 @@ import { MtToastHost, useMtToast } from '../components/MtToast';
 import { IconBook, IconFileText, IconDelete } from '../components/icons';
 import api from '../api/axios';
 import { MagnifierIcon } from './devkit';
+import { specialtyName } from '../utils/specialtyName';
 import './developer.css';
 
 const PDF_TYPES = [
@@ -243,8 +244,8 @@ export default function AdminSpecialties() {
                       return (
                         <tr key={s._id}>
                           <td className="mt-td">
-                            <div className="mt-td--name">{s.name}</div>
-                            {s.nameEn && <div className="mt-td--muted" style={{ fontSize: 11.5 }}>{s.nameEn}</div>}
+                            <div className="mt-td--name">{specialtyName(s)}</div>
+                            {s.name && s.name !== specialtyName(s) && <div className="mt-td--muted" style={{ fontSize: 11.5 }}>{s.name}</div>}
                           </td>
                           <td className="mt-td">{typePill(s.type)}</td>
                           <td className="mt-td mt-td--muted">{councilName(cid) || '—'}</td>

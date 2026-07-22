@@ -179,7 +179,7 @@ router.get('/me', auth, async (req, res) => {
       .select('-password')
       .populate('hospital',    'name city')
       .populate('hospitalId',  'name city')
-      .populate('specialtyId', 'name');
+      .populate('specialtyId', 'name nameEn');
     res.json({ success: true, data: user, permissions: { initiatives: hasInitiativeAccess(user) } });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

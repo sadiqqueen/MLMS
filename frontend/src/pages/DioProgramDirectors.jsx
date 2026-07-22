@@ -7,6 +7,7 @@ import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 import { IconPencil, IconBan } from '../components/icons';
+import { specialtyName } from '../utils/specialtyName';
 import './dio.css';
 
 const API_BASE = '';
@@ -88,7 +89,7 @@ function PDModal({ pd, specialties, onClose, onSaved }) {
   // any row of a given name works — the backend re-expands the scope by name.
   const specialtyOptions = Object.values(
     specialties.reduce((acc, s) => {
-      if (s?.name && !acc[s.name]) acc[s.name] = { value: s._id, label: s.name };
+      if (s?.name && !acc[s.name]) acc[s.name] = { value: s._id, label: specialtyName(s) };
       return acc;
     }, {})
   ).sort((a, b) => a.label.localeCompare(b.label));
@@ -184,7 +185,7 @@ export default function DioProgramDirectors() {
       || p.name?.toLowerCase().includes(q)
       || p.email?.toLowerCase().includes(q)
       || (p.department || '').toLowerCase().includes(q)
-      || (p.specialtyId?.name || '').toLowerCase().includes(q);
+      || (specialtyName(p.specialtyId) || '').toLowerCase().includes(q);
   });
 
   function handleSaved(saved, isEdit) {
@@ -261,8 +262,8 @@ export default function DioProgramDirectors() {
                       </td>
                       <td className="mt-td mt-td--muted" data-label="Department">{p.department || '—'}</td>
                       <td className="mt-td" data-label="Specialty">
-                        {p.specialtyId?.name
-                          ? <span className="mt-pill mt-pill--role">{p.specialtyId.name}</span>
+                        {specialtyName(p.specialtyId)
+                          ? <span className="mt-pill mt-pill--role">{specialtyName(p.specialtyId)}</span>
                           : <span className="mt-td--muted">—</span>}
                       </td>
                       <td className="mt-td" data-label="Status">
@@ -290,7 +291,7 @@ export default function DioProgramDirectors() {
               {filtered.length === 0 && <div className="mt-empty" style={{ gridColumn:'1/-1' }}><div className="mt-empty-sub">{pds.length === 0 ? 'No program directors yet.' : 'No match.'}</div></div>}
               {filtered.map(p => {
                 const active = p.isActive !== false;
-                const specialty = p.specialtyId?.name || 'No specialty';
+                const specialty = specialtyName(p.specialtyId) || 'No specialty';
                 return (
                   <div className="mt-card" key={p._id} style={{ opacity: active ? 1 : 0.65, display:'flex', flexDirection:'column', gap:10 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>

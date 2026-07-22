@@ -12,6 +12,7 @@ import {
   useAnalyzerList, useClientList, useOptions, histLines, fmtDate, PAGE_SIZE,
 } from './AnalyzerListKit';
 import { StaffFormModal } from './AnalyzerStaffForms';
+import { specialtyName } from '../utils/specialtyName';
 import './Analyzer.css';
 
 export default function AnalyzerClerks() {
@@ -22,7 +23,7 @@ export default function AnalyzerClerks() {
   const { data, loading, error, reload } = useAnalyzerList('/api/analyzer/clerks');
   // Loaded so the add-form's clerk↔central-secretary toggle can scope a CS.
   const specialties = useOptions('/api/analyzer/specialties', (s) => ({
-    value: s._id, label: s.type === 'precise' ? `${s.name} (sub)` : s.name,
+    value: s._id, label: s.type === 'precise' ? `${specialtyName(s)} (sub)` : specialtyName(s),
   }));
   const rows = Array.isArray(data) ? data : [];
   const { pageRows, total } = useClientList(rows, { search, fields: ['name', 'idNumber', 'email'], page });

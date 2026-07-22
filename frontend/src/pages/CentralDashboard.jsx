@@ -26,6 +26,7 @@ import DonutChart from '../components/charts/DonutChart';
 import MtSkeleton from '../components/MtSkeleton';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 import './central.css';
 
 const STRINGS = {
@@ -196,7 +197,7 @@ export default function CentralDashboard() {
     [centers, countryNameOf, lang], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const donutPrograms = useMemo(
-    () => topGroups(programs, p => p.specialtyId?.name || t('unknown'), 5, t('other')),
+    () => topGroups(programs, p => specialtyName(p.specialtyId) || t('unknown'), 5, t('other')),
     [programs, lang], // eslint-disable-line react-hooks/exhaustive-deps
   );
 

@@ -9,6 +9,7 @@ import ViewToggle from '../components/ViewToggle';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 import { IconPencil, IconBan } from '../components/icons';
+import { specialtyName } from '../utils/specialtyName';
 import './dio.css';
 
 const API_BASE = '';
@@ -97,7 +98,7 @@ function SupervisorModal({ supervisor, hospitals, specialties, onClose, onSaved 
     value: h._id,
     label: `${h.name}${h.city ? ` (${h.city})` : ''}`,
   }));
-  const specialtyOptions = specialties.map(s => ({ value: s._id, label: s.name }));
+  const specialtyOptions = specialties.map(s => ({ value: s._id, label: specialtyName(s) }));
 
   return (
     <MtModal open title={isEdit ? 'Edit Supervisor' : 'Add New Supervisor'} onClose={onClose}

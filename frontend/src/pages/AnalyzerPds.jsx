@@ -4,6 +4,8 @@
 // The endpoint populates specialtyId (+ Sub-PD's parent pdId) only, so the card
 // shows Specialty in place of the design's Country/Program column (not populated).
 import { useState } from 'react';
+import { usePrefs } from '../context/PrefsContext';
+import { specialtyName } from '../utils/specialtyName';
 import { IconUsers } from '../components/icons';
 import AccountCard from '../components/AccountCard';
 import RevealOnScroll from '../components/RevealOnScroll';
@@ -14,13 +16,14 @@ import {
 import './Analyzer.css';
 
 export default function AnalyzerPds() {
+  const { lang } = usePrefs();
   const [search, setSearch] = useState('');
   const [specialtyId, setSpecialtyId] = useState('');
   const [programId, setProgramId] = useState('');
   const [page, setPage] = useState(1);
   const reset = (fn) => (v) => { fn(v); setPage(1); };
 
-  const specialtyOpts = useOptions('/api/analyzer/specialties', (s) => ({ value: s._id, label: s.name }));
+  const specialtyOpts = useOptions('/api/analyzer/specialties', (s) => ({ value: s._id, label: specialtyName(s, lang) }));
   const programOpts = useOptions('/api/analyzer/programs', (p) => ({ value: p._id, label: p.name }));
 
   const { data, loading, error } = useAnalyzerList('/api/analyzer/pds', { specialtyId, programId });
@@ -33,14 +36,14 @@ export default function AnalyzerPds() {
 
   const fieldsFor = (u) => u._kind === 'PD'
     ? [
-        { label: 'Specialty', value: u.specialtyId?.name || '—' },
+        { label: 'Specialty', value: specialtyName(u.specialtyId, lang) },
         { label: 'City', value: u.city || '—' },
         { label: 'Phone', value: u.phone || '—' },
         { label: 'Email', value: u.email || '—' },
       ]
     : [
         { label: 'Assigned PD', value: u.pdId?.name || '—' },
-        { label: 'Specialty', value: u.specialtyId?.name || '—' },
+        { label: 'Specialty', value: specialtyName(u.specialtyId, lang) },
         { label: 'City', value: u.city || '—' },
         { label: 'Email', value: u.email || '—' },
       ];

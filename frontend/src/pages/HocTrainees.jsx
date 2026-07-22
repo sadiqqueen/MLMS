@@ -13,6 +13,7 @@ import Pagination from '../components/Pagination';
 import MtToastHost, { useMtToast } from '../components/MtToast';
 import { NavIcon } from '../components/icons';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 
 const PAGE_SIZE = 8;
 
@@ -44,7 +45,7 @@ function SearchIcon() {
   );
 }
 
-const specialtyOf = (tr) => tr?.specialtyId?.name || '';
+const specialtyOf = (tr) => (tr?.specialtyId ? specialtyName(tr.specialtyId) : '');
 const centerOf = (tr) => tr?.hospitalId?.name || tr?.hospital?.name || '';
 const idOf = (tr) => tr?.studentId || tr?.idNumber || '';
 

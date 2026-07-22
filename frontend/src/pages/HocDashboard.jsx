@@ -25,6 +25,7 @@ import RevealOnScroll from '../components/RevealOnScroll';
 import MtSkeleton from '../components/MtSkeleton';
 import MtToastHost, { useMtToast } from '../components/MtToast';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 import './HocDashboard.css';
 
 const STRINGS = {
@@ -140,8 +141,8 @@ export default function HocDashboard() {
   ];
 
   // Chart datasets (all derived from the real lists).
-  const progBySpecialtyBars = groupItems(programs, p => p.specialtyId?.name, { top: 6 });
-  const progBySpecialtyDonut = groupItems(programs, p => p.specialtyId?.name, { top: 6, other: true, otherLabel });
+  const progBySpecialtyBars = groupItems(programs, p => p.specialtyId ? specialtyName(p.specialtyId, lang) : '', { top: 6 });
+  const progBySpecialtyDonut = groupItems(programs, p => p.specialtyId ? specialtyName(p.specialtyId, lang) : '', { top: 6, other: true, otherLabel });
   const centersByCountry = groupItems(centers, c => c.countryId?.name, { top: 6, other: true, otherLabel });
   const topCenters = groupItems(programs, p => p.trainingCenterId?.name, { top: 6 });
 

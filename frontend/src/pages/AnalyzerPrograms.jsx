@@ -4,6 +4,8 @@
 //              trainingCenterId:{name,countryId,city}, programDirectorId:{name},
 //              subProgramDirectorId:{name}, accreditation*, changeHistory }]
 import { useState } from 'react';
+import { usePrefs } from '../context/PrefsContext';
+import { specialtyName } from '../utils/specialtyName';
 import { IconLayers } from '../components/icons';
 import {
   ListShell, TableCard, SearchBox, FilterSelect, EmptyState,
@@ -22,6 +24,7 @@ function durationText(p) {
 }
 
 export default function AnalyzerPrograms() {
+  const { lang } = usePrefs();
   const [search, setSearch] = useState('');
   const [countryId, setCountryId] = useState('');
   const [centerId, setCenterId] = useState('');
@@ -32,7 +35,7 @@ export default function AnalyzerPrograms() {
 
   const countryOpts = useOptions('/api/analyzer/countries', (c) => ({ value: c._id, label: c.name }));
   const centerOpts = useOptions('/api/analyzer/centers', (c) => ({ value: c._id, label: c.name }));
-  const specialtyOpts = useOptions('/api/analyzer/specialties', (s) => ({ value: s._id, label: s.name }));
+  const specialtyOpts = useOptions('/api/analyzer/specialties', (s) => ({ value: s._id, label: specialtyName(s, lang) }));
 
   const { data, loading, error } = useAnalyzerList('/api/analyzer/programs', { countryId, centerId, specialtyId });
   const rows = Array.isArray(data) ? data : [];
@@ -66,7 +69,7 @@ export default function AnalyzerPrograms() {
             <tr key={p._id}>
               <td className="mt-td mt-td--name">{p.name}</td>
               <td className="mt-td mt-td--mono">{p.idNumber || p.accreditationNumber || '—'}</td>
-              <td className="mt-td">{p.specialtyId?.name || '—'}</td>
+              <td className="mt-td">{specialtyName(p.specialtyId, lang)}</td>
               <td className="mt-td mt-td--muted">{p.trainingCenterId?.name || '—'}</td>
               <td className="mt-td mt-td--muted">{p.programDirectorId?.name || '—'}</td>
               <td className="mt-td">{capacityText(p)}</td>

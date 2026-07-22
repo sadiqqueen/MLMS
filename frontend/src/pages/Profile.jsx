@@ -4,6 +4,7 @@ import api from '../api/axios';
 import Navbar from '../components/Navbar';
 import Sk from '../components/Skeleton';
 import { roleLabel } from '../config/roles';
+import { specialtyName } from '../utils/specialtyName';
 
 export default function Profile() {
   const { user } = useAuth();
@@ -108,7 +109,7 @@ export default function Profile() {
     ['ID number',  p?.studentId],
     ...(showHospital  ? [['Hospital',  hospitalName()]] : []),
     ['City',       p?.city || p?.hospital?.city],
-    ...(showSpecialty ? [['Specialty', p?.specialtyId?.name || p?.specialty]]   : []),
+    ...(showSpecialty ? [['Specialty', p?.specialtyId ? specialtyName(p.specialtyId) : (p?.specialty || '—')]]   : []),
     ['Role',       roleLabel(p?.role)],
   ];
 

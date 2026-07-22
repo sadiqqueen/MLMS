@@ -15,6 +15,7 @@ import SearchableSelect from '../components/SearchableSelect';
 import api from '../api/axios';
 import Sk from '../components/Skeleton';
 import { IconPencil, IconPlus, IconBuilding } from '../components/icons';
+import { specialtyName } from '../utils/specialtyName';
 import './dio.css';
 
 function idOf(v) { return (v?._id || v || '').toString(); }
@@ -123,7 +124,7 @@ export function HospitalCapacityModal({ hospital, specialties, caps, secretaries
   // A secretary belongs to one specialty — match by specialty name so each row
   // only offers the secretaries assigned to that specialty.
   const norm = v => String(v || '').trim().toLowerCase();
-  const secSpecName = s => s.specialtyId?.name || s.specialty || '';
+  const secSpecName = s => specialtyName(s.specialtyId) || s.specialty || '';
 
   return (
     <MtModal open title={t('panelTitle')} sub={hospital.name} onClose={onClose}

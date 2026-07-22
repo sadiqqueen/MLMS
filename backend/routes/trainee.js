@@ -33,7 +33,7 @@ router.get('/timeline', auth, allowRoles(...TRAINEE), scopeGuard(), async (req, 
     })
       .populate('supervisorId', 'name specialty initials photoUrl')
       .populate('doctor',       'name specialty initials photoUrl')
-      .populate('specialtyId',  'name')
+      .populate('specialtyId',  'name nameEn')
       .populate('hospitalId',   'name city')
       .populate('hospital',     'name city')
       .sort({ startDate: 1 });
@@ -50,7 +50,7 @@ router.get('/timeline', auth, allowRoles(...TRAINEE), scopeGuard(), async (req, 
     })
       .populate('supervisorId', 'name specialty initials photoUrl')
       .populate('doctor',       'name specialty initials photoUrl')
-      .populate('specialtyId',  'name')
+      .populate('specialtyId',  'name nameEn')
       .populate('hospitalId',   'name city')
       .populate('hospital',     'name city')
       .sort({ startDate: 1 });
@@ -72,7 +72,7 @@ router.get('/reports', auth, allowRoles(...TRAINEE), scopeGuard(), async (req, r
       ],
       status: 'current'
     })
-      .populate('specialtyId', 'name weeklyReportPdf monthlyReportPdf finalReportPdf')
+      .populate('specialtyId', 'name nameEn weeklyReportPdf monthlyReportPdf finalReportPdf')
       .populate('hospitalId',  'name')
       .populate('hospital',    'name')
       .populate('supervisorId','name')
@@ -86,7 +86,7 @@ router.get('/reports', auth, allowRoles(...TRAINEE), scopeGuard(), async (req, r
       ],
       status: 'active'
     })
-      .populate('specialtyId', 'name weeklyReportPdf monthlyReportPdf finalReportPdf')
+      .populate('specialtyId', 'name nameEn weeklyReportPdf monthlyReportPdf finalReportPdf')
       .populate('hospitalId',  'name')
       .populate('hospital',    'name')
       .populate('supervisorId','name')

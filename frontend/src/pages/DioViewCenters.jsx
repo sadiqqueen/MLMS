@@ -19,6 +19,7 @@ import RevealOnScroll from '../components/RevealOnScroll';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import { IconCaret, IconBuilding } from '../components/icons';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 import './dioview.css';
 
 const PAGE_SIZE = 12;
@@ -64,7 +65,7 @@ function ProgramsPanel({ center, t }) {
       {programs.map((p) => (
         <div className="dioview-prow" key={p._id}>
           <span className="dioview-pname" title={p.name}>{p.name}</span>
-          <span className="dioview-pmuted" title={refName(p.specialtyId)}>{refName(p.specialtyId)}</span>
+          <span className="dioview-pmuted" title={specialtyName(p.specialtyId)}>{specialtyName(p.specialtyId)}</span>
           <span className="dioview-pmuted" title={refName(p.programDirectorId)}>{refName(p.programDirectorId)}</span>
           <span><AccreditationBadge status={p.accreditationStatus} /></span>
         </div>

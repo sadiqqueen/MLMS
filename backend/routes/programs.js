@@ -74,7 +74,7 @@ router.get('/', auth, allowRoles(...READ_ROLES), async (req, res) => {
 
     const programs = await Program.find(filter)
       .populate('trainingCenterId', 'name accreditationNumber countryId')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .populate('programDirectorId', 'name')
       .sort({ createdAt: -1 });
 
@@ -94,7 +94,7 @@ router.get('/pd-candidates', auth, allowRoles(...CREATE_ROLES), async (req, res)
 
     const pds = await User.find(query)
       .select('name idNumber specialtyId')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .sort({ name: 1 });
 
     // Exclude PDs who already direct an active program.
@@ -268,7 +268,7 @@ router.patch('/:id',
 
       const program = await Program.findByIdAndUpdate(req.params.id, fields, { new: true, runValidators: true })
         .populate('trainingCenterId', 'name accreditationNumber countryId')
-        .populate('specialtyId', 'name')
+        .populate('specialtyId', 'name nameEn')
         .populate('programDirectorId', 'name');
       if (!program) return res.status(404).json({ message: 'Program not found' });
       res.json({ success: true, data: withAccreditation(program) });

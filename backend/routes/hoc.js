@@ -39,12 +39,34 @@ async function capacityUsedFor(programId) {
 
 // Resolve the HOC's full scope: council doc + specialty ids + active programs +
 // distinct center ids. Every endpoint derives its data from this.
+//   • New model: the HOC carries a MAIN `specialtyId`. Scope = that main specialty
+//     + every sub-specialty (type:'precise') under the SAME council (never the
+//     council's other main specialties).
+//   • Legacy model: only `councilId` is set → the whole council (main + precise).
 async function resolveScope(req) {
-  const councilId = req.user.councilId || null;
-  const [council, specialties] = await Promise.all([
-    councilId ? ScientificCouncil.findById(councilId).select('name nameEn') : null,
-    councilId ? Specialty.find({ councilId }).select('_id type') : [],
-  ]);
+  const specialtyId = req.user.specialtyId || null;
+  let councilId = req.user.councilId || null;
+  let council = null;
+  let specialties = [];
+
+  if (specialtyId) {
+    const main = await Specialty.findById(specialtyId).select('_id type name nameEn councilId');
+    councilId = main?.councilId || councilId;
+    const [councilDoc, subs] = await Promise.all([
+      councilId ? ScientificCouncil.findById(councilId).select('name nameEn') : null,
+      councilId ? Specialty.find({ councilId, type: 'precise' }).select('_id type name nameEn') : [],
+    ]);
+    council = councilDoc;
+    specialties = main ? [main, ...subs] : subs;
+  } else if (councilId) {
+    const [councilDoc, all] = await Promise.all([
+      ScientificCouncil.findById(councilId).select('name nameEn'),
+      Specialty.find({ councilId }).select('_id type name nameEn'),
+    ]);
+    council = councilDoc;
+    specialties = all;
+  }
+
   const specialtyIds = specialties.map(s => s._id);
   const programs = specialtyIds.length
     ? await Program.find({ specialtyId: { $in: specialtyIds }, isActive: { $ne: false } })
@@ -192,12 +214,15 @@ router.get('/programs', auth, allowRoles(...HOC), async (req, res) => {
   }
 });
 
-// GET /api/hoc/specialties — the council's specialties (read-only reference).
+// GET /api/hoc/specialties — the HOC's in-scope specialties (read-only reference).
+// Derives from resolveScope so it matches the oversight scope exactly: the main
+// specialty + its council's sub-specialties (never the council's other mains);
+// legacy HOCs still get the whole council.
 router.get('/specialties', auth, allowRoles(...HOC), async (req, res) => {
   try {
-    const councilId = req.user.councilId || null;
-    if (!councilId) return res.json({ success: true, data: [] });
-    const specialties = await Specialty.find({ councilId })
+    const { specialtyIds } = await resolveScope(req);
+    if (!specialtyIds.length) return res.json({ success: true, data: [] });
+    const specialties = await Specialty.find({ _id: { $in: specialtyIds } })
       .select('name nameEn type code isActive')
       .sort({ type: 1, name: 1 });
     res.json({ success: true, data: specialties });

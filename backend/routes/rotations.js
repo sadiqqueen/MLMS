@@ -221,7 +221,7 @@ function populateRotation(query) {
     .populate('hospital', 'name city')
     .populate('supervisorId', 'name specialty initials photoUrl')
     .populate('doctor', 'name specialty initials photoUrl')
-    .populate('specialtyId', 'name');
+    .populate('specialtyId', 'name nameEn');
 }
 
 router.get('/', auth, allowRoles(...READ_ROLES), async (req, res) => {

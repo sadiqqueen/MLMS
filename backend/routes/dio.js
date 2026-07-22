@@ -314,7 +314,7 @@ function populateManagedUser(query) {
     .select('-password')
     .populate('hospitalId', 'name city governorate')
     .populate('hospital', 'name city governorate')
-    .populate('specialtyId', 'name')
+    .populate('specialtyId', 'name nameEn')
     .populate('supervisorId', 'name email')
     .populate('trainer', 'name email')
     .populate('researchSupervisorId', 'name email');
@@ -602,7 +602,7 @@ router.post('/trainees/:id/evaluations',
         isActive: { $ne: false }
       })
         .populate('hospitalId', 'name')
-        .populate('specialtyId', 'name');
+        .populate('specialtyId', 'name nameEn');
 
       if (!trainee) {
         return res.status(404).json({ success: false, message: 'Trainee not found' });
@@ -731,7 +731,7 @@ router.post('/supervisors/:id/evaluations',
         isActive: { $ne: false }
       })
         .populate('hospitalId', 'name')
-        .populate('specialtyId', 'name');
+        .populate('specialtyId', 'name nameEn');
       if (!supervisor) {
         return res.status(404).json({ success: false, message: 'Supervisor not found' });
       }
@@ -850,7 +850,7 @@ router.get('/trainees/:id/details', auth, allowRoles(...DIO, 'developer'), async
       .select('-password')
       .populate('hospitalId', 'name city governorate')
       .populate('hospital', 'name city governorate')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .populate('supervisorId', 'name email phone specialty')
       .populate('trainer', 'name email phone specialty');
 
@@ -867,7 +867,7 @@ router.get('/trainees/:id/details', auth, allowRoles(...DIO, 'developer'), async
         .sort({ startDate: -1 })
         .populate('hospitalId', 'name city governorate')
         .populate('hospital', 'name city governorate')
-        .populate('specialtyId', 'name')
+        .populate('specialtyId', 'name nameEn')
         .populate('supervisorId', 'name email phone specialty')
         .populate('doctor', 'name email phone specialty'),
       Rotation.find({
@@ -876,7 +876,7 @@ router.get('/trainees/:id/details', auth, allowRoles(...DIO, 'developer'), async
         .sort({ startDate: 1 })
         .populate('hospitalId', 'name city governorate')
         .populate('hospital', 'name city governorate')
-        .populate('specialtyId', 'name')
+        .populate('specialtyId', 'name nameEn')
         .populate('supervisorId', 'name email phone specialty')
         .populate('doctor', 'name email phone specialty'),
       // The trainee's Program Director is the PD of the trainee's specialty
@@ -1091,7 +1091,7 @@ router.get('/supervisors/trainees-map', auth, allowRoles(...DIO, 'developer'), a
 
     const [direct, dists, rots] = await Promise.all([
       User.find({ role: traineeRole, isActive: { $ne: false }, supervisorId: { $in: supIds } })
-        .select(traineeSelect).populate('specialtyId', 'name').lean(),
+        .select(traineeSelect).populate('specialtyId', 'name nameEn').lean(),
       Distribution.find({ ...trackQ, $or: [
         { supervisorId: { $in: supIds }, traineeId: { $ne: null } },
         { doctor: { $in: supIds }, student: { $ne: null } },
@@ -1118,7 +1118,7 @@ router.get('/supervisors/trainees-map', auth, allowRoles(...DIO, 'developer'), a
 
     const extra = extraIds.size
       ? await User.find({ _id: { $in: [...extraIds] }, role: traineeRole, isActive: { $ne: false } })
-          .select(traineeSelect).populate('specialtyId', 'name').lean()
+          .select(traineeSelect).populate('specialtyId', 'name nameEn').lean()
       : [];
 
     const byId = {};
@@ -1163,7 +1163,7 @@ router.get('/change-requests', auth, allowRoles(...DIO, 'developer'), async (req
       .populate('requestedBy', 'name email')
       .populate('reviewedBy', 'name')
       .populate('hospitalId', 'name')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .sort({ createdAt: -1 })
       .limit(300);
     res.json({ success: true, data: items.map(viewChangeRequest) });
@@ -1321,14 +1321,14 @@ router.get('/hospitals/:id', auth, allowRoles(...DIO, 'developer'), async (req, 
 
     const [supervisors, pds, secretaries, trainees, specialties] = await Promise.all([
       User.find({ role: coerceRoleToTrack('trainer', req.track), ...inHospital })
-        .select('name email phone specialtyId hospitalId hospital initials photoUrl').populate('specialtyId', 'name'),
+        .select('name email phone specialtyId hospitalId hospital initials photoUrl').populate('specialtyId', 'name nameEn'),
       User.find({ role: coerceRoleToTrack('program_director', req.track), ...inHospital })
         .select('name email phone department hospitalId hospital initials photoUrl'),
       User.find({ role: coerceRoleToTrack('secretary', req.track), ...inHospital })
-        .select('name email phone specialtyId hospitalId hospital initials photoUrl').populate('specialtyId', 'name'),
+        .select('name email phone specialtyId hospitalId hospital initials photoUrl').populate('specialtyId', 'name nameEn'),
       User.find({ role: coerceRoleToTrack('trainee', req.track), ...inHospital })
         .select('name email studentId year specialtyId supervisorId hospitalId hospital initials photoUrl')
-        .populate('specialtyId', 'name').populate('supervisorId', 'name').sort({ name: 1 }),
+        .populate('specialtyId', 'name nameEn').populate('supervisorId', 'name').sort({ name: 1 }),
       Specialty.find({ ...trackFilter(req.track), isActive: { $ne: false }, hospitalId: hospital._id })
         .select('name hospitalId secretaryId').populate('secretaryId', 'name'),
     ]);
@@ -1530,12 +1530,12 @@ router.get('/hospitals-overview', auth, allowRoles(...DIO, 'developer'), async (
       Hospital.find({ ...trackFilter(req.track), isActive: { $ne: false } }).sort({ name: 1 }),
       User.find({ role: coerceRoleToTrack('trainer', req.track), isActive: { $ne: false } })
         .select('name email hospitalId hospital specialtyId initials photoUrl')
-        .populate('specialtyId', 'name'),
+        .populate('specialtyId', 'name nameEn'),
       User.find({ role: coerceRoleToTrack('program_director', req.track), isActive: { $ne: false } })
         .select('name email hospitalId hospital department initials photoUrl'),
       User.find({ role: coerceRoleToTrack('secretary', req.track), isActive: { $ne: false } })
         .select('name email hospitalId hospital specialtyId initials photoUrl')
-        .populate('specialtyId', 'name'),
+        .populate('specialtyId', 'name nameEn'),
       Specialty.find({ ...trackFilter(req.track), isActive: { $ne: false } })
         .select('name hospitalId secretaryId')
         .populate('secretaryId', 'name'),
@@ -1636,7 +1636,7 @@ router.post('/certificates',
       const trainee = await User.findOne({ _id: targetTrainee, role: traineeRole, isActive: { $ne: false } })
         .populate('hospitalId', 'name')
         .populate('supervisorId', 'name')
-        .populate('specialtyId', 'name');
+        .populate('specialtyId', 'name nameEn');
 
       if (!trainee) return res.status(404).json({ success: false, message: 'Trainee not found' });
 

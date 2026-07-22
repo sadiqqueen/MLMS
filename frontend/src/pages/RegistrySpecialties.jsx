@@ -12,6 +12,7 @@ import Sk from '../components/Skeleton';
 import { IconPencil, IconBan, IconUserCheck } from '../components/icons';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { specialtyName } from '../utils/specialtyName';
 
 const STRINGS = {
   ar: {
@@ -183,7 +184,7 @@ export default function RegistrySpecialties() {
                   return (
                     <tr key={s._id} style={{ opacity: active ? 1 : 0.6 }}>
                       <td style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
-                      <td><strong>{s.name}</strong></td>
+                      <td><strong>{specialtyName(s)}</strong></td>
                       <td><span className={active ? 'badge badge-green' : 'badge'} style={active ? undefined : { background: 'var(--surface-2)', color: 'var(--text-muted)' }}>{active ? t('active') : t('inactive')}</span></td>
                       <td>
                         <div className="action-btns">

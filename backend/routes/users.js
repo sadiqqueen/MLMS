@@ -179,7 +179,7 @@ router.get('/supervisors', auth, allowRoles('developer', 'secretary', 'odio'), a
     }
     const supervisors = await User.find(filter)
       .select('name email specialty specialtyId hospitalId department initials photoUrl track')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .populate('hospitalId', 'name')
       .sort({ name: 1 });
     res.json({ success: true, data: supervisors });
@@ -197,7 +197,7 @@ router.get('/program-directors', auth, allowRoles('developer', 'secretary', 'odi
     }
     const pds = await User.find(filter)
       .select('name email specialtyId hospitalId department initials photoUrl')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .populate('hospitalId', 'name')
       .sort({ name: 1 });
     res.json({ success: true, data: pds });
@@ -215,7 +215,7 @@ router.get('/students', auth, allowRoles('trainer', 'program_director', 'secreta
     }
     const students = await User.find(filter)
       .select('name email studentId specialty specialtyId hospitalId supervisorId initials photoUrl year')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .populate('hospitalId', 'name')
       .populate('supervisorId', 'name')
       .sort({ name: 1 });

@@ -70,7 +70,7 @@ router.get('/trainees', auth, allowRoles(...PD_READ), async (req, res) => {
       .select('-password')
       .populate('hospitalId',  'name city')
       .populate('hospital',    'name city')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .populate('supervisorId', 'name')
       .sort({ name: 1 });
 
@@ -83,7 +83,7 @@ router.get('/trainees', auth, allowRoles(...PD_READ), async (req, res) => {
     })
       .populate('traineeId', 'name email studentId')
       .populate('student', 'name email studentId')
-      .populate('specialtyId',  'name')
+      .populate('specialtyId',  'name nameEn')
       .populate('supervisorId', 'name email')
       .populate('doctor', 'name email')
       .populate('hospitalId', 'name city')
@@ -111,7 +111,7 @@ router.get('/supervisors', auth, allowRoles(...PD_READ), async (req, res) => {
       .select('-password')
       .populate('hospitalId',  'name city')
       .populate('hospital',    'name city')
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .sort({ name: 1 });
 
     const supervisorIds = supervisors.map(s => s._id);
@@ -204,7 +204,7 @@ router.get('/stats', auth, allowRoles(...PD_READ), async (req, res) => {
     const pdId = effectivePdId(req);
     const program = await Program.findOne({ programDirectorId: pdId, isActive: { $ne: false } })
       .populate({ path: 'trainingCenterId', select: 'name city accreditationNumber countryId dioId', populate: { path: 'dioId', select: 'name' } })
-      .populate('specialtyId', 'name')
+      .populate('specialtyId', 'name nameEn')
       .populate('programDirectorId', 'name')
       .populate('subProgramDirectorId', 'name');
     if (!program) return res.status(403).json({ success: false, message: 'No program assigned' });
@@ -321,7 +321,7 @@ router.post('/trainees/:id/evaluations', auth, allowRoles(...PD), async (req, re
       ...specialtyUserMatch(info)
     })
       .populate('hospitalId', 'name')
-      .populate('specialtyId', 'name');
+      .populate('specialtyId', 'name nameEn');
 
     if (!trainee) {
       return res.status(404).json({ success: false, message: 'Trainee not found' });
@@ -419,7 +419,7 @@ router.post('/supervisors/:id/evaluations', auth, allowRoles(...PD), async (req,
       ...specialtyUserMatch(info)
     })
       .populate('hospitalId', 'name')
-      .populate('specialtyId', 'name');
+      .populate('specialtyId', 'name nameEn');
     if (!supervisor) {
       return res.status(404).json({ success: false, message: 'Supervisor not found' });
     }

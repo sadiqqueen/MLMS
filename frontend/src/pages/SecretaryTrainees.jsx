@@ -7,6 +7,7 @@ import SearchableSelect from '../components/SearchableSelect';
 import api    from '../api/axios';
 import Sk     from '../components/Skeleton';
 import { IconEdit, IconBan } from '../components/icons';
+import { specialtyName } from '../utils/specialtyName';
 
 const API_BASE = '';
 
@@ -803,7 +804,7 @@ export default function SecretaryTrainees() {
                   </div>
                 </div>
                 <div className="management-card-meta">
-                  <span className="specialty-tag">{t2.studentId ? `${t('idTag')} ${t2.studentId}` : (t2.specialtyId?.name || '—')}</span>
+                  <span className="specialty-tag">{t2.studentId ? `${t('idTag')} ${t2.studentId}` : (specialtyName(t2.specialtyId) || '—')}</span>
                   {t2.year && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('year')} {t2.year}</span>}
                   {t2.phone && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t2.phone}</span>}
                 </div>

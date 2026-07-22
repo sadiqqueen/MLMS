@@ -19,6 +19,7 @@ import RevealOnScroll from '../components/RevealOnScroll';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import { IconUsers } from '../components/icons';
 import api from '../api/axios';
+import { specialtyName } from '../utils/specialtyName';
 import './dioview.css';
 
 const PAGE_SIZE = 9;
@@ -99,7 +100,7 @@ export default function DioViewPds() {
   const specialtyOptions = useMemo(() => {
     const seen = new Set(); const out = [];
     [...pds, ...subPds].forEach((u) => {
-      const id = specId(u); const name = u.specialtyId?.name;
+      const id = specId(u); const name = specialtyName(u.specialtyId);
       if (id && name && !seen.has(id)) { seen.add(id); out.push({ value: id, label: name }); }
     });
     return out.sort((a, b) => a.label.localeCompare(b.label));
@@ -149,9 +150,9 @@ export default function DioViewPds() {
     }
     // Fallback: /program-directors populates only specialtyId.
     return kind === 'sub'
-      ? [{ label: t('assignedPd'), value: refName(u.pdId) }, { label: t('specialty'), value: u.specialtyId?.name || '—' },
+      ? [{ label: t('assignedPd'), value: refName(u.pdId) }, { label: t('specialty'), value: specialtyName(u.specialtyId) || '—' },
          { label: t('phone'), value: u.phone || '—' }, { label: t('email'), value: u.email || '—' }]
-      : [{ label: t('specialty'), value: u.specialtyId?.name || '—' }, { label: t('city'), value: u.city || '—' },
+      : [{ label: t('specialty'), value: specialtyName(u.specialtyId) || '—' }, { label: t('city'), value: u.city || '—' },
          { label: t('phone'), value: u.phone || '—' }, { label: t('email'), value: u.email || '—' }];
   }
 

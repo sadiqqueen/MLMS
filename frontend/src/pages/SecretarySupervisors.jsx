@@ -7,6 +7,7 @@ import Sk     from '../components/Skeleton';
 import { IconEdit, IconBan } from '../components/icons';
 import { useAuth } from '../context/AuthContext';
 import SearchableSelect from '../components/SearchableSelect';
+import { specialtyName } from '../utils/specialtyName';
 
 const API_BASE = '';
 
@@ -148,7 +149,7 @@ function SupervisorInfoModal({ supervisor, onClose }) {
 
   const rows = [
     ['Email',     supervisor.email || '—'],
-    ['Specialty', supervisor.specialtyId?.name || supervisor.specialty || '—'],
+    ['Specialty', specialtyName(supervisor.specialtyId) || supervisor.specialty || '—'],
     ['Phone',     supervisor.phone || '—'],
     ['Gender',    supervisor.gender || '—'],
     ['City',      supervisor.city || '—'],
@@ -405,7 +406,7 @@ export default function SecretarySupervisors() {
             onClose={() => { setShowModal(false); setEditSupervisor(null); }}
             saving={saving}
             specialties={specialties}
-            defaultSpecialty={me?.specialtyId?.name || me?.specialty || ''}
+            defaultSpecialty={me?.specialtyId ? specialtyName(me.specialtyId) : (me?.specialty || '')}
           />
         )}
 
