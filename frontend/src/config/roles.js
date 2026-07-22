@@ -112,6 +112,7 @@ const ADVANCED_LINKS = {
     { to: '/admin/dashboard',      key: 'dashboard',      label: 'Dashboard',      ic: 'grid'     },
     { to: '/admin/users',          key: 'users',          label: 'Users',          ic: 'users'    },
     { to: '/admin/specialties',    key: 'specialties',    label: 'Specialties',    ic: 'book'     },
+    { to: '/admin/countries',      key: 'countries',      label: 'Countries',      ic: 'globe'    },
     { to: '/admin/hospitals',      key: 'hospitals',      label: 'Training Centers', ic: 'building' },
     { to: '/admin/event-feedback', key: 'event_feedback', label: 'Event Feedback', ic: 'doc'      },
     { to: '/admin/audit-log',      key: 'audit_log',      label: 'Audit Log',      ic: 'list'     },

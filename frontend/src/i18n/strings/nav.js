@@ -17,6 +17,7 @@ const nav = {
     'nav.super_admin.system':            'النظام',
     'nav.super_admin.event_feedback':    'تقييم الفعاليات',
     'nav.super_admin.audit_log':         'سجل التدقيق',
+    'nav.super_admin.countries':         'الدول',
 
     // secretary
     'nav.secretary.trainees':            'المتدربون',
@@ -200,6 +201,7 @@ const nav = {
     'nav.super_admin.system':            'System',
     'nav.super_admin.event_feedback':    'Event Feedback',
     'nav.super_admin.audit_log':         'Audit Log',
+    'nav.super_admin.countries':         'Countries',
 
     // secretary
     'nav.secretary.trainees':            'Trainees',

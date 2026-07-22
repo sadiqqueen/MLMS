@@ -12,9 +12,14 @@ const WRITE_ROLES = ['data_entry', 'super_admin'];
 const EDIT_ROLES  = ['super_admin'];
 
 // GET /api/countries — any authenticated user (dropdown source): active only.
+// super_admin may pass ?includeInactive=true to also see deactivated rows (for
+// the Developer Countries page); the param is ignored for every other role, so
+// dropdown consumers always get active-only.
 router.get('/', auth, async (req, res) => {
   try {
-    const countries = await Country.find({ isActive: { $ne: false } }).sort({ name: 1 });
+    const includeInactive = req.query.includeInactive === 'true' && req.user.role === 'super_admin';
+    const filter = includeInactive ? {} : { isActive: { $ne: false } };
+    const countries = await Country.find(filter).sort({ name: 1 });
     res.json({ success: true, data: countries });
   } catch (err) {
     res.status(500).json({ message: err.message });

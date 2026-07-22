@@ -111,6 +111,7 @@ const HocDashboard              = lazy(() => import('./pages/HocDashboard'));
 const HocCenters                = lazy(() => import('./pages/HocCenters'));
 const HocPrograms               = lazy(() => import('./pages/HocPrograms'));
 const HocTrainees               = lazy(() => import('./pages/HocTrainees'));
+const AdminCountries            = lazy(() => import('./pages/AdminCountries'));
 const CentralDashboard          = lazy(() => import('./pages/CentralDashboard'));
 const CentralCountries          = lazy(() => import('./pages/CentralCountries'));
 const CentralCenters            = lazy(() => import('./pages/CentralCenters'));
@@ -759,6 +760,9 @@ export default function App() {
           {/* Developer — wire the previously-orphaned Specialties page */}
           <Route path="/admin/specialties" element={
             <ProtectedRoute allowedRoles={['super_admin']}><AdminSpecialties /></ProtectedRoute>
+          } />
+          <Route path="/admin/countries" element={
+            <ProtectedRoute allowedRoles={['super_admin']}><AdminCountries /></ProtectedRoute>
           } />
 
           {/* HOC (NEW role) — read-only council scope */}
