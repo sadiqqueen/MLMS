@@ -19,7 +19,7 @@ router.get('/', auth, async (req, res) => {
   try {
     const includeInactive = req.query.includeInactive === 'true' && req.user.role === 'super_admin';
     const filter = includeInactive ? {} : { isActive: { $ne: false } };
-    const countries = await Country.find(filter).sort({ name: 1 });
+    const countries = await Country.find(filter).sort({ order: 1, name: 1 });
     res.json({ success: true, data: countries });
   } catch (err) {
     res.status(500).json({ message: err.message });
