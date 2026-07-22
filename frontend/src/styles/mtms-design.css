@@ -19,25 +19,32 @@
 /* ── TOP-NAV BAR — [logo slot] · [centered links + More] · [controls] ───────── */
 .mt-nav {
   background: var(--shell-bg);
-  display: flex; align-items: center; gap: 10px;
+  /* Three explicit, non-overlapping sections: [logo] · [links] · [controls].
+     Equal 1fr side tracks keep the links in the TRUE centre of the bar and give
+     the logo a wide section; the middle is content-sized (centred) and shrinks +
+     scrolls on its own if the links ever don't fit. Grid tracks never overlap,
+     and the side tracks won't shrink below the logo/controls, so nothing spills. */
+  display: grid; grid-template-columns: 1fr minmax(0, auto) 1fr;
+  align-items: center; gap: 16px;
   padding-inline: 20px; padding-block: 0;
   min-width: 0;
 }
-/* Logo + controls take their natural width and are pinned to the edges; the
-   centre link zone gets all the space between them and scrolls INSIDE its own box
-   when it can't fit — so links never overflow and overlap the logo/controls. */
-.mt-nav-logo-slot { flex: 0 0 auto; display: flex; align-items: center; min-width: 0; }
+/* Section 1 — logo: a full 1fr section so the logo has generous space. It keeps
+   its content width (no min-width:0) so this side never shrinks under the links. */
+.mt-nav-logo-slot { display: flex; align-items: center; }
 .mt-nav-brand {
   flex: none; display: flex; align-items: center; height: 52px;
   cursor: pointer; background: none; border: none; padding: 0;
 }
 .mt-nav-logo { height: 34px; width: auto; display: block; }
 
+/* Section 2 — nav links (the flexible middle track: centred, and if they can't
+   fit they scroll inside this section rather than spilling into the neighbours.
+   `safe center` keeps them centred when they fit but falls back to start-aligned
+   on overflow so the first link is never clipped out of reach). */
 .mt-navcenter {
-  flex: 1 1 auto; display: flex; align-items: center; justify-content: flex-start;
+  display: flex; align-items: center; justify-content: safe center;
   gap: 4px; min-width: 0; flex-wrap: nowrap;
-  /* Bounded scroll: if the links can't fit they scroll within this zone instead
-     of spilling over the logo/controls (the overlap bug). Scrollbar hidden. */
   overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
 }
 .mt-navcenter::-webkit-scrollbar { display: none; }
@@ -99,8 +106,9 @@
 
 /* Controls (theme, language, notifications, profile) on the right of the dark
    top-nav — restyled light-on-dark from their original light-topbar look. */
+/* Section 3 — account, notifications, language, theme (pinned to the end edge). */
 .mt-nav-controls {
-  flex: 0 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
 }
 .mt-nav-controls .mt-iconbtn {
   border-color: rgba(255,255,255,.20);
@@ -137,7 +145,8 @@
 .mt-nav-mobile .mt-navlink { width: 100%; margin-block: 0; }
 
 @media (max-width: 760px) {
-  .mt-nav { gap: 8px; padding-inline: 12px; }
+  /* Phone: links live in the drawer, so lay the bar out as [logo] … [controls][burger]. */
+  .mt-nav { grid-template-columns: 1fr auto auto; gap: 8px; padding-inline: 12px; }
   .mt-navcenter { display: none; }
   .mt-nav-burger { display: flex; }
   .mt-nav-mobile.is-open { display: flex; }
