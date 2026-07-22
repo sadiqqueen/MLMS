@@ -17,9 +17,11 @@ module.exports = function auditLog(action, targetModel) {
           || body?.data?._id
           || null;
 
+        // A handler may override the logged action per-request (e.g. soft vs hard
+        // delete on the same route) by setting res.locals.auditAction.
         AuditLog.create({
           userId:      req.user._id,
-          action,
+          action:      res.locals.auditAction || action,
           targetId,
           targetModel,
           ip:          req.ip || req.headers['x-forwarded-for'] || 'unknown'

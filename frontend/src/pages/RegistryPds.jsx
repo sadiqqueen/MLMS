@@ -67,7 +67,7 @@ function AddPdModal({ lang, countries, onClose, onSaved }) {
       onSaved(res.data?.data || res.data);
     } catch (ex) { setApiErr(ex.response?.data?.message || t('saveFailed')); } finally { setSaving(false); }
   }
-  const countryOpts = countries.map((c) => ({ value: c._id, label: `${c.name} (${c.code})` }));
+  const countryOpts = countries.map((c) => ({ value: c._id, label: c.code ? `${c.name} (${c.code})` : c.name }));
   return (
     <MtModal open title={t('newPd')} sub={t('newPdSub')} onClose={onClose}
       footer={<><button type="button" className="mt-btn--cancel" onClick={onClose}>{t('cancel')}</button>
@@ -200,7 +200,7 @@ export default function RegistryPds() {
     });
   }, [pds, subPds, countryF, search]);
 
-  const countryOpts = countries.map((c) => ({ value: c._id, label: `${c.name} (${c.code})` }));
+  const countryOpts = countries.map((c) => ({ value: c._id, label: c.code ? `${c.name} (${c.code})` : c.name }));
 
   function fieldsFor({ u, kind }) {
     return kind === 'sub'

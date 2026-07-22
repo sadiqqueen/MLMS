@@ -1,9 +1,11 @@
 // frontend/src/pages/AdminCountries.jsx
 //
 // Developer (super_admin) — Countries management. Full CRUD: add / edit /
-// deactivate / restore. Countries are the geography that training centres and
-// users belong to (Hospital.countryId / User.countryId), so "delete" is a
-// reversible deactivation (isActive:false) rather than a hard purge.
+// deactivate / restore / permanently delete. Countries are the geography that
+// training centres and users belong to (Hospital.countryId / User.countryId),
+// so the default "delete" is a reversible deactivation (isActive:false); the
+// Developer can also HARD delete (?hard=true), which the backend blocks if any
+// center or user still references the country.
 //   GET/POST/PATCH/DELETE /api/countries  (POST: data_entry + super_admin;
 //   PATCH/DELETE: super_admin). This page passes ?includeInactive=true so the
 //   Developer can see and restore deactivated rows.
@@ -12,45 +14,82 @@ import Navbar from '../components/Navbar';
 import MtModal from '../components/MtModal';
 import RevealOnScroll from '../components/RevealOnScroll';
 import { MtToastHost, useMtToast } from '../components/MtToast';
-import { NavIcon, IconPencil, IconBan, IconUserCheck } from '../components/icons';
+import { NavIcon, IconPencil, IconBan, IconUserCheck, IconTrash } from '../components/icons';
 import { MagnifierIcon } from './devkit';
 import api from '../api/axios';
 import './developer.css';
 
-// ── Add / edit country modal (name + code) ───────────────────────────────────
+// ── Add / edit country modal — the source-sheet columns ──────────────────────
+// التسلسل + official/short Arabic + official/short English are all required (the
+// developer must fill every column). ISO code is optional (the sheet has none).
+// Arabic inputs are forced RTL, English inputs LTR, regardless of UI language.
+const EMPTY_COUNTRY = { order: '', officialNameAr: '', shortNameAr: '', officialNameEn: '', shortNameEn: '', code: '' };
+
 function CountryModal({ item, onSave, onClose, saving }) {
   const isEdit = !!item;
-  const [name, setName] = useState(item?.name || '');
-  const [code, setCode] = useState(item?.code || '');
+  const [form, setForm] = useState(item ? {
+    order: item.order ?? '', officialNameAr: item.officialNameAr || '', shortNameAr: item.shortNameAr || item.name || '',
+    officialNameEn: item.officialNameEn || '', shortNameEn: item.shortNameEn || '', code: item.code || '',
+  } : EMPTY_COUNTRY);
   const [errors, setErrors] = useState({});
   const [apiErr, setApiErr] = useState('');
+  const set = (k, v) => { setForm((s) => ({ ...s, [k]: v })); setErrors((x) => ({ ...x, [k]: false })); setApiErr(''); };
+  const inputCls = (k, extra = '') => `mt-input${extra}${errors[k] ? ' dev-invalid' : ''}`;
 
   function submit() {
     const e = {};
-    if (!name.trim()) e.name = true;
-    if (!code.trim()) e.code = true;
+    const order = Number(form.order);
+    if (!Number.isInteger(order) || order < 1) e.order = true;
+    for (const k of ['officialNameAr', 'shortNameAr', 'officialNameEn', 'shortNameEn']) if (!form[k].trim()) e[k] = true;
     setErrors(e);
     if (Object.keys(e).length) return;
-    onSave({ name: name.trim(), code: code.trim() }, setApiErr);
+    onSave({
+      order,
+      officialNameAr: form.officialNameAr.trim(),
+      shortNameAr: form.shortNameAr.trim(),
+      officialNameEn: form.officialNameEn.trim(),
+      shortNameEn: form.shortNameEn.trim(),
+      code: form.code.trim(),
+    }, setApiErr);
   }
 
   return (
-    <MtModal open title={isEdit ? 'Edit country' : 'Add country'} sub={isEdit ? item.name : 'New country record'} meta="Developer" onClose={onClose}
+    <MtModal open title={isEdit ? 'Edit country' : 'Add country'} sub={isEdit ? (item.shortNameAr || item.name) : 'New country record'} meta="Developer" onClose={onClose}
       footer={<>
         <button type="button" className="mt-btn--cancel" onClick={onClose}>Cancel</button>
         <button type="button" className="mt-btn" onClick={submit} disabled={saving}>{saving ? 'Saving…' : (isEdit ? 'Save changes' : 'Create country')}</button>
       </>}>
-      <div className="mt-banner">This record will be added to the registry.</div>
+      <div className="mt-banner">Every column from the source sheet is required. ISO code is optional.</div>
       <div className="mt-field-grid">
-        <div className="mt-field mt-field-full">
-          <label className="mt-label">Name <span className="mt-label-req">*</span></label>
-          <input className={`mt-input${errors.name ? ' dev-invalid' : ''}`} value={name}
-            onChange={(e) => { setName(e.target.value); setErrors((x) => ({ ...x, name: false })); setApiErr(''); }} placeholder="Country name" />
+        <div className="mt-field">
+          <label className="mt-label">التسلسل · Sequence <span className="mt-label-req">*</span></label>
+          <input type="number" min="1" dir="ltr" className={inputCls('order', ' mt-input--mono')} value={form.order}
+            onChange={(e) => set('order', e.target.value)} placeholder="e.g. 23" />
         </div>
         <div className="mt-field">
-          <label className="mt-label">Code <span className="mt-label-req">*</span></label>
-          <input className={`mt-input mt-input--mono${errors.code ? ' dev-invalid' : ''}`} value={code}
-            onChange={(e) => { setCode(e.target.value.toUpperCase()); setErrors((x) => ({ ...x, code: false })); setApiErr(''); }} placeholder="e.g. SA" />
+          <label className="mt-label">Code (ISO)</label>
+          <input dir="ltr" className={inputCls('code', ' mt-input--mono')} value={form.code}
+            onChange={(e) => set('code', e.target.value.toUpperCase())} placeholder="optional, e.g. SA" />
+        </div>
+        <div className="mt-field mt-field-full">
+          <label className="mt-label">الاسم الرسمي بالعربية · Official name (Arabic) <span className="mt-label-req">*</span></label>
+          <input dir="rtl" className={inputCls('officialNameAr')} value={form.officialNameAr}
+            onChange={(e) => set('officialNameAr', e.target.value)} placeholder="مثال: المملكة العربية السعودية" />
+        </div>
+        <div className="mt-field mt-field-full">
+          <label className="mt-label">الاسم المختصر بالعربية · Short name (Arabic) <span className="mt-label-req">*</span></label>
+          <input dir="rtl" className={inputCls('shortNameAr')} value={form.shortNameAr}
+            onChange={(e) => set('shortNameAr', e.target.value)} placeholder="مثال: السعودية" />
+        </div>
+        <div className="mt-field mt-field-full">
+          <label className="mt-label">الاسم الرسمي بالإنجليزية · Official name (English) <span className="mt-label-req">*</span></label>
+          <input dir="ltr" className={inputCls('officialNameEn')} value={form.officialNameEn}
+            onChange={(e) => set('officialNameEn', e.target.value)} placeholder="e.g. Kingdom of Saudi Arabia" />
+        </div>
+        <div className="mt-field mt-field-full">
+          <label className="mt-label">الاسم المختصر بالإنجليزية · Short name (English) <span className="mt-label-req">*</span></label>
+          <input dir="ltr" className={inputCls('shortNameEn')} value={form.shortNameEn}
+            onChange={(e) => set('shortNameEn', e.target.value)} placeholder="e.g. Saudi Arabia" />
         </div>
       </div>
       {apiErr && (
@@ -67,6 +106,7 @@ export default function AdminCountries() {
   const [search, setSearch] = useState('');
   const [showInactive, setShowInactive] = useState(false);
   const [modal, setModal] = useState(null);      // { item } | null (null item = add)
+  const [confirmDel, setConfirmDel] = useState(null); // country pending hard delete
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -100,16 +140,30 @@ export default function AdminCountries() {
     } catch (err) { showToast(err.response?.data?.message || 'Update failed', 'dng'); }
   }
 
+  async function hardDelete(item) {
+    setSaving(true);
+    try {
+      await api.delete(`/api/countries/${item._id}`, { params: { hard: true } });
+      setCountries((prev) => prev.filter((c) => c._id !== item._id));
+      setConfirmDel(null);
+      showToast('Country permanently deleted', 'ok');
+    } catch (err) {
+      // 409 = still referenced by centers/users; surface the backend's reason.
+      showToast(err.response?.data?.message || 'Delete failed', 'dng');
+    } finally { setSaving(false); }
+  }
+
   const q = search.trim().toLowerCase();
   const rows = countries
     .filter((c) => showInactive || c.isActive !== false)
-    .filter((c) => !q || (c.name || '').toLowerCase().includes(q) || (c.code || '').toLowerCase().includes(q));
+    .filter((c) => !q || [c.name, c.shortNameAr, c.shortNameEn, c.officialNameAr, c.officialNameEn, c.code]
+      .some((v) => (v || '').toLowerCase().includes(q)));
 
   return (
     <>
       <Navbar title="Countries" subtitle="Developer" />
       <main className="mt-content">
-        <div className="dev-intro">Countries are the geography training centres and users belong to. Deactivating hides a country from every dropdown; it can be restored anytime.</div>
+        <div className="dev-intro">Countries are the geography training centres and users belong to. Deactivating hides a country from every dropdown and can be restored anytime; permanent delete removes it entirely and is only allowed when no center or user still belongs to it.</div>
 
         <div className="mt-filterbar">
           <div className="mt-search">
@@ -130,18 +184,19 @@ export default function AdminCountries() {
               <div className="mt-table-wrap">
                 <table className="mt-table">
                   <thead><tr>
-                    <th className="mt-th">#</th><th className="mt-th">Country</th><th className="mt-th">Code</th><th className="mt-th">Status</th><th className="mt-th" />
+                    <th className="mt-th">#</th><th className="mt-th">Country (AR)</th><th className="mt-th">Country (EN)</th><th className="mt-th">Code</th><th className="mt-th">Status</th><th className="mt-th" />
                   </tr></thead>
                   <tbody>
                     {rows.length === 0 && (
-                      <tr><td className="mt-td mt-td--muted" colSpan={5} style={{ textAlign: 'center', padding: 40 }}>{countries.length === 0 ? 'No countries yet.' : 'No matching countries.'}</td></tr>
+                      <tr><td className="mt-td mt-td--muted" colSpan={6} style={{ textAlign: 'center', padding: 40 }}>{countries.length === 0 ? 'No countries yet.' : 'No matching countries.'}</td></tr>
                     )}
-                    {rows.map((c, i) => {
+                    {rows.map((c) => {
                       const active = c.isActive !== false;
                       return (
                         <tr key={c._id} style={{ opacity: active ? 1 : 0.6 }}>
-                          <td className="mt-td mt-td--muted">{i + 1}</td>
-                          <td className="mt-td mt-td--name">{c.name}</td>
+                          <td className="mt-td mt-td--muted">{c.order ?? '—'}</td>
+                          <td className="mt-td mt-td--name" title={c.officialNameAr || ''} dir="rtl">{c.shortNameAr || c.name}</td>
+                          <td className="mt-td" title={c.officialNameEn || ''} dir="ltr">{c.shortNameEn || '—'}</td>
                           <td className="mt-td mt-td--mono">{c.code || '—'}</td>
                           <td className="mt-td">{active ? <span className="mt-pill mt-pill--active">Active</span> : <span className="mt-pill mt-pill--rejected">Inactive</span>}</td>
                           <td className="mt-td mt-td--actions">
@@ -150,6 +205,7 @@ export default function AdminCountries() {
                               {active
                                 ? <button className="mt-icon-action dev-act-danger" onClick={() => setActive(c, false)} title="Deactivate" aria-label={`Deactivate ${c.name}`}><IconBan size={15} /></button>
                                 : <button className="mt-icon-action" onClick={() => setActive(c, true)} title="Restore" aria-label={`Restore ${c.name}`}><IconUserCheck size={15} /></button>}
+                              <button className="mt-icon-action dev-act-danger" onClick={() => setConfirmDel(c)} title="Delete permanently" aria-label={`Delete ${c.name} permanently`}><IconTrash size={15} /></button>
                             </div>
                           </td>
                         </tr>
@@ -171,6 +227,20 @@ export default function AdminCountries() {
         )}
 
         {modal && <CountryModal item={modal.item} onSave={handleSave} onClose={() => setModal(null)} saving={saving} />}
+
+        {confirmDel && (
+          <MtModal open title="Delete country permanently?" sub={confirmDel.name} meta="Developer" onClose={() => setConfirmDel(null)}
+            footer={<>
+              <button type="button" className="mt-btn--cancel" onClick={() => setConfirmDel(null)}>Cancel</button>
+              <button type="button" className="mt-btn" style={{ background: 'var(--danger)', borderColor: 'var(--danger)', color: '#fff' }}
+                onClick={() => hardDelete(confirmDel)} disabled={saving}>{saving ? 'Deleting…' : 'Delete permanently'}</button>
+            </>}>
+            <div className="mt-banner" style={{ background: 'var(--danger-bg)', borderInlineStartColor: 'var(--danger)', color: 'var(--danger-fg)' }}>
+              This permanently removes <strong>{confirmDel.name}</strong> from the database — it cannot be undone or restored. If any training center or user still belongs to this country, the delete is blocked; deactivate it instead.
+            </div>
+          </MtModal>
+        )}
+
         <MtToastHost toasts={toasts} />
       </main>
     </>

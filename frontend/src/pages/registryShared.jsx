@@ -60,6 +60,8 @@ const STR = {
     saveFailed: 'فشل الحفظ', required: 'الحقول المطلوبة ناقصة',
     newCenter: 'مركز تدريبي جديد', newCenterSub: 'سجل مركز تدريبي جديد',
     newCountry: 'دولة جديدة', newCountrySub: 'سجل دولة جديدة', countryCode: 'الرمز',
+    cSeq: 'التسلسل', cOffAr: 'الاسم الرسمي بالعربية', cShortAr: 'الاسم المختصر بالعربية',
+    cOffEn: 'الاسم الرسمي بالإنجليزية', cShortEn: 'الاسم المختصر بالإنجليزية',
     newProgram: 'برنامج جديد', newProgramSub: 'برنامج جديد — يُحتسب ضمن حد 100 برنامج للمركز',
     // approval
     editBanner: 'التعديلات لا تُطبّق فورًا — يُرسَل طلب التغيير إلى Head AD للموافقة، مع إرفاق كتاب التغييرات المطلوب.',
@@ -82,6 +84,8 @@ const STR = {
     saveFailed: 'Save failed', required: 'Required fields are missing',
     newCenter: 'New training center', newCenterSub: 'New training center record',
     newCountry: 'New country', newCountrySub: 'New country record', countryCode: 'Code',
+    cSeq: 'Sequence', cOffAr: 'Official name (Arabic)', cShortAr: 'Short name (Arabic)',
+    cOffEn: 'Official name (English)', cShortEn: 'Short name (English)',
     newProgram: 'New program', newProgramSub: 'New program — counts toward the center’s 100-program cap',
     // approval
     editBanner: 'Edits do not take effect immediately — this change request goes to a Head AD for approval, with the required book of changes attached.',
@@ -136,7 +140,7 @@ export function AddCenterModal({ open, lang, countries = [], dios = [], subDios 
     } catch (e) { setApiErr(e.response?.data?.message || tr('saveFailed')); } finally { setSaving(false); }
   }
 
-  const countryOpts = countries.map((c) => ({ value: c._id, label: `${c.name} (${c.code})` }));
+  const countryOpts = countries.map((c) => ({ value: c._id, label: c.code ? `${c.name} (${c.code})` : c.name }));
   const dioOpts = dios.map((d) => ({ value: d._id, label: d.name }));
   const subDioOpts = subDios.map((d) => ({ value: d._id, label: d.name }));
 
@@ -181,24 +185,34 @@ export function AddCenterModal({ open, lang, countries = [], dios = [], subDios 
 }
 
 // ── AddCountryModal (direct create) ─────────────────────────────────────────
-// The clerk creates a country directly (name + ISO-ish code). Backend:
-// POST /api/countries (WRITE_ROLES = data_entry, super_admin); code is uppercased.
+// The clerk creates a country directly, filling the source-sheet columns
+// (التسلسل + official/short Arabic + official/short English). Backend:
+// POST /api/countries (WRITE_ROLES = data_entry, super_admin) requires all five;
+// it derives `name` from the short Arabic name. Arabic inputs RTL, English LTR.
 export function AddCountryModal({ open, lang, onClose, onSaved }) {
   const tr = (k) => S(lang, k);
-  const [form, setForm] = useState({ name: '', code: '' });
+  const [form, setForm] = useState({ order: '', officialNameAr: '', shortNameAr: '', officialNameEn: '', shortNameEn: '' });
   const [err, setErr] = useState({});
   const [saving, setSaving] = useState(false);
   const [apiErr, setApiErr] = useState('');
   function set(k, v) { setForm((s) => ({ ...s, [k]: v })); setErr((e) => ({ ...e, [k]: false })); setApiErr(''); }
+  const eb = (k) => (err[k] ? { borderColor: 'var(--danger)' } : undefined);
 
   async function save() {
     const e = {};
-    if (!form.name.trim()) e.name = true;
-    if (!form.code.trim()) e.code = true;
+    const order = Number(form.order);
+    if (!Number.isInteger(order) || order < 1) e.order = true;
+    for (const k of ['officialNameAr', 'shortNameAr', 'officialNameEn', 'shortNameEn']) if (!form[k].trim()) e[k] = true;
     if (Object.keys(e).length) { setErr(e); return; }
     setSaving(true); setApiErr('');
     try {
-      const res = await api.post('/api/countries', { name: form.name.trim(), code: form.code.trim() });
+      const res = await api.post('/api/countries', {
+        order,
+        officialNameAr: form.officialNameAr.trim(),
+        shortNameAr: form.shortNameAr.trim(),
+        officialNameEn: form.officialNameEn.trim(),
+        shortNameEn: form.shortNameEn.trim(),
+      });
       onSaved(res.data?.data || res.data);
     } catch (ex) { setApiErr(ex.response?.data?.message || tr('saveFailed')); } finally { setSaving(false); }
   }
@@ -211,16 +225,30 @@ export function AddCountryModal({ open, lang, onClose, onSaved }) {
       </>}>
       <div className="mt-banner">{tr('createBanner')}</div>
       <div className="mt-field-grid">
-        <div className="mt-field mt-field-full">
-          <label className="mt-label">{tr('name')}<span className="mt-label-req">*</span></label>
-          <input className="mt-input" value={form.name} onChange={(e) => set('name', e.target.value)}
-            style={err.name ? { borderColor: 'var(--danger)' } : undefined} />
-        </div>
         <div className="mt-field">
-          <label className="mt-label">{tr('countryCode')}<span className="mt-label-req">*</span></label>
-          <input className="mt-input mt-input--mono" value={form.code} placeholder="e.g. SA"
-            onChange={(e) => set('code', e.target.value.toUpperCase())}
-            style={err.code ? { borderColor: 'var(--danger)' } : undefined} />
+          <label className="mt-label">{tr('cSeq')}<span className="mt-label-req">*</span></label>
+          <input type="number" min="1" dir="ltr" className="mt-input mt-input--mono" value={form.order}
+            onChange={(e) => set('order', e.target.value)} style={eb('order')} placeholder="23" />
+        </div>
+        <div className="mt-field mt-field-full">
+          <label className="mt-label">{tr('cOffAr')}<span className="mt-label-req">*</span></label>
+          <input dir="rtl" className="mt-input" value={form.officialNameAr}
+            onChange={(e) => set('officialNameAr', e.target.value)} style={eb('officialNameAr')} />
+        </div>
+        <div className="mt-field mt-field-full">
+          <label className="mt-label">{tr('cShortAr')}<span className="mt-label-req">*</span></label>
+          <input dir="rtl" className="mt-input" value={form.shortNameAr}
+            onChange={(e) => set('shortNameAr', e.target.value)} style={eb('shortNameAr')} />
+        </div>
+        <div className="mt-field mt-field-full">
+          <label className="mt-label">{tr('cOffEn')}<span className="mt-label-req">*</span></label>
+          <input dir="ltr" className="mt-input" value={form.officialNameEn}
+            onChange={(e) => set('officialNameEn', e.target.value)} style={eb('officialNameEn')} />
+        </div>
+        <div className="mt-field mt-field-full">
+          <label className="mt-label">{tr('cShortEn')}<span className="mt-label-req">*</span></label>
+          <input dir="ltr" className="mt-input" value={form.shortNameEn}
+            onChange={(e) => set('shortNameEn', e.target.value)} style={eb('shortNameEn')} />
         </div>
       </div>
       {apiErr && <div className="reg-del-note" style={{ marginBlockStart: 14, marginBlockEnd: 0 }}>{apiErr}</div>}

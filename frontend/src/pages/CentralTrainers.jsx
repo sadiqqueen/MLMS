@@ -56,7 +56,7 @@ function ErrBox({ msg }) {
 }
 
 function idOf(v) { return v?._id || v || ''; }
-function countryLabel(c) { return c ? `${c.name} (${c.code})` : '—'; }
+function countryLabel(c) { return c ? (c.code ? `${c.name} (${c.code})` : c.name) : '—'; }
 function programOptionLabel(p) { return `${p.name}${p.trainingCenterId?.name ? ` — ${p.trainingCenterId.name}` : ''}`; }
 
 function ProgramInfo({ program, t }) {
