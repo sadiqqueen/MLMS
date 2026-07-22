@@ -64,3 +64,6 @@ Thumbs.db
 .claude/settings.local.json
 
 MTMS_demo_accounts_by_specialty.docx
+
+# Bulk-import credentials manifest (contains shared initial password) — never commit
+backend/migrations/data/*credentials*.csv
