@@ -1188,28 +1188,37 @@ router.patch('/change-requests/:id/approve', auth, allowRoles(...DIO, 'super_adm
       if (await blockedOutsideCenters(req, res, hospitalId)) return;
     }
 
+    // Atomically CLAIM after the scope pre-check (status is the only contended
+    // field; the scope predicate is immutable during the window). Loser gets 404.
+    const claim = await ChangeRequest.findOneAndUpdate(
+      query,
+      { $set: { status: 'approved', reviewedBy: req.user._id, reviewedAt: new Date() } },
+      { new: true }
+    );
+    if (!claim) return res.status(404).json({ success: false, message: 'Pending request not found' });
+
     let updated;
     try {
-      updated = await applyChangeRequest(cr);
+      updated = await applyChangeRequest(claim);
     } catch (applyErr) {
+      await ChangeRequest.updateOne(
+        { _id: claim._id, status: 'approved', reviewedBy: req.user._id },
+        { $set: { status: 'pending', reviewedBy: null, reviewedAt: null } }
+      ).catch(e => console.error('[dio] CRITICAL: revert to pending failed for', String(claim._id), e.message));
       return res.status(applyErr.status || 400).json({ success: false, message: applyErr.message });
     }
 
-    cr.status = 'approved';
-    cr.reviewedBy = req.user._id;
-    cr.reviewedAt = new Date();
-    await cr.save();
-    await writeAudit(req, 'dio_approve_change_request', 'ChangeRequest', cr._id, { targetId: cr.targetId, routeKey: cr.routeKey, requestType: cr.requestType });
-    const approveMsg = cr.requestType === 'capacity_exception'
-      ? `Your capacity request for ${cr.targetLabel || 'a trainee'} was approved — the trainee was added.`
-      : `Your change to ${cr.targetLabel || 'an account'} was approved by the DIO.`;
+    await writeAudit(req, 'dio_approve_change_request', 'ChangeRequest', claim._id, { targetId: claim.targetId, routeKey: claim.routeKey, requestType: claim.requestType });
+    const approveMsg = claim.requestType === 'capacity_exception'
+      ? `Your capacity request for ${claim.targetLabel || 'a trainee'} was approved — the trainee was added.`
+      : `Your change to ${claim.targetLabel || 'an account'} was approved by the DIO.`;
     await Notification.create({
-      user: cr.requestedBy,
+      user: claim.requestedBy,
       message: approveMsg,
       category: 'promotions'
     }).catch(() => {});
 
-    res.json({ success: true, data: { changeRequest: viewChangeRequest(cr), user: updated } });
+    res.json({ success: true, data: { changeRequest: viewChangeRequest(claim), user: updated } });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -1231,21 +1240,23 @@ router.patch('/change-requests/:id/reject', auth, allowRoles(...DIO, 'super_admi
       if (await blockedOutsideCenters(req, res, hospitalId)) return;
     }
 
-    cr.status = 'rejected';
-    cr.reviewedBy = req.user._id;
-    cr.reviewedAt = new Date();
-    cr.reviewNote = req.body.note ? String(req.body.note).trim() : '';
-    await cr.save();
-    await writeAudit(req, 'dio_reject_change_request', 'ChangeRequest', cr._id, { targetId: cr.targetId, routeKey: cr.routeKey, requestType: cr.requestType });
-    const rejectMsg = cr.requestType === 'capacity_exception'
-      ? `Your capacity request for ${cr.targetLabel || 'a trainee'} was not approved by the DIO.`
-      : `Your change to ${cr.targetLabel || 'an account'} was not approved by the DIO.`;
+    const claim = await ChangeRequest.findOneAndUpdate(
+      query,
+      { $set: { status: 'rejected', reviewedBy: req.user._id, reviewedAt: new Date(),
+                reviewNote: req.body.note ? String(req.body.note).trim() : '' } },
+      { new: true }
+    );
+    if (!claim) return res.status(404).json({ success: false, message: 'Pending request not found' });
+    await writeAudit(req, 'dio_reject_change_request', 'ChangeRequest', claim._id, { targetId: claim.targetId, routeKey: claim.routeKey, requestType: claim.requestType });
+    const rejectMsg = claim.requestType === 'capacity_exception'
+      ? `Your capacity request for ${claim.targetLabel || 'a trainee'} was not approved by the DIO.`
+      : `Your change to ${claim.targetLabel || 'an account'} was not approved by the DIO.`;
     await Notification.create({
-      user: cr.requestedBy,
+      user: claim.requestedBy,
       message: rejectMsg,
       category: 'promotions'
     }).catch(() => {});
-    res.json({ success: true, data: viewChangeRequest(cr) });
+    res.json({ success: true, data: viewChangeRequest(claim) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

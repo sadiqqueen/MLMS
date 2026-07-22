@@ -27,6 +27,7 @@ const cookieParser = require('cookie-parser');
 const { globalLimiter, writeLimiter, efReadLimiter } = require('./middleware/rateLimiter');
 const honeypot = require('./middleware/honeypot');
 const auth = require('./middleware/auth');
+const { allowRoles } = require('./middleware/roles');
 
 const app = express();
 if (process.env.TRUST_PROXY === 'true') {
@@ -75,20 +76,24 @@ app.use(globalLimiter);
 // /uploads/consultant-memos/<file>?dl=<original name> sets an RFC 5987
 // Content-Disposition before the static handler streams the file.
 const { contentDisposition } = require('./utils/filename');
-app.use('/uploads/consultant-memos', (req, res, next) => {
+// Object-level authorization on the sensitive upload prefixes: mirror each
+// document's owning-API roles so a logged-in trainee/supervisor can't fetch a
+// registry change justification or an ASG memo by guessing its filename. It also
+// sets the RFC 5987 Content-Disposition for ?dl=<original name> downloads.
+// Broadly-shared assets (profile photos, research/report files) stay on the
+// auth-only /uploads gate below.
+const bocHeader = (req, res, next) => {
   if (typeof req.query.dl === 'string' && req.query.dl) {
     res.setHeader('Content-Disposition', contentDisposition(req.query.dl));
   }
   next();
-});
-// Book-of-changes PDFs (clerk/CS edit attachments) download with their original
-// (possibly Arabic) filename via ?dl=<name>, same pattern as consultant-memos.
-app.use('/uploads/book-of-changes', (req, res, next) => {
-  if (typeof req.query.dl === 'string' && req.query.dl) {
-    res.setHeader('Content-Disposition', contentDisposition(req.query.dl));
-  }
-  next();
-});
+};
+// Consultant memos — ASG.1 / ASG.2 only (mirrors routes/consultantMemo.js).
+app.use('/uploads/consultant-memos', auth, allowRoles('asg1', 'asg2', 'super_admin'), bocHeader);
+// Book-of-changes PDFs — the registry change-request submitters + reviewers only.
+app.use('/uploads/book-of-changes', auth,
+  allowRoles('data_entry', 'central_secretary', 'head_ad', 'data_analyzer', 'head_cs', 'dio', 'super_admin'),
+  bocHeader);
 
 // Uploaded training/report files require an authenticated session.
 app.use('/uploads', auth, express.static(path.join(__dirname, 'uploads')));
@@ -164,9 +169,14 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error('[ServerError]', err);
   if (res.headersSent) return next(err);
-  res.status(err.status || 500).json({
+  const status = err.status || 500;
+  // 4xx and explicitly-exposed errors keep their message; 5xx are made generic in
+  // production so internal schema/paths/driver strings never leak (CWE-209). Full
+  // detail is always in the server log above.
+  const expose = status < 500 || err.expose === true || process.env.NODE_ENV !== 'production';
+  res.status(status).json({
     success: false,
-    message: err.message || 'Internal server error'
+    message: expose ? (err.message || 'Request failed') : 'Internal server error',
   });
 });
 

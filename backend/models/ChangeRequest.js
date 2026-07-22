@@ -65,12 +65,16 @@ const changeRequestSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// EDITS: at most one PENDING edit request per target account (backstop for the
-// check-then-create race in the secretary routes; the E11000 is surfaced as 409).
-// Scoped to requestType 'edit' so capacity requests (targetId null) never collide.
+// EDIT + DELETE: at most one PENDING change per target (backstop for the
+// check-then-create race in the submit routes; the E11000 is surfaced as 409).
+// Keyed on targetId TYPE so it covers edit and delete (both carry a real
+// targetId) but never capacity_exception (targetId null). $type is used because
+// $in is not permitted in a partialFilterExpression. Existing databases must run
+// migrations/reconcileChangeRequestIndexes.js to drop the old edit-only index.
 changeRequestSchema.index(
   { targetId: 1 },
-  { unique: true, partialFilterExpression: { status: 'pending', requestType: 'edit' } }
+  { unique: true, name: 'cr_pending_target_unique',
+    partialFilterExpression: { status: 'pending', targetId: { $type: 'objectId' } } }
 );
 
 // CAPACITY: at most one PENDING capacity request per

@@ -63,21 +63,28 @@ router.get('/change-requests', auth, allowRoles(...HEAD_AD_ROLES), async (req, r
 // PATCH /api/head-ad/change-requests/:id/approve — apply the change + notify requester.
 router.patch('/change-requests/:id/approve', auth, allowRoles(...HEAD_AD_ROLES), async (req, res) => {
   try {
-    const cr = await ChangeRequest.findOne({ _id: req.params.id, status: 'pending', reviewerRole: 'head_ad' });
+    // Atomically CLAIM the pending request so two concurrent approvals (or an
+    // approve racing a cancel) can't both apply it — the loser gets 404.
+    const cr = await ChangeRequest.findOneAndUpdate(
+      { _id: req.params.id, status: 'pending', reviewerRole: 'head_ad', ...trackFilter(req.track) },
+      { $set: { status: 'approved', reviewedBy: req.user._id, reviewedAt: new Date(),
+                ...(req.body && req.body.note ? { reviewNote: String(req.body.note) } : {}) } },
+      { new: true }
+    );
     if (!cr) return res.status(404).json({ success: false, message: 'Pending request not found' });
 
     let updated;
     try {
       updated = await applyChangeRequest(cr);
     } catch (applyErr) {
+      // Apply failed — release the claim so the request stays reviewable.
+      await ChangeRequest.updateOne(
+        { _id: cr._id, status: 'approved', reviewedBy: req.user._id },
+        { $set: { status: 'pending', reviewedBy: null, reviewedAt: null, reviewNote: '' } }
+      ).catch(e => console.error('[head-ad] CRITICAL: revert to pending failed for', String(cr._id), e.message));
       return res.status(applyErr.status || 400).json({ success: false, message: applyErr.message });
     }
 
-    cr.status = 'approved';
-    cr.reviewedBy = req.user._id;
-    cr.reviewedAt = new Date();
-    if (req.body && req.body.note) cr.reviewNote = String(req.body.note);
-    await cr.save();
     await writeAudit(req, 'head_ad_approve_change_request', 'ChangeRequest', cr._id, { routeKey: cr.routeKey, requestType: cr.requestType, targetId: cr.targetId });
     await Notification.create({
       user: cr.requestedBy,
@@ -93,14 +100,12 @@ router.patch('/change-requests/:id/reject', auth, allowRoles(...HEAD_AD_ROLES), 
   try {
     const note = req.body && req.body.note;
     if (!note || !String(note).trim()) return res.status(400).json({ success: false, message: 'A rejection note is required' });
-    const cr = await ChangeRequest.findOne({ _id: req.params.id, status: 'pending', reviewerRole: 'head_ad' });
+    const cr = await ChangeRequest.findOneAndUpdate(
+      { _id: req.params.id, status: 'pending', reviewerRole: 'head_ad', ...trackFilter(req.track) },
+      { $set: { status: 'rejected', reviewedBy: req.user._id, reviewedAt: new Date(), reviewNote: String(note).trim() } },
+      { new: true }
+    );
     if (!cr) return res.status(404).json({ success: false, message: 'Pending request not found' });
-
-    cr.status = 'rejected';
-    cr.reviewedBy = req.user._id;
-    cr.reviewedAt = new Date();
-    cr.reviewNote = String(note).trim();
-    await cr.save();
     await writeAudit(req, 'head_ad_reject_change_request', 'ChangeRequest', cr._id, { routeKey: cr.routeKey, requestType: cr.requestType });
     await Notification.create({
       user: cr.requestedBy,

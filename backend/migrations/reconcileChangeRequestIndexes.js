@@ -1,11 +1,12 @@
 require('dotenv').config();
 
-// Reconciles the ChangeRequest indexes after the capacity-exception feature.
+// Reconciles the ChangeRequest partial-unique indexes to the current schema.
 //
-// Before: a single partial-unique index on { targetId: 1 } with
-//         partialFilterExpression { status: 'pending' }.
-// After:  that index is scoped to edits (adds requestType: 'edit') and a second
-//         partial-unique index is added for capacity requests.
+// History: the target index started as { targetId: 1 } pending-only, was scoped
+// to requestType:'edit' by the capacity-exception feature, and is now keyed on
+// targetId TYPE and named 'cr_pending_target_unique' so it also backstops DELETE
+// requests (edit + delete both carry a real targetId; capacity_exception, whose
+// targetId is null, is excluded).
 //
 // Because the old index has the SAME key ({ targetId: 1 }) but DIFFERENT options,
 // Mongoose autoIndex cannot replace it in place — it would raise
@@ -30,11 +31,14 @@ async function main() {
   const coll = ChangeRequest.collection;
 
   const existing = await coll.indexes();
+  // Any old pending-unique index on { targetId: 1 } that predates the current
+  // schema — the original no-requestType index OR the later edit-only one. The
+  // current schema names its index 'cr_pending_target_unique', so a leftover
+  // 'targetId_1' is always stale and must be dropped before syncIndexes().
   const stale = existing.find(ix =>
     ix.name === 'targetId_1' &&
     ix.partialFilterExpression &&
-    ix.partialFilterExpression.status === 'pending' &&
-    ix.partialFilterExpression.requestType === undefined
+    ix.partialFilterExpression.status === 'pending'
   );
 
   if (DRY_RUN) {

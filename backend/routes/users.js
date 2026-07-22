@@ -83,6 +83,29 @@ const ROLE_RANK = {
 // ASG + oversight accounts are visible to super_admin only.
 const HIDDEN_FROM_NON_ADMIN = ['asg1', 'asg2', 'secretary_general', 'assistant_secretary', 'data_analyzer', 'hoc', 'head_cs', 'head_ad'];
 
+// Training-track roles a non-super_admin write-staff actor (secretary, dio,
+// program_director) may write. Everything else — registry accounts (data_entry,
+// central_secretary, dio_view) and oversight accounts (HIDDEN_FROM_NON_ADMIN) —
+// is developer-managed only. Deny-by-default: a bare ROLE_RANK comparison fails
+// open for every newly-added role, so gate writes on this explicit allowlist.
+const NON_ADMIN_WRITABLE_ROLES =
+  ['trainee', 'supervisor', 'secretary', 'program_director', 'sub_pd', 'sub_dio', 'dio'];
+
+// Block a non-super_admin from writing a registry/oversight account even when
+// hasHigherRole would allow it. Hidden oversight accounts get 404 (mirror the
+// read guards — never confirm they exist); visible registry roles get 403.
+// Returns true when blocked (response already sent).
+function blockProtectedRoleWrite(req, res, target) {
+  if (req.user.role === 'super_admin') return false;
+  if (NON_ADMIN_WRITABLE_ROLES.includes(baseRole(target.role))) return false;
+  if (HIDDEN_FROM_NON_ADMIN.includes(target.role)) {
+    res.status(404).json({ message: 'User not found' });
+  } else {
+    res.status(403).json({ message: 'This account can only be managed by the developer' });
+  }
+  return true;
+}
+
 // A DIO oversees its whole training track (Advanced for `dio`, Basic for
 // `b_dio`). On the generic /api/users reads it sees every user in that track —
 // trainees, supervisors, program directors, secretaries and the president
@@ -276,6 +299,7 @@ async function updateUser(req, res) {
     const target = await User.findById(req.params.id).select('role isActive');
     if (!target || target.isActive === false) return res.status(404).json({ message: 'User not found' });
     if (!isSelf && blockCrossTrackWrite(req, res, target)) return;
+    if (!isSelf && blockProtectedRoleWrite(req, res, target)) return;
     if (!isSelf && !hasHigherRole(req.user.role, target.role)) {
       return res.status(403).json({ message: 'Insufficient permission to update this user' });
     }
@@ -283,6 +307,8 @@ async function updateUser(req, res) {
     const allowedKeys = isSelf ? SELF_EDITABLE : ADMIN_EDITABLE;
     const fields = {};
     allowedKeys.forEach(k => { if (req.body[k] !== undefined) fields[k] = req.body[k]; });
+    // Council assignment (hoc / central_secretary scope) is developer-only.
+    if (!isSelf && req.user.role !== 'super_admin') delete fields.councilId;
     if (req.file) fields.photoUrl = `/uploads/photos/${req.file.filename}`;
 
     // One Program Director per specialty (by name, within track).
@@ -334,6 +360,7 @@ router.put('/:id/lock', auth, allowRoles(...WRITE_STAFF), async (req, res) => {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
     if (blockCrossTrackWrite(req, res, user)) return;
+    if (blockProtectedRoleWrite(req, res, user)) return;
     if (!hasHigherRole(req.user.role, user.role)) {
       return res.status(403).json({ message: 'Insufficient permission to lock this user' });
     }
@@ -355,6 +382,7 @@ router.delete('/:id', auth, allowRoles(...WRITE_STAFF), auditLog('deactivate_use
     const target = await User.findById(req.params.id);
     if (!target || target.isActive === false) return res.status(404).json({ message: 'User not found' });
     if (blockCrossTrackWrite(req, res, target)) return;
+    if (blockProtectedRoleWrite(req, res, target)) return;
     if (!hasHigherRole(req.user.role, target.role)) {
       return res.status(403).json({ message: 'Insufficient permission to deactivate this user' });
     }

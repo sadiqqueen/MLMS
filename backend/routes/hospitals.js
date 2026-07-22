@@ -2,6 +2,7 @@ const router         = require('express').Router();
 const Hospital       = require('../models/Hospital');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
+const { syncCenterDioAssignment } = require('../utils/registryChanges');
 
 const MANAGERS = ['super_admin', 'dio'];
 const HOSPITAL_FIELDS = ['name', 'city', 'address', 'specialties', 'assignedDoctor',
@@ -62,8 +63,17 @@ router.post('/', auth, allowRoles(...MANAGERS), async (req, res) => {
 router.put('/:id', auth, allowRoles(...MANAGERS), async (req, res) => {
   try {
     if (!(await ensureHospitalInTrack(req, res, req.params.id))) return;
-    const hospital = await populateHospital(Hospital.findByIdAndUpdate(req.params.id, pick(req.body, HOSPITAL_FIELDS), { new: true }));
+    const body = pick(req.body, HOSPITAL_FIELDS);
+    // Capture the prior DIO so a reassignment re-syncs the AUTHORITATIVE
+    // dio_view.assignedCenterIds + trainee snapshots — not just Hospital.dioId.
+    let prevDioId = null;
+    if ('dioId' in body) {
+      const prev = await Hospital.findById(req.params.id).select('dioId');
+      prevDioId = prev ? prev.dioId : null;
+    }
+    const hospital = await populateHospital(Hospital.findByIdAndUpdate(req.params.id, body, { new: true }));
     if (!hospital) return res.status(404).json({ message: 'Hospital not found' });
+    if ('dioId' in body) await syncCenterDioAssignment(hospital._id, body.dioId || null, prevDioId);
     res.json(hospital);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -92,6 +102,8 @@ router.delete('/:id', auth, allowRoles(...MANAGERS), async (req, res) => {
     if (!(await ensureHospitalInTrack(req, res, req.params.id))) return;
     const hospital = await Hospital.findByIdAndDelete(req.params.id);
     if (!hospital) return res.status(404).json({ message: 'Hospital not found' });
+    // Detach the (now-deleted) centre from its DIO's scope + trainee snapshots.
+    if (hospital.dioId) await syncCenterDioAssignment(hospital._id, null, hospital.dioId);
     res.json({ message: 'Hospital deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });

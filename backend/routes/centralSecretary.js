@@ -391,11 +391,16 @@ router.post('/trainees', auth, allowRoles(...CENTRAL_ROLES), async (req, res) =>
       return res.status(403).json({ message: 'Program is outside your specialty scope' });
     }
 
-    // Trainee → PD link (default = the program's PD). Optional explicit override.
+    // Trainee → PD link (default = the program's PD). An explicit override is
+    // restricted to the program's own PD or a PD within the CS's specialty scope.
     let resolvedPdId = program.programDirectorId || null;
     if (pdId) {
-      const pd = await User.findOne({ _id: pdId, role: 'program_director', isActive: { $ne: false } }).select('_id');
+      const pd = await User.findOne({ _id: pdId, role: 'program_director', isActive: { $ne: false } }).select('_id specialtyId');
       if (!pd) return res.status(400).json({ message: 'Program director not found or inactive' });
+      const isProgramPd = String(pd._id) === String(program.programDirectorId || '');
+      if (!isProgramPd && !inCsScope(scope, pd.specialtyId)) {
+        return res.status(403).json({ message: 'Program director is outside your specialty scope' });
+      }
       resolvedPdId = pd._id;
     }
 
@@ -430,8 +435,19 @@ router.post('/trainees', auth, allowRoles(...CENTRAL_ROLES), async (req, res) =>
         _id: researchSupervisorId,
         role: { $in: ['supervisor', 'program_director'] },
         isActive: { $ne: false },
-      }).select('_id');
+      }).select('role programId specialtyId');
       if (!rs) return res.status(400).json({ message: 'Research supervisor not found or inactive' });
+      // A supervisor research trainer must belong to the program (mirrors supervisorId);
+      // a PD must be the program's own PD or within the CS's specialty scope.
+      if (rs.role === 'supervisor' && String(rs.programId) !== String(program._id)) {
+        return res.status(403).json({ message: 'Research supervisor must belong to the selected program' });
+      }
+      if (rs.role === 'program_director') {
+        const isProgramPd = String(rs._id) === String(program.programDirectorId || '');
+        if (!isProgramPd && !inCsScope(scope, rs.specialtyId)) {
+          return res.status(403).json({ message: 'Research supervisor is outside your specialty scope' });
+        }
+      }
       resolvedResearchId = rs._id;
     } else {
       resolvedResearchId = program.programDirectorId || null;
@@ -659,10 +675,14 @@ router.get('/change-requests', auth, allowRoles(...CENTRAL_ROLES), async (req, r
 // PATCH /api/central/change-requests/:id/cancel — withdraw a pending request.
 router.patch('/change-requests/:id/cancel', auth, allowRoles(...CENTRAL_ROLES), async (req, res) => {
   try {
-    const cr = await ChangeRequest.findOne({ _id: req.params.id, requestedBy: req.user._id, status: 'pending' });
+    // Atomic cancel so it competes with approve on the same status:'pending'
+    // predicate — one side deterministically wins the race.
+    const cr = await ChangeRequest.findOneAndUpdate(
+      { _id: req.params.id, requestedBy: req.user._id, status: 'pending' },
+      { $set: { status: 'cancelled' } },
+      { new: true }
+    );
     if (!cr) return res.status(404).json({ message: 'Pending request not found' });
-    cr.status = 'cancelled';
-    await cr.save();
     res.json({ success: true, data: viewChangeRequest(cr) });
   } catch (err) {
     console.error('[central] cancel change-request:', err.message);

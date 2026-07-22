@@ -1,14 +1,14 @@
 // backend/utils/registryChanges.js
-// The redesign clerk/CS → Data-Analyzer approval engine. A single source of
+// The redesign registry approval engine (Head AD + Data Analyzer). A single source of
 // truth for: which fields each registry target allows on an approval-gated
 // edit, how to render a change diff, and how to APPLY an approved edit/delete
 // (re-validating references, exactly like the direct-write routes would).
 //
 // Two pipelines coexist on the ChangeRequest model. The legacy secretary/CS →
 // DIO/ODIO flow (routeKey trainees/supervisors, reviewerRole 'dio') is applied
-// by utils/applyChangeRequest.js. THIS module handles reviewerRole
-// 'data_analyzer' requests for the registry entities the clerk and central
-// secretary edit.
+// by utils/applyChangeRequest.js. THIS module applies the registry edits/deletes
+// reviewed by the Data Analyzer (reviewerRole 'data_analyzer' — central secretary
+// requests) and by Head AD (reviewerRole 'head_ad' — data-entry clerk requests).
 const User         = require('../models/User');
 const Hospital     = require('../models/Hospital');
 const Program      = require('../models/Program');

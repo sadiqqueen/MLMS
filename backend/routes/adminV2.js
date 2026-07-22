@@ -24,6 +24,7 @@ const Program        = require('../models/Program');
 const LogBookEntry   = require('../models/LogBookEntry');
 const ChangeRequest  = require('../models/ChangeRequest');
 const ScientificCouncil = require('../models/ScientificCouncil');
+const { syncCenterDioAssignment } = require('../utils/registryChanges');
 
 const ADMIN = ['super_admin'];
 const USER_CREATE_FIELDS = ['name', 'email', 'password', 'role', 'phone', 'gender',
@@ -591,6 +592,7 @@ router.post('/hospitals',
   async (req, res) => {
     try {
       const hospital = await Hospital.create(pick(req.body, HOSPITAL_FIELDS));
+      if (hospital.dioId) await syncCenterDioAssignment(hospital._id, hospital.dioId, null);
       res.status(201).json({ success: true, data: hospital });
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -605,10 +607,19 @@ router.patch('/hospitals/:id',
   auditLog('update_hospital', 'Hospital'),
   async (req, res) => {
     try {
-      const hospital = await Hospital.findByIdAndUpdate(req.params.id, pick(req.body, HOSPITAL_FIELDS), { new: true })
+      const body = pick(req.body, HOSPITAL_FIELDS);
+      // Re-sync the authoritative dio_view.assignedCenterIds + trainee snapshots
+      // when the centre's DIO changes (Hospital.dioId alone is not the source of truth).
+      let prevDioId = null;
+      if ('dioId' in body) {
+        const prev = await Hospital.findById(req.params.id).select('dioId');
+        prevDioId = prev ? prev.dioId : null;
+      }
+      const hospital = await Hospital.findByIdAndUpdate(req.params.id, body, { new: true })
         .populate('dioId',       'name email')
         .populate('presidentId', 'name email');
       if (!hospital) return res.status(404).json({ message: 'Hospital not found' });
+      if ('dioId' in body) await syncCenterDioAssignment(hospital._id, body.dioId || null, prevDioId);
       res.json({ success: true, data: hospital });
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -629,6 +640,8 @@ router.delete('/hospitals/:id',
         { new: true }
       );
       if (!hospital) return res.status(404).json({ message: 'Hospital not found' });
+      // Detach the deactivated centre from its DIO's scope + trainee snapshots.
+      if (hospital.dioId) await syncCenterDioAssignment(hospital._id, null, hospital.dioId);
       res.json({ success: true, message: 'Hospital deactivated', data: hospital });
     } catch (err) {
       res.status(500).json({ message: err.message });

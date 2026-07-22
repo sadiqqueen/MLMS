@@ -4,7 +4,7 @@
 // centers, specialties, DIO/ODIO/Sub-DIO accounts, PD/Sub-PD accounts, and the
 // dashboard. CREATES apply directly (RULINGS §E22). EDITS and DELETES on registry
 // entities are queued as ChangeRequests with a required book-of-changes PDF and
-// reviewed by the Data Analyzer (utils/registryChanges.js).
+// reviewed by the Head AD (utils/registryChanges.js).
 const router         = require('express').Router();
 const fs             = require('fs');
 const auth           = require('../middleware/auth');
