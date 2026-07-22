@@ -391,6 +391,10 @@ router.delete('/users/:id/permanent',
       const delNotif = await Notification.deleteMany({ user: userId });
       await Promise.all([
         Hospital.updateMany({ dioId: userId },           { $set: { dioId: null } }),
+        // Trainees carry a denormalized dioId snapshot of their centre's DIO — null
+        // it so it never dangles at a deleted DIO. Safe (unlike ODIO/Sub-DIO above):
+        // trainees scope by hospitalId, so a null dioId promotes no scope.
+        User.updateMany({ dioId: userId, role: 'trainee' }, { $set: { dioId: null } }),
         Hospital.updateMany({ presidentId: userId },     { $set: { presidentId: null } }),
         Hospital.updateMany({ programDirector: userId }, { $set: { programDirector: null } }),
         Specialty.updateMany({ secretaryId: userId },    { $set: { secretaryId: null } })

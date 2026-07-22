@@ -44,6 +44,9 @@ const STRINGS = {
     selectProgram: 'اختر برنامجاً…', pd: 'مدير البرنامج', pdHint: 'مُرشّح حسب البرنامج المختار',
     startDate: 'تاريخ البدء', passwordHint: '(6 أحرف على الأقل)',
     pdName: 'مدير البرنامج', center: 'المركز', capacity: 'السعة',
+    trainingCenter: 'المركز التدريبي', dioName: 'DIO',
+    selectCountry: 'اختر الدولة…', selectCenter: 'اختر المركز التدريبي…',
+    selectCountryFirst: 'اختر الدولة أولاً', selectCenterFirst: 'اختر المركز أولاً',
     cancel: 'إلغاء', create: 'إنشاء متدرب', saving: 'جارٍ الحفظ…', created: 'تمت إضافة المتدرب',
     programFull: 'البرنامج ممتلئ',
     // edit / delete approval
@@ -74,6 +77,9 @@ const STRINGS = {
     selectProgram: 'Select a program…', pd: 'PD', pdHint: 'Filtered by the chosen program',
     startDate: 'Start date', passwordHint: '(min 6 chars)',
     pdName: 'Program Director', center: 'Center', capacity: 'Capacity',
+    trainingCenter: 'Training Center', dioName: 'DIO',
+    selectCountry: 'Select a country…', selectCenter: 'Select a training center…',
+    selectCountryFirst: 'Select a country first', selectCenterFirst: 'Select a center first',
     cancel: 'Cancel', create: 'Create trainee', saving: 'Saving…', created: 'Trainee added',
     programFull: 'Program is full',
     editTitle: 'Edit record — requires approval', deleteTitle: 'Delete record — requires approval',
@@ -146,6 +152,7 @@ function ProgramInfo({ program, t }) {
   if (!program) return null;
   const co = program.trainingCenterId?.countryId;
   const rows = [
+    [t('dioName'), program.trainingCenterId?.dioId?.name || t('na')],
     [t('pdName'), program.programDirectorId?.name || t('na')],
     [t('center'), program.trainingCenterId?.name || t('na')],
     [t('country'), co?.name ? `${co.name}${co.code ? ` (${co.code})` : ''}` : t('na')],
@@ -166,12 +173,45 @@ function ProgramInfo({ program, t }) {
 // ── Add trainee (direct create) ─────────────────────────────────────────────
 function AddTraineeModal({ programs, t, onClose, onSaved }) {
   const [form, setForm] = useState({
-    name: '', idNumber: '', password: '', email: '', phone: '', city: '', gender: '',
-    programId: '', pdId: '', startDate: '',
+    name: '', idNumber: '', password: '', email: '', phone: '', gender: '',
+    countryId: '', trainingCenterId: '', programId: '', pdId: '', startDate: '',
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [apiErr, setApiErr] = useState('');
+
+  // Cascade options — all derived from the CS-scoped programs list (each program
+  // carries its populated trainingCenterId → countryId), so a country/center only
+  // appears when it actually has an enrollable program in scope.
+  const countryOptions = useMemo(() => {
+    const seen = new Map();
+    programs.forEach(p => {
+      const co = p.trainingCenterId?.countryId;
+      const id = idOf(co);
+      if (co && id && !seen.has(id)) seen.set(id, { value: id, label: co.name || id });
+    });
+    return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label));
+  }, [programs]);
+
+  const centerOptions = useMemo(() => {
+    if (!form.countryId) return [];
+    const seen = new Map();
+    programs.forEach(p => {
+      const c = p.trainingCenterId;
+      if (!c || idOf(c.countryId) !== form.countryId) return;
+      const id = idOf(c);
+      if (id && !seen.has(id)) seen.set(id, { value: id, label: c.name || id });
+    });
+    return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label));
+  }, [programs, form.countryId]);
+
+  const programOptions = useMemo(() => {
+    if (!form.trainingCenterId) return [];
+    return programs
+      .filter(p => idOf(p.trainingCenterId) === form.trainingCenterId)
+      .map(p => ({ value: p._id, label: p.name }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [programs, form.trainingCenterId]);
 
   const program = programs.find(p => p._id === form.programId) || null;
   const pdOptions = useMemo(() => pdOptionsFromProgram(program), [program]);
@@ -179,6 +219,9 @@ function AddTraineeModal({ programs, t, onClose, onSaved }) {
   function set(k, v) {
     setForm(f => {
       const next = { ...f, [k]: v };
+      // Cascade resets: changing an upstream selection clears the ones below it.
+      if (k === 'countryId') { next.trainingCenterId = ''; next.programId = ''; next.pdId = ''; }
+      if (k === 'trainingCenterId') { next.programId = ''; next.pdId = ''; }
       if (k === 'programId') {
         const p = programs.find(x => x._id === v) || null;
         next.pdId = idOf(p?.programDirectorId) || ''; // default to the program's PD
@@ -193,6 +236,8 @@ function AddTraineeModal({ programs, t, onClose, onSaved }) {
     if (!form.name.trim()) e.name = true;
     if (!form.idNumber.trim()) e.idNumber = true;
     if (!form.password || form.password.length < 6) e.password = true;
+    if (!form.countryId) e.countryId = true;
+    if (!form.trainingCenterId) e.trainingCenterId = true;
     if (!form.programId) e.programId = true;
     if (Object.keys(e).length) { setErrors(e); return; }
     setSaving(true); setApiErr('');
@@ -205,7 +250,6 @@ function AddTraineeModal({ programs, t, onClose, onSaved }) {
       if (form.startDate) payload.startDate = form.startDate;
       if (form.email.trim()) payload.email = form.email.trim();
       if (form.phone.trim()) payload.phone = form.phone.trim();
-      if (form.city.trim()) payload.city = form.city.trim();
       if (form.gender) payload.gender = form.gender;
       await api.post('/api/central/trainees', payload);
       onSaved();
@@ -247,10 +291,6 @@ function AddTraineeModal({ programs, t, onClose, onSaved }) {
           <input type="email" className="mt-input" value={form.email} onChange={e => set('email', e.target.value)} placeholder="name@mtms.med" />
         </div>
         <div className="mt-field">
-          <label className="mt-label">{t('city')}</label>
-          <input className="mt-input" value={form.city} onChange={e => set('city', e.target.value)} />
-        </div>
-        <div className="mt-field">
           <label className="mt-label">{t('gender')}</label>
           <select className="mt-select" value={form.gender} onChange={e => set('gender', e.target.value)}>
             <option value="">{t('selectGender')}</option>
@@ -263,12 +303,24 @@ function AddTraineeModal({ programs, t, onClose, onSaved }) {
           <input type="date" className="mt-input" value={form.startDate} onChange={e => set('startDate', e.target.value)} />
         </div>
         <div className="mt-field mt-field-full">
+          <label className="mt-label">{t('country')}<span className="mt-label-req">*</span></label>
+          <select className="mt-select" style={errors.countryId ? errStyle : undefined} value={form.countryId} onChange={e => set('countryId', e.target.value)}>
+            <option value="">{t('selectCountry')}</option>
+            {countryOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+        <div className="mt-field mt-field-full">
+          <label className="mt-label">{t('trainingCenter')}<span className="mt-label-req">*</span></label>
+          <select className="mt-select" style={errors.trainingCenterId ? errStyle : undefined} value={form.trainingCenterId} onChange={e => set('trainingCenterId', e.target.value)} disabled={!form.countryId}>
+            <option value="">{form.countryId ? t('selectCenter') : t('selectCountryFirst')}</option>
+            {centerOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+        <div className="mt-field mt-field-full">
           <label className="mt-label">{t('program')}<span className="mt-label-req">*</span></label>
-          <select className="mt-select" style={errors.programId ? errStyle : undefined} value={form.programId} onChange={e => set('programId', e.target.value)}>
-            <option value="">{t('selectProgram')}</option>
-            {programs.map(p => (
-              <option key={p._id} value={p._id}>{p.name}{p.trainingCenterId?.name ? ` — ${p.trainingCenterId.name}` : ''}</option>
-            ))}
+          <select className="mt-select" style={errors.programId ? errStyle : undefined} value={form.programId} onChange={e => set('programId', e.target.value)} disabled={!form.trainingCenterId}>
+            <option value="">{form.trainingCenterId ? t('selectProgram') : t('selectCenterFirst')}</option>
+            {programOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
           <ProgramInfo program={program} t={t} />
         </div>

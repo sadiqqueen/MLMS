@@ -144,6 +144,9 @@ async function syncCenterDioAssignment(centerId, newDioId, prevDioId) {
   const pId = prevDioId && prevDioId._id ? prevDioId._id : prevDioId;
   if (String(pId || '') !== String(nId || '')) {
     if (pId) await User.updateOne({ _id: pId, role: 'dio_view' }, { $pull: { assignedCenterIds: centerId } }).catch(() => {});
+    // Keep trainees' denormalized dioId snapshot in step with their centre's DIO
+    // (re-point on reassignment; null it when the centre loses/deletes its DIO).
+    await User.updateMany({ hospitalId: centerId, role: 'trainee' }, { $set: { dioId: nId || null } }).catch(() => {});
   }
   if (nId) await User.updateOne({ _id: nId, role: 'dio_view' }, { $addToSet: { assignedCenterIds: centerId } }).catch(() => {});
 }

@@ -200,7 +200,7 @@ router.get('/programs', auth, allowRoles(...CENTRAL_ROLES), async (req, res) => 
     }
 
     const programs = await Program.find(query)
-      .populate({ path: 'trainingCenterId', select: 'name accreditationNumber countryId', populate: { path: 'countryId', select: 'code name' } })
+      .populate({ path: 'trainingCenterId', select: 'name accreditationNumber countryId dioId', populate: [{ path: 'countryId', select: 'code name' }, { path: 'dioId', select: 'name' }] })
       .populate('specialtyId', 'name nameEn type code')
       .populate('programDirectorId', 'name')
       .populate('subProgramDirectorId', 'name')
@@ -399,7 +399,7 @@ router.post('/trainees', auth, allowRoles(...CENTRAL_ROLES), async (req, res) =>
       resolvedPdId = pd._id;
     }
 
-    const center = await Hospital.findById(program.trainingCenterId).select('countryId');
+    const center = await Hospital.findById(program.trainingCenterId).select('countryId dioId');
 
     // Capacity hard block — no exception request in the advanced flow.
     const used = await capacityUsedFor(program._id);
@@ -446,8 +446,9 @@ router.post('/trainees', auth, allowRoles(...CENTRAL_ROLES), async (req, res) =>
       hospitalId: program.trainingCenterId,
       hospital: program.trainingCenterId,          // legacy alias
       countryId: center?.countryId || null,
+      dioId: center?.dioId || null,                 // auto-assigned: the training centre's DIO
       specialtyId: program.specialtyId,
-      pdId: resolvedPdId,
+      pdId: resolvedPdId,                            // auto-assigned: the program's PD
       enrolledSince: startDate ? new Date(startDate) : new Date(),
       supervisorId: resolvedSupervisorId,
       supervisor: resolvedSupervisorId,             // legacy alias
