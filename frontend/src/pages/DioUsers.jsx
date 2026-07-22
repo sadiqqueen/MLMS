@@ -70,11 +70,17 @@ function roleFields(role) {
   const year        = { key: 'year',        label: 'Year',                     type: 'year' };
   const supervisor  = { key: 'supervisorId',         label: 'Supervisor *',          type: 'supervisor', required: true };
   const researchSup = { key: 'researchSupervisorId', label: 'Research Supervisor',   type: 'supervisor' };
+  // Program Director: the training centre (Hospital record) it belongs to, plus a
+  // specialty OR sub-specialty. The backend REQUIRES specialtyId for a PD and
+  // enforces one PD per specialty; the specialties list carries both main and
+  // precise (sub) specialties, so one picker covers either.
+  const trainingCenter = { key: 'hospitalId',  label: 'Training Center *',           type: 'hospital',  required: true, placeholder: 'Search training center…' };
+  const specialtyOrSub = { key: 'specialtyId', label: 'Specialty / Sub-specialty *', type: 'specialty', required: true, placeholder: 'Search specialty or sub-specialty…' };
 
   switch (role) {
     case 'trainee':          return [name, email, password, phoneOpt, studentId, year, hospital, specReq, supervisor, researchSup];
     case 'supervisor':       return [name, email, password, phoneReq, department, hospital, specReq];
-    case 'program_director': return [name, email, password, phoneReq, department, hospital];
+    case 'program_director': return [name, email, password, phoneReq, department, trainingCenter, specialtyOrSub];
     case 'secretary':        return [name, email, password, phoneReq, hospital, specOpt];
     default:                 return [name, email, password];
   }
@@ -185,9 +191,9 @@ function UserFormModal({ user, initialRole, hospitals, specialties, supervisors,
     if (f.createOnly && isEdit) return null;
     let control;
     if (f.type === 'hospital') {
-      control = <SearchableSelect value={form.hospitalId} onChange={v => set('hospitalId', v)} options={hospitalOptions} placeholder="Search hospital…" error={errors.hospitalId} />;
+      control = <SearchableSelect value={form.hospitalId} onChange={v => set('hospitalId', v)} options={hospitalOptions} placeholder={f.placeholder || 'Search hospital…'} error={errors.hospitalId} />;
     } else if (f.type === 'specialty') {
-      control = <SearchableSelect value={form.specialtyId} onChange={v => set('specialtyId', v)} options={specialtyOptions} placeholder="Search specialty…" error={errors.specialtyId} />;
+      control = <SearchableSelect value={form.specialtyId} onChange={v => set('specialtyId', v)} options={specialtyOptions} placeholder={f.placeholder || 'Search specialty…'} error={errors.specialtyId} />;
     } else if (f.type === 'supervisor') {
       control = <SearchableSelect value={form[f.key]} onChange={v => set(f.key, v)} options={supervisorOptions} placeholder="Search supervisor…" error={errors[f.key]} />;
     } else if (f.type === 'year') {
