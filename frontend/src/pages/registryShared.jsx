@@ -59,6 +59,7 @@ const STR = {
     selectSpecialtyFirst: 'اختر الاختصاص أولاً', noPd: 'بدون مدير برنامج',
     saveFailed: 'فشل الحفظ', required: 'الحقول المطلوبة ناقصة',
     newCenter: 'مركز تدريبي جديد', newCenterSub: 'سجل مركز تدريبي جديد',
+    newCountry: 'دولة جديدة', newCountrySub: 'سجل دولة جديدة', countryCode: 'الرمز',
     newProgram: 'برنامج جديد', newProgramSub: 'برنامج جديد — يُحتسب ضمن حد 100 برنامج للمركز',
     // approval
     editBanner: 'التعديلات لا تُطبّق فورًا — يُرسَل طلب التغيير إلى Head AD للموافقة، مع إرفاق كتاب التغييرات المطلوب.',
@@ -80,6 +81,7 @@ const STR = {
     selectSpecialtyFirst: 'Select a specialty first', noPd: 'No program director',
     saveFailed: 'Save failed', required: 'Required fields are missing',
     newCenter: 'New training center', newCenterSub: 'New training center record',
+    newCountry: 'New country', newCountrySub: 'New country record', countryCode: 'Code',
     newProgram: 'New program', newProgramSub: 'New program — counts toward the center’s 100-program cap',
     // approval
     editBanner: 'Edits do not take effect immediately — this change request goes to a Head AD for approval, with the required book of changes attached.',
@@ -171,6 +173,54 @@ export function AddCenterModal({ open, lang, countries = [], dios = [], subDios 
         <div className="mt-field">
           <label className="mt-label">{tr('subDio')}</label>
           <SearchableSelect value={form.subDioId} onChange={(v) => set('subDioId', v)} options={subDioOpts} placeholder={tr('subDio')} />
+        </div>
+      </div>
+      {apiErr && <div className="reg-del-note" style={{ marginBlockStart: 14, marginBlockEnd: 0 }}>{apiErr}</div>}
+    </MtModal>
+  );
+}
+
+// ── AddCountryModal (direct create) ─────────────────────────────────────────
+// The clerk creates a country directly (name + ISO-ish code). Backend:
+// POST /api/countries (WRITE_ROLES = data_entry, super_admin); code is uppercased.
+export function AddCountryModal({ open, lang, onClose, onSaved }) {
+  const tr = (k) => S(lang, k);
+  const [form, setForm] = useState({ name: '', code: '' });
+  const [err, setErr] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [apiErr, setApiErr] = useState('');
+  function set(k, v) { setForm((s) => ({ ...s, [k]: v })); setErr((e) => ({ ...e, [k]: false })); setApiErr(''); }
+
+  async function save() {
+    const e = {};
+    if (!form.name.trim()) e.name = true;
+    if (!form.code.trim()) e.code = true;
+    if (Object.keys(e).length) { setErr(e); return; }
+    setSaving(true); setApiErr('');
+    try {
+      const res = await api.post('/api/countries', { name: form.name.trim(), code: form.code.trim() });
+      onSaved(res.data?.data || res.data);
+    } catch (ex) { setApiErr(ex.response?.data?.message || tr('saveFailed')); } finally { setSaving(false); }
+  }
+
+  return (
+    <MtModal open={open} title={tr('newCountry')} sub={tr('newCountrySub')} onClose={onClose}
+      footer={<>
+        <button type="button" className="mt-btn--cancel" onClick={onClose}>{tr('cancel')}</button>
+        <button type="button" className="mt-btn" onClick={save} disabled={saving}>{saving ? tr('saving') : tr('create')}</button>
+      </>}>
+      <div className="mt-banner">{tr('createBanner')}</div>
+      <div className="mt-field-grid">
+        <div className="mt-field mt-field-full">
+          <label className="mt-label">{tr('name')}<span className="mt-label-req">*</span></label>
+          <input className="mt-input" value={form.name} onChange={(e) => set('name', e.target.value)}
+            style={err.name ? { borderColor: 'var(--danger)' } : undefined} />
+        </div>
+        <div className="mt-field">
+          <label className="mt-label">{tr('countryCode')}<span className="mt-label-req">*</span></label>
+          <input className="mt-input mt-input--mono" value={form.code} placeholder="e.g. SA"
+            onChange={(e) => set('code', e.target.value.toUpperCase())}
+            style={err.code ? { borderColor: 'var(--danger)' } : undefined} />
         </div>
       </div>
       {apiErr && <div className="reg-del-note" style={{ marginBlockStart: 14, marginBlockEnd: 0 }}>{apiErr}</div>}

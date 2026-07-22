@@ -15,7 +15,7 @@ import RevealOnScroll from '../components/RevealOnScroll';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import { IconEdit } from '../components/icons';
 import {
-  AddCenterModal, AddProgramModal, ApprovalModal, normId, refName, toDateInput, useCanWriteRegistry,
+  AddCenterModal, AddCountryModal, AddProgramModal, ApprovalModal, normId, refName, toDateInput, useCanWriteRegistry,
 } from './registryShared';
 import api from '../api/axios';
 import './registry.css';
@@ -23,27 +23,27 @@ import './registry.css';
 const CAP = 100;
 const STR = {
   ar: {
-    countries: 'الدول', addCenter: 'إضافة مركز تدريبي', addProgram: 'إضافة برنامج',
+    countries: 'الدول', addCountry: 'إضافة دولة', addCenter: 'إضافة مركز تدريبي', addProgram: 'إضافة برنامج',
     atCapacity: 'المركز مكتمل — 100 / 100', viewCenters: 'عرض المراكز ←', viewPrograms: 'عرض البرامج ←',
     cCountry: 'الدولة', cCode: 'الرمز', cCenters: 'المراكز', cPrograms: 'البرامج',
     cCenter: 'المركز', cId: 'المعرّف', cCity: 'المدينة', cDio: 'DIO',
     cName: 'البرنامج', cSpecialty: 'الاختصاص', cPd: 'المدير', cCapacity: 'الطاقة', cDuration: 'المدة',
     noCountries: 'لا توجد دول بعد.', noCenters: 'لا توجد مراكز في هذه الدولة.', noPrograms: 'لا توجد برامج بعد.',
     edit: 'تعديل', editRecord: 'تعديل البرنامج', perYr: '/ سنة', yrs: 'سنوات', programsWord: 'البرامج',
-    centerCreated: 'تمت إضافة المركز', programCreated: 'تمت إضافة البرنامج', submitted: 'أُرسل للموافقة', loadFailed: 'فشل التحميل',
+    centerCreated: 'تمت إضافة المركز', programCreated: 'تمت إضافة البرنامج', countryCreated: 'تمت إضافة الدولة', submitted: 'أُرسل للموافقة', loadFailed: 'فشل التحميل',
     approvalNote: 'تعديل أي سجل يفتح تدفّق الموافقة — تتطلب التغييرات موافقة محلل البيانات قبل أن تُطبّق.',
     name: 'الاسم', specialty: 'الاختصاص', pd: 'المدير', subPd: 'النائب', capacity: 'الطاقة السنوية', duration: 'المدة (سنوات)',
     accType: 'نوع الاعتماد', partly: 'جزئي', fully: 'كامل', accId: 'رقم الاعتماد', accDate: 'تاريخ الاعتماد', withdrawn: 'الاعتماد مسحوب',
   },
   en: {
-    countries: 'Countries', addCenter: 'Add training center', addProgram: 'Add program',
+    countries: 'Countries', addCountry: 'Add country', addCenter: 'Add training center', addProgram: 'Add program',
     atCapacity: 'Center at capacity — 100 / 100', viewCenters: 'View centers →', viewPrograms: 'View programs →',
     cCountry: 'Country', cCode: 'Code', cCenters: 'Training centers', cPrograms: 'Programs',
     cCenter: 'Center', cId: 'ID', cCity: 'City', cDio: 'DIO',
     cName: 'Program', cSpecialty: 'Specialty', cPd: 'PD', cCapacity: 'Capacity', cDuration: 'Duration',
     noCountries: 'No countries yet.', noCenters: 'No centers in this country.', noPrograms: 'No programs yet.',
     edit: 'Edit', editRecord: 'Edit program', perYr: '/ yr', yrs: 'yrs', programsWord: 'Programs',
-    centerCreated: 'Center added', programCreated: 'Program added', submitted: 'Submitted for approval', loadFailed: 'Failed to load',
+    centerCreated: 'Center added', programCreated: 'Program added', countryCreated: 'Country added', submitted: 'Submitted for approval', loadFailed: 'Failed to load',
     approvalNote: 'Editing any record opens the edit-with-approval flow — changes require Data Analyzer approval before taking effect.',
     name: 'Name', specialty: 'Specialty', pd: 'Program Director', subPd: 'Sub-PD', capacity: 'Yearly capacity', duration: 'Duration (years)',
     accType: 'Accreditation type', partly: 'Partly', fully: 'Fully', accId: 'Accreditation ID', accDate: 'Date of accreditation', withdrawn: 'Accreditation withdrawn',
@@ -72,6 +72,7 @@ export default function RegistryCountries() {
 
   const [countryId, setCountryId] = useState(null);   // L1 when set
   const [centerId, setCenterId] = useState(null);      // L2 when set
+  const [addCountryOpen, setAddCountryOpen] = useState(false);
   const [addCenterOpen, setAddCenterOpen] = useState(false);
   const [addProgramOpen, setAddProgramOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
@@ -154,7 +155,7 @@ export default function RegistryCountries() {
       : canWrite && <button type="button" className="mt-btn mt-btn--small" onClick={() => setAddProgramOpen(true)}>+ {t('addProgram')}</button>)
     : (country
       ? (canWrite && <button type="button" className="mt-btn mt-btn--small" onClick={() => setAddCenterOpen(true)}>+ {t('addCenter')}</button>)
-      : null);
+      : (canWrite && <button type="button" className="mt-btn mt-btn--small" onClick={() => setAddCountryOpen(true)}>+ {t('addCountry')}</button>));
 
   return (
     <>
@@ -276,6 +277,10 @@ export default function RegistryCountries() {
             )}
           </>
         )}
+
+        <AddCountryModal open={addCountryOpen} lang={lang}
+          onClose={() => setAddCountryOpen(false)}
+          onSaved={() => { setAddCountryOpen(false); showToast(t('countryCreated'), 'ok'); load(); }} />
 
         <AddCenterModal open={addCenterOpen} lang={lang} countries={countries} dios={dios} subDios={subDios}
           fixedCountryId={country?._id}
