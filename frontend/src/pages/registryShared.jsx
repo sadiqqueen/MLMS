@@ -27,7 +27,7 @@ import { useAuth } from '../context/AuthContext';
 // with this so only the roles that can actually write ever see Add/Edit/Delete.
 export function useCanWriteRegistry() {
   const { user } = useAuth();
-  return ['data_entry', 'super_admin'].includes(user?.role);
+  return ['data_entry', 'developer'].includes(user?.role);
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -171,8 +171,8 @@ export function AddCenterModal({ open, lang, countries = [], dios = [], subDios 
         <div className="mt-field"><label className="mt-label">{tr('accDate')}</label>
           <input className="mt-input" type="date" value={form.accreditationGrantDate} onChange={(e) => set('accreditationGrantDate', e.target.value)} /></div>
         <div className="mt-field">
-          <label className="mt-label">{tr('dio')}</label>
-          <SearchableSelect value={form.dioId} onChange={(v) => set('dioId', v)} options={dioOpts} placeholder={tr('dio')} />
+          <label className="mt-label">{tr('odio')}</label>
+          <SearchableSelect value={form.dioId} onChange={(v) => set('dioId', v)} options={dioOpts} placeholder={tr('odio')} />
         </div>
         <div className="mt-field">
           <label className="mt-label">{tr('subDio')}</label>

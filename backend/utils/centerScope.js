@@ -1,8 +1,8 @@
 // backend/utils/centerScope.js
 // Resolve the set of training-center (Hospital) ids a center-scoped advanced
-// user may act within. A dio_view carries its own assignedCenterIds; an ODIO
-// (role 'dio') or Sub-DIO (role 'sub_dio') resolves the set THROUGH its linked
-// dio_view via dioId. Any other role is not center-scoped (returns null).
+// user may act within. A DIO (role 'dio') carries its own assignedCenterIds; an
+// ODIO (role 'odio') or Sub-DIO (role 'sub_dio') resolves the set THROUGH its
+// linked DIO via dioId. Any other role is not center-scoped (returns null).
 const User = require('../models/User');
 const Program = require('../models/Program');
 
@@ -10,10 +10,10 @@ const Program = require('../models/Program');
 // center-scoped. An empty array means "center-scoped but no centers".
 async function resolveCenterSet(user) {
   if (!user) return null;
-  if (user.role === 'dio_view') {
+  if (user.role === 'dio') {
     return (user.assignedCenterIds || []).map(id => String(id._id || id));
   }
-  if (user.role === 'dio' || user.role === 'sub_dio') {
+  if (user.role === 'odio' || user.role === 'sub_dio') {
     if (!user.dioId) return [];
     const parent = await User.findById(user.dioId).select('assignedCenterIds');
     if (!parent) return [];

@@ -15,12 +15,12 @@ const AuditLog       = require('../models/AuditLog');
 
 // Roles allowed to READ the board (each with its own scoping below).
 const READ_ROLES = [
-  'program_director', 'sub_pd', 'trainee', 'supervisor',
-  'dio_view', 'dio', 'sub_dio',
-  'secretary_general', 'assistant_secretary', 'data_analyzer', 'super_admin'
+  'program_director', 'sub_pd', 'trainee', 'trainer',
+  'dio', 'odio', 'sub_dio',
+  'secretary_general', 'assistant_secretary', 'data_analyzer', 'developer'
 ];
 // Oversight roles that see every announcement (optional ?programId= filter).
-const GLOBAL_ROLES = ['secretary_general', 'assistant_secretary', 'data_analyzer', 'super_admin'];
+const GLOBAL_ROLES = ['secretary_general', 'assistant_secretary', 'data_analyzer', 'developer'];
 
 function isValidObjectId(id) {
   return mongoose.Types.ObjectId.isValid(id);
@@ -49,7 +49,7 @@ async function writeAudit(req, action, targetModel, targetId, metadata = {}) {
 async function notifyProgramMembers(programId, message) {
   const members = await User.find({
     programId,
-    role: { $in: ['trainee', 'supervisor'] },
+    role: { $in: ['trainee', 'trainer'] },
     isActive: { $ne: false }
   }).select('_id');
   await Promise.all(members.map(m =>
@@ -105,10 +105,10 @@ router.get('/', auth, allowRoles(...READ_ROLES), async (req, res) => {
       if (!req.user.pdId) return res.json({ success: true, data: [] });
       const progs = await Program.find({ programDirectorId: req.user.pdId, isActive: { $ne: false } }).select('_id');
       query.programId = { $in: progs.map(p => p._id) };
-    } else if (role === 'trainee' || role === 'supervisor') {
+    } else if (role === 'trainee' || role === 'trainer') {
       if (!req.user.programId) return res.json({ success: true, data: [] });
       query.programId = req.user.programId;
-    } else if (role === 'dio_view' || role === 'dio' || role === 'sub_dio') {
+    } else if (role === 'dio' || role === 'odio' || role === 'sub_dio') {
       const set = await resolveCenterSet(req.user);
       if (!set || set.length === 0) return res.json({ success: true, data: [] });
       const progs = await Program.find({ trainingCenterId: { $in: set }, isActive: { $ne: false } }).select('_id');
@@ -129,14 +129,14 @@ router.get('/', auth, allowRoles(...READ_ROLES), async (req, res) => {
 });
 
 // DELETE /api/announcements/:id — the author PD, or a super_admin.
-router.delete('/:id', auth, allowRoles('program_director', 'super_admin'), async (req, res) => {
+router.delete('/:id', auth, allowRoles('program_director', 'developer'), async (req, res) => {
   try {
     if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid id' });
     const announcement = await Announcement.findById(req.params.id);
     if (!announcement) return res.status(404).json({ success: false, message: 'Announcement not found' });
 
     const isAuthor = String(announcement.authorId) === String(req.user._id);
-    if (req.user.role !== 'super_admin' && !isAuthor) {
+    if (req.user.role !== 'developer' && !isAuthor) {
       return res.status(403).json({ success: false, message: 'You can only delete your own announcements' });
     }
 

@@ -16,7 +16,7 @@ const ChangeRequest   = require('../models/ChangeRequest');
 const AuditLog        = require('../models/AuditLog');
 
 // head_ad reviews its inbox; super_admin retains oversight.
-const HEAD_AD_ROLES = ['head_ad', 'super_admin'];
+const HEAD_AD_ROLES = ['head_ad', 'developer'];
 
 function sanitizeAuditMetadata(data) {
   const clone = { ...data };

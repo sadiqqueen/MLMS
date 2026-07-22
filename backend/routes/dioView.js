@@ -16,7 +16,7 @@ const Program   = require('../models/Program');
 const Certificate = require('../models/Certificate');
 const AuditLog  = require('../models/AuditLog');
 
-const VIEW_ROLES = ['dio_view', 'sub_dio', 'dio', 'super_admin'];
+const VIEW_ROLES = ['dio', 'sub_dio', 'odio', 'developer'];
 
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -31,7 +31,7 @@ function withAccreditation(doc) {
 // centers. A center-scoped caller with an empty set gets a 403 (and null is
 // returned so the handler stops). Sends the response itself on the 403 path.
 async function resolveScope(req, res) {
-  if (req.user.role === 'super_admin') {
+  if (req.user.role === 'developer') {
     const centers = await Hospital.find({ ...trackFilter('advanced'), isActive: { $ne: false } }).select('_id');
     return { set: centers.map(c => String(c._id)) };
   }
@@ -68,7 +68,7 @@ router.get('/stats', auth, allowRoles(...VIEW_ROLES), async (req, res) => {
 
     const [trainees, trainers, certificates] = await Promise.all([
       User.countDocuments({ role: 'trainee', isActive: { $ne: false }, ...member }),
-      User.countDocuments({ role: 'supervisor', isActive: { $ne: false }, ...member }),
+      User.countDocuments({ role: 'trainer', isActive: { $ne: false }, ...member }),
       Certificate.countDocuments({
         $or: [{ student: { $in: traineeIds } }, { traineeId: { $in: traineeIds } }],
         revokedAt: null
@@ -193,7 +193,7 @@ async function listMembers(req, res, role, injectYear) {
 router.get('/trainees', auth, allowRoles(...VIEW_ROLES), (req, res) => listMembers(req, res, 'trainee', true));
 
 // GET /api/dio-view/trainers?search=
-router.get('/trainers', auth, allowRoles(...VIEW_ROLES), (req, res) => listMembers(req, res, 'supervisor', false));
+router.get('/trainers', auth, allowRoles(...VIEW_ROLES), (req, res) => listMembers(req, res, 'trainer', false));
 
 // ── ODIO SELF-SERVICE (DIO-only write) ──────────────────────────────────────
 // The DIO (dio_view) is read-only everywhere EXCEPT creating its own ODIOs
@@ -204,14 +204,14 @@ router.get('/trainers', auth, allowRoles(...VIEW_ROLES), (req, res) => listMembe
 // GET /api/dio-view/odios — the DIO's own ODIO accounts. dio_view sees its own;
 // sub_dio (read-only) sees its parent DIO's; super_admin sees none (no single
 // parent to resolve) and gets an empty list rather than a 403.
-router.get('/odios', auth, allowRoles('dio_view', 'sub_dio', 'super_admin'), async (req, res) => {
+router.get('/odios', auth, allowRoles('dio', 'sub_dio', 'developer'), async (req, res) => {
   try {
     let parentDioId = null;
-    if (req.user.role === 'dio_view') parentDioId = req.user._id;
+    if (req.user.role === 'dio') parentDioId = req.user._id;
     else if (req.user.role === 'sub_dio') parentDioId = req.user.dioId || null;
     if (!parentDioId) return res.json({ success: true, data: [] });
 
-    const odios = await User.find({ role: 'dio', dioId: parentDioId })
+    const odios = await User.find({ role: 'odio', dioId: parentDioId })
       .select('-password')
       .populate('countryId', 'name code')
       .sort({ name: 1 });
@@ -224,7 +224,7 @@ router.get('/odios', auth, allowRoles('dio_view', 'sub_dio', 'super_admin'), asy
 
 // GET /api/dio-view/me — the authoritative country/city a new ODIO inherits
 // (dio_view only; used by the Add-ODIO modal's read-only preview fields).
-router.get('/me', auth, allowRoles('dio_view'), async (req, res) => {
+router.get('/me', auth, allowRoles('dio'), async (req, res) => {
   try {
     const me = await User.findById(req.user._id).select('countryId city').populate('countryId', 'name code');
     res.json({ success: true, data: { countryId: me.countryId || null, city: me.city || '' } });
@@ -234,8 +234,8 @@ router.get('/me', auth, allowRoles('dio_view'), async (req, res) => {
   }
 });
 
-// POST /api/dio-view/odios — create an ODIO (role 'dio') under this DIO.
-router.post('/odios', auth, allowRoles('dio_view'), async (req, res) => {
+// POST /api/dio-view/odios — create an ODIO (role 'odio') under this DIO.
+router.post('/odios', auth, allowRoles('dio'), async (req, res) => {
   try {
     const { name, email, password, phone } = req.body;
     if (!name || !String(name).trim()) return res.status(400).json({ message: 'Name is required' });
@@ -248,7 +248,7 @@ router.post('/odios', auth, allowRoles('dio_view'), async (req, res) => {
       name: String(name).trim(),
       email: String(email).trim(),
       password: String(password),
-      role: 'dio',
+      role: 'odio',
       dioId: req.user._id,                 // links the ODIO to this DIO → center set
       countryId: req.user.countryId || null, // inherited (read-only in the UI)
       city: req.user.city || '',           // inherited

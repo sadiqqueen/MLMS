@@ -12,7 +12,7 @@ const Notification   = require('../models/Notification');
 const User           = require('../models/User');
 const { getAssignedTraineeIds } = require('../utils/assignedTrainees');
 
-const SUPERVISOR = ['supervisor'];
+const SUPERVISOR = ['trainer'];
 
 async function isAssignedTrainee(supervisorId, traineeId) {
   if (!traineeId) return false;

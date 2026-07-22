@@ -140,7 +140,7 @@ export default function DioViewOdios() {
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
   const { toasts, showToast } = useMtToast();
 
-  const isDio = user?.role === 'dio_view';   // only the DIO can list/create ODIOs
+  const isDio = user?.role === 'dio';   // only the DIO can list/create ODIOs
   const [odios, setOdios] = useState([]);
   const [centers, setCenters] = useState([]);
   const [me, setMe] = useState(null);        // GET /dio-view/me → authoritative country/city

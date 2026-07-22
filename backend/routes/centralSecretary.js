@@ -26,14 +26,14 @@ const { decodeOriginalName } = require('../utils/filename');
 const { bocUpload, BOC_URL_PREFIX } = require('../utils/bookOfChanges');
 const { ROUTE_TARGETS, buildRegistryChangePayload, notifyAnalyzers } = require('../utils/registryChanges');
 
-const CENTRAL_ROLES = ['central_secretary', 'super_admin'];
+const CENTRAL_ROLES = ['central_secretary', 'developer'];
 const EDIT_FIELDS = ['name', 'phone', 'city', 'gender', 'supervisorId', 'researchSupervisorId'];
 
 // Resolve the CS specialty scope. super_admin sees everything (all:true); a main
 // CS is scoped to its council's specialties, a precise CS to every precise
 // specialty (utils/councilScope.js).
 async function csScope(req) {
-  if (req.user.role === 'super_admin') return { all: true, ids: null };
+  if (req.user.role === 'developer') return { all: true, ids: null };
   const ids = await specialtyIdsForCs(req.user);
   return { all: false, ids: ids || [] };
 }
@@ -127,7 +127,7 @@ async function buildChangePayload(fields, existing) {
   const display = [];
   for (const key of Object.keys(fields)) {
     // Skip the mirrored legacy alias so the diff isn't shown twice.
-    if (key === 'supervisor') continue;
+    if (key === 'trainer') continue;
     const beforeVal = existing[key] === undefined ? null : existing[key];
     before[key] = beforeVal?._id || beforeVal || null;
     display.push({
@@ -139,17 +139,17 @@ async function buildChangePayload(fields, existing) {
   return { before, display };
 }
 
-// Notify the ODIO(s) responsible for a center: the ODIOs (role 'dio') linked
+// Notify the ODIO(s) responsible for a center: the ODIOs (role 'odio') linked
 // to any dio_view whose assignedCenterIds contains the center. Best-effort; the
 // message includes "approval" so the Navbar notifLink routes it to Approvals.
 async function notifyCenterOdios(hospitalId, message) {
   if (!hospitalId) return;
   const dioViews = await User.find({
-    role: 'dio_view', isActive: { $ne: false }, assignedCenterIds: hospitalId,
+    role: 'dio', isActive: { $ne: false }, assignedCenterIds: hospitalId,
   }).select('_id');
   if (!dioViews.length) return;
   const odios = await User.find({
-    role: 'dio', isActive: { $ne: false }, dioId: { $in: dioViews.map(d => d._id) },
+    role: 'odio', isActive: { $ne: false }, dioId: { $in: dioViews.map(d => d._id) },
   }).select('_id');
   await Promise.all(odios.map(o =>
     Notification.create({ user: o._id, message, category: 'promotions' }).catch(() => {})));
@@ -235,7 +235,7 @@ router.get('/stats', auth, allowRoles(...CENTRAL_ROLES), async (req, res) => {
     const trainees = await User.find(traineeQuery).select('_id');
     const traineeIds = trainees.map(t => t._id);
 
-    const dioQuery = { role: 'dio_view', isActive: { $ne: false } };
+    const dioQuery = { role: 'dio', isActive: { $ne: false } };
     if (!scope.all) dioQuery.assignedCenterIds = { $in: centerIds };
 
     const [dios, evaluations, researches, certificates] = await Promise.all([
@@ -419,7 +419,7 @@ router.post('/trainees', auth, allowRoles(...CENTRAL_ROLES), async (req, res) =>
     // the SAME program.
     let resolvedSupervisorId = null;
     if (supervisorId) {
-      const sup = await User.findOne({ _id: supervisorId, role: 'supervisor', isActive: { $ne: false } }).select('programId');
+      const sup = await User.findOne({ _id: supervisorId, role: 'trainer', isActive: { $ne: false } }).select('programId');
       if (!sup) return res.status(400).json({ message: 'Supervisor not found or inactive' });
       if (String(sup.programId) !== String(program._id)) {
         return res.status(403).json({ message: 'Supervisor must belong to the selected program' });
@@ -433,13 +433,13 @@ router.post('/trainees', auth, allowRoles(...CENTRAL_ROLES), async (req, res) =>
     if (researchSupervisorId) {
       const rs = await User.findOne({
         _id: researchSupervisorId,
-        role: { $in: ['supervisor', 'program_director'] },
+        role: { $in: ['trainer', 'program_director'] },
         isActive: { $ne: false },
       }).select('role programId specialtyId');
       if (!rs) return res.status(400).json({ message: 'Research supervisor not found or inactive' });
       // A supervisor research trainer must belong to the program (mirrors supervisorId);
       // a PD must be the program's own PD or within the CS's specialty scope.
-      if (rs.role === 'supervisor' && String(rs.programId) !== String(program._id)) {
+      if (rs.role === 'trainer' && String(rs.programId) !== String(program._id)) {
         return res.status(403).json({ message: 'Research supervisor must belong to the selected program' });
       }
       if (rs.role === 'program_director') {
@@ -558,7 +558,7 @@ router.post('/trainers', auth, allowRoles(...CENTRAL_ROLES), async (req, res) =>
       name: String(name).trim(),
       idNumber: String(idNumber).trim(),
       password: String(password),
-      role: 'supervisor',
+      role: 'trainer',
       programId: program._id,
       hospitalId: program.trainingCenterId,
       hospital: program.trainingCenterId,          // legacy alias
@@ -591,7 +591,7 @@ router.post('/trainers', auth, allowRoles(...CENTRAL_ROLES), async (req, res) =>
 router.get('/trainers', auth, allowRoles(...CENTRAL_ROLES), async (req, res) => {
   try {
     const { search, programId, specialtyId, countryId, includeInactive } = req.query;
-    const query = { role: 'supervisor' };
+    const query = { role: 'trainer' };
     if (includeInactive !== 'true') query.isActive = { $ne: false };
     if (programId) query.programId = programId;
     if (specialtyId) query.specialtyId = specialtyId;
@@ -614,7 +614,7 @@ router.get('/trainers', auth, allowRoles(...CENTRAL_ROLES), async (req, res) => 
 });
 
 // PATCH /api/central/trainers/:id — queued as a ChangeRequest (ODIO approves).
-router.patch('/trainers/:id', auth, allowRoles(...CENTRAL_ROLES), (req, res) => handleEdit(req, res, 'supervisors', 'supervisor'));
+router.patch('/trainers/:id', auth, allowRoles(...CENTRAL_ROLES), (req, res) => handleEdit(req, res, 'supervisors', 'trainer'));
 
 // Shared edit handler: allowlist-pick, keep the legacy supervisor alias in sync
 // (trainer optional → may be cleared), enforce one pending CR per target, queue.

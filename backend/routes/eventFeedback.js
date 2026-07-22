@@ -20,7 +20,7 @@ const { generateUniqueCode } = require('../utils/eventCode');
 const { buildCsv }           = require('../utils/csv');
 
 // Every route in this file requires a logged-in super_admin.
-router.use(auth, allowRoles('super_admin'));
+router.use(auth, allowRoles('developer'));
 
 // ── Multer: form attachment uploads (docx/pdf) ─────────────────────────────
 const uploadDir = path.join(__dirname, '../uploads/feedback-attachments');

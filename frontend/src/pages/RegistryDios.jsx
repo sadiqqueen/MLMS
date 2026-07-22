@@ -162,7 +162,7 @@ export default function RegistryDios() {
   const load = useCallback(async () => {
     setLoading(true);
     const [d, s, co] = await Promise.allSettled([
-      api.get('/api/registry/users', { params: { role: 'dio_view' } }),
+      api.get('/api/registry/users', { params: { role: 'dio' } }),
       api.get('/api/registry/users', { params: { role: 'sub_dio' } }),
       api.get('/api/countries'),
     ]);
@@ -177,7 +177,7 @@ export default function RegistryDios() {
 
   const rows = useMemo(() => {
     const all = [
-      ...dios.map((u) => ({ u, kind: 'dio' })),
+      ...dios.map((u) => ({ u, kind: 'odio' })),
       ...subDios.map((u) => ({ u, kind: 'sub' })),
     ];
     return all.filter(({ u }) => {

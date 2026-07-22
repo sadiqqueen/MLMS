@@ -82,25 +82,24 @@ export default function Profile() {
   );
 
   const p = profile || user;
-  const isPresident = p?.role === 'president';
 
   function hospitalName() {
     return p?.hospitalId?.name || p?.hospital?.name || currentHospital || '—';
   }
 
   function roleExtra() {
-    if (['doctor', 'supervisor', 'student', 'trainee', 'program_director', 'secretary', 'dio'].includes(p?.role)) {
+    if (['doctor', 'trainer', 'student', 'trainee', 'program_director', 'secretary', 'odio'].includes(p?.role)) {
       return { label: 'Hospital', value: hospitalName() };
     }
-    if (['professor', 'president', 'director'].includes(p?.role)) {
+    if (['professor', 'director'].includes(p?.role)) {
       return { label: 'Department', value: p?.department || '—' };
     }
     return { label: 'Role', value: roleLabel(p?.role) };
   }
   const extra = roleExtra();
 
-  const showHospital  = ['doctor', 'supervisor', 'student', 'trainee', 'program_director', 'secretary', 'dio'].includes(p?.role);
-  const showSpecialty = ['doctor', 'supervisor', 'student', 'trainee', 'program_director', 'secretary'].includes(p?.role);
+  const showHospital  = ['doctor', 'trainer', 'student', 'trainee', 'program_director', 'secretary', 'odio'].includes(p?.role);
+  const showSpecialty = ['doctor', 'trainer', 'student', 'trainee', 'program_director', 'secretary'].includes(p?.role);
 
   const infoRows = [
     ['Full name',  p?.name],
@@ -171,8 +170,6 @@ export default function Profile() {
                 ? <img src={photoUrl} alt={p?.name} />
                 : <span>{p?.initials}</span>}
             </div>
-            {!isPresident && (
-              <>
             <input
               ref={fileInputRef}
               type="file"
@@ -187,8 +184,6 @@ export default function Profile() {
             >
               {photoUploading ? 'Uploading…' : 'Change photo'}
             </button>
-              </>
-            )}
           </div>
           <div className="profile-info">
             <div className="profile-name">{p?.name}</div>
@@ -223,8 +218,6 @@ export default function Profile() {
             </div>
           </div>
 
-          {!isPresident && (
-            <>
           {/* DIVIDER */}
           <div className="profile-divider" />
 
@@ -281,8 +274,6 @@ export default function Profile() {
               </button>
             </form>
           </div>
-            </>
-          )}
 
         </div>
 

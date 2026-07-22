@@ -177,7 +177,7 @@ export default function ProgramDirectorDashboard() {
               [t('center'), p.trainingCenterId?.name ? `${p.trainingCenterId.name}${p.trainingCenterId.city ? ` · ${p.trainingCenterId.city}` : ''}` : '—'],
               [t('specialty'), p.specialtyId?.name || '—'],
               // DIO + Sub-PD fill in once the backend populates them (§Fable fix-wave); hidden until then.
-              ...(p.trainingCenterId?.dioId?.name ? [[t('dio'), p.trainingCenterId.dioId.name]] : []),
+              ...(p.trainingCenterId?.dioId?.name ? [[t('odio'), p.trainingCenterId.dioId.name]] : []),
               ...(p.subProgramDirectorId?.name ? [[t('subPd'), p.subProgramDirectorId.name]] : []),
               [t('capacity'), `${c.capacityUsed ?? 0} / ${c.yearlyCapacity ?? p.yearlyCapacity ?? 0}`],
               [t('trainingStart'), fmtDate(p.trainingStartDate)],

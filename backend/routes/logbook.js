@@ -17,15 +17,15 @@ const AuditLog       = require('../models/AuditLog');
 const REVIEW_STATUSES = ['signed_off', 'rejected'];
 // Roles that can view the sign-off queue: the trainee's supervisor (legacy) and
 // the Program Director (redesign, RULINGS §D20). Sub-PD sees it read-only.
-const REVIEW_QUEUE_ROLES = ['supervisor', 'program_director', 'sub_pd'];
+const REVIEW_QUEUE_ROLES = ['trainer', 'program_director', 'sub_pd'];
 // Roles that can act (sign-off / reject): supervisor + program_director.
-const REVIEW_ACTION_ROLES = ['supervisor', 'program_director'];
+const REVIEW_ACTION_ROLES = ['trainer', 'program_director'];
 
 // The trainee-id set a reviewer may sign off. A supervisor keeps its assigned
 // trainees (utils/assignedTrainees). A Program Director / Sub-PD oversees a whole
 // specialty, so it reviews every trainee in that specialty across all hospitals.
 async function reviewTraineeIds(req) {
-  if (req.user.role === 'supervisor') {
+  if (req.user.role === 'trainer') {
     return getAssignedTraineeIds(req.user._id);
   }
   const info = await specialtyIdsForName(req.user.specialtyId, req.track);

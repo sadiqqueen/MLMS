@@ -34,9 +34,11 @@ function denyMutationsFor(roles, message = 'This account is read-only') {
   };
 }
 
-const READ_ONLY_SELF_ROLES = ['president', 'dio_view', 'sub_dio', 'sub_pd', 'secretary_general', 'assistant_secretary'];
+const READ_ONLY_SELF_ROLES = ['dio', 'sub_dio', 'sub_pd', 'secretary_general', 'assistant_secretary'];
 const denyReadOnlyMutations = denyMutationsFor(READ_ONLY_SELF_ROLES);
-const denyPresidentMutations = denyMutationsFor(['president'], 'President is read-only');
+
+// Retired roles: accounts remain but cannot authenticate (see middleware/auth.js).
+const RETIRED_ROLES = ['president', 'b_president'];
 
 // ── POST /api/auth/login ──────────────────────────────────────────────────
 router.post('/login', loginLimiter, async (req, res) => {
@@ -53,6 +55,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     if (!user) return res.status(401).json({ message: 'Invalid email or password' });
     if (user.isActive === false) return res.status(403).json({ message: 'Account deactivated' });
     if (user.locked === true) return res.status(423).json({ message: 'Account locked. Contact an administrator.' });
+    if (RETIRED_ROLES.includes(user.role)) return res.status(403).json({ message: 'This role has been retired' });
 
     // Check if account is locked
     if (user.isLocked()) {
@@ -215,7 +218,7 @@ router.put('/upload-photo', auth, denyReadOnlyMutations, uploadPhoto.single('pho
 });
 
 // ── PUT /api/auth/change-password ─────────────────────────────────────────
-router.put('/change-password', auth, denyPresidentMutations, async (req, res) => {
+router.put('/change-password', auth, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword)

@@ -185,7 +185,7 @@ export default function DioApprovals() {
                   {accountChanges.map(cr => {
                     const rows = (cr.display && cr.display.length
                       ? cr.display.map(d => ({ field: d.label, before: d.from, after: d.to }))
-                      : Object.keys(cr.changes || {}).filter(k => k !== 'supervisor')
+                      : Object.keys(cr.changes || {}).filter(k => k !== 'trainer')
                           .map(k => ({ field: FIELD_LABELS[k] || k, before: showVal(cr.before?.[k]), after: showVal(cr.changes[k]) }))
                     );
                     return (

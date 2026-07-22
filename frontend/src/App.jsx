@@ -56,13 +56,6 @@ import ConsultantMemoApproved from './pages/ConsultantMemoApproved';
 import Initiatives from './pages/Initiatives';
 import CertificatePrint from './pages/CertificatePrint';
 
-import PresidentTrainees from './pages/PresidentTrainees';
-import PresidentSupervisors from './pages/PresidentSupervisors';
-import PresidentProgramDirectors from './pages/PresidentProgramDirectors';
-import PresidentSecretaries from './pages/PresidentSecretaries';
-import PresidentDios from './pages/PresidentDios';
-import PresidentHospitals from './pages/PresidentHospitals';
-
 import AuditLog from './pages/AuditLog';
 import VerifyCertificate from './pages/VerifyCertificate';
 import EventFeedback from './pages/EventFeedback';
@@ -196,33 +189,33 @@ export default function App() {
           } />
 
           <Route path="/supervisor/trainees" element={
-            <ProtectedRoute allowedRoles={['supervisor']}>
+            <ProtectedRoute allowedRoles={['trainer']}>
               <SupervisorTrainees />
             </ProtectedRoute>
           } />
           <Route path="/supervisor/reports" element={
-            <ProtectedRoute allowedRoles={['supervisor']}>
+            <ProtectedRoute allowedRoles={['trainer']}>
               <SupervisorReports />
             </ProtectedRoute>
           } />
           <Route path="/supervisor/evaluations" element={
-            <ProtectedRoute allowedRoles={['supervisor']}>
+            <ProtectedRoute allowedRoles={['trainer']}>
               <SupervisorEvaluations />
             </ProtectedRoute>
           } />
           <Route path="/supervisor/research" element={
-            <ProtectedRoute allowedRoles={['supervisor']}>
+            <ProtectedRoute allowedRoles={['trainer']}>
               <SupervisorResearch />
             </ProtectedRoute>
           } />
 
           <Route path="/program-director/dashboard" element={
-            <ProtectedRoute allowedRoles={['program_director', 'sub_pd', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['program_director', 'sub_pd', 'developer']}>
               <ProgramDirectorDashboard />
             </ProtectedRoute>
           } />
           <Route path="/program-director/program" element={
-            <ProtectedRoute allowedRoles={['program_director', 'sub_pd', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['program_director', 'sub_pd', 'developer']}>
               <ProgramDirectorProgram />
             </ProtectedRoute>
           } />
@@ -269,27 +262,27 @@ export default function App() {
           } />
 
           <Route path="/dio/dashboard" element={
-            <ProtectedRoute allowedRoles={['dio']}>
+            <ProtectedRoute allowedRoles={['odio']}>
               <DioDashboard />
             </ProtectedRoute>
           } />
           <Route path="/dio/users" element={
-            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['odio', 'developer']}>
               <DioUsers />
             </ProtectedRoute>
           } />
           <Route path="/dio/users/:id" element={
-            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['odio', 'developer']}>
               <DioTraineeDetail />
             </ProtectedRoute>
           } />
           <Route path="/dio/hospitals" element={
-            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['odio', 'developer']}>
               <DioHospitals />
             </ProtectedRoute>
           } />
           <Route path="/dio/hospitals/:id" element={
-            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['odio', 'developer']}>
               <DioHospitalDetail />
             </ProtectedRoute>
           } />
@@ -297,52 +290,52 @@ export default function App() {
           <Route path="/dio/trainees" element={<Navigate to="/dio/users" replace />} />
           <Route path="/dio/trainees/:id" element={<LegacyTraineeRedirect />} />
           <Route path="/dio/supervisors" element={
-            <ProtectedRoute allowedRoles={['dio']}>
+            <ProtectedRoute allowedRoles={['odio']}>
               <DioSupervisors />
             </ProtectedRoute>
           } />
           <Route path="/dio/program-directors" element={
-            <ProtectedRoute allowedRoles={['dio']}>
+            <ProtectedRoute allowedRoles={['odio']}>
               <DioProgramDirectors />
             </ProtectedRoute>
           } />
           <Route path="/dio/secretaries" element={
-            <ProtectedRoute allowedRoles={['dio']}>
+            <ProtectedRoute allowedRoles={['odio']}>
               <DioSecretaries />
             </ProtectedRoute>
           } />
           <Route path="/dio/certificates" element={
-            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['odio', 'developer']}>
               <DioCertificates />
             </ProtectedRoute>
           } />
           <Route path="/dio/certificates/:id/print" element={
-            <ProtectedRoute allowedRoles={['dio', 'super_admin', 'program_director', 'president', 'dio_view', 'sub_dio']}>
+            <ProtectedRoute allowedRoles={['odio', 'developer', 'program_director', 'odio', 'sub_dio']}>
               <CertificatePrint />
             </ProtectedRoute>
           } />
           <Route path="/dio/distributions" element={
-            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['odio', 'developer']}>
               <DioDistributions />
             </ProtectedRoute>
           } />
           <Route path="/dio/rotations" element={
-            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['odio', 'developer']}>
               <DioRotations />
             </ProtectedRoute>
           } />
           <Route path="/dio/assignments" element={
-            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['odio', 'developer']}>
               <DioAssignments />
             </ProtectedRoute>
           } />
           <Route path="/dio/evaluations" element={
-            <ProtectedRoute allowedRoles={['dio']}>
+            <ProtectedRoute allowedRoles={['odio']}>
               <DioEvaluations />
             </ProtectedRoute>
           } />
           <Route path="/dio/approvals" element={
-            <ProtectedRoute allowedRoles={['dio', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['odio', 'developer']}>
               <DioApprovals />
             </ProtectedRoute>
           } />
@@ -369,74 +362,38 @@ export default function App() {
             </ProtectedRoute>
           } />
 
-          <Route path="/president/dashboard" element={
-            <ProtectedRoute allowedRoles={['president']}>
-              <DioDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/president/trainees" element={
-            <ProtectedRoute allowedRoles={['president']}>
-              <PresidentTrainees />
-            </ProtectedRoute>
-          } />
-          <Route path="/president/supervisors" element={
-            <ProtectedRoute allowedRoles={['president']}>
-              <PresidentSupervisors />
-            </ProtectedRoute>
-          } />
-          <Route path="/president/program-directors" element={
-            <ProtectedRoute allowedRoles={['president']}>
-              <PresidentProgramDirectors />
-            </ProtectedRoute>
-          } />
-          <Route path="/president/secretaries" element={
-            <ProtectedRoute allowedRoles={['president']}>
-              <PresidentSecretaries />
-            </ProtectedRoute>
-          } />
-          <Route path="/president/dios" element={
-            <ProtectedRoute allowedRoles={['president']}>
-              <PresidentDios />
-            </ProtectedRoute>
-          } />
-          <Route path="/president/hospitals" element={
-            <ProtectedRoute allowedRoles={['president']}>
-              <PresidentHospitals />
-            </ProtectedRoute>
-          } />
-
           <Route path="/admin/dashboard" element={
-            <ProtectedRoute allowedRoles={['super_admin', 'dio']}>
+            <ProtectedRoute allowedRoles={['developer', 'odio']}>
               <AdminDashboard />
             </ProtectedRoute>
           } />
           <Route path="/admin/users" element={
-            <ProtectedRoute allowedRoles={['super_admin']}>
+            <ProtectedRoute allowedRoles={['developer']}>
               <Users />
             </ProtectedRoute>
           } />
           <Route path="/admin/hospitals" element={
-            <ProtectedRoute allowedRoles={['super_admin']}>
+            <ProtectedRoute allowedRoles={['developer']}>
               <HospitalsUniversities />
             </ProtectedRoute>
           } />
           <Route path="/admin/distributions" element={
-            <ProtectedRoute allowedRoles={['super_admin', 'secretary']}>
+            <ProtectedRoute allowedRoles={['developer', 'secretary']}>
               <Distributions />
             </ProtectedRoute>
           } />
           <Route path="/admin/system" element={
-            <ProtectedRoute allowedRoles={['super_admin']}>
+            <ProtectedRoute allowedRoles={['developer']}>
               <AdminSystem />
             </ProtectedRoute>
           } />
           <Route path="/admin/audit-log" element={
-            <ProtectedRoute allowedRoles={['super_admin']}>
+            <ProtectedRoute allowedRoles={['developer']}>
               <AuditLog />
             </ProtectedRoute>
           } />
           <Route path="/admin/event-feedback" element={
-            <ProtectedRoute allowedRoles={['super_admin']}>
+            <ProtectedRoute allowedRoles={['developer']}>
               <EventFeedback />
             </ProtectedRoute>
           } />
@@ -445,32 +402,32 @@ export default function App() {
               REGISTRY — Data-entry clerk (+ Developer). Global, unscoped.
           ══════════════════════════════════════════════════════════ */}
           <Route path="/registry/centers" element={
-            <ProtectedRoute allowedRoles={['data_entry', 'super_admin', 'head_ad']}>
+            <ProtectedRoute allowedRoles={['data_entry', 'developer', 'head_ad']}>
               <RegistryCenters />
             </ProtectedRoute>
           } />
           <Route path="/registry/centers/:id" element={
-            <ProtectedRoute allowedRoles={['data_entry', 'super_admin', 'head_ad']}>
+            <ProtectedRoute allowedRoles={['data_entry', 'developer', 'head_ad']}>
               <RegistryCenterDetail />
             </ProtectedRoute>
           } />
           <Route path="/registry/countries" element={
-            <ProtectedRoute allowedRoles={['data_entry', 'super_admin', 'head_ad']}>
+            <ProtectedRoute allowedRoles={['data_entry', 'developer', 'head_ad']}>
               <RegistryCountries />
             </ProtectedRoute>
           } />
           <Route path="/registry/specialties" element={
-            <ProtectedRoute allowedRoles={['data_entry', 'super_admin', 'head_ad']}>
+            <ProtectedRoute allowedRoles={['data_entry', 'developer', 'head_ad']}>
               <RegistrySpecialties />
             </ProtectedRoute>
           } />
           <Route path="/registry/dios" element={
-            <ProtectedRoute allowedRoles={['data_entry', 'super_admin', 'head_ad']}>
+            <ProtectedRoute allowedRoles={['data_entry', 'developer', 'head_ad']}>
               <RegistryDios />
             </ProtectedRoute>
           } />
           <Route path="/registry/pds" element={
-            <ProtectedRoute allowedRoles={['data_entry', 'super_admin', 'head_ad']}>
+            <ProtectedRoute allowedRoles={['data_entry', 'developer', 'head_ad']}>
               <RegistryPds />
             </ProtectedRoute>
           } />
@@ -479,17 +436,17 @@ export default function App() {
               DATA ANALYZER — filterable dashboard + staff management.
           ══════════════════════════════════════════════════════════ */}
           <Route path="/analyzer/dashboard" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'developer', 'head_cs']}>
               <AnalyzerDashboard />
             </ProtectedRoute>
           } />
           <Route path="/analyzer/staff" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'developer']}>
               <AnalyzerStaff />
             </ProtectedRoute>
           } />
           <Route path="/analyzer/exports" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'developer']}>
               <AnalyzerExports />
             </ProtectedRoute>
           } />
@@ -498,7 +455,7 @@ export default function App() {
               CENTRAL SECRETARY — global trainee/trainer management.
           ══════════════════════════════════════════════════════════ */}
           <Route path="/central/trainees" element={
-            <ProtectedRoute allowedRoles={['central_secretary', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['central_secretary', 'developer']}>
               <CentralTrainees />
             </ProtectedRoute>
           } />
@@ -508,7 +465,7 @@ export default function App() {
               ROUTES functional (no feature removal / no deep-link 404). Confirm
               whether to also delete the routes + page files. */}
           <Route path="/central/trainers" element={
-            <ProtectedRoute allowedRoles={['central_secretary', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['central_secretary', 'developer']}>
               <CentralTrainers />
             </ProtectedRoute>
           } />
@@ -518,32 +475,32 @@ export default function App() {
               oversight scoped to the caller's center set.
           ══════════════════════════════════════════════════════════ */}
           <Route path="/dio-view/dashboard" element={
-            <ProtectedRoute allowedRoles={['dio_view', 'sub_dio', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['dio', 'sub_dio', 'developer']}>
               <DioViewDashboard />
             </ProtectedRoute>
           } />
           <Route path="/dio-view/centers" element={
-            <ProtectedRoute allowedRoles={['dio_view', 'sub_dio', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['dio', 'sub_dio', 'developer']}>
               <DioViewCenters />
             </ProtectedRoute>
           } />
           <Route path="/dio-view/program-directors" element={
-            <ProtectedRoute allowedRoles={['dio_view', 'sub_dio', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['dio', 'sub_dio', 'developer']}>
               <DioViewPds />
             </ProtectedRoute>
           } />
           <Route path="/dio-view/trainees" element={
-            <ProtectedRoute allowedRoles={['dio_view', 'sub_dio', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['dio', 'sub_dio', 'developer']}>
               <DioViewTrainees />
             </ProtectedRoute>
           } />
           <Route path="/dio-view/trainers" element={
-            <ProtectedRoute allowedRoles={['dio_view', 'sub_dio', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['dio', 'sub_dio', 'developer']}>
               <DioViewTrainers />
             </ProtectedRoute>
           } />
           <Route path="/dio-view/certificates" element={
-            <ProtectedRoute allowedRoles={['dio_view', 'sub_dio', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['dio', 'sub_dio', 'developer']}>
               <DioCertificates />
             </ProtectedRoute>
           } />
@@ -552,42 +509,42 @@ export default function App() {
               SECRETARY GENERAL / ASSISTANT SECRETARY — read-only suite.
           ══════════════════════════════════════════════════════════ */}
           <Route path="/sg/dashboard" element={
-            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'developer']}>
               <SgDashboard />
             </ProtectedRoute>
           } />
           <Route path="/sg/centers" element={
-            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'developer']}>
               <SgCenters />
             </ProtectedRoute>
           } />
           <Route path="/sg/dios" element={
-            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'developer']}>
               <SgDios />
             </ProtectedRoute>
           } />
           <Route path="/sg/specialties" element={
-            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'developer']}>
               <SgSpecialties />
             </ProtectedRoute>
           } />
           <Route path="/sg/programs" element={
-            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'developer']}>
               <SgPrograms />
             </ProtectedRoute>
           } />
           <Route path="/sg/pds" element={
-            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'developer']}>
               <SgPds />
             </ProtectedRoute>
           } />
           <Route path="/sg/trainees" element={
-            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'developer']}>
               <SgTrainees />
             </ProtectedRoute>
           } />
           <Route path="/sg/reports" element={
-            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['secretary_general', 'assistant_secretary', 'developer']}>
               <SgReports />
             </ProtectedRoute>
           } />
@@ -596,17 +553,17 @@ export default function App() {
               ANNOUNCEMENTS + LOG BOOK — shared board + trainee/trainer logs.
           ══════════════════════════════════════════════════════════ */}
           <Route path="/announcements" element={
-            <ProtectedRoute allowedRoles={['trainee', 'supervisor', 'program_director', 'sub_pd', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['trainee', 'trainer', 'program_director', 'sub_pd', 'developer']}>
               <Announcements />
             </ProtectedRoute>
           } />
           <Route path="/logbook" element={
-            <ProtectedRoute allowedRoles={['trainee', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['trainee', 'developer']}>
               <LogBook />
             </ProtectedRoute>
           } />
           <Route path="/supervisor/logbook" element={
-            <ProtectedRoute allowedRoles={['supervisor', 'super_admin']}>
+            <ProtectedRoute allowedRoles={['trainer', 'developer']}>
               <SupervisorLogBook />
             </ProtectedRoute>
           } />
@@ -638,16 +595,16 @@ export default function App() {
 
           {/* Basic — supervisor */}
           <Route path="/basic/supervisor/trainees" element={
-            <ProtectedRoute allowedRoles={['b_supervisor']}><SupervisorTrainees /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_trainer']}><SupervisorTrainees /></ProtectedRoute>
           } />
           <Route path="/basic/supervisor/reports" element={
-            <ProtectedRoute allowedRoles={['b_supervisor']}><SupervisorReports /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_trainer']}><SupervisorReports /></ProtectedRoute>
           } />
           <Route path="/basic/supervisor/evaluations" element={
-            <ProtectedRoute allowedRoles={['b_supervisor']}><SupervisorEvaluations /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_trainer']}><SupervisorEvaluations /></ProtectedRoute>
           } />
           <Route path="/basic/supervisor/research" element={
-            <ProtectedRoute allowedRoles={['b_supervisor']}><SupervisorResearch /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_trainer']}><SupervisorResearch /></ProtectedRoute>
           } />
 
           {/* Basic — program director */}
@@ -680,75 +637,52 @@ export default function App() {
 
           {/* Basic — DIO */}
           <Route path="/basic/dio/dashboard" element={
-            <ProtectedRoute allowedRoles={['b_dio']}><DioDashboard /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_odio']}><DioDashboard /></ProtectedRoute>
           } />
           <Route path="/basic/dio/users" element={
-            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioUsers /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_odio', 'developer']}><DioUsers /></ProtectedRoute>
           } />
           <Route path="/basic/dio/users/:id" element={
-            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioTraineeDetail /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_odio', 'developer']}><DioTraineeDetail /></ProtectedRoute>
           } />
           <Route path="/basic/dio/hospitals" element={
-            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioHospitals /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_odio', 'developer']}><DioHospitals /></ProtectedRoute>
           } />
           <Route path="/basic/dio/hospitals/:id" element={
-            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioHospitalDetail /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_odio', 'developer']}><DioHospitalDetail /></ProtectedRoute>
           } />
           {/* Legacy trainee routes — consolidated into the DIO Users section */}
           <Route path="/basic/dio/trainees" element={<Navigate to="/basic/dio/users" replace />} />
           <Route path="/basic/dio/trainees/:id" element={<LegacyTraineeRedirect prefix="/basic" />} />
           <Route path="/basic/dio/supervisors" element={
-            <ProtectedRoute allowedRoles={['b_dio']}><DioSupervisors /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_odio']}><DioSupervisors /></ProtectedRoute>
           } />
           <Route path="/basic/dio/program-directors" element={
-            <ProtectedRoute allowedRoles={['b_dio']}><DioProgramDirectors /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_odio']}><DioProgramDirectors /></ProtectedRoute>
           } />
           <Route path="/basic/dio/secretaries" element={
-            <ProtectedRoute allowedRoles={['b_dio']}><DioSecretaries /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_odio']}><DioSecretaries /></ProtectedRoute>
           } />
           <Route path="/basic/dio/certificates" element={
-            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioCertificates /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_odio', 'developer']}><DioCertificates /></ProtectedRoute>
           } />
           <Route path="/basic/dio/certificates/:id/print" element={
-            <ProtectedRoute allowedRoles={['b_dio', 'super_admin', 'b_program_director', 'b_president']}><CertificatePrint /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_odio', 'developer', 'b_program_director']}><CertificatePrint /></ProtectedRoute>
           } />
           <Route path="/basic/dio/distributions" element={
-            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioDistributions /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_odio', 'developer']}><DioDistributions /></ProtectedRoute>
           } />
           <Route path="/basic/dio/rotations" element={
-            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioRotations /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_odio', 'developer']}><DioRotations /></ProtectedRoute>
           } />
           <Route path="/basic/dio/assignments" element={
-            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioAssignments /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_odio', 'developer']}><DioAssignments /></ProtectedRoute>
           } />
           <Route path="/basic/dio/evaluations" element={
-            <ProtectedRoute allowedRoles={['b_dio']}><DioEvaluations /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_odio']}><DioEvaluations /></ProtectedRoute>
           } />
           <Route path="/basic/dio/approvals" element={
-            <ProtectedRoute allowedRoles={['b_dio', 'super_admin']}><DioApprovals /></ProtectedRoute>
-          } />
-
-          {/* Basic — president */}
-          <Route path="/basic/president/dashboard" element={
-            <ProtectedRoute allowedRoles={['b_president']}><DioDashboard /></ProtectedRoute>
-          } />
-          <Route path="/basic/president/trainees" element={
-            <ProtectedRoute allowedRoles={['b_president']}><PresidentTrainees /></ProtectedRoute>
-          } />
-          <Route path="/basic/president/supervisors" element={
-            <ProtectedRoute allowedRoles={['b_president']}><PresidentSupervisors /></ProtectedRoute>
-          } />
-          <Route path="/basic/president/program-directors" element={
-            <ProtectedRoute allowedRoles={['b_president']}><PresidentProgramDirectors /></ProtectedRoute>
-          } />
-          <Route path="/basic/president/secretaries" element={
-            <ProtectedRoute allowedRoles={['b_president']}><PresidentSecretaries /></ProtectedRoute>
-          } />
-          <Route path="/basic/president/dios" element={
-            <ProtectedRoute allowedRoles={['b_president']}><PresidentDios /></ProtectedRoute>
-          } />
-          <Route path="/basic/president/hospitals" element={
-            <ProtectedRoute allowedRoles={['b_president']}><PresidentHospitals /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['b_odio', 'developer']}><DioApprovals /></ProtectedRoute>
           } />
 
           {/* ══════════════════════════════════════════════════════════
@@ -759,108 +693,108 @@ export default function App() {
           ══════════════════════════════════════════════════════════ */}
           {/* Developer — wire the previously-orphaned Specialties page */}
           <Route path="/admin/specialties" element={
-            <ProtectedRoute allowedRoles={['super_admin']}><AdminSpecialties /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['developer']}><AdminSpecialties /></ProtectedRoute>
           } />
           <Route path="/admin/countries" element={
-            <ProtectedRoute allowedRoles={['super_admin']}><AdminCountries /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['developer']}><AdminCountries /></ProtectedRoute>
           } />
 
           {/* HOC (NEW role) — read-only council scope */}
           <Route path="/hoc/dashboard" element={
-            <ProtectedRoute allowedRoles={['hoc', 'super_admin']}><HocDashboard /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['hoc', 'developer']}><HocDashboard /></ProtectedRoute>
           } />
           <Route path="/hoc/centers" element={
-            <ProtectedRoute allowedRoles={['hoc', 'super_admin']}><HocCenters /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['hoc', 'developer']}><HocCenters /></ProtectedRoute>
           } />
           <Route path="/hoc/programs" element={
-            <ProtectedRoute allowedRoles={['hoc', 'super_admin']}><HocPrograms /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['hoc', 'developer']}><HocPrograms /></ProtectedRoute>
           } />
           <Route path="/hoc/trainees" element={
-            <ProtectedRoute allowedRoles={['hoc', 'super_admin']}><HocTrainees /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['hoc', 'developer']}><HocTrainees /></ProtectedRoute>
           } />
 
           {/* Central Secretary — new dashboard + registry drill screens */}
           <Route path="/central/dashboard" element={
-            <ProtectedRoute allowedRoles={['central_secretary', 'super_admin']}><CentralDashboard /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['central_secretary', 'developer']}><CentralDashboard /></ProtectedRoute>
           } />
           <Route path="/central/countries" element={
-            <ProtectedRoute allowedRoles={['central_secretary', 'super_admin']}><CentralCountries /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['central_secretary', 'developer']}><CentralCountries /></ProtectedRoute>
           } />
           <Route path="/central/centers" element={
-            <ProtectedRoute allowedRoles={['central_secretary', 'super_admin']}><CentralCenters /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['central_secretary', 'developer']}><CentralCenters /></ProtectedRoute>
           } />
           <Route path="/central/programs" element={
-            <ProtectedRoute allowedRoles={['central_secretary', 'super_admin']}><CentralPrograms /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['central_secretary', 'developer']}><CentralPrograms /></ProtectedRoute>
           } />
 
           {/* Clerk (data_entry) — new dashboard + programs list */}
           <Route path="/registry/dashboard" element={
-            <ProtectedRoute allowedRoles={['data_entry', 'super_admin', 'head_ad']}><RegistryDashboard /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_entry', 'developer', 'head_ad']}><RegistryDashboard /></ProtectedRoute>
           } />
           <Route path="/registry/programs" element={
-            <ProtectedRoute allowedRoles={['data_entry', 'super_admin', 'head_ad']}><RegistryPrograms /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_entry', 'developer', 'head_ad']}><RegistryPrograms /></ProtectedRoute>
           } />
           {/* Head AD only — the clerk must never review its own requests. */}
           <Route path="/registry/permissions" element={
-            <ProtectedRoute allowedRoles={['head_ad', 'super_admin']}><RegistryPermissions /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['head_ad', 'developer']}><RegistryPermissions /></ProtectedRoute>
           } />
 
           {/* Analyzer — 13-item nav: registry read-only views + Pending inbox */}
           <Route path="/analyzer/pending" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerPending /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'developer', 'head_cs']}><AnalyzerPending /></ProtectedRoute>
           } />
           <Route path="/analyzer/countries" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerCountries /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'developer', 'head_cs']}><AnalyzerCountries /></ProtectedRoute>
           } />
           <Route path="/analyzer/centers" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerCenters /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'developer', 'head_cs']}><AnalyzerCenters /></ProtectedRoute>
           } />
           <Route path="/analyzer/dios" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerDios /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'developer', 'head_cs']}><AnalyzerDios /></ProtectedRoute>
           } />
           <Route path="/analyzer/programs" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerPrograms /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'developer', 'head_cs']}><AnalyzerPrograms /></ProtectedRoute>
           } />
           <Route path="/analyzer/pds" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerPds /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'developer', 'head_cs']}><AnalyzerPds /></ProtectedRoute>
           } />
           <Route path="/analyzer/clerks" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerClerks /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'developer', 'head_cs']}><AnalyzerClerks /></ProtectedRoute>
           } />
           <Route path="/analyzer/hocs" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerHocs /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'developer', 'head_cs']}><AnalyzerHocs /></ProtectedRoute>
           } />
           <Route path="/analyzer/specialties" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerSpecialties /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'developer', 'head_cs']}><AnalyzerSpecialties /></ProtectedRoute>
           } />
           <Route path="/analyzer/central-secretaries" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerCentralSecretaries /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'developer', 'head_cs']}><AnalyzerCentralSecretaries /></ProtectedRoute>
           } />
           <Route path="/analyzer/trainees" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerTrainees /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'developer', 'head_cs']}><AnalyzerTrainees /></ProtectedRoute>
           } />
           <Route path="/analyzer/trainees/:id" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerTraineeDetail /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['data_analyzer', 'developer', 'head_cs']}><AnalyzerTraineeDetail /></ProtectedRoute>
           } />
 
           {/* DIO (dio_view) — ODIOs list + Add-ODIO (its only write) */}
           <Route path="/dio-view/odios" element={
-            <ProtectedRoute allowedRoles={['dio_view', 'sub_dio', 'super_admin']}><DioViewOdios /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['dio', 'sub_dio', 'developer']}><DioViewOdios /></ProtectedRoute>
           } />
 
           {/* ODIO — PD Assignment. W2-ODIO builds the real page here, reusing the
               existing ProgramDirectorsPanel export from DioAssignPds.jsx. */}
           <Route path="/dio/assign-pds" element={
-            <ProtectedRoute allowedRoles={['dio', 'super_admin']}><DioPdAssignment /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['odio', 'developer']}><DioPdAssignment /></ProtectedRoute>
           } />
 
           {/* PD — Log Book sign-off */}
           <Route path="/program-director/log-book" element={
-            <ProtectedRoute allowedRoles={['program_director', 'super_admin']}><ProgramDirectorLogBook /></ProtectedRoute>
+            <ProtectedRoute allowedRoles={['program_director', 'developer']}><ProgramDirectorLogBook /></ProtectedRoute>
           } />
 
           <Route path="/profile" element={
-            <ProtectedRoute allowedRoles={['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president', 'super_admin', 'b_trainee', 'b_supervisor', 'b_program_director', 'b_secretary', 'b_dio', 'b_president', 'secretary_general', 'assistant_secretary', 'data_analyzer', 'head_cs', 'head_ad', 'data_entry', 'central_secretary', 'hoc', 'dio_view', 'sub_dio', 'sub_pd']}>
+            <ProtectedRoute allowedRoles={['trainee', 'trainer', 'program_director', 'secretary', 'odio', 'developer', 'b_trainee', 'b_trainer', 'b_program_director', 'b_secretary', 'b_odio', 'secretary_general', 'assistant_secretary', 'data_analyzer', 'head_cs', 'head_ad', 'data_entry', 'central_secretary', 'hoc', 'odio', 'sub_dio', 'sub_pd']}>
               <Profile />
             </ProtectedRoute>
           } />

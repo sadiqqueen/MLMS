@@ -234,7 +234,7 @@ async function upsertReport({ trainee, rotation, hospital, type, title, date, st
 }
 
 async function upsertEvaluation({ trainee, rotation, hospital, supervisor, specialty, evaluator, evaluatorRole, index, totalScore, finalized }) {
-  const evaluationType = evaluatorRole === 'dio' ? 'DIO Progress Review' : index % 2 ? 'Mini-CEX' : 'CBD';
+  const evaluationType = evaluatorRole === 'odio' ? 'DIO Progress Review' : index % 2 ? 'Mini-CEX' : 'CBD';
   let doc = await Evaluation.findOne({
     traineeId: trainee._id,
     rotationId: rotation._id,
@@ -254,12 +254,12 @@ async function upsertEvaluation({ trainee, rotation, hospital, supervisor, speci
     evaluatorRole,
     createdBy: evaluator._id,
     createdByRole: evaluatorRole,
-    date: addMonths(new Date(), evaluatorRole === 'dio' ? -1 : -2),
+    date: addMonths(new Date(), evaluatorRole === 'odio' ? -1 : -2),
     grade: totalScore >= 85 ? 'above' : totalScore >= 70 ? 'meets' : 'needs-improvement',
     status: finalized ? 'completed' : 'pending',
     scores: { professionalism: totalScore - 2, clinicalJudgment: totalScore, communication: totalScore + 1 },
     totalScore,
-    notes: `${evaluatorRole === 'dio' ? 'DIO' : 'Supervisor'} evaluation for ${trainee.name}.`,
+    notes: `${evaluatorRole === 'odio' ? 'DIO' : 'Supervisor'} evaluation for ${trainee.name}.`,
     comments: 'Performance reviewed against MTMS training milestones.',
     isFinalized: finalized,
     sentToTraineeAt: finalized ? new Date() : null
@@ -365,7 +365,7 @@ async function buildProfessionalData() {
 
   const superAdmin = await upsertUser('sadeq@mtms.com', {
     name: 'ENG. Sadeq Kareem',
-    role: 'super_admin',
+    role: 'developer',
     phone: '+964-770-500-0001',
     city: 'Baghdad',
     gender: 'male'
@@ -373,7 +373,7 @@ async function buildProfessionalData() {
 
   const dio = await upsertUser('dio@mtms.com', {
     name: 'Dr. Jawad Ibrahim',
-    role: 'dio',
+    role: 'odio',
     phone: '+964-770-500-0002',
     city: 'Baghdad',
     gender: 'male'
@@ -430,7 +430,7 @@ async function buildProfessionalData() {
     const specialty = specialtyByName[specialtyName];
     supervisors.push(await upsertUser(email, {
       name,
-      role: 'supervisor',
+      role: 'trainer',
       phone: `+964-770-530-${String(i + 1).padStart(4, '0')}`,
       hospitalId: hospital._id,
       hospital: hospital._id,
@@ -512,16 +512,16 @@ async function buildProfessionalData() {
     const hospital = hospitals.find(h => isObjectIdEqual(h._id, current.hospitalId));
     const specialty = specialties.find(s => isObjectIdEqual(s._id, trainee.specialtyId));
 
-    await upsertReport({ trainee, rotation: current, hospital, type: 'weekly', title: 'Weekly Clinical Reflection', date: addMonths(now, -1), status: i % 3 === 0 ? 'graded' : 'pending', score: 72 + (i % 20), grade: i % 3 === 0 ? 'Competent' : null, gradedBy: supervisor, gradedByRole: 'supervisor' });
-    await upsertReport({ trainee, rotation: current, hospital, type: 'monthly', title: 'Monthly Progress Report', date: addMonths(now, -1), status: i % 4 === 0 ? 'rejected' : 'graded', score: 70 + (i % 22), grade: i % 4 === 0 ? null : 'Competent', gradedBy: supervisor, gradedByRole: 'supervisor' });
+    await upsertReport({ trainee, rotation: current, hospital, type: 'weekly', title: 'Weekly Clinical Reflection', date: addMonths(now, -1), status: i % 3 === 0 ? 'graded' : 'pending', score: 72 + (i % 20), grade: i % 3 === 0 ? 'Competent' : null, gradedBy: supervisor, gradedByRole: 'trainer' });
+    await upsertReport({ trainee, rotation: current, hospital, type: 'monthly', title: 'Monthly Progress Report', date: addMonths(now, -1), status: i % 4 === 0 ? 'rejected' : 'graded', score: 70 + (i % 22), grade: i % 4 === 0 ? null : 'Competent', gradedBy: supervisor, gradedByRole: 'trainer' });
     if (i % 2 === 0) {
       const completedHospital = hospitals.find(h => isObjectIdEqual(h._id, completed.hospitalId));
       await upsertReport({ trainee, rotation: completed, hospital: completedHospital, type: 'final', title: 'Final Rotation Report', date: addMonths(now, -3), status: 'graded', score: 75 + (i % 18), grade: 'Pass', gradedBy: programDirectors[i % programDirectors.length], gradedByRole: 'program_director' });
     }
 
-    await upsertEvaluation({ trainee, rotation: current, hospital, supervisor, specialty, evaluator: supervisor, evaluatorRole: 'supervisor', index: i, totalScore: 70 + (i % 25), finalized: true });
+    await upsertEvaluation({ trainee, rotation: current, hospital, supervisor, specialty, evaluator: supervisor, evaluatorRole: 'trainer', index: i, totalScore: 70 + (i % 25), finalized: true });
     if (i % 3 === 0) {
-      await upsertEvaluation({ trainee, rotation: current, hospital, supervisor, specialty, evaluator: dio, evaluatorRole: 'dio', index: i, totalScore: 76 + (i % 18), finalized: true });
+      await upsertEvaluation({ trainee, rotation: current, hospital, supervisor, specialty, evaluator: dio, evaluatorRole: 'odio', index: i, totalScore: 76 + (i % 18), finalized: true });
     }
 
     if (i < 10) {

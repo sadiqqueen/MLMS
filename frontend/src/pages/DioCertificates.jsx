@@ -64,8 +64,8 @@ export default function DioCertificates() {
   const { user } = useAuth();
   // View-only oversight roles: a DIO-view (dio_view) and Sub-DIO (sub_dio) may
   // list + print certificates but never revoke/delete; a Sub-DIO additionally
-  // cannot issue. ODIO ('dio')/super_admin keep full management.
-  const canRevokeDelete = user?.role !== 'dio_view' && user?.role !== 'sub_dio';
+  // cannot issue. ODIO ('odio')/super_admin keep full management.
+  const canRevokeDelete = user?.role !== 'dio' && user?.role !== 'sub_dio';
   const canIssue = user?.role !== 'sub_dio';
   // The DIO now lists certificates from BOTH tracks (system-wide read). Revoke/
   // delete stay track-scoped on the backend, so only same-track rows expose those

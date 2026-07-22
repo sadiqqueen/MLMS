@@ -81,7 +81,7 @@ export default function RegistryCenters() {
       api.get('/api/registry/centers'),
       api.get('/api/programs'),
       api.get('/api/countries'),
-      api.get('/api/registry/users', { params: { role: 'dio_view' } }),
+      api.get('/api/registry/users', { params: { role: 'dio' } }),
       api.get('/api/registry/users', { params: { role: 'sub_dio' } }),
     ]);
     if (c.status === 'fulfilled') setCenters(c.value.data?.data || c.value.data || []);
@@ -125,7 +125,7 @@ export default function RegistryCenters() {
       { key: 'phone', label: t('phone'), type: 'text' },
       { key: 'email', label: t('email'), type: 'text' },
       { key: 'idNumber', label: t('idNumber'), type: 'text', mono: true },
-      { key: 'dioId', label: t('dio'), type: 'select', options: dioOpts },
+      { key: 'dioId', label: t('odio'), type: 'select', options: dioOpts },
       { key: 'subDioId', label: t('subDio'), type: 'select', options: subDioOpts },
       { key: 'accreditationNumber', label: t('accId'), type: 'text', mono: true },
       { key: 'accreditationGrantDate', label: t('accDate'), type: 'date' },

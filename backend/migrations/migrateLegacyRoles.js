@@ -4,10 +4,10 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 
 const ROLE_MIGRATIONS = {
-  doctor: 'supervisor',
+  doctor: 'trainer',
   student: 'trainee',
   director: 'president',
-  admin: 'super_admin',
+  admin: 'developer',
 };
 
 async function main() {

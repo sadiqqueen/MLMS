@@ -80,7 +80,7 @@ export default function ProgramDirectorProgram() {
     { label: t('country'), value: country?.name ? `${country.name}${country.code ? ` (${country.code})` : ''}` : '—' },
     { label: t('specialty'), value: p.specialtyId?.name || '—' },
     { label: t('pd'), value: p.programDirectorId?.name || '—' },
-    { label: t('dio'), value: p.trainingCenterId?.dioId?.name || '—' },
+    { label: t('odio'), value: p.trainingCenterId?.dioId?.name || '—' },
     { label: t('subPd'), value: p.subProgramDirectorId?.name || '—' },
     { label: t('capacity'), value: `${c.capacityUsed ?? 0} / ${c.yearlyCapacity ?? p.yearlyCapacity ?? 0}` },
     { label: t('duration'), value: p.durationYears ? `${p.durationYears} ${t('years')}` : '—' },

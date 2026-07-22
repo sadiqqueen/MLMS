@@ -276,7 +276,7 @@ export function SpecialtyModal({ hospital, onClose, onSaved }) {
 
 // ── Add supervisor / program director to a hospital ────────────────────────
 export function StaffModal({ role, hospital, specialties, onClose, onSaved }) {
-  const isSup = role === 'supervisor';
+  const isSup = role === 'trainer';
   const label = isSup ? 'Supervisor' : 'Program Director';
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', department: '', specialtyId: '' });
   const [errors, setErrors] = useState({});
@@ -465,7 +465,7 @@ function HospitalCard({ h, caps, onAction, onOpen, onEditCapacity }) {
         {/* Management actions */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, borderBlockStart: '1px solid var(--border)', paddingBlockStart: 12 }}>
           <button className="mt-btn--small-outline" onClick={() => onAction('specialty', h)}><IconPlus size={14} /> Specialty</button>
-          <button className="mt-btn--small-outline" onClick={() => onAction('supervisor', h)}><IconPlus size={14} /> Supervisor</button>
+          <button className="mt-btn--small-outline" onClick={() => onAction('trainer', h)}><IconPlus size={14} /> Supervisor</button>
           <button className="mt-btn--small-outline" onClick={() => onAction('pd', h)}><IconPlus size={14} /> Program Director</button>
           <button className="mt-btn--small-outline" onClick={() => onEditCapacity(h)}><IconPencil size={13} /> {capT(lang, 'editCapacity')}</button>
         </div>
@@ -522,7 +522,7 @@ export default function DioHospitals() {
 
   function handleAction(action, hospital) {
     if (action === 'hospital' || action === 'specialty') setModal({ type: action, hospital });
-    else setModal({ type: 'staff', hospital, role: action === 'supervisor' ? 'supervisor' : 'program_director' });
+    else setModal({ type: 'staff', hospital, role: action === 'trainer' ? 'trainer' : 'program_director' });
   }
 
   const filtered = hospitals.filter(h => {

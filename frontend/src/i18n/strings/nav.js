@@ -10,14 +10,14 @@
 const nav = {
   ar: {
     // super_admin
-    'nav.super_admin.dashboard':         'لوحة التحكم',
-    'nav.super_admin.users':             'المستخدمون',
-    'nav.super_admin.hospitals':         'مراكز التدريب',
-    'nav.super_admin.specialties':       'التخصصات',
-    'nav.super_admin.system':            'النظام',
-    'nav.super_admin.event_feedback':    'تقييم الفعاليات',
-    'nav.super_admin.audit_log':         'سجل التدقيق',
-    'nav.super_admin.countries':         'الدول',
+    'nav.developer.dashboard':         'لوحة التحكم',
+    'nav.developer.users':             'المستخدمون',
+    'nav.developer.hospitals':         'مراكز التدريب',
+    'nav.developer.specialties':       'التخصصات',
+    'nav.developer.system':            'النظام',
+    'nav.developer.event_feedback':    'تقييم الفعاليات',
+    'nav.developer.audit_log':         'سجل التدقيق',
+    'nav.developer.countries':         'الدول',
 
     // secretary
     'nav.secretary.trainees':            'المتدربون',
@@ -27,28 +27,28 @@ const nav = {
     'nav.secretary.research':            'الأبحاث',
 
     // dio
-    'nav.dio.dashboard':                 'لوحة التحكم',
-    'nav.dio.users':                     'المستخدمون',
-    'nav.dio.hospitals':                 'المستشفيات',
-    'nav.dio.assignments':               'التوزيع والتدويرات',
-    'nav.dio.evaluations':               'التقييمات',
-    'nav.dio.certificates':              'الشهادات',
-    'nav.dio.approvals':                 'الموافقات',
+    'nav.odio.dashboard':                 'لوحة التحكم',
+    'nav.odio.users':                     'المستخدمون',
+    'nav.odio.hospitals':                 'المستشفيات',
+    'nav.odio.assignments':               'التوزيع والتدويرات',
+    'nav.odio.evaluations':               'التقييمات',
+    'nav.odio.certificates':              'الشهادات',
+    'nav.odio.approvals':                 'الموافقات',
     // legacy keys (routes kept for deep links / super_admin)
-    'nav.dio.trainees':                  'المتدربون',
-    'nav.dio.supervisors':               'المشرفون',
-    'nav.dio.program_directors':         'مديرو البرامج',
-    'nav.dio.secretaries':               'السكرتارية',
-    'nav.dio.distributions':             'توزيع المشرفين',
-    'nav.dio.rotations':                 'التدويرات',
+    'nav.odio.trainees':                  'المتدربون',
+    'nav.odio.supervisors':               'المشرفون',
+    'nav.odio.program_directors':         'مديرو البرامج',
+    'nav.odio.secretaries':               'السكرتارية',
+    'nav.odio.distributions':             'توزيع المشرفين',
+    'nav.odio.rotations':                 'التدويرات',
 
     // supervisor
-    'nav.supervisor.trainees':           'متدربيّ',
-    'nav.supervisor.reports':            'التقارير',
-    'nav.supervisor.evaluations':        'التقييمات',
-    'nav.supervisor.logbook':            'سجل الإجراءات',
-    'nav.supervisor.research':           'الأبحاث',
-    'nav.supervisor.announcements':      'الإعلانات',
+    'nav.trainer.trainees':           'متدربيّ',
+    'nav.trainer.reports':            'التقارير',
+    'nav.trainer.evaluations':        'التقييمات',
+    'nav.trainer.logbook':            'سجل الإجراءات',
+    'nav.trainer.research':           'الأبحاث',
+    'nav.trainer.announcements':      'الإعلانات',
 
     // trainee
     'nav.trainee.timeline':              'الجدول الزمني',
@@ -59,15 +59,6 @@ const nav = {
     'nav.trainee.research':              'الأبحاث والمنشورات',
     'nav.trainee.announcements':         'الإعلانات',
     'nav.trainee.notifications':         'الإشعارات',
-
-    // president
-    'nav.president.dashboard':           'لوحة التحكم',
-    'nav.president.trainees':            'المتدربون',
-    'nav.president.supervisors':         'المشرفون',
-    'nav.president.program_directors':   'مديرو البرامج',
-    'nav.president.dios':                'مديرو التدريب',
-    'nav.president.secretaries':         'السكرتارية',
-    'nav.president.hospitals':           'المستشفيات',
 
     // program_director
     'nav.program_director.dashboard':    'لوحة التحكم',
@@ -95,12 +86,12 @@ const nav = {
     'nav.central_secretary.trainers':    'المدربون',
 
     // dio_view (DIO)
-    'nav.dio_view.dashboard':            'لوحة التحكم',
-    'nav.dio_view.centers':              'المراكز التدريبية',
-    'nav.dio_view.pds':                  'مدراء البرامج',
-    'nav.dio_view.trainees':             'المتدربون',
-    'nav.dio_view.trainers':             'المدربون',
-    'nav.dio_view.certificates':         'الشهادات',
+    'nav.dio.dashboard':            'لوحة التحكم',
+    'nav.dio.centers':              'المراكز التدريبية',
+    'nav.dio.pds':                  'مدراء البرامج',
+    'nav.dio.trainees':             'المتدربون',
+    'nav.dio.trainers':             'المدربون',
+    'nav.dio.certificates':         'الشهادات',
 
     // sub_dio (Sub-DIO)
     'nav.sub_dio.dashboard':             'لوحة التحكم',
@@ -179,9 +170,9 @@ const nav = {
     'nav.head_ad.dios':                  'DIOs',
     'nav.head_ad.pds':                   'مدراء البرامج',
     'nav.head_ad.permissions':           'الصلاحيات',
-    'nav.dio.pd_assignment':             'إسناد مدير البرنامج',
-    'nav.dio.training_centers':          'المراكز التدريبية',
-    'nav.dio_view.odios':                'ODIOs',
+    'nav.odio.pd_assignment':             'إسناد مدير البرنامج',
+    'nav.odio.training_centers':          'المراكز التدريبية',
+    'nav.dio.odios':                'ODIOs',
     'nav.sub_dio.odios':                 'ODIOs',
     'nav.program_director.log_book':     'سجل الإجراءات',
     'nav.trainee.profile':               'الملف الشخصي',
@@ -194,14 +185,14 @@ const nav = {
   },
   en: {
     // super_admin
-    'nav.super_admin.dashboard':         'Dashboard',
-    'nav.super_admin.users':             'Users',
-    'nav.super_admin.hospitals':         'Training Centers',
-    'nav.super_admin.specialties':       'Specialties',
-    'nav.super_admin.system':            'System',
-    'nav.super_admin.event_feedback':    'Event Feedback',
-    'nav.super_admin.audit_log':         'Audit Log',
-    'nav.super_admin.countries':         'Countries',
+    'nav.developer.dashboard':         'Dashboard',
+    'nav.developer.users':             'Users',
+    'nav.developer.hospitals':         'Training Centers',
+    'nav.developer.specialties':       'Specialties',
+    'nav.developer.system':            'System',
+    'nav.developer.event_feedback':    'Event Feedback',
+    'nav.developer.audit_log':         'Audit Log',
+    'nav.developer.countries':         'Countries',
 
     // secretary
     'nav.secretary.trainees':            'Trainees',
@@ -211,28 +202,28 @@ const nav = {
     'nav.secretary.research':            'Research',
 
     // dio
-    'nav.dio.dashboard':                 'Dashboard',
-    'nav.dio.users':                     'Users',
-    'nav.dio.hospitals':                 'Hospitals',
-    'nav.dio.assignments':               'Assignments',
-    'nav.dio.evaluations':               'Evaluations',
-    'nav.dio.certificates':              'Certificates',
-    'nav.dio.approvals':                 'Approvals',
+    'nav.odio.dashboard':                 'Dashboard',
+    'nav.odio.users':                     'Users',
+    'nav.odio.hospitals':                 'Hospitals',
+    'nav.odio.assignments':               'Assignments',
+    'nav.odio.evaluations':               'Evaluations',
+    'nav.odio.certificates':              'Certificates',
+    'nav.odio.approvals':                 'Approvals',
     // legacy keys (routes kept for deep links / super_admin)
-    'nav.dio.trainees':                  'Trainees',
-    'nav.dio.supervisors':               'Supervisors',
-    'nav.dio.program_directors':         'Prog.Directors',
-    'nav.dio.secretaries':               'Secretaries',
-    'nav.dio.distributions':             'Sup.Dist.',
-    'nav.dio.rotations':                 'Rotations',
+    'nav.odio.trainees':                  'Trainees',
+    'nav.odio.supervisors':               'Supervisors',
+    'nav.odio.program_directors':         'Prog.Directors',
+    'nav.odio.secretaries':               'Secretaries',
+    'nav.odio.distributions':             'Sup.Dist.',
+    'nav.odio.rotations':                 'Rotations',
 
     // supervisor
-    'nav.supervisor.trainees':           'My Trainees',
-    'nav.supervisor.reports':            'Reports',
-    'nav.supervisor.evaluations':        'Evaluations',
-    'nav.supervisor.logbook':            'Log Book',
-    'nav.supervisor.research':           'Research',
-    'nav.supervisor.announcements':      'Announcements',
+    'nav.trainer.trainees':           'My Trainees',
+    'nav.trainer.reports':            'Reports',
+    'nav.trainer.evaluations':        'Evaluations',
+    'nav.trainer.logbook':            'Log Book',
+    'nav.trainer.research':           'Research',
+    'nav.trainer.announcements':      'Announcements',
 
     // trainee
     'nav.trainee.timeline':              'Timeline',
@@ -243,15 +234,6 @@ const nav = {
     'nav.trainee.research':              'Research',
     'nav.trainee.announcements':         'Announcements',
     'nav.trainee.notifications':         'Notifications',
-
-    // president
-    'nav.president.dashboard':           'Dashboard',
-    'nav.president.trainees':            'Trainees',
-    'nav.president.supervisors':         'Supervisors',
-    'nav.president.program_directors':   'Prog.Directors',
-    'nav.president.dios':                'DIOs',
-    'nav.president.secretaries':         'Secretaries',
-    'nav.president.hospitals':           'Hospitals',
 
     // program_director
     'nav.program_director.dashboard':    'Dashboard',
@@ -279,12 +261,12 @@ const nav = {
     'nav.central_secretary.trainers':    'Trainers',
 
     // dio_view (DIO)
-    'nav.dio_view.dashboard':            'Dashboard',
-    'nav.dio_view.centers':              'Training Centers',
-    'nav.dio_view.pds':                  'PDs',
-    'nav.dio_view.trainees':             'Trainees',
-    'nav.dio_view.trainers':             'Trainers',
-    'nav.dio_view.certificates':         'Certificates',
+    'nav.dio.dashboard':            'Dashboard',
+    'nav.dio.centers':              'Training Centers',
+    'nav.dio.pds':                  'PDs',
+    'nav.dio.trainees':             'Trainees',
+    'nav.dio.trainers':             'Trainers',
+    'nav.dio.certificates':         'Certificates',
 
     // sub_dio (Sub-DIO)
     'nav.sub_dio.dashboard':             'Dashboard',
@@ -363,9 +345,9 @@ const nav = {
     'nav.head_ad.dios':                  'DIOs',
     'nav.head_ad.pds':                   'PDs',
     'nav.head_ad.permissions':           'Permissions',
-    'nav.dio.pd_assignment':             'PD Assignment',
-    'nav.dio.training_centers':          'Training Centers',
-    'nav.dio_view.odios':                'ODIOs',
+    'nav.odio.pd_assignment':             'PD Assignment',
+    'nav.odio.training_centers':          'Training Centers',
+    'nav.dio.odios':                'ODIOs',
     'nav.sub_dio.odios':                 'ODIOs',
     'nav.program_director.log_book':     'Log Book',
     'nav.trainee.profile':               'Profile',

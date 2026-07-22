@@ -7,17 +7,17 @@
 // their routing/nav is prefixed.
 
 export const BASIC_ROLES = [
-  'b_trainee', 'b_supervisor', 'b_program_director', 'b_secretary', 'b_dio', 'b_president',
+  'b_trainee', 'b_trainer', 'b_program_director', 'b_secretary', 'b_odio',
 ];
 
 // Advanced roles that have a Basic counterpart.
-const MIRRORED = ['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president'];
+const MIRRORED = ['trainee', 'trainer', 'program_director', 'secretary', 'odio'];
 
 export function isBasicRole(role) {
   return typeof role === 'string' && role.startsWith('b_');
 }
 
-// 'b_supervisor' → 'supervisor'  (Advanced roles pass through unchanged).
+// 'b_trainer' → 'trainer'  (Advanced roles pass through unchanged).
 export function baseRole(role) {
   return isBasicRole(role) ? role.slice(2) : role;
 }
@@ -35,7 +35,7 @@ export function basePathForRole(role) {
 // One source of truth for role → { en, ar }. Basic (b_*) roles are labelled by
 // prefixing "Basic "/"أساسي " to their Advanced counterpart via roleLabel().
 export const ROLE_LABELS = {
-  super_admin:         { en: 'Developer',            ar: 'مطور النظام' },
+  developer:           { en: 'Developer',            ar: 'مطور النظام' },
   secretary_general:   { en: 'Secretary General',    ar: 'الأمين العام' },
   assistant_secretary: { en: 'Assistant Secretary',  ar: 'مساعد الأمين العام' },
   data_analyzer:       { en: 'Data Analyzer',        ar: 'محلل البيانات' },
@@ -44,15 +44,14 @@ export const ROLE_LABELS = {
   data_entry:          { en: 'Data Entry',           ar: 'مدخل البيانات' },
   central_secretary:   { en: 'Central Secretary',    ar: 'السكرتير المركزي' },
   hoc:                 { en: 'HOC',                  ar: 'HOC' },
-  dio_view:            { en: 'DIO',                  ar: 'DIO' },
-  dio:                 { en: 'ODIO',                 ar: 'ODIO' },
+  dio:                 { en: 'DIO',                  ar: 'DIO' },
+  odio:                { en: 'ODIO',                 ar: 'ODIO' },
   sub_dio:             { en: 'Sub-DIO',              ar: 'Sub-DIO' },
   program_director:    { en: 'Program Director',     ar: 'مدير البرنامج' },
   sub_pd:              { en: 'Sub-PD',               ar: 'نائب مدير البرنامج' },
-  supervisor:          { en: 'Trainer',             ar: 'مدرب' },
+  trainer:             { en: 'Trainer',             ar: 'مدرب' },
   trainee:             { en: 'Trainee',             ar: 'متدرب' },
   secretary:           { en: 'Secretary',           ar: 'سكرتير' },
-  president:           { en: 'President',            ar: 'الرئيس' },
   asg1:                { en: 'ASG.1',               ar: 'ASG.1' },
   asg2:                { en: 'ASG.2',               ar: 'ASG.2' },
 };
@@ -69,22 +68,21 @@ export function roleLabel(role, lang = 'en') {
 
 // Roles that cannot mutate their own profile/self-service (mirrors the backend
 // read-only gate on /api/auth/me + /upload-photo).
-export const READ_ONLY_ROLES = ['president', 'dio_view', 'sub_dio', 'sub_pd', 'secretary_general', 'assistant_secretary'];
+export const READ_ONLY_ROLES = ['dio', 'sub_dio', 'sub_pd', 'secretary_general', 'assistant_secretary'];
 
 // ── Landing route per role ───────────────────────────────────────────────────
 const ADVANCED_HOME = {
-  super_admin:      '/admin/dashboard',
+  developer:        '/admin/dashboard',
   secretary:        '/secretary/trainees',
-  dio:              '/dio/dashboard',
-  supervisor:       '/supervisor/trainees',
+  odio:             '/dio/dashboard',
+  trainer:          '/supervisor/trainees',
   trainee:          '/timeline',
-  president:        '/president/dashboard',
   program_director: '/program-director/dashboard',
   asg1:             '/consultant-memo',
   asg2:             '/consultant-memo',
   // v2 roles — final homes.
   hoc:                 '/hoc/dashboard',
-  dio_view:            '/dio-view/dashboard',
+  dio:                 '/dio-view/dashboard',
   secretary_general:   '/sg/dashboard',
   assistant_secretary: '/sg/dashboard',
   data_analyzer:       '/analyzer/dashboard',
@@ -106,9 +104,9 @@ export const ROLE_HOME = {
 // shared dictionary as t("nav.<baseRole>.<key>"), so Basic roles reuse the
 // Advanced translations. Paths for Basic roles are prefixed with /basic.
 const ADVANCED_LINKS = {
-  // Developer (super_admin) — design shows 5, we keep Hospitals + Event Feedback
+  // Developer — design shows 5, we keep Hospitals + Event Feedback
   // (no-feature-removal rule, RULINGS §B14). Specialties wires AdminSpecialties.
-  super_admin: [
+  developer: [
     { to: '/admin/dashboard',      key: 'dashboard',      label: 'Dashboard',      ic: 'grid'     },
     { to: '/admin/users',          key: 'users',          label: 'Users',          ic: 'users'    },
     { to: '/admin/specialties',    key: 'specialties',    label: 'Specialties',    ic: 'book'     },
@@ -124,9 +122,9 @@ const ADVANCED_LINKS = {
     { to: '/secretary/hospitals',   key: 'hospitals',   label: 'Hospitals'   },
     { to: '/secretary/research',    key: 'research',    label: 'Research'    },
   ],
-  // ODIO (app role `dio`) — design nav (dashboards.md §4.7). Existing routes are
+  // ODIO (app role `odio`) — design nav (dashboards.md §4.7). Existing routes are
   // reused/restyled by wave 2; /dio/users etc. stay routed (no feature removal).
-  dio: [
+  odio: [
     { to: '/dio/dashboard',    key: 'dashboard',        label: 'Dashboard',        ic: 'grid'     },
     { to: '/dio/approvals',    key: 'approvals',        label: 'Approvals',        ic: 'check'    },
     { to: '/dio/assignments',  key: 'assignments',      label: 'Assignments',      ic: 'users'    },
@@ -145,7 +143,7 @@ const ADVANCED_LINKS = {
   // here would trap any existing supervisor login in a redirect loop, so this
   // block is kept as-is (old shell). Only the trainer *entity* links were removed
   // from the redesigned roles (CS/DIO). Confirm which behavior you want.
-  supervisor: [
+  trainer: [
     { to: '/supervisor/trainees',    key: 'trainees',    label: 'My Trainees' },
     { to: '/supervisor/reports',     key: 'reports',     label: 'Reports'     },
     { to: '/supervisor/evaluations', key: 'evaluations', label: 'Evaluations' },
@@ -165,15 +163,6 @@ const ADVANCED_LINKS = {
     { to: '/research',             key: 'research',      label: 'Research',                ic: 'flask' },
     { to: '/notifications',        key: 'notifications', label: 'Notifications',           ic: 'bell'  },
     { to: '/profile',              key: 'profile',       label: 'Profile',                 ic: 'users', advancedOnly: true },
-  ],
-  president: [
-    { to: '/president/dashboard',         key: 'dashboard',         label: 'Dashboard'      },
-    { to: '/president/trainees',          key: 'trainees',          label: 'Trainees'       },
-    { to: '/president/supervisors',       key: 'supervisors',       label: 'Supervisors'    },
-    { to: '/president/program-directors', key: 'program_directors', label: 'Prog.Directors' },
-    { to: '/president/dios',              key: 'dios',              label: 'DIOs'           },
-    { to: '/president/secretaries',       key: 'secretaries',       label: 'Secretaries'    },
-    { to: '/president/hospitals',         key: 'hospitals',         label: 'Hospitals'      },
   ],
   // PD — design swaps Supervisors → Log Book (RULINGS §D20, dashboards.md §4.9).
   // Supervisors route stays in App.jsx; only the nav link is retired here.
@@ -256,10 +245,10 @@ const ADVANCED_LINKS = {
     { to: '/hoc/programs',  key: 'programs',  label: 'Programs',         ic: 'layers'   },
     { to: '/hoc/trainees',  key: 'trainees',  label: 'Trainees',         ic: 'grad'     },
   ],
-  // DIO (dio_view) + Sub-DIO — design nav (dashboards.md §4.8): adds ODIOs, drops
+  // DIO (dio) + Sub-DIO — design nav (dashboards.md §4.8): adds ODIOs, drops
   // Trainers (RULINGS §D21) and Certificates from the nav. Both routes stay in
-  // App.jsx (no feature removal). dio_view can Add ODIO; sub_dio is read-only.
-  dio_view: [
+  // App.jsx (no feature removal). dio can Add ODIO; sub_dio is read-only.
+  dio: [
     { to: '/dio-view/dashboard',         key: 'dashboard', label: 'Dashboard',        ic: 'grid'     },
     { to: '/dio-view/centers',           key: 'centers',   label: 'Training Centers', ic: 'building' },
     { to: '/dio-view/odios',             key: 'odios',     label: 'ODIOs',            ic: 'brief'    },

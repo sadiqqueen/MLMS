@@ -43,7 +43,7 @@ const upload = multer({
   }
 });
 
-const PUBLIC_VIEW_ROLES = ['program_director', 'dio', 'president'];
+const PUBLIC_VIEW_ROLES = ['program_director', 'odio'];
 
 // Trainees assigned to a supervisor (direct link + research-supervisor link +
 // rotations + legacy distributions).
@@ -183,18 +183,18 @@ router.delete('/:id', auth, allowRoles('trainee'), async (req, res) => {
 //   program_director / dio / president  → approved + public publications only
 router.get('/trainee/:traineeId',
   auth,
-  allowRoles('supervisor', 'program_director', 'dio', 'president', 'super_admin'),
+  allowRoles('trainer', 'program_director', 'odio', 'developer'),
   async (req, res) => {
     try {
       const traineeId = req.params.traineeId;
       let filter;
-      if (req.user.role === 'supervisor') {
+      if (req.user.role === 'trainer') {
         const assigned = await getAssignedTraineeIds(req.user._id);
         if (!assigned.has(traineeId.toString())) {
           return res.status(403).json({ message: 'Access denied' });
         }
         filter = { trainee: traineeId };
-      } else if (req.user.role === 'super_admin') {
+      } else if (req.user.role === 'developer') {
         filter = { trainee: traineeId };
       } else {
         // PD / DIO / president → only public publications
@@ -211,7 +211,7 @@ router.get('/trainee/:traineeId',
 // ── APPROVAL PIPELINE (supervisor sign → secretary forward → DIO publish) ─────
 
 async function ensureSupervisorCanReview(req, doc) {
-  if (req.user.role === 'super_admin') return true;
+  if (req.user.role === 'developer') return true;
   if (doc.supervisor && doc.supervisor.toString() === req.user._id.toString()) return true;
   const assigned = await getAssignedTraineeIds(req.user._id);
   return assigned.has(doc.trainee.toString());
@@ -237,7 +237,7 @@ async function notifySecretariesForTrainee(traineeId, track, message) {
 // Notify every active DIO of the track.
 async function notifyDios(track, message) {
   const dios = await User.find({
-    role: coerceRoleToTrack('dio', track),
+    role: coerceRoleToTrack('odio', track),
     isActive: { $ne: false }
   }).select('_id');
   await Promise.all(dios.map(d =>
@@ -245,18 +245,18 @@ async function notifyDios(track, message) {
 }
 
 // GET /api/research/queue — the pending items for the caller's stage.
-router.get('/queue', auth, allowRoles('supervisor', 'secretary', 'dio', 'super_admin'), async (req, res) => {
+router.get('/queue', auth, allowRoles('trainer', 'secretary', 'odio', 'developer'), async (req, res) => {
   try {
     const role = req.user.role;
     let filter;
-    if (role === 'supervisor') {
+    if (role === 'trainer') {
       const assigned = await getAssignedTraineeIds(req.user._id);
       filter = { status: 'pending', $or: [{ supervisor: req.user._id }, { trainee: { $in: [...assigned] } }] };
     } else if (role === 'secretary') {
       if (!req.user.specialtyId) return res.json({ success: true, data: [] });
       const ids = (await User.find({ role: coerceRoleToTrack('trainee', req.track), specialtyId: req.user.specialtyId }).select('_id')).map(u => u._id);
       filter = { status: 'supervisor_approved', trainee: { $in: ids } };
-    } else if (role === 'dio') {
+    } else if (role === 'odio') {
       filter = { status: 'forwarded_dio', track: req.track };
     } else { // super_admin
       filter = { status: { $in: ['pending', 'supervisor_approved', 'forwarded_dio'] } };
@@ -272,10 +272,10 @@ router.get('/queue', auth, allowRoles('supervisor', 'secretary', 'dio', 'super_a
 // GET /api/research/supervisor — ALL research for the supervisor's trainees,
 // every status (for the dedicated "see & sign" page). Pending items are the ones
 // the supervisor still needs to sign.
-router.get('/supervisor', auth, allowRoles('supervisor', 'super_admin'), async (req, res) => {
+router.get('/supervisor', auth, allowRoles('trainer', 'developer'), async (req, res) => {
   try {
     let filter;
-    if (req.user.role === 'super_admin') {
+    if (req.user.role === 'developer') {
       filter = {};
     } else {
       const assigned = await getAssignedTraineeIds(req.user._id);
@@ -290,7 +290,7 @@ router.get('/supervisor', auth, allowRoles('supervisor', 'super_admin'), async (
 });
 
 // PATCH /api/research/:id/approve — research supervisor approves AND signs
-router.patch('/:id/approve', auth, allowRoles('supervisor', 'super_admin'), async (req, res) => {
+router.patch('/:id/approve', auth, allowRoles('trainer', 'developer'), async (req, res) => {
   try {
     const doc = await Research.findById(req.params.id);
     if (!doc) return res.status(404).json({ message: 'Not found' });
@@ -369,14 +369,14 @@ router.patch('/:id/forward', auth, allowRoles('secretary'), async (req, res) => 
 });
 
 // PATCH /api/research/:id/final-approve — DIO publishes the research
-router.patch('/:id/final-approve', auth, allowRoles('dio', 'super_admin'), async (req, res) => {
+router.patch('/:id/final-approve', auth, allowRoles('odio', 'developer'), async (req, res) => {
   try {
     const doc = await Research.findById(req.params.id);
     if (!doc) return res.status(404).json({ message: 'Not found' });
     if (doc.status !== 'forwarded_dio') {
       return res.status(400).json({ message: 'This research is not awaiting final approval' });
     }
-    if (req.user.role === 'dio' && doc.track !== req.track) {
+    if (req.user.role === 'odio' && doc.track !== req.track) {
       return res.status(403).json({ message: 'This research belongs to a different track' });
     }
     doc.status          = 'approved';
@@ -404,26 +404,26 @@ router.patch('/:id/final-approve', auth, allowRoles('dio', 'super_admin'), async
 });
 
 // PATCH /api/research/:id/reject — stage-aware rejection by the current owner
-router.patch('/:id/reject', auth, allowRoles('supervisor', 'secretary', 'dio', 'super_admin'), async (req, res) => {
+router.patch('/:id/reject', auth, allowRoles('trainer', 'secretary', 'odio', 'developer'), async (req, res) => {
   try {
     const doc = await Research.findById(req.params.id);
     if (!doc) return res.status(404).json({ message: 'Not found' });
     const role = req.user.role;
     let stage = null;
 
-    if (role === 'super_admin') {
-      if (doc.status === 'pending') stage = 'supervisor';
+    if (role === 'developer') {
+      if (doc.status === 'pending') stage = 'trainer';
       else if (doc.status === 'supervisor_approved') stage = 'secretary';
-      else if (doc.status === 'forwarded_dio') stage = 'dio';
-    } else if (role === 'supervisor') {
-      if (doc.status === 'pending' && await ensureSupervisorCanReview(req, doc)) stage = 'supervisor';
+      else if (doc.status === 'forwarded_dio') stage = 'odio';
+    } else if (role === 'trainer') {
+      if (doc.status === 'pending' && await ensureSupervisorCanReview(req, doc)) stage = 'trainer';
     } else if (role === 'secretary') {
       if (doc.status === 'supervisor_approved') {
         const trainee = await User.findById(doc.trainee).select('specialtyId');
         if (trainee && req.user.specialtyId && String(trainee.specialtyId) === String(req.user.specialtyId)) stage = 'secretary';
       }
-    } else if (role === 'dio') {
-      if (doc.status === 'forwarded_dio' && doc.track === req.track) stage = 'dio';
+    } else if (role === 'odio') {
+      if (doc.status === 'forwarded_dio' && doc.track === req.track) stage = 'odio';
     }
 
     if (!stage) return res.status(403).json({ message: 'You cannot reject this research at its current stage' });
@@ -431,10 +431,10 @@ router.patch('/:id/reject', auth, allowRoles('supervisor', 'secretary', 'dio', '
     doc.status          = 'rejected';
     doc.rejectedAtStage = stage;
     doc.reviewNote      = req.body.note ? String(req.body.note).trim() : '';
-    if (stage === 'supervisor') { doc.reviewedBy = req.user._id; doc.reviewedAt = new Date(); }
+    if (stage === 'trainer') { doc.reviewedBy = req.user._id; doc.reviewedAt = new Date(); }
     await doc.save();
 
-    const who = stage === 'supervisor' ? 'your supervisor' : stage === 'secretary' ? 'the secretary' : 'the DIO';
+    const who = stage === 'trainer' ? 'your supervisor' : stage === 'secretary' ? 'the secretary' : 'the DIO';
     await Notification.create({
       user: doc.trainee,
       message: `Your research "${doc.title}" was not approved by ${who}.`,

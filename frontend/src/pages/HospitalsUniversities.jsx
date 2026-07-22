@@ -132,8 +132,8 @@ function ConfirmDelete({ name, onConfirm, onCancel }) {
 export default function HospitalsUniversities() {
   const { user: me } = useAuth();
   const { toasts, showToast } = useMtToast();
-  const isAdmin = me?.role === 'super_admin';
-  const canManage = ['super_admin', 'dio'].includes(me?.role);
+  const isAdmin = me?.role === 'developer';
+  const canManage = ['developer', 'odio'].includes(me?.role);
 
   const [tab, setTab] = useState(0);
   const [hospitals, setHospitals] = useState([]);

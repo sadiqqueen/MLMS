@@ -10,8 +10,8 @@ const User           = require('../models/User');
 
 // Create is direct for the clerk and Developer; edit/delete are Developer
 // (super_admin) only — there is no approval-gated country edit/delete flow.
-const WRITE_ROLES = ['data_entry', 'super_admin'];
-const EDIT_ROLES  = ['super_admin'];
+const WRITE_ROLES = ['data_entry', 'developer'];
+const EDIT_ROLES  = ['developer'];
 
 // GET /api/countries — any authenticated user (dropdown source): active only.
 // super_admin may pass ?includeInactive=true to also see deactivated rows (for
@@ -19,7 +19,7 @@ const EDIT_ROLES  = ['super_admin'];
 // dropdown consumers always get active-only.
 router.get('/', auth, async (req, res) => {
   try {
-    const includeInactive = req.query.includeInactive === 'true' && req.user.role === 'super_admin';
+    const includeInactive = req.query.includeInactive === 'true' && req.user.role === 'developer';
     const filter = includeInactive ? {} : { isActive: { $ne: false } };
     const countries = await Country.find(filter).sort({ order: 1, name: 1 });
     res.json({ success: true, data: countries });

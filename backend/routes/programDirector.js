@@ -104,7 +104,7 @@ router.get('/supervisors', auth, allowRoles(...PD_READ), async (req, res) => {
     if (!info) return;
 
     const supervisors = await User.find({
-      role:     coerceRoleToTrack('supervisor', req.track),
+      role:     coerceRoleToTrack('trainer', req.track),
       isActive: { $ne: false },
       ...specialtyUserMatch(info)
     })
@@ -220,7 +220,7 @@ router.get('/stats', auth, allowRoles(...PD_READ), async (req, res) => {
     const specialtyTraineeIds = specialtyTrainees.map(t => t._id);
 
     const [trainers, pendingFinalReports, evaluationsAuthored, capacityUsed] = await Promise.all([
-      User.countDocuments({ role: coerceRoleToTrack('supervisor', req.track), isActive: { $ne: false }, programId: program._id }),
+      User.countDocuments({ role: coerceRoleToTrack('trainer', req.track), isActive: { $ne: false }, programId: program._id }),
       Report.countDocuments({ student: { $in: specialtyTraineeIds }, type: 'final', status: 'pending' }),
       Evaluation.countDocuments({ $or: [{ evaluatorId: pdId }, { doctor: pdId }, { createdBy: pdId }] }),
       capacityUsedFor(program._id),
@@ -414,7 +414,7 @@ router.post('/supervisors/:id/evaluations', auth, allowRoles(...PD), async (req,
 
     const supervisor = await User.findOne({
       _id: req.params.id,
-      role: coerceRoleToTrack('supervisor', req.track),
+      role: coerceRoleToTrack('trainer', req.track),
       isActive: { $ne: false },
       ...specialtyUserMatch(info)
     })

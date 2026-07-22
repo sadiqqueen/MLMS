@@ -23,7 +23,7 @@ export default function SupervisorEvaluations() {
   const [selected,   setSelected  ] = useState(null);
   const [toasts,     setToasts    ] = useState([]);
 
-  const isReadOnly = me?.role === 'dio';
+  const isReadOnly = me?.role === 'odio';
 
   function showToast(message, type = 'success') {
     const id = Date.now();

@@ -35,23 +35,23 @@ const SELF_EDITABLE = ['name', 'phone', 'city', 'gender', 'photoUrl'];
 const ADMIN_EDITABLE = ['name', 'phone', 'city', 'gender', 'photoUrl',
                         'isActive', 'department', 'specialty', 'year',
                         'studentId', 'hospitalId', 'specialtyId', 'supervisorId',
-                        'hospital', 'supervisor',
+                        'hospital', 'trainer',
                         // HOC / central-secretary Scientific Council assignment.
                         'councilId'];
 const ALLOWED_CREATE_FIELDS = ['name', 'email', 'password', 'role', 'phone',
   'gender', 'city', 'department', 'specialty', 'year', 'studentId',
   'enrolledSince', 'hospitalId', 'specialtyId', 'supervisorId',
-  'hospital', 'supervisor'];
+  'hospital', 'trainer'];
 const ROLE_ALLOWED = {
   secretary:        ['trainee'],
-  dio:              ['trainee', 'supervisor', 'program_director', 'secretary'],
+  dio:              ['trainee', 'trainer', 'program_director', 'secretary'],
   program_director: [],
   president:        [],
   super_admin:      null
 };
-const READ_STAFF = ['secretary', 'dio', 'program_director', 'president', 'super_admin'];
-const WRITE_STAFF = ['secretary', 'dio', 'program_director', 'super_admin'];
-const PASSWORD_RESET_ROLES = ['super_admin'];
+const READ_STAFF = ['secretary', 'odio', 'program_director', 'developer'];
+const WRITE_STAFF = ['secretary', 'odio', 'program_director', 'developer'];
+const PASSWORD_RESET_ROLES = ['developer'];
 const ROLE_RANK = {
   trainee: 10,
   supervisor: 30,
@@ -89,14 +89,14 @@ const HIDDEN_FROM_NON_ADMIN = ['asg1', 'asg2', 'secretary_general', 'assistant_s
 // is developer-managed only. Deny-by-default: a bare ROLE_RANK comparison fails
 // open for every newly-added role, so gate writes on this explicit allowlist.
 const NON_ADMIN_WRITABLE_ROLES =
-  ['trainee', 'supervisor', 'secretary', 'program_director', 'sub_pd', 'sub_dio', 'dio'];
+  ['trainee', 'trainer', 'secretary', 'program_director', 'sub_pd', 'sub_dio', 'odio'];
 
 // Block a non-super_admin from writing a registry/oversight account even when
 // hasHigherRole would allow it. Hidden oversight accounts get 404 (mirror the
 // read guards — never confirm they exist); visible registry roles get 403.
 // Returns true when blocked (response already sent).
 function blockProtectedRoleWrite(req, res, target) {
-  if (req.user.role === 'super_admin') return false;
+  if (req.user.role === 'developer') return false;
   if (NON_ADMIN_WRITABLE_ROLES.includes(baseRole(target.role))) return false;
   if (HIDDEN_FROM_NON_ADMIN.includes(target.role)) {
     res.status(404).json({ message: 'User not found' });
@@ -111,7 +111,7 @@ function blockProtectedRoleWrite(req, res, target) {
 // trainees, supervisors, program directors, secretaries and the president
 // (view-only) — but never the other track, other DIOs, super_admins or ASG.
 function dioVisibleRoles(req) {
-  return ['trainee', 'supervisor', 'program_director', 'secretary', 'president']
+  return ['trainee', 'trainer', 'program_director', 'secretary']
     .map(r => coerceRoleToTrack(r, req.track));
 }
 
@@ -121,14 +121,14 @@ function dioVisibleRoles(req) {
 // peer Developers must be manageable (deactivate/lock/edit/reset); self-actions
 // stay blocked by the per-route self guards.
 function hasHigherRole(actorRole, targetRole) {
-  if (baseRole(actorRole) === 'super_admin') return true;
+  if (baseRole(actorRole) === 'developer') return true;
   return (ROLE_RANK[baseRole(actorRole)] || 0) > (ROLE_RANK[baseRole(targetRole)] || 0);
 }
 
 // Non-super_admin write-staff may only act on users in their OWN track. Returns
 // true when the caller is blocked (and this fn has sent the 404 response).
 function blockCrossTrackWrite(req, res, target) {
-  if (req.user.role === 'super_admin') return false;
+  if (req.user.role === 'developer') return false;
   if (trackForRole(target.role) !== req.track) {
     res.status(404).json({ message: 'User not found' });
     return true;
@@ -143,9 +143,9 @@ function blockCrossTrackWrite(req, res, target) {
 router.get('/', auth, allowRoles(...READ_STAFF), async (req, res) => {
   try {
     let filter;
-    if (req.user.role === 'super_admin') {
+    if (req.user.role === 'developer') {
       filter = {};
-    } else if (req.user.role === 'dio') {
+    } else if (req.user.role === 'odio') {
       filter = { role: { $in: dioVisibleRoles(req) } };
     } else {
       filter = { role: { $nin: HIDDEN_FROM_NON_ADMIN } };
@@ -163,11 +163,11 @@ router.get('/', auth, allowRoles(...READ_STAFF), async (req, res) => {
 
 // GET /api/users/doctors — only doctors (for dropdowns)
 // GET /api/users/supervisors — for dropdowns
-router.get('/supervisors', auth, allowRoles('super_admin', 'secretary', 'dio', 'president'), async (req, res) => {
+router.get('/supervisors', auth, allowRoles('developer', 'secretary', 'odio'), async (req, res) => {
   try {
-    const filter = { role: { $in: ['supervisor', 'b_supervisor'] }, isActive: { $ne: false } };
-    if (req.user.role === 'dio') {
-      filter.role = coerceRoleToTrack('supervisor', req.track); // this DIO's track only
+    const filter = { role: { $in: ['trainer', 'b_trainer'] }, isActive: { $ne: false } };
+    if (req.user.role === 'odio') {
+      filter.role = coerceRoleToTrack('trainer', req.track); // this DIO's track only
     }
     const supervisors = await User.find(filter)
       .select('name email specialty specialtyId hospitalId department initials photoUrl track')
@@ -181,10 +181,10 @@ router.get('/supervisors', auth, allowRoles('super_admin', 'secretary', 'dio', '
 });
 
 // GET /api/users/program-directors — for dropdowns
-router.get('/program-directors', auth, allowRoles('super_admin', 'secretary', 'dio', 'president'), async (req, res) => {
+router.get('/program-directors', auth, allowRoles('developer', 'secretary', 'odio'), async (req, res) => {
   try {
     const filter = { role: 'program_director', isActive: { $ne: false } };
-    if (req.user.role === 'dio') {
+    if (req.user.role === 'odio') {
       filter.role = coerceRoleToTrack('program_director', req.track); // this DIO's track only
     }
     const pds = await User.find(filter)
@@ -199,10 +199,10 @@ router.get('/program-directors', auth, allowRoles('super_admin', 'secretary', 'd
 });
 
 // GET /api/users/students — kept for backward compat (returns trainees)
-router.get('/students', auth, allowRoles('supervisor', 'program_director', 'secretary', 'dio', 'super_admin', 'president'), async (req, res) => {
+router.get('/students', auth, allowRoles('trainer', 'program_director', 'secretary', 'odio', 'developer'), async (req, res) => {
   try {
     const filter = { role: 'trainee', isActive: { $ne: false } };
-    if (req.user.role === 'dio') {
+    if (req.user.role === 'odio') {
       filter.role = coerceRoleToTrack('trainee', req.track); // this DIO's track only
     }
     const students = await User.find(filter)
@@ -225,7 +225,7 @@ router.get('/:id', auth, async (req, res) => {
     if (!isSelf && !isStaff) return res.status(403).json({ success: false, message: 'Access denied' });
 
     // ASG accounts are hidden from everyone except super_admin (and themselves)
-    if (!isSelf && req.user.role !== 'super_admin') {
+    if (!isSelf && req.user.role !== 'developer') {
       const target = await User.findById(req.params.id).select('role');
       if (target && HIDDEN_FROM_NON_ADMIN.includes(target.role)) {
         return res.status(404).json({ success: false, message: 'User not found' });
@@ -233,7 +233,7 @@ router.get('/:id', auth, async (req, res) => {
     }
 
     // A DIO may only view (non-self) users within its own training track.
-    if (!isSelf && req.user.role === 'dio') {
+    if (!isSelf && req.user.role === 'odio') {
       const target = await User.findById(req.params.id).select('role');
       if (!target || !dioVisibleRoles(req).includes(target.role)) {
         return res.status(404).json({ success: false, message: 'User not found' });
@@ -291,9 +291,6 @@ router.post('/', auth, allowRoles(...WRITE_STAFF), upload.single('photo'), async
 async function updateUser(req, res) {
   try {
     const isSelf  = req.user._id.toString() === req.params.id;
-    if (req.user.role === 'president') {
-      return res.status(403).json({ message: 'President is read-only' });
-    }
     const isAdmin = WRITE_STAFF.includes(req.user.role);
     if (!isSelf && !isAdmin) return res.status(403).json({ message: 'Access denied' });
     const target = await User.findById(req.params.id).select('role isActive');
@@ -308,7 +305,7 @@ async function updateUser(req, res) {
     const fields = {};
     allowedKeys.forEach(k => { if (req.body[k] !== undefined) fields[k] = req.body[k]; });
     // Council assignment (hoc / central_secretary scope) is developer-only.
-    if (!isSelf && req.user.role !== 'super_admin') delete fields.councilId;
+    if (!isSelf && req.user.role !== 'developer') delete fields.councilId;
     if (req.file) fields.photoUrl = `/uploads/photos/${req.file.filename}`;
 
     // One Program Director per specialty (by name, within track).

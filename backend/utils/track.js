@@ -1,18 +1,19 @@
 // Shared "track" helpers. The system now has two parallel training portals:
-//   • Advanced (the original) — roles: trainee, supervisor, program_director,
-//     secretary, dio, president, …
-//   • Basic — the same roles prefixed with `b_` (b_trainee, b_supervisor, …).
+//   • Advanced (the original) — roles: trainee, trainer, program_director,
+//     secretary, odio, …
+//   • Basic — the same roles prefixed with `b_` (b_trainee, b_trainer, …).
 //
 // A role starting with `b_` belongs to the Basic track; everything else
 // (including all legacy data with no `track` field) is Advanced.
+// NOTE: keep this list identical to MIRRORED in frontend/src/config/roles.js.
 
-const MIRRORED = ['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president'];
+const MIRRORED = ['trainee', 'trainer', 'program_director', 'secretary', 'odio'];
 
 function isBasicRole(role) {
   return typeof role === 'string' && role.startsWith('b_');
 }
 
-// 'b_supervisor' → 'supervisor'  (Advanced roles pass through unchanged).
+// 'b_trainer' → 'trainer'  (Advanced roles pass through unchanged).
 function baseRole(role) {
   return isBasicRole(role) ? role.slice(2) : role;
 }

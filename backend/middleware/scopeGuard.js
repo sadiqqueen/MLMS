@@ -14,7 +14,7 @@ module.exports = function scopeGuard() {
       case 'trainee':
         req.scope = { traineeId: _id };
         break;
-      case 'supervisor':
+      case 'trainer':
         req.scope = { supervisorId: _id };
         break;
       case 'program_director':
@@ -37,13 +37,10 @@ module.exports = function scopeGuard() {
       case 'central_secretary':
         req.scope = { councilId, secretaryType };
         break;
-      case 'dio':
+      case 'odio':
         req.scope = { hospitalId: effectiveHospital };
         break;
-      case 'president':
-        req.scope = { hospitalId: effectiveHospital };
-        break;
-      case 'super_admin':
+      case 'developer':
         req.scope = {}; // sees everything
         break;
       default:

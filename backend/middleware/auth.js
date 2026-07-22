@@ -3,6 +3,11 @@ const jwt  = require('jsonwebtoken');
 const User = require('../models/User');
 const { baseRole, trackForRole } = require('../utils/track');
 
+// Retired roles: the accounts still exist (left as-is by request) but the role
+// was removed from the app, so they can no longer authenticate. Checked on the
+// RAW role before track normalisation so the b_ variant is caught too.
+const RETIRED_ROLES = ['president', 'b_president'];
+
 // Attach the caller's training track and normalise their role to the base
 // (Advanced) role. Basic-portal roles (b_*) then behave exactly like their
 // Advanced counterparts in every downstream allowRoles / role check, while
@@ -35,6 +40,7 @@ module.exports = async (req, res, next) => {
         const mins = Math.ceil((user.lockUntil - new Date()) / 60000);
         return res.status(423).json({ message: `Account locked. Try again in ${mins} minute(s).` });
       }
+      if (RETIRED_ROLES.includes(user.role)) return res.status(403).json({ message: 'This role has been retired' });
       attachTrack(req, user);
       return next();
     } catch (err) {
@@ -66,6 +72,7 @@ module.exports = async (req, res, next) => {
     if (!user) return res.status(401).json({ message: 'User not found' });
     if (user.isActive === false) return res.status(403).json({ message: 'Account deactivated' });
     if (user.locked === true) return res.status(423).json({ message: 'Account locked. Contact an administrator.' });
+    if (RETIRED_ROLES.includes(user.role)) return res.status(403).json({ message: 'This role has been retired' });
 
     // Issue new access token
     const newAccessToken = jwt.sign(

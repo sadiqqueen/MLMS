@@ -22,12 +22,12 @@ export default {
 
     // roles — canonical role display names
     'common.role.trainee': 'متدرب',
-    'common.role.supervisor': 'مشرف',
+    'common.role.trainer': 'مدرب',
     'common.role.program_director': 'مدير برنامج',
     'common.role.secretary': 'سكرتير',
-    'common.role.dio': 'مدير التعليم',
-    'common.role.president': 'رئيس',
-    'common.role.super_admin': 'مدير النظام',
+    'common.role.odio': 'ODIO',
+    'common.role.dio': 'DIO',
+    'common.role.developer': 'مطور النظام',
     'common.role.asg1': 'مساعد الأمين العام (١)',
     'common.role.asg2': 'مساعد الأمين العام (٢)',
 
@@ -57,12 +57,12 @@ export default {
 
     // roles
     'common.role.trainee': 'Trainee',
-    'common.role.supervisor': 'Supervisor',
+    'common.role.trainer': 'Trainer',
     'common.role.program_director': 'Program Director',
     'common.role.secretary': 'Secretary',
+    'common.role.odio': 'ODIO',
     'common.role.dio': 'DIO',
-    'common.role.president': 'President',
-    'common.role.super_admin': 'Super Admin',
+    'common.role.developer': 'Developer',
     'common.role.asg1': 'Assistant Secretary-General (1)',
     'common.role.asg2': 'Assistant Secretary-General (2)',
 

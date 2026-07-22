@@ -10,7 +10,7 @@ const { applyRegistryChange } = require('./registryChanges');
 async function assertSupervisorInSpecialty(id, cr, label) {
   const sup = await User.findOne({
     _id: id,
-    role: coerceRoleToTrack('supervisor', cr.track),
+    role: coerceRoleToTrack('trainer', cr.track),
     specialtyId: cr.specialtyId,
     isActive: { $ne: false },
   }).select('_id');
@@ -74,7 +74,7 @@ async function applyChangeRequest(cr) {
     return applyRegistryChange(cr);
   }
 
-  const targetRole = cr.routeKey === 'supervisors' ? 'supervisor' : 'trainee';
+  const targetRole = cr.routeKey === 'supervisors' ? 'trainer' : 'trainee';
   const target = await User.findOne({
     _id: cr.targetId,
     role: coerceRoleToTrack(targetRole, cr.track),
@@ -109,7 +109,7 @@ async function applyChangeRequest(cr) {
   // PROGRAM (v2): a program-based trainee's trainer must be in the trainee's
   // program, while a legacy advanced trainee (no programId) keeps the original
   // specialty-membership check that predates the Phase-3 relaxation.
-  const supRole = coerceRoleToTrack('supervisor', cr.track);
+  const supRole = coerceRoleToTrack('trainer', cr.track);
   if (cr.track === 'basic') {
     for (const key of ['supervisorId', 'researchSupervisorId']) {
       if (fields[key]) {

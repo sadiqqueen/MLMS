@@ -877,7 +877,7 @@ export default function SecretaryTrainees() {
                         <span style={{ color: 'var(--text-2)', textAlign: 'end' }}>{hospital.name || '—'}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 }}>
-                        <span style={{ color: 'var(--text-muted)' }}>{t('supervisor')}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>{t('trainer')}</span>
                         <span style={{ color: 'var(--text-2)', textAlign: 'end' }}>{supervisor.name || '—'}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 }}>

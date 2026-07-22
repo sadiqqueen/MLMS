@@ -8,7 +8,7 @@ const mongoose = require('mongoose');
 const bcrypt   = require('bcryptjs');
 const User     = require('../models/User');
 
-const ROLES = ['trainee', 'supervisor', 'program_director', 'dio', 'secretary', 'asg1', 'asg2', 'super_admin'];
+const ROLES = ['trainee', 'trainer', 'program_director', 'odio', 'secretary', 'asg1', 'asg2', 'developer'];
 const NEW_PASSWORD = '123456';
 const APPLY = process.env.CONFIRM === 'YES';
 

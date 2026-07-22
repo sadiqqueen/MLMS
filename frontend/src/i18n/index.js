@@ -18,7 +18,6 @@ import dio from './strings/dio.js';
 import secretary from './strings/secretary.js';
 import supervisor from './strings/supervisor.js';
 import program_director from './strings/program_director.js';
-import president from './strings/president.js';
 import trainee from './strings/trainee.js';
 import profile from './strings/profile.js';
 import verify from './strings/verify.js';
@@ -35,7 +34,6 @@ const AREAS = [
   secretary,
   supervisor,
   program_director,
-  president,
   trainee,
   profile,
   verify,

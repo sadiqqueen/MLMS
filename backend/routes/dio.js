@@ -37,7 +37,7 @@ function viewChangeRequest(doc) {
 }
 
 // ── Advanced-track ODIO lockdowns ───────────────────────────────────────────
-// Two distinct guards for an advanced ODIO (role 'dio', req.track === 'advanced'):
+// Two distinct guards for an advanced ODIO (role 'odio', req.track === 'advanced'):
 //
 //  • isAdvancedOdio — creation/deletion of accounts moved to the registry by
 //    owner decision, so POST/DELETE are locked for EVERY advanced ODIO (with or
@@ -50,11 +50,11 @@ function viewChangeRequest(doc) {
 //
 // super_admin and Basic b_dio (req.track === 'basic') are unaffected by either.
 function isAdvancedOdio(req) {
-  return req.track === 'advanced' && req.user.role === 'dio';
+  return req.track === 'advanced' && req.user.role === 'odio';
 }
 
 function isCenterScopedOdio(req) {
-  return req.track === 'advanced' && req.user.role === 'dio' && !!req.user.dioId;
+  return req.track === 'advanced' && req.user.role === 'odio' && !!req.user.dioId;
 }
 
 // The center a managed user belongs to: direct hospitalId/hospital, else the
@@ -83,7 +83,7 @@ async function blockedOutsideCenters(req, res, hospitalId) {
 
 // ── Center-scoped certificate access (v2) ───────────────────────────────────
 // A caller is center-scoped for certificates when — on the advanced track — it
-// is a DIO (dio_view), a Sub-DIO (sub_dio), or an ODIO (role 'dio') LINKED to a
+// is a DIO (dio_view), a Sub-DIO (sub_dio), or an ODIO (role 'odio') LINKED to a
 // dio_view via dioId. Basic b_dio, super_admin, and legacy advanced ODIOs
 // without a dioId are NOT center-scoped and keep their current (all-track) view.
 // Returns { scoped:true, ids:[trainee ObjectIds] } for a scoped caller, else
@@ -91,7 +91,7 @@ async function blockedOutsideCenters(req, res, hospitalId) {
 function isCenterScopedForCertificates(req) {
   if (req.track !== 'advanced') return false;
   const role = req.user.role;
-  return role === 'dio_view' || role === 'sub_dio' || (role === 'dio' && !!req.user.dioId);
+  return role === 'dio' || role === 'sub_dio' || (role === 'odio' && !!req.user.dioId);
 }
 
 async function certificateCenterScope(req) {
@@ -109,13 +109,13 @@ async function certificateCenterScope(req) {
 // carried by the User/Rotation/Certificate `track` field (and by the b_* role
 // prefix), so scoping is done with coerceRoleToTrack(role, req.track) for user
 // role queries and trackFilter(req.track) for rotation/certificate queries.
-const DIO = ['dio'];
+const DIO = ['odio'];
 const DIO_USER_FIELDS = ['name', 'email', 'phone', 'gender', 'city', 'department',
   'specialty', 'year', 'studentId', 'enrolledSince', 'hospitalId', 'specialtyId',
-  'supervisorId', 'researchSupervisorId', 'hospital', 'supervisor', 'photoUrl', 'isActive'];
+  'supervisorId', 'researchSupervisorId', 'hospital', 'trainer', 'photoUrl', 'isActive'];
 const DIO_ROLE_ROUTE = {
   trainees: 'trainee',
-  supervisors: 'supervisor',
+  supervisors: 'trainer',
   'program-directors': 'program_director',
   secretaries: 'secretary'
 };
@@ -146,7 +146,7 @@ function belongsToHospital(doc, hospitalId) {
 }
 
 function getDioHospitalOrFail(req, res) {
-  if (req.user.role !== 'dio') return null;
+  if (req.user.role !== 'odio') return null;
   const hospitalId = getHospital(req.user);
   if (!hospitalId) {
     res.status(403).json({ success: false, message: 'DIO account is not assigned to a hospital' });
@@ -167,7 +167,7 @@ function ensureDioCanAccessHospitalDoc(req, res, doc, message = 'Access denied: 
 // A DIO oversees its whole training track (see note above): it may grade any
 // report whose trainee belongs to the DIO's track. super_admin passes through.
 async function ensureDioCanAccessReport(req, res, report) {
-  if (req.user.role !== 'dio') return true;
+  if (req.user.role !== 'odio') return true;
   if (report.student) {
     const trainee = await User.findById(report.student).select('role');
     if (trainee && trackForRole(trainee.role) === req.track) return true;
@@ -222,7 +222,7 @@ function requiredMissing(data, fields) {
 
 function requiredFieldsForRole(role) {
   if (role === 'trainee') return ['name', 'email', 'password', 'hospitalId', 'specialtyId', 'studentId', 'supervisorId'];
-  if (role === 'supervisor') return ['name', 'email', 'password', 'phone', 'hospitalId', 'specialtyId'];
+  if (role === 'trainer') return ['name', 'email', 'password', 'phone', 'hospitalId', 'specialtyId'];
   if (role === 'program_director') return ['name', 'email', 'password', 'phone', 'specialtyId'];
   if (role === 'secretary') return ['name', 'email', 'password', 'phone', 'hospitalId'];
   return ['name', 'email', 'password'];
@@ -254,7 +254,7 @@ async function writeAudit(req, action, targetModel, targetId, metadata = {}) {
 }
 
 async function validateUserReferences(role, data, res, req) {
-  const invalid = validateObjectIdFields(data, ['hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'supervisor', 'researchSupervisorId']);
+  const invalid = validateObjectIdFields(data, ['hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'trainer', 'researchSupervisorId']);
   if (invalid) {
     res.status(400).json({ success: false, message: `Invalid ${invalid}` });
     return false;
@@ -274,7 +274,7 @@ async function validateUserReferences(role, data, res, req) {
       res.status(400).json({ success: false, message: 'Specialty not found or inactive' });
       return false;
     }
-    if (req.user.role === 'dio' && (specialty.track || 'advanced') !== req.track) {
+    if (req.user.role === 'odio' && (specialty.track || 'advanced') !== req.track) {
       res.status(400).json({ success: false, message: 'Specialty is in a different track' });
       return false;
     }
@@ -284,7 +284,7 @@ async function validateUserReferences(role, data, res, req) {
     // Supervisor reference must belong to the DIO's own track.
     const supervisor = await User.findOne({
       _id: data.supervisorId,
-      role: coerceRoleToTrack('supervisor', req.track),
+      role: coerceRoleToTrack('trainer', req.track),
       isActive: { $ne: false }
     });
     if (!supervisor) {
@@ -297,7 +297,7 @@ async function validateUserReferences(role, data, res, req) {
     // Research supervisor must also be an active supervisor in the DIO's track.
     const researchSup = await User.findOne({
       _id: data.researchSupervisorId,
-      role: coerceRoleToTrack('supervisor', req.track),
+      role: coerceRoleToTrack('trainer', req.track),
       isActive: { $ne: false }
     });
     if (!researchSup) {
@@ -316,13 +316,13 @@ function populateManagedUser(query) {
     .populate('hospital', 'name city governorate')
     .populate('specialtyId', 'name')
     .populate('supervisorId', 'name email')
-    .populate('supervisor', 'name email')
+    .populate('trainer', 'name email')
     .populate('researchSupervisorId', 'name email');
 }
 
 // GET /api/dio/stats
 // Dashboard statistics — scoped to this DIO's whole training track.
-router.get('/stats', auth, allowRoles(...DIO, 'president'), async (req, res) => {
+router.get('/stats', auth, allowRoles(...DIO), async (req, res) => {
   try {
     const roleTrack = { isActive: { $ne: false } };
     const trackQ = trackFilter(req.track); // { track:'basic' } | { track:{ $ne:'basic' } }
@@ -336,7 +336,7 @@ router.get('/stats', auth, allowRoles(...DIO, 'president'), async (req, res) => 
       certificates
     ] = await Promise.all([
       User.countDocuments({ role: coerceRoleToTrack('trainee', req.track),          ...roleTrack }),
-      User.countDocuments({ role: coerceRoleToTrack('supervisor', req.track),       ...roleTrack }),
+      User.countDocuments({ role: coerceRoleToTrack('trainer', req.track),       ...roleTrack }),
       User.countDocuments({ role: coerceRoleToTrack('program_director', req.track), ...roleTrack }),
       User.countDocuments({ role: coerceRoleToTrack('secretary', req.track),        ...roleTrack }),
       Rotation.countDocuments({ ...trackQ, status: 'current' }),
@@ -367,7 +367,7 @@ router.get('/stats', auth, allowRoles(...DIO, 'president'), async (req, res) => 
 
     // Chart: supervisors by specialty
     const supervisorsBySpecialty = await User.aggregate([
-      { $match: { role: coerceRoleToTrack('supervisor', req.track) } },
+      { $match: { role: coerceRoleToTrack('trainer', req.track) } },
       { $lookup: { from: 'specialties', localField: 'specialtyId', foreignField: '_id', as: 'spec' } },
       { $unwind: { path: '$spec', preserveNullAndEmptyArrays: true } },
       { $group: { _id: { $ifNull: ['$spec.name', '$specialty', 'Unknown'] }, count: { $sum: 1 } } },
@@ -408,7 +408,7 @@ router.get('/stats', auth, allowRoles(...DIO, 'president'), async (req, res) => 
 // GET /api/dio/trainees
 // The certificate-issue form's trainee search. dio_view is scoped to the
 // trainees of its assigned center set; DIO/super_admin keep the full-track view.
-router.get('/trainees', auth, allowRoles(...DIO, 'dio_view', 'super_admin'), async (req, res) => {
+router.get('/trainees', auth, allowRoles(...DIO, 'dio', 'developer'), async (req, res) => {
   try {
     const { search, includeInactive } = req.query;
     const query = { role: coerceRoleToTrack('trainee', req.track) };
@@ -418,7 +418,7 @@ router.get('/trainees', auth, allowRoles(...DIO, 'dio_view', 'super_admin'), asy
       query.$or = [{ name: rx }, { studentId: rx }];
     }
     // A dio_view only ever sees trainees of its own center set.
-    if (req.user.role === 'dio_view') {
+    if (req.user.role === 'dio') {
       const set = await resolveCenterSet(req.user);
       query._id = { $in: await traineeIdsForCenterSet(set || []) };
     }
@@ -481,7 +481,7 @@ async function updateManagedUser(req, res, role, id) {
   delete updates.password;
   // A trainee must keep a supervisor: allow changing it, never clearing it.
   if (role === 'trainee'
-      && ('supervisorId' in updates || 'supervisor' in updates)
+      && ('supervisorId' in updates || 'trainer' in updates)
       && !updates.supervisorId && !updates.supervisor) {
     return res.status(400).json({ success: false, message: 'A trainee must have a supervisor' });
   }
@@ -501,7 +501,7 @@ async function updateManagedUser(req, res, role, id) {
 }
 
 function registerManagedUserRoutes(routeName, role) {
-  router.post(`/${routeName}`, auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+  router.post(`/${routeName}`, auth, allowRoles(...DIO, 'developer'), async (req, res) => {
     try {
       if (isAdvancedOdio(req)) {
         return res.status(403).json({ success: false, message: 'Creation moved to the registry' });
@@ -515,7 +515,7 @@ function registerManagedUserRoutes(routeName, role) {
     }
   });
 
-  router.patch(`/${routeName}/:id`, auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+  router.patch(`/${routeName}/:id`, auth, allowRoles(...DIO, 'developer'), async (req, res) => {
     try {
       if (isCenterScopedOdio(req)) {
         if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid user id' });
@@ -531,7 +531,7 @@ function registerManagedUserRoutes(routeName, role) {
     }
   });
 
-  router.delete(`/${routeName}/:id`, auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+  router.delete(`/${routeName}/:id`, auth, allowRoles(...DIO, 'developer'), async (req, res) => {
     try {
       if (isAdvancedOdio(req)) {
         return res.status(403).json({ success: false, message: 'Deletion is not available for ODIO accounts' });
@@ -556,7 +556,7 @@ function registerManagedUserRoutes(routeName, role) {
     }
   });
 
-  router.patch(`/${routeName}/:id/reactivate`, auth, allowRoles('super_admin'), async (req, res) => {
+  router.patch(`/${routeName}/:id/reactivate`, auth, allowRoles('developer'), async (req, res) => {
     try {
       if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid user id' });
       const existing = await User.findById(req.params.id).select('role specialtyId');
@@ -589,7 +589,7 @@ Object.entries(DIO_ROLE_ROUTE).forEach(([routeName, role]) => registerManagedUse
 // DIO creates an operational/academic evaluation for any trainee.
 router.post('/trainees/:id/evaluations',
   auth,
-  allowRoles(...DIO, 'super_admin'),
+  allowRoles(...DIO, 'developer'),
   async (req, res) => {
     try {
       if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -621,7 +621,7 @@ router.post('/trainees/:id/evaluations',
       const status = req.body.status && ['pending', 'completed'].includes(req.body.status)
         ? req.body.status
         : finalized ? 'completed' : 'pending';
-      const evaluatorRole = req.user.role === 'super_admin' ? 'super_admin' : 'dio';
+      const evaluatorRole = req.user.role === 'developer' ? 'developer' : 'odio';
       // Derive hospital from the already-scoped subject; never trust a client
       // hospitalId (would let a scoped DIO inject the record across hospitals).
       const hospital = trainee.hospitalId?._id || trainee.hospital || null;
@@ -717,7 +717,7 @@ router.post('/trainees/:id/evaluations',
 // trainee-facing queries never surface it. Finalized on create.
 router.post('/supervisors/:id/evaluations',
   auth,
-  allowRoles(...DIO, 'super_admin'),
+  allowRoles(...DIO, 'developer'),
   async (req, res) => {
     try {
       if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -727,7 +727,7 @@ router.post('/supervisors/:id/evaluations',
       // same supervisors the DIO can see are the ones it can evaluate.
       const supervisor = await User.findOne({
         _id: req.params.id,
-        role: coerceRoleToTrack('supervisor', req.track),
+        role: coerceRoleToTrack('trainer', req.track),
         isActive: { $ne: false }
       })
         .populate('hospitalId', 'name')
@@ -751,7 +751,7 @@ router.post('/supervisors/:id/evaluations',
         return res.status(400).json({ success: false, message: `A ${evaluationType} evaluation has already been submitted for this supervisor this month.` });
       }
 
-      const evaluatorRole = req.user.role === 'super_admin' ? 'super_admin' : 'dio';
+      const evaluatorRole = req.user.role === 'developer' ? 'developer' : 'odio';
       // Derive hospital from the already-scoped subject; never trust a client
       // hospitalId (would let a scoped DIO inject the record across hospitals).
       const hospital = supervisor.hospitalId?._id || supervisor.hospital || null;
@@ -814,7 +814,7 @@ router.post('/supervisors/:id/evaluations',
 // Every evaluation authored by this DIO (trainee + supervisor subjects),
 // scoped by evaluator identity. Powers the DIO evaluations page; the client
 // splits rows by evaluateeRole (a missing value is treated as 'trainee').
-router.get('/evaluations', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+router.get('/evaluations', auth, allowRoles(...DIO, 'developer'), async (req, res) => {
   try {
     const query = {
       $or: [{ evaluatorId: req.user._id }, { doctor: req.user._id }, { createdBy: req.user._id }]
@@ -836,7 +836,7 @@ router.get('/evaluations', auth, allowRoles(...DIO, 'super_admin'), async (req, 
 
 // GET /api/dio/trainees/:id/details
 // Full DIO trainee profile with reports and grading summary.
-router.get('/trainees/:id/details', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+router.get('/trainees/:id/details', auth, allowRoles(...DIO, 'developer'), async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ success: false, message: 'Invalid trainee id' });
@@ -852,7 +852,7 @@ router.get('/trainees/:id/details', auth, allowRoles(...DIO, 'super_admin'), asy
       .populate('hospital', 'name city governorate')
       .populate('specialtyId', 'name')
       .populate('supervisorId', 'name email phone specialty')
-      .populate('supervisor', 'name email phone specialty');
+      .populate('trainer', 'name email phone specialty');
 
     if (!trainee) {
       return res.status(404).json({ success: false, message: 'Trainee not found' });
@@ -954,7 +954,7 @@ router.get('/trainees/:id/details', auth, allowRoles(...DIO, 'super_admin'), asy
 // DIO escalation grading and override endpoint for weekly, monthly, and final reports.
 router.patch('/reports/:id/grade',
   auth,
-  allowRoles(...DIO, 'super_admin'),
+  allowRoles(...DIO, 'developer'),
   async (req, res) => {
     try {
       if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -1059,9 +1059,9 @@ router.patch('/reports/:id/grade',
 );
 
 // GET /api/dio/supervisors
-router.get('/supervisors', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+router.get('/supervisors', auth, allowRoles(...DIO, 'developer'), async (req, res) => {
   try {
-    const query = { role: coerceRoleToTrack('supervisor', req.track) };
+    const query = { role: coerceRoleToTrack('trainer', req.track) };
     if (req.query.includeInactive !== 'true') query.isActive = { $ne: false };
 
     const supervisors = await populateManagedUser(User.find(query)).sort({ name: 1 });
@@ -1079,13 +1079,13 @@ router.get('/supervisors', auth, allowRoles(...DIO, 'super_admin'), async (req, 
 // every returned trainee passes the same role+isActive filter as
 // GET /trainees/:id/details, so each row is clickable without a 404.
 // (Registered before program-directors; there is no GET /supervisors/:id to collide with.)
-router.get('/supervisors/trainees-map', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+router.get('/supervisors/trainees-map', auth, allowRoles(...DIO, 'developer'), async (req, res) => {
   try {
     const traineeRole = coerceRoleToTrack('trainee', req.track);
     const trackQ = trackFilter(req.track);
     const traineeSelect = 'name studentId year photoUrl initials specialtyId supervisorId';
 
-    const supIds = (await User.find({ role: coerceRoleToTrack('supervisor', req.track) })
+    const supIds = (await User.find({ role: coerceRoleToTrack('trainer', req.track) })
       .select('_id').lean()).map(s => s._id);
     if (!supIds.length) return res.json({ success: true, data: {} });
 
@@ -1154,7 +1154,7 @@ router.get('/supervisors/trainees-map', auth, allowRoles(...DIO, 'super_admin'),
 // EXCLUDES the redesign registry requests (reviewerRole 'data_analyzer' → Analyzer
 // inbox, 'head_ad' → Head AD inbox) so the DIO inbox only ever shows its own
 // secretary/CS→DIO flow — the approval pipelines never cross (RULINGS §E23).
-router.get('/change-requests', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+router.get('/change-requests', auth, allowRoles(...DIO, 'developer'), async (req, res) => {
   try {
     const query = { ...trackFilter(req.track), reviewerRole: { $nin: ['data_analyzer', 'head_ad'] } };
     if (req.query.status) query.status = req.query.status;
@@ -1173,7 +1173,7 @@ router.get('/change-requests', auth, allowRoles(...DIO, 'super_admin'), async (r
 });
 
 // PATCH /api/dio/change-requests/:id/approve — apply the queued change
-router.patch('/change-requests/:id/approve', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+router.patch('/change-requests/:id/approve', auth, allowRoles(...DIO, 'developer'), async (req, res) => {
   try {
     const query = { _id: req.params.id, status: 'pending', ...trackFilter(req.track), reviewerRole: { $nin: ['data_analyzer', 'head_ad'] } };
     const cr = await ChangeRequest.findOne(query);
@@ -1225,7 +1225,7 @@ router.patch('/change-requests/:id/approve', auth, allowRoles(...DIO, 'super_adm
 });
 
 // PATCH /api/dio/change-requests/:id/reject
-router.patch('/change-requests/:id/reject', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+router.patch('/change-requests/:id/reject', auth, allowRoles(...DIO, 'developer'), async (req, res) => {
   try {
     const query = { _id: req.params.id, status: 'pending', ...trackFilter(req.track), reviewerRole: { $nin: ['data_analyzer', 'head_ad'] } };
     const cr = await ChangeRequest.findOne(query);
@@ -1263,7 +1263,7 @@ router.patch('/change-requests/:id/reject', auth, allowRoles(...DIO, 'super_admi
 });
 
 // GET /api/dio/program-directors
-router.get('/program-directors', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+router.get('/program-directors', auth, allowRoles(...DIO, 'developer'), async (req, res) => {
   try {
     const query = { role: coerceRoleToTrack('program_director', req.track) };
     if (req.query.includeInactive !== 'true') query.isActive = { $ne: false };
@@ -1277,7 +1277,7 @@ router.get('/program-directors', auth, allowRoles(...DIO, 'super_admin'), async 
 });
 
 // GET /api/dio/secretaries
-router.get('/secretaries', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+router.get('/secretaries', auth, allowRoles(...DIO, 'developer'), async (req, res) => {
   try {
     const query = { role: coerceRoleToTrack('secretary', req.track) };
     if (req.query.includeInactive !== 'true') query.isActive = { $ne: false };
@@ -1292,9 +1292,9 @@ router.get('/secretaries', auth, allowRoles(...DIO, 'super_admin'), async (req, 
 
 // GET /api/dio/presidents — read-only: the DIO can see (but not manage) the
 // president(s) of its track on the Users page.
-router.get('/presidents', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+router.get('/presidents', auth, allowRoles(...DIO, 'developer'), async (req, res) => {
   try {
-    const query = { role: coerceRoleToTrack('president', req.track) };
+    const query = { role: coerceRoleToTrack(req.track) };
     if (req.query.includeInactive !== 'true') query.isActive = { $ne: false };
 
     const presidents = await populateManagedUser(User.find(query)).sort({ name: 1 });
@@ -1308,19 +1308,19 @@ router.get('/presidents', auth, allowRoles(...DIO, 'super_admin'), async (req, r
 // GET /api/dio/hospitals/:id
 // Full detail for one hospital in the DIO's track: program director(s),
 // specialties (each with secretary), supervisors, secretaries and trainees.
-router.get('/hospitals/:id', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+router.get('/hospitals/:id', auth, allowRoles(...DIO, 'developer'), async (req, res) => {
   try {
     if (!isValidObjectId(req.params.id)) {
       return res.status(400).json({ success: false, message: 'Invalid hospital id' });
     }
     const hospital = await Hospital.findById(req.params.id);
-    if (!hospital || (req.user.role === 'dio' && (hospital.track || 'advanced') !== req.track)) {
+    if (!hospital || (req.user.role === 'odio' && (hospital.track || 'advanced') !== req.track)) {
       return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
     const inHospital = { $or: [{ hospitalId: hospital._id }, { hospital: hospital._id }], isActive: { $ne: false } };
 
     const [supervisors, pds, secretaries, trainees, specialties] = await Promise.all([
-      User.find({ role: coerceRoleToTrack('supervisor', req.track), ...inHospital })
+      User.find({ role: coerceRoleToTrack('trainer', req.track), ...inHospital })
         .select('name email phone specialtyId hospitalId hospital initials photoUrl').populate('specialtyId', 'name'),
       User.find({ role: coerceRoleToTrack('program_director', req.track), ...inHospital })
         .select('name email phone department hospitalId hospital initials photoUrl'),
@@ -1371,13 +1371,13 @@ router.get('/hospitals/:id', auth, allowRoles(...DIO, 'super_admin'), async (req
 
 // GET /api/dio/hospitals/:id/capacity
 // Per-specialty capacity settings + current-year usage for one hospital.
-router.get('/hospitals/:id/capacity', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+router.get('/hospitals/:id/capacity', auth, allowRoles(...DIO, 'developer'), async (req, res) => {
   try {
     if (!isValidObjectId(req.params.id)) {
       return res.status(400).json({ success: false, message: 'Invalid hospital id' });
     }
     const hospital = await Hospital.findById(req.params.id).select('specialtySettings track');
-    if (!hospital || (req.user.role === 'dio' && (hospital.track || 'advanced') !== req.track)) {
+    if (!hospital || (req.user.role === 'odio' && (hospital.track || 'advanced') !== req.track)) {
       return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
     const settings = hospital.specialtySettings || [];
@@ -1408,7 +1408,7 @@ router.get('/hospitals/:id/capacity', auth, allowRoles(...DIO, 'super_admin'), a
 // PATCH /api/dio/hospitals/:id/specialty-settings
 // Upsert { specialtyId, annualCapacity, trainingDurationYears } for one specialty
 // at one hospital. null/'' clears a value ("not set"); numbers must be >= 0.
-router.patch('/hospitals/:id/specialty-settings', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+router.patch('/hospitals/:id/specialty-settings', auth, allowRoles(...DIO, 'developer'), async (req, res) => {
   try {
     if (!isValidObjectId(req.params.id)) {
       return res.status(400).json({ success: false, message: 'Invalid hospital id' });
@@ -1419,11 +1419,11 @@ router.patch('/hospitals/:id/specialty-settings', auth, allowRoles(...DIO, 'supe
     }
 
     const hospital = await Hospital.findById(req.params.id);
-    if (!hospital || (req.user.role === 'dio' && (hospital.track || 'advanced') !== req.track)) {
+    if (!hospital || (req.user.role === 'odio' && (hospital.track || 'advanced') !== req.track)) {
       return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
     const spec = await Specialty.findById(specialtyId).select('name track');
-    if (!spec || (req.user.role === 'dio' && (spec.track || 'advanced') !== req.track)) {
+    if (!spec || (req.user.role === 'odio' && (spec.track || 'advanced') !== req.track)) {
       return res.status(404).json({ success: false, message: 'Specialty not found in your track' });
     }
 
@@ -1463,7 +1463,7 @@ router.patch('/hospitals/:id/specialty-settings', auth, allowRoles(...DIO, 'supe
 // hospital. Assigning is authoritative: it sets Specialty.secretaryId AND scopes
 // the chosen secretary user to this specialty + hospital (their data access
 // follows their own specialtyId), so the assignment actually takes effect.
-router.patch('/hospitals/:id/specialty-secretary', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+router.patch('/hospitals/:id/specialty-secretary', auth, allowRoles(...DIO, 'developer'), async (req, res) => {
   try {
     if (!isValidObjectId(req.params.id)) {
       return res.status(400).json({ success: false, message: 'Invalid hospital id' });
@@ -1478,11 +1478,11 @@ router.patch('/hospitals/:id/specialty-secretary', auth, allowRoles(...DIO, 'sup
     }
 
     const hospital = await Hospital.findById(req.params.id).select('name track');
-    if (!hospital || (req.user.role === 'dio' && (hospital.track || 'advanced') !== req.track)) {
+    if (!hospital || (req.user.role === 'odio' && (hospital.track || 'advanced') !== req.track)) {
       return res.status(404).json({ success: false, message: 'Hospital not found' });
     }
     const spec = await Specialty.findById(specialtyId).select('name secretaryId track');
-    if (!spec || (req.user.role === 'dio' && (spec.track || 'advanced') !== req.track)) {
+    if (!spec || (req.user.role === 'odio' && (spec.track || 'advanced') !== req.track)) {
       return res.status(404).json({ success: false, message: 'Specialty not found in your track' });
     }
 
@@ -1524,11 +1524,11 @@ router.patch('/hospitals/:id/specialty-secretary', auth, allowRoles(...DIO, 'sup
 // Organisational view for the DIO: every hospital in its track with the
 // program director(s), supervisors, and specialties — each specialty carrying
 // its assigned secretary's name. Read-only.
-router.get('/hospitals-overview', auth, allowRoles(...DIO, 'super_admin'), async (req, res) => {
+router.get('/hospitals-overview', auth, allowRoles(...DIO, 'developer'), async (req, res) => {
   try {
     const [hospitals, supervisors, pds, secretaries, specialties] = await Promise.all([
       Hospital.find({ ...trackFilter(req.track), isActive: { $ne: false } }).sort({ name: 1 }),
-      User.find({ role: coerceRoleToTrack('supervisor', req.track), isActive: { $ne: false } })
+      User.find({ role: coerceRoleToTrack('trainer', req.track), isActive: { $ne: false } })
         .select('name email hospitalId hospital specialtyId initials photoUrl')
         .populate('specialtyId', 'name'),
       User.find({ role: coerceRoleToTrack('program_director', req.track), isActive: { $ne: false } })
@@ -1593,7 +1593,7 @@ router.get('/hospitals-overview', auth, allowRoles(...DIO, 'super_admin'), async
 // (all tracks, all hospitals). A center-scoped caller (dio_view / sub_dio, or an
 // ODIO linked via dioId) instead sees only certificates of trainees in its
 // assigned center set. Write actions (issue/revoke/delete) below remain scoped.
-router.get('/certificates', auth, allowRoles(...DIO, 'dio_view', 'sub_dio', 'super_admin'), async (req, res) => {
+router.get('/certificates', auth, allowRoles(...DIO, 'dio', 'sub_dio', 'developer'), async (req, res) => {
   try {
     const scope = await certificateCenterScope(req);
     const query = scope.scoped
@@ -1620,7 +1620,7 @@ router.get('/certificates', auth, allowRoles(...DIO, 'dio_view', 'sub_dio', 'sup
 // assigned center set.
 router.post('/certificates',
   auth,
-  allowRoles(...DIO, 'dio_view', 'super_admin'),
+  allowRoles(...DIO, 'dio', 'developer'),
   auditLog('issue_certificate', 'Certificate'),
   async (req, res) => {
     try {
@@ -1630,7 +1630,7 @@ router.post('/certificates',
         return res.status(400).json({ success: false, message: 'A valid trainee is required' });
       }
       // Certificates are for TRAINEES only, and a DIO only for its own track.
-      const traineeRole = req.user.role === 'super_admin'
+      const traineeRole = req.user.role === 'developer'
         ? { $in: ['trainee', 'b_trainee'] }
         : coerceRoleToTrack('trainee', req.track);
       const trainee = await User.findOne({ _id: targetTrainee, role: traineeRole, isActive: { $ne: false } })
@@ -1644,7 +1644,7 @@ router.post('/certificates',
       // linked via dioId). Legacy advanced ODIOs without a dioId, b_dio, and
       // super_admin keep their current behavior.
       if (req.track === 'advanced'
-          && (req.user.role === 'dio_view' || (req.user.role === 'dio' && !!req.user.dioId))) {
+          && (req.user.role === 'dio' || (req.user.role === 'odio' && !!req.user.dioId))) {
         const set = await resolveCenterSet(req.user);
         if (!inCenterSet(set || [], await targetCenterId(trainee))) {
           return res.status(403).json({ success: false, message: 'Trainee is outside your assigned centers' });
@@ -1670,7 +1670,7 @@ router.post('/certificates',
       const populated = await Certificate.findById(cert._id)
         .populate('student',   'name initials photoUrl studentId year')
         .populate('traineeId', 'name initials photoUrl studentId year')
-        .populate('supervisor', 'name email')
+        .populate('trainer', 'name email')
         .populate('doctor', 'name email')
         .populate('hospital',  'name city')
         .populate('issuedBy',  'name');
@@ -1693,7 +1693,7 @@ router.post('/certificates',
 // PATCH /api/dio/certificates/:id/revoke
 router.patch('/certificates/:id/revoke',
   auth,
-  allowRoles(...DIO, 'super_admin'),
+  allowRoles(...DIO, 'developer'),
   auditLog('revoke_certificate', 'Certificate'),
   async (req, res) => {
     try {
@@ -1701,7 +1701,7 @@ router.patch('/certificates/:id/revoke',
       if (!cert) return res.status(404).json({ message: 'Certificate not found' });
 
       // DIO can only revoke certificates belonging to their track
-      if (req.user.role === 'dio' && (cert.track || 'advanced') !== req.track) {
+      if (req.user.role === 'odio' && (cert.track || 'advanced') !== req.track) {
         return res.status(403).json({ message: 'Access denied: certificate belongs to a different track' });
       }
 
@@ -1717,7 +1717,7 @@ router.patch('/certificates/:id/revoke',
 // DELETE /api/dio/certificates/:id
 router.delete('/certificates/:id',
   auth,
-  allowRoles(...DIO, 'super_admin'),
+  allowRoles(...DIO, 'developer'),
   auditLog('delete_certificate', 'Certificate'),
   async (req, res) => {
     try {
@@ -1725,7 +1725,7 @@ router.delete('/certificates/:id',
       if (!cert) return res.status(404).json({ message: 'Certificate not found' });
 
       // DIO can only delete certificates belonging to their track
-      if (req.user.role === 'dio' && (cert.track || 'advanced') !== req.track) {
+      if (req.user.role === 'odio' && (cert.track || 'advanced') !== req.track) {
         return res.status(403).json({ message: 'Access denied: certificate belongs to a different track' });
       }
 

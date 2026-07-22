@@ -9,8 +9,8 @@ const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const { trackFilter, trackForRole, coerceRoleToTrack } = require('../utils/track');
 
-const WRITE_ROLES = ['super_admin', 'dio'];
-const READ_ROLES  = ['super_admin', 'dio', 'program_director', 'president'];
+const WRITE_ROLES = ['developer', 'odio'];
+const READ_ROLES  = ['developer', 'odio', 'program_director'];
 const STATUSES    = ['completed', 'current', 'upcoming', 'cancelled'];
 
 function isValidObjectId(id) {
@@ -42,7 +42,7 @@ function rotationInTrack(rotation, track) {
 }
 
 function ensureDioCanAccessRotation(req, res, rotation) {
-  if (req.user.role !== 'dio') return true;
+  if (req.user.role !== 'odio') return true;
   if (rotationInTrack(rotation, req.track)) return true;
   res.status(403).json({ success: false, message: 'Access denied: rotation belongs to a different track' });
   return false;
@@ -79,7 +79,7 @@ async function audit(req, action, targetId, metadata = {}) {
 
 async function validateRotationPayload(data, res, { creating = false, existingId = null, existing = null, req = null } = {}) {
   normalizeRotationData(data);
-  const isDio = req?.user?.role === 'dio';
+  const isDio = req?.user?.role === 'odio';
 
   const required = creating ? ['traineeId', 'hospitalId', 'startDate', 'endDate'] : [];
   const missing = required.filter(k => !data[k]);
@@ -161,7 +161,7 @@ async function validateRotationPayload(data, res, { creating = false, existingId
   if (data.supervisorId) {
     const supervisor = await User.findOne({
       _id: data.supervisorId,
-      role: isDio ? coerceRoleToTrack('supervisor', req.track) : 'supervisor',
+      role: isDio ? coerceRoleToTrack('trainer', req.track) : 'trainer',
       isActive: { $ne: false },
     });
     if (!supervisor) {
@@ -229,7 +229,7 @@ router.get('/', auth, allowRoles(...READ_ROLES), async (req, res) => {
     const query = {};
     // DIO = track-wide: own track across all hospitals (top-level `track` key,
     // safe to merge alongside the status / trainee-$or / hospital-$and below).
-    if (req.user.role === 'dio') Object.assign(query, trackFilter(req.track));
+    if (req.user.role === 'odio') Object.assign(query, trackFilter(req.track));
     if (req.query.status) query.status = req.query.status;
     if (req.query.traineeId || req.query.student) {
       const id = req.query.traineeId || req.query.student;
@@ -256,7 +256,7 @@ router.get('/doctor/:doctorId', auth, async (req, res) => {
 
     const rotations = await populateRotation(Rotation.find({
       $or: [{ doctor: req.params.doctorId }, { supervisorId: req.params.doctorId }],
-      ...(req.user.role === 'dio' ? trackFilter(req.track) : {}),
+      ...(req.user.role === 'odio' ? trackFilter(req.track) : {}),
     })).sort({ startDate: -1 });
     res.json(rotations);
   } catch (err) {
@@ -267,12 +267,12 @@ router.get('/doctor/:doctorId', auth, async (req, res) => {
 router.get('/student/:id', auth, async (req, res) => {
   try {
     const isOwner = req.params.id === req.user._id.toString();
-    const isStaff = READ_ROLES.includes(req.user.role) || req.user.role === 'supervisor';
+    const isStaff = READ_ROLES.includes(req.user.role) || req.user.role === 'trainer';
     if (!isOwner && !isStaff) return res.status(403).json({ success: false, message: 'Access denied' });
 
     const rotations = await populateRotation(Rotation.find({
       $or: [{ traineeId: req.params.id }, { student: req.params.id }],
-      ...(req.user.role === 'dio' ? trackFilter(req.track) : {}),
+      ...(req.user.role === 'odio' ? trackFilter(req.track) : {}),
     })).sort({ startDate: 1 });
     res.json(rotations);
   } catch (err) {
@@ -283,7 +283,7 @@ router.get('/student/:id', auth, async (req, res) => {
 router.get('/current/:studentId', auth, async (req, res) => {
   try {
     const isOwner = req.params.studentId === req.user._id.toString();
-    const isStaff = READ_ROLES.includes(req.user.role) || req.user.role === 'supervisor';
+    const isStaff = READ_ROLES.includes(req.user.role) || req.user.role === 'trainer';
     if (!isOwner && !isStaff) return res.status(403).json({ success: false, message: 'Access denied' });
 
     const rotation = await populateRotation(Rotation.findOne({

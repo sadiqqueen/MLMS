@@ -4,7 +4,7 @@ const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const { syncCenterDioAssignment } = require('../utils/registryChanges');
 
-const MANAGERS = ['super_admin', 'dio'];
+const MANAGERS = ['developer', 'odio'];
 const HOSPITAL_FIELDS = ['name', 'city', 'address', 'specialties', 'assignedDoctor',
   'governorate', 'dioId', 'presidentId', 'programDirector', 'supervisors',
   'phone', 'email', 'isActive'];
@@ -23,7 +23,7 @@ const populateHospital = query => query
 // A DIO may only edit/delete hospitals in its own training track; super_admin
 // is unrestricted. Returns false (and sends 404) when the caller is blocked.
 async function ensureHospitalInTrack(req, res, id) {
-  if (req.user.role === 'super_admin') return true;
+  if (req.user.role === 'developer') return true;
   const h = await Hospital.findById(id).select('track');
   if (!h || (h.track || 'advanced') !== req.track) {
     res.status(404).json({ message: 'Hospital not found' });

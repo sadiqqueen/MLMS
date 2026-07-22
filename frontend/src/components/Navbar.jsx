@@ -11,11 +11,11 @@ import { ROLE_HOME, ROLE_LINKS, baseRole, basePathForRole } from '../config/role
 
 // The 10 redesigned "design roles" render the new mt- top-nav shell (single bar:
 // centered links + right-side controls, no logo, no separate title row). Every
-// other role (president, ASG, secretary, supervisor, basic-track b_*) keeps the
-// existing navbar EXACTLY as-is. No role switcher in either shell.
+// other role (ASG, secretary, trainer, basic-track b_*) keeps the existing
+// navbar EXACTLY as-is. No role switcher in either shell.
 const MT_SHELL_ROLES = new Set([
-  'super_admin', 'hoc', 'central_secretary', 'data_analyzer', 'head_cs', 'head_ad', 'data_entry',
-  'secretary_general', 'assistant_secretary', 'dio', 'dio_view', 'sub_dio',
+  'developer', 'hoc', 'central_secretary', 'data_analyzer', 'head_cs', 'head_ad', 'data_entry',
+  'secretary_general', 'assistant_secretary', 'odio', 'dio', 'sub_dio',
   'program_director', 'sub_pd', 'trainee',
 ]);
 
@@ -38,7 +38,7 @@ function notifLink(message = '', role) {
         if (has(/report/))                                return '/reports';
         if (has(/rotation|distribut|assign|specialt|hospital/)) return '/timeline';
         break;
-      case 'supervisor':
+      case 'trainer':
         if (has(/announcement|إعلان/)) return '/announcements';
         if (has(/log book|logbook|سجل/)) return '/supervisor/logbook';
         if (has(/research/))         return '/supervisor/trainees';
@@ -53,7 +53,7 @@ function notifLink(message = '', role) {
         if (has(/evaluat|assess/)) return '/program-director/evaluations';
         if (has(/trainee/))       return '/program-director/trainees';
         break;
-      case 'dio':
+      case 'odio':
         if (has(/change|approval|promotion|research/)) return '/dio/approvals';
         if (has(/certificat/))  return '/dio/certificates';
         if (has(/rotation/))    return '/dio/rotations';
@@ -65,7 +65,7 @@ function notifLink(message = '', role) {
         if (has(/supervisor/))             return '/secretary/supervisors';
         if (has(/trainee|report|assign/))  return '/secretary/trainees';
         break;
-      case 'super_admin':
+      case 'developer':
         if (has(/user|account|locked/))  return '/admin/users';
         if (has(/hospital/))             return '/admin/hospitals';
         break;

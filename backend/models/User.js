@@ -8,15 +8,20 @@ const userSchema = new mongoose.Schema(
     email:    { type: String, required: false, unique: true, sparse: true, lowercase: true, trim: true },
     password: { type: String, required: true },
 
-    // V2: updated role enum — 7 app roles + ASG.1/ASG.2 (consultant memo)
+    // V2: updated role enum — app roles + ASG.1/ASG.2 (consultant memo)
     // + Basic-Training portal roles (b_*), which mirror their Advanced counterparts.
+    // (developer=Developer, odio=ODIO, dio=DIO, trainer=Trainer after the rename.)
     role: {
       type: String,
       enum: [
-        'super_admin', 'secretary', 'dio', 'supervisor', 'trainee', 'president', 'program_director', 'asg1', 'asg2',
-        'secretary_general', 'assistant_secretary', 'data_analyzer', 'data_entry', 'central_secretary', 'dio_view', 'sub_dio', 'sub_pd',
+        'developer', 'secretary', 'odio', 'trainer', 'trainee', 'program_director', 'asg1', 'asg2',
+        'secretary_general', 'assistant_secretary', 'data_analyzer', 'data_entry', 'central_secretary', 'dio', 'sub_dio', 'sub_pd',
         'hoc', 'head_cs', 'head_ad',
-        'b_secretary', 'b_dio', 'b_supervisor', 'b_trainee', 'b_president', 'b_program_director'
+        'b_secretary', 'b_odio', 'b_trainer', 'b_trainee', 'b_program_director',
+        // RETIRED — no route, nav, guard, or login accepts these; auth.js denies
+        // them. Kept ONLY so an existing president document does not fail Mongoose
+        // enum validation on any save() (its accounts were left as-is by request).
+        'president', 'b_president'
       ],
       required: true,
       index: true

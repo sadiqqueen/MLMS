@@ -166,7 +166,7 @@ export default function CentralCenters() {
                       <th className="mt-th">{t('id')}</th>
                       <th className="mt-th">{t('country')}</th>
                       <th className="mt-th">{t('city')}</th>
-                      <th className="mt-th">{t('dio')}</th>
+                      <th className="mt-th">{t('odio')}</th>
                       <th className="mt-th">{t('subDio')}</th>
                       <th className="mt-th">{t('status')}</th>
                     </tr>

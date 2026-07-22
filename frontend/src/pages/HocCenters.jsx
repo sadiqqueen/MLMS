@@ -164,7 +164,7 @@ export default function HocCenters() {
                     <th className="mt-th">{t('id')}</th>
                     <th className="mt-th">{t('country')}</th>
                     <th className="mt-th">{t('city')}</th>
-                    <th className="mt-th">{t('dio')}</th>
+                    <th className="mt-th">{t('odio')}</th>
                     <th className="mt-th">{t('programs')}</th>
                     <th className="mt-th">{t('trainees')}</th>
                   </tr>
@@ -179,7 +179,7 @@ export default function HocCenters() {
                       <td className="mt-td mt-td--mono" data-label={t('id')}>{c.idNumber || '—'}</td>
                       <td className="mt-td" data-label={t('country')}>{countryOf(c) || '—'}</td>
                       <td className="mt-td" data-label={t('city')}>{c.city || '—'}</td>
-                      <td className="mt-td mt-td--muted" data-label={t('dio')}>{c.dioId?.name || '—'}</td>
+                      <td className="mt-td mt-td--muted" data-label={t('odio')}>{c.dioId?.name || '—'}</td>
                       <td className="mt-td" data-label={t('programs')}>{(c.programs?.length ?? 0).toLocaleString('en-US')}</td>
                       <td className="mt-td" data-label={t('trainees')}>{(traineesByCenter[c._id] ?? 0).toLocaleString('en-US')}</td>
                     </tr>

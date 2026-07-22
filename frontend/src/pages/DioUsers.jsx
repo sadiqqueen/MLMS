@@ -27,15 +27,14 @@ const API_BASE = '';
 // helper; the badge is the shared accent-tint mt- role pill for every role) ──
 const ROLE_META = {
   trainee:          { api: 'trainees' },
-  supervisor:       { api: 'supervisors' },
+  trainer:          { api: 'supervisors' },
   program_director: { api: 'program-directors' },
   secretary:        { api: 'secretaries' },
-  president:        { api: 'presidents' },
 };
-// Display/filter order (president is read-only — see CREATABLE_ROLES).
-const ROLE_ORDER = ['trainee', 'supervisor', 'program_director', 'secretary', 'president'];
-// Roles the DIO can add/edit/deactivate (president is view-only).
-const CREATABLE_ROLES = ['trainee', 'supervisor', 'program_director', 'secretary'];
+// Display/filter order.
+const ROLE_ORDER = ['trainee', 'trainer', 'program_director', 'secretary'];
+// Roles the DIO can add/edit/deactivate.
+const CREATABLE_ROLES = ['trainee', 'trainer', 'program_director', 'secretary'];
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function textValue(value, fallback = '—') {
@@ -79,7 +78,7 @@ function roleFields(role) {
 
   switch (role) {
     case 'trainee':          return [name, email, password, phoneOpt, studentId, year, hospital, specReq, supervisor, researchSup];
-    case 'supervisor':       return [name, email, password, phoneReq, department, hospital, specReq];
+    case 'trainer':          return [name, email, password, phoneReq, department, hospital, specReq];
     case 'program_director': return [name, email, password, phoneReq, department, trainingCenter, specialtyOrSub];
     case 'secretary':        return [name, email, password, phoneReq, hospital, specOpt];
     default:                 return [name, email, password];
@@ -293,7 +292,7 @@ function UserViewModal({ user, trainees, onTraineeClick, onBack, onClose, onFull
       </div>
 
       {/* Supervisor → assigned trainees (click one to view their card in this panel) */}
-      {user.role === 'supervisor' && (
+      {user.role === 'trainer' && (
         <div style={{ marginBlockStart: 20 }}>
           <div className="mt-acct-k" style={{ marginBlockEnd: 8 }}>
             Assigned Trainees{Array.isArray(trainees) ? ` (${trainees.length})` : ''}
@@ -443,10 +442,8 @@ export default function DioUsers() {
     return (
       <div className="mt-row-actions">
         <button className="mt-icon-action" title="View details" aria-label={`View ${u.name}`} onClick={() => setViewUser(u)}><IconEye size={15} /></button>
-        {u.role !== 'president' && (
-          <button className="mt-icon-action" title="Edit" aria-label={`Edit ${u.name}`} onClick={() => setFormModal({ user: u })}><IconPencil size={15} /></button>
-        )}
-        {u.role !== 'president' && active && (
+        <button className="mt-icon-action" title="Edit" aria-label={`Edit ${u.name}`} onClick={() => setFormModal({ user: u })}><IconPencil size={15} /></button>
+        {active && (
           <button className="mt-icon-action mt-icon-action--danger" title="Deactivate" aria-label={`Deactivate ${u.name}`} onClick={() => setConfirmDeact(u)}><IconBan size={15} /></button>
         )}
       </div>
@@ -588,7 +585,7 @@ export default function DioUsers() {
             initialRole={formModal.initialRole}
             hospitals={hospitals}
             specialties={specialties}
-            supervisors={users.filter(u => u.role === 'supervisor' && u.isActive !== false)}
+            supervisors={users.filter(u => u.role === 'trainer' && u.isActive !== false)}
             onClose={() => setFormModal(null)}
             onSaved={handleSaved}
           />
@@ -596,7 +593,7 @@ export default function DioUsers() {
         {viewUser && (
           <UserViewModal
             user={viewUser}
-            trainees={viewUser.role === 'supervisor'
+            trainees={viewUser.role === 'trainer'
               ? (traineesBySup ? (traineesBySup[viewUser._id] || []) : null)
               : undefined}
             onTraineeClick={t => {

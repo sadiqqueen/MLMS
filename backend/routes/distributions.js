@@ -8,8 +8,8 @@ const AuditLog       = require('../models/AuditLog');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 
-const READ_ROLES  = ['super_admin', 'dio', 'president'];
-const WRITE_ROLES = ['super_admin', 'dio'];
+const READ_ROLES  = ['developer', 'odio'];
+const WRITE_ROLES = ['developer', 'odio'];
 const STATUSES    = ['active', 'inactive'];
 
 function escapeRegex(str) {
@@ -60,7 +60,7 @@ function belongsToHospital(doc, hospitalId) {
 }
 
 function getDioHospitalOrFail(req, res) {
-  if (req.user.role !== 'dio') return null;
+  if (req.user.role !== 'odio') return null;
   const hospitalId = getHospital(req.user);
   if (!hospitalId) {
     res.status(403).json({ success: false, message: 'DIO account is not assigned to a hospital' });
@@ -118,7 +118,7 @@ async function validateDistributionPayload(data, res, { creating = false, existi
   }
 
   if (data.supervisorId) {
-    const supervisor = await User.findOne({ _id: data.supervisorId, role: 'supervisor', isActive: { $ne: false } });
+    const supervisor = await User.findOne({ _id: data.supervisorId, role: 'trainer', isActive: { $ne: false } });
     if (!supervisor) {
       res.status(400).json({ success: false, message: 'Supervisor not found or inactive' });
       return false;

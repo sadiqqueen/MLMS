@@ -39,7 +39,7 @@ const upload = multer({
 // Staff roles allowed to READ a trainee's uploads (mirrors reports.js /student/:id
 // staff set, plus president, who also views trainee cards). Backend is the source
 // of truth; the frontend guards are UX only.
-const STAFF = ['supervisor', 'program_director', 'dio', 'super_admin', 'president'];
+const STAFF = ['trainer', 'program_director', 'odio', 'developer'];
 
 // GET /api/trainee-courses/mine — the trainee's own uploads
 router.get('/mine', auth, allowRoles('trainee'), async (req, res) => {

@@ -3,7 +3,7 @@ const University     = require('../models/University');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 
-const MANAGERS = ['super_admin'];
+const MANAGERS = ['developer'];
 const UNIVERSITY_FIELDS = ['name', 'city', 'address', 'contactEmail'];
 
 function pick(body, allowed) {

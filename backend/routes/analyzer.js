@@ -35,8 +35,8 @@ const Report         = require('../models/Report');
 
 // head_cs mirrors the data analyzer for every read/approve/staff endpoint, but is
 // EXCLUDED from Exports & Reports (snapshots + analysis reports) — see EXPORT_ROLES.
-const ANALYZER_ROLES = ['data_analyzer', 'super_admin', 'head_cs'];
-const EXPORT_ROLES   = ['data_analyzer', 'super_admin'];
+const ANALYZER_ROLES = ['data_analyzer', 'developer', 'head_cs'];
+const EXPORT_ROLES   = ['data_analyzer', 'developer'];
 // The only account types the legacy /staff endpoint creates/manages. Creation of
 // clerks/CS is also a developer (adminV2) capability in the redesign (RULINGS §37);
 // this endpoint is retained and now persists CS council/type when present.
@@ -115,14 +115,14 @@ router.get('/stats', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
     }
 
     const traineeMatch = { role: coerceRoleToTrack('trainee', req.track), isActive: { $ne: false } };
-    const trainerMatch = { role: coerceRoleToTrack('supervisor', req.track), isActive: { $ne: false } };
+    const trainerMatch = { role: coerceRoleToTrack('trainer', req.track), isActive: { $ne: false } };
     const pdMatch      = { role: coerceRoleToTrack('program_director', req.track), isActive: { $ne: false } };
     if (countryId) { traineeMatch.countryId = countryId; trainerMatch.countryId = countryId; }
     if (specialtyId) { traineeMatch.specialtyId = specialtyId; trainerMatch.specialtyId = specialtyId; pdMatch.specialtyId = specialtyId; }
 
-    const dioMatch = { role: 'dio_view', isActive: { $ne: false } };
+    const dioMatch = { role: 'dio', isActive: { $ne: false } };
     if (countryId) dioMatch.countryId = countryId;
-    const odioMatch = { role: coerceRoleToTrack('dio', req.track), ...trackFilter(req.track), isActive: { $ne: false } };
+    const odioMatch = { role: coerceRoleToTrack('odio', req.track), ...trackFilter(req.track), isActive: { $ne: false } };
     if (countryId) odioMatch.countryId = countryId;
 
     const centerMatch = { ...trackFilter(req.track) };
@@ -332,7 +332,7 @@ router.get('/centers', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => 
 // GET /api/analyzer/dios?countryId=&city=&centerId= — DIOs + their ODIOs/Sub-DIOs.
 router.get('/dios', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
   try {
-    const dioQuery = { role: 'dio_view', isActive: { $ne: false } };
+    const dioQuery = { role: 'dio', isActive: { $ne: false } };
     if (req.query.countryId) dioQuery.countryId = req.query.countryId;
     const city = cityFilter(req.query.city);
     if (city) dioQuery.city = city;
@@ -342,7 +342,7 @@ router.get('/dios', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
       .populate('countryId', 'name code').populate('assignedCenterIds', 'name').sort({ name: 1 });
     const dioIds = dios.map(d => d._id);
     const [odios, subDios] = await Promise.all([
-      User.find({ role: 'dio', dioId: { $in: dioIds }, isActive: { $ne: false } })
+      User.find({ role: 'odio', dioId: { $in: dioIds }, isActive: { $ne: false } })
         .select('-password').populate('dioId', 'name').sort({ name: 1 }),
       User.find({ role: 'sub_dio', dioId: { $in: dioIds }, isActive: { $ne: false } })
         .select('-password').populate('dioId', 'name').sort({ name: 1 }),
@@ -512,7 +512,7 @@ router.get('/trainees/:id/details', auth, allowRoles(...ANALYZER_ROLES), async (
       .populate('countryId', 'name code')
       .populate('pdId', 'name email')
       .populate('supervisorId', 'name email phone specialty')
-      .populate('supervisor', 'name email phone specialty');
+      .populate('trainer', 'name email phone specialty');
     if (!trainee) return res.status(404).json({ success: false, message: 'Trainee not found' });
 
     const [rotations, reports, evaluations, certificates] = await Promise.all([

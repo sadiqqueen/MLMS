@@ -16,15 +16,15 @@ function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-const READ_ROLES = ['data_entry', 'data_analyzer', 'super_admin', 'head_ad', 'central_secretary',
-  'dio', 'dio_view', 'sub_dio', 'hoc', 'secretary_general', 'assistant_secretary',
+const READ_ROLES = ['data_entry', 'data_analyzer', 'developer', 'head_ad', 'central_secretary',
+  'odio', 'dio', 'sub_dio', 'hoc', 'secretary_general', 'assistant_secretary',
   'program_director', 'sub_pd'];
 // Create + PD-candidate lookup: the clerk creates programs directly.
-const CREATE_ROLES = ['data_entry', 'super_admin'];
+const CREATE_ROLES = ['data_entry', 'developer'];
 // Direct edit/delete is super_admin only — a clerk's program edits/deletes go
 // through the Data-Analyzer approval flow (POST /api/registry/programs/:id …,
 // RULINGS §E22). The route stays for super_admin; the clerk uses registry.js.
-const EDIT_ROLES = ['super_admin'];
+const EDIT_ROLES = ['developer'];
 
 // Inject computed accreditation fields (never stored) into a program object.
 function withAccreditation(program) {
@@ -67,7 +67,7 @@ router.get('/', auth, allowRoles(...READ_ROLES), async (req, res) => {
     // Center-set scoping for DIO roles: restrict to the caller's assigned
     // centers. This is authoritative — an empty set naturally returns nothing,
     // and it overrides any center/country param so scope cannot be widened.
-    if (role === 'dio' || role === 'dio_view' || role === 'sub_dio') {
+    if (role === 'odio' || role === 'dio' || role === 'sub_dio') {
       const set = await resolveCenterSet(req.user);
       if (Array.isArray(set)) filter.trainingCenterId = { $in: set };
     }

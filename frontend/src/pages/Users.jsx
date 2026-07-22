@@ -23,21 +23,21 @@ import { MagnifierIcon, initialsOf } from './devkit';
 import './developer.css';
 
 const ROLES = [
-  'trainee', 'supervisor', 'program_director', 'sub_pd', 'secretary', 'data_entry',
-  'central_secretary', 'hoc', 'dio', 'dio_view', 'sub_dio', 'president', 'asg1', 'asg2',
-  'data_analyzer', 'head_cs', 'head_ad', 'assistant_secretary', 'secretary_general', 'super_admin',
+  'trainee', 'trainer', 'program_director', 'sub_pd', 'secretary', 'data_entry',
+  'central_secretary', 'hoc', 'odio', 'dio', 'sub_dio', 'asg1', 'asg2',
+  'data_analyzer', 'head_cs', 'head_ad', 'assistant_secretary', 'secretary_general', 'developer',
 ];
-const BASIC_CAPABLE = ['trainee', 'supervisor', 'program_director', 'secretary', 'dio', 'president'];
+const BASIC_CAPABLE = ['trainee', 'trainer', 'program_director', 'secretary', 'odio'];
 const effectiveRole = (baseR, track) => (track === 'basic' && BASIC_CAPABLE.includes(baseR) ? 'b_' + baseR : baseR);
 
 const ROLE_FIELDS = {
   trainee: ['studentId', 'year', 'hospitalId', 'supervisorId', 'specialtyId', 'phone', 'gender', 'city'],
-  supervisor: ['hospitalId', 'specialtyId', 'department', 'phone', 'gender', 'city'],
+  trainer: ['hospitalId', 'specialtyId', 'department', 'phone', 'gender', 'city'],
   program_director: ['hospitalId', 'department', 'phone'],
   sub_pd: ['phone'], secretary: ['specialtyId', 'phone'], data_entry: ['phone'],
-  central_secretary: ['phone'], hoc: ['councilId', 'phone'], dio: ['phone'], dio_view: ['phone'], sub_dio: ['phone'],
-  president: ['phone'], asg1: ['phone'], asg2: ['phone'], data_analyzer: ['phone'], head_cs: ['phone'], head_ad: ['phone'],
-  assistant_secretary: ['phone'], secretary_general: ['phone'], super_admin: [],
+  central_secretary: ['phone'], hoc: ['councilId', 'phone'], odio: ['phone'], dio: ['phone'], sub_dio: ['phone'],
+  asg1: ['phone'], asg2: ['phone'], data_analyzer: ['phone'], head_cs: ['phone'], head_ad: ['phone'],
+  assistant_secretary: ['phone'], secretary_general: ['phone'], developer: [],
 };
 const showField = (role, field) => (ROLE_FIELDS[role] || []).includes(field);
 const BLOCKER_LABELS = { odios: 'ODIO accounts', subDios: 'Sub-DIO accounts', subPds: 'Sub-PD accounts' };
@@ -315,7 +315,7 @@ function ConfirmSimple({ title, body, confirmLabel, danger, onConfirm, onCancel 
 
 function ConfirmPermanentDelete({ user, supervisors = [], onConfirm, onCancel }) {
   const [reassignTo, setReassignTo] = useState('');
-  const isSupervisor = user?.role === 'supervisor';
+  const isSupervisor = user?.role === 'trainer';
   return (
     <MtModal open title="Permanently delete user" onClose={onCancel}
       footer={<>
@@ -589,7 +589,7 @@ export default function Users() {
         {reactUser && <ConfirmSimple title="Reactivate user" confirmLabel="Reactivate" onConfirm={confirmReactivate} onCancel={() => setReactUser(null)}
           body={<>Restore access for <strong>{reactUser.name}</strong>? The account will be active again.</>} />}
         {purgeUser && <ConfirmPermanentDelete user={purgeUser}
-          supervisors={users.filter((u) => u.role === 'supervisor' && u.isActive !== false && u._id !== purgeUser._id)}
+          supervisors={users.filter((u) => u.role === 'trainer' && u.isActive !== false && u._id !== purgeUser._id)}
           onConfirm={confirmPermanentDelete} onCancel={() => setPurgeUser(null)} />}
 
         <MtToastHost toasts={toasts} />

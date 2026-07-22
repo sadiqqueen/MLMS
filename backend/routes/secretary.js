@@ -29,11 +29,11 @@ function viewChangeRequest(doc) {
 const SECRETARY = ['secretary'];
 const CREATE_USER_FIELDS = ['name', 'email', 'password', 'phone', 'gender', 'city',
   'department', 'specialty', 'year', 'studentId', 'enrolledSince',
-  'hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'supervisor',
+  'hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'trainer',
   'researchSupervisorId', 'photoUrl'];
 const UPDATE_USER_FIELDS = ['name', 'phone', 'gender', 'city', 'department',
   'specialty', 'year', 'studentId', 'enrolledSince', 'hospitalId',
-  'hospital', 'supervisorId', 'supervisor', 'researchSupervisorId', 'photoUrl', 'isActive'];
+  'hospital', 'supervisorId', 'trainer', 'researchSupervisorId', 'photoUrl', 'isActive'];
 const HOSPITAL_UPDATE_FIELDS = ['name', 'city', 'governorate', 'address', 'phone', 'email'];
 const ROTATION_UPDATE_FIELDS = ['startDate', 'endDate', 'status', 'supervisorId'];
 
@@ -135,7 +135,7 @@ async function supervisorInSpecialty(supervisorId, req) {
   if (!supervisorId) return null;
   return User.findOne({
     _id: supervisorId,
-    role: coerceRoleToTrack('supervisor', req.track),
+    role: coerceRoleToTrack('trainer', req.track),
     specialtyId: req.user.specialtyId,
     isActive: { $ne: false }
   }).select('_id');
@@ -174,7 +174,7 @@ async function buildChangePayload(fields, existing) {
   const display = [];
   for (const key of Object.keys(fields)) {
     // Skip the mirrored legacy alias so the diff isn't shown twice.
-    if (key === 'supervisor') continue;
+    if (key === 'trainer') continue;
     const beforeVal = existing[key] === undefined ? null : existing[key];
     before[key] = beforeVal?._id || beforeVal || null;
     display.push({
@@ -190,7 +190,7 @@ async function buildChangePayload(fields, existing) {
 // account-edit requests). Best-effort; failures never block the request.
 async function notifyTrackDios(req, message) {
   const dios = await User.find({
-    role: coerceRoleToTrack('dio', req.track),
+    role: coerceRoleToTrack('odio', req.track),
     isActive: { $ne: false }
   }).select('_id');
   await Promise.all(dios.map(d =>
@@ -442,7 +442,7 @@ router.patch('/trainees/:id',
       // Fold the legacy alias into supervisorId so it is validated, not smuggled.
       if (fields.supervisor && !fields.supervisorId) fields.supervisorId = fields.supervisor;
       // A trainee must keep a supervisor — allow changing it, never clearing it.
-      if (('supervisorId' in fields || 'supervisor' in fields) && !fields.supervisorId && !fields.supervisor) {
+      if (('supervisorId' in fields || 'trainer' in fields) && !fields.supervisorId && !fields.supervisor) {
         return res.status(400).json({ success: false, message: 'A trainee must have a supervisor' });
       }
       if (fields.supervisorId) {
@@ -478,7 +478,7 @@ router.get('/supervisors', auth, allowRoles(...SECRETARY), async (req, res) => {
     if (!specialtyId) return;
 
     const supervisors = await User.find({
-      role: coerceRoleToTrack('supervisor', req.track),
+      role: coerceRoleToTrack('trainer', req.track),
       specialtyId,
       isActive: { $ne: false }
     })
@@ -504,7 +504,7 @@ router.post('/supervisors',
       if (!specialtyId) return;
       const hospitalId  = req.body.hospitalId || req.body.hospital || getHospital(req.user);
       const data = pick(req.body, CREATE_USER_FIELDS);
-      data.role = coerceRoleToTrack('supervisor', req.track);
+      data.role = coerceRoleToTrack('trainer', req.track);
       data.specialtyId = specialtyId;
       data.specialty = req.user.specialty || data.specialty || '';
       if (hospitalId)  { data.hospitalId = hospitalId; data.hospital = hospitalId; }
@@ -786,7 +786,7 @@ router.post('/distributions',
 
       const supervisor = await User.findOne({
         _id: supervisorId,
-        role: coerceRoleToTrack('supervisor', req.track),
+        role: coerceRoleToTrack('trainer', req.track),
         ...getSecretaryQuery(req),
         isActive: { $ne: false }
       });
@@ -848,7 +848,7 @@ router.patch('/distributions/:id',
       if (updates.supervisorId) {
         const supervisor = await User.findOne({
           _id: updates.supervisorId,
-          role: coerceRoleToTrack('supervisor', req.track),
+          role: coerceRoleToTrack('trainer', req.track),
           ...getSecretaryQuery(req),
           isActive: { $ne: false }
         });

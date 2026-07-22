@@ -159,7 +159,7 @@ export default function RegistryCenterDetail() {
 
   const detailRows = [
     [t('country'), refName(center.countryId)], [t('city'), center.city || '—'],
-    [t('dio'), refName(center.dioId)], [t('subDio'), refName(center.subDioId)],
+    [t('odio'), refName(center.dioId)], [t('subDio'), refName(center.subDioId)],
     [t('address'), center.address || '—'], [t('email'), center.email || '—'],
     [t('phone'), center.phone || '—'], [t('idNumber'), center.idNumber || '—'],
     [t('accId'), center.accreditationNumber || '—'], [t('accDate'), fmtDate(center.accreditationGrantDate)],

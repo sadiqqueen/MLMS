@@ -33,7 +33,7 @@ async function seed() {
       name:          'Super Admin',
       email:         email.toLowerCase(),
       password:      password, // pre-save hook will hash it
-      role:          'super_admin',
+      role:          'developer',
       initials,
       isActive:      true,
       loginAttempts: 0

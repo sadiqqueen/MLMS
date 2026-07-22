@@ -26,15 +26,15 @@ const ChangeRequest  = require('../models/ChangeRequest');
 const ScientificCouncil = require('../models/ScientificCouncil');
 const { syncCenterDioAssignment } = require('../utils/registryChanges');
 
-const ADMIN = ['super_admin'];
+const ADMIN = ['developer'];
 const USER_CREATE_FIELDS = ['name', 'email', 'password', 'role', 'phone', 'gender',
   'city', 'department', 'specialty', 'year', 'studentId', 'enrolledSince',
-  'hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'supervisor',
+  'hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'trainer',
   'idNumber', 'countryId', 'councilId', 'secretaryType',
   'isActive', 'locked', 'lockUntil'];
 const USER_UPDATE_FIELDS = ['name', 'email', 'role', 'phone', 'gender',
   'city', 'department', 'specialty', 'year', 'studentId', 'enrolledSince',
-  'hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'supervisor',
+  'hospitalId', 'hospital', 'specialtyId', 'supervisorId', 'trainer',
   'idNumber', 'countryId', 'councilId', 'secretaryType',
   'isActive', 'locked', 'lockUntil', 'loginAttempts'];
 
@@ -78,7 +78,7 @@ router.get('/stats', auth, allowRoles(...ADMIN), async (req, res) => {
         Rotation.countDocuments({ status: 'current', ...tf }),
         Certificate.countDocuments({ revokedAt: null, ...tf }),
         User.countDocuments({ role: 'trainee',    isActive: { $ne: false }, ...tf }),
-        User.countDocuments({ role: 'supervisor', isActive: { $ne: false }, ...tf })
+        User.countDocuments({ role: 'trainer', isActive: { $ne: false }, ...tf })
       ]);
 
     res.json({ success: true, data: { users, hospitals, specialties, activeRotations, certificates, trainees, supervisors } });
@@ -237,8 +237,8 @@ router.delete('/users/:id',
       if (String(target._id) === callerId) {
         return res.status(403).json({ message: 'You cannot deactivate your own account' });
       }
-      if (target.role === 'super_admin') {
-        const activeSupers = await User.countDocuments({ role: 'super_admin', isActive: { $ne: false } });
+      if (target.role === 'developer') {
+        const activeSupers = await User.countDocuments({ role: 'developer', isActive: { $ne: false } });
         if (activeSupers <= 1) {
           return res.status(409).json({ message: 'Cannot deactivate the last super_admin' });
         }
@@ -296,8 +296,8 @@ router.delete('/users/:id/permanent',
         return res.status(403).json({ message: 'You cannot delete your own account' });
       }
 
-      if (target.role === 'super_admin') {
-        const count = await User.countDocuments({ role: 'super_admin' });
+      if (target.role === 'developer') {
+        const count = await User.countDocuments({ role: 'developer' });
         if (count <= 1) return res.status(409).json({ message: 'Cannot delete the last super_admin' });
       }
 
@@ -307,9 +307,9 @@ router.delete('/users/:id/permanent',
       // utils/centerScope.js — resolveCenterSet returns [] only when dioId is
       // falsy), while leaving it dangling makes a dead account. Blocking is the
       // only safe path. Counts include active AND inactive children alike.
-      if (target.role === 'dio_view') {
+      if (target.role === 'dio') {
         const [odios, subDios] = await Promise.all([
-          User.countDocuments({ dioId: target._id, role: 'dio' }),
+          User.countDocuments({ dioId: target._id, role: 'odio' }),
           User.countDocuments({ dioId: target._id, role: 'sub_dio' })
         ]);
         if (odios + subDios > 0) {

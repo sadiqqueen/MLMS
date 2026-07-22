@@ -9,14 +9,14 @@ const { resolveCenterSet, traineeIdsForCenterSet } = require('../utils/centerSco
 
 // dio_view / sub_dio may READ (open + print) certificates within their assigned
 // center set only — never WRITE (issue/revoke/delete stays with CERT_WRITE).
-const CERT_READ  = ['program_director', 'president', 'super_admin', 'dio', 'dio_view', 'sub_dio'];
-const CERT_WRITE = ['program_director', 'super_admin', 'dio'];
+const CERT_READ  = ['program_director', 'developer', 'odio', 'dio', 'sub_dio'];
+const CERT_WRITE = ['program_director', 'developer', 'odio'];
 
 const populate = q => q
   .populate('student',  'name initials photoUrl studentId year')
   .populate('traineeId', 'name initials photoUrl studentId year')
   .populate('doctor',   'name specialty initials')
-  .populate('supervisor', 'name specialty initials')
+  .populate('trainer', 'name specialty initials')
   .populate('hospital', 'name city')
   .populate('issuedBy', 'name role')
   .populate('rotation', 'startDate endDate status')
@@ -91,13 +91,13 @@ function sameId(a, b) {
 // super_admin and dio are system-wide certificate overseers (no hospital scope);
 // every other reader (program_director, president) is scoped to its own hospital.
 function isCertificateOverseer(user) {
-  return user.role === 'super_admin' || user.role === 'dio';
+  return user.role === 'developer' || user.role === 'odio';
 }
 
 // dio_view / sub_dio are center-scoped advanced readers: they may only see
 // advanced-track certificates of trainees in their assigned center set.
 function isCenterScopedReader(user) {
-  return user.role === 'dio_view' || user.role === 'sub_dio';
+  return user.role === 'dio' || user.role === 'sub_dio';
 }
 
 // Resolve the advanced trainee ids in the caller's assigned center set.
@@ -121,7 +121,7 @@ async function scopedCertificateQuery(req, res) {
 }
 
 function ensureCertificateScope(req, res, cert) {
-  if (req.user.role === 'super_admin') return true;
+  if (req.user.role === 'developer') return true;
   const hospitalId = getHospital(req.user);
   if (!hospitalId) {
     res.status(403).json({ success: false, message: 'Account is not assigned to a hospital' });
@@ -201,12 +201,12 @@ router.get('/:id/print', auth, allowRoles(...CERT_READ), async (req, res) => {
 router.post('/', auth, allowRoles(...CERT_WRITE), async (req, res) => {
   try {
     const ALLOWED_CREATE = ['student', 'traineeId', 'rotation', 'distributionId',
-                            'specialty', 'type', 'doctor', 'supervisor',
+                            'specialty', 'type', 'doctor', 'trainer',
                             'hospital', 'issueDate', 'notes', 'fileUrl'];
     const data = {};
     ALLOWED_CREATE.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
     data.issuedBy = req.user._id;
-    if (req.user.role !== 'super_admin') {
+    if (req.user.role !== 'developer') {
       const hospitalId = getHospital(req.user);
       if (!hospitalId) return res.status(403).json({ success: false, message: 'Account is not assigned to a hospital' });
       if (data.hospital && !sameId(data.hospital, hospitalId)) {

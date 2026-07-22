@@ -22,7 +22,7 @@ const AnalysisReport = require('../models/AnalysisReport');
 // Analysis-report files live here; downloads are served by stored fileId only.
 const reportsDir = path.join(__dirname, '../uploads/analysis-reports');
 
-const SG_ROLES = ['secretary_general', 'assistant_secretary', 'super_admin'];
+const SG_ROLES = ['secretary_general', 'assistant_secretary', 'developer'];
 
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -46,14 +46,14 @@ async function buildStats(req) {
   }
 
   const traineeMatch = { role: coerceRoleToTrack('trainee', req.track), isActive: { $ne: false } };
-  const trainerMatch = { role: coerceRoleToTrack('supervisor', req.track), isActive: { $ne: false } };
+  const trainerMatch = { role: coerceRoleToTrack('trainer', req.track), isActive: { $ne: false } };
   const pdMatch      = { role: coerceRoleToTrack('program_director', req.track), isActive: { $ne: false } };
   if (countryId) { traineeMatch.countryId = countryId; trainerMatch.countryId = countryId; }
   if (specialtyId) { traineeMatch.specialtyId = specialtyId; trainerMatch.specialtyId = specialtyId; pdMatch.specialtyId = specialtyId; }
 
-  const dioMatch = { role: 'dio_view', isActive: { $ne: false } };
+  const dioMatch = { role: 'dio', isActive: { $ne: false } };
   if (countryId) dioMatch.countryId = countryId;
-  const odioMatch = { role: coerceRoleToTrack('dio', req.track), ...trackFilter(req.track), isActive: { $ne: false } };
+  const odioMatch = { role: coerceRoleToTrack('odio', req.track), ...trackFilter(req.track), isActive: { $ne: false } };
   if (countryId) odioMatch.countryId = countryId;
 
   const centerMatch = { ...trackFilter(req.track) };
@@ -112,12 +112,12 @@ router.get('/centers', auth, allowRoles(...SG_ROLES), async (req, res) => {
 router.get('/dios', auth, allowRoles(...SG_ROLES), async (req, res) => {
   try {
     const [dios, odios, subDios] = await Promise.all([
-      User.find({ role: 'dio_view', isActive: { $ne: false } })
+      User.find({ role: 'dio', isActive: { $ne: false } })
         .select('-password')
         .populate('countryId', 'name code')
         .populate('assignedCenterIds', 'name')
         .sort({ name: 1 }),
-      User.find({ role: 'dio', dioId: { $ne: null }, isActive: { $ne: false } })
+      User.find({ role: 'odio', dioId: { $ne: null }, isActive: { $ne: false } })
         .select('-password').populate('dioId', 'name').sort({ name: 1 }),
       User.find({ role: 'sub_dio', dioId: { $ne: null }, isActive: { $ne: false } })
         .select('-password').populate('dioId', 'name').sort({ name: 1 }),

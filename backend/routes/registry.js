@@ -30,13 +30,13 @@ function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-const REGISTRY_ROLES = ['data_entry', 'super_admin'];
+const REGISTRY_ROLES = ['data_entry', 'developer'];
 // Head AD reads every registry list but never writes: it gets the read-only GETs
 // via REGISTRY_READ_ROLES and 403s on every POST/PATCH/DELETE (which keep
 // REGISTRY_ROLES). This split is the server-side read-only guarantee.
 const REGISTRY_READ_ROLES = [...REGISTRY_ROLES, 'head_ad'];
 // The only account types a data-entry clerk manages/sees.
-const MANAGED_ROLES = ['dio_view', 'dio', 'sub_dio', 'program_director', 'sub_pd'];
+const MANAGED_ROLES = ['dio', 'odio', 'sub_dio', 'program_director', 'sub_pd'];
 
 const CENTER_FIELDS = ['name', 'city', 'address', 'governorate', 'phone', 'email',
   'countryId', 'idNumber', 'accreditationNumber', 'accreditationGrantDate', 'accreditationExpiry',
@@ -204,7 +204,7 @@ router.get('/stats', auth, allowRoles(...REGISTRY_READ_ROLES), async (req, res) 
       Hospital.countDocuments({ ...tf, isActive: { $ne: false } }),
       Program.countDocuments({ isActive: { $ne: false } }),
       Specialty.countDocuments({ ...tf, isActive: { $ne: false } }),
-      User.countDocuments({ role: 'dio_view', isActive: { $ne: false } }),
+      User.countDocuments({ role: 'dio', isActive: { $ne: false } }),
       User.countDocuments({ role: 'program_director', isActive: { $ne: false } }),
       // Head AD's card counts requests awaiting its approval; the clerk's counts
       // its own queued (reviewer-agnostic by requestedBy) requests.
@@ -278,7 +278,7 @@ router.post('/centers', auth, allowRoles(...REGISTRY_ROLES), auditLog('registry_
     if (!data.name || !String(data.name).trim()) return res.status(400).json({ message: 'Center name is required' });
     if (data.countryId && !(await countryExists(data.countryId))) return res.status(400).json({ message: 'Country not found' });
     if (data.dioId) {
-      const dio = await User.findOne({ _id: data.dioId, role: 'dio_view', isActive: { $ne: false } }).select('_id');
+      const dio = await User.findOne({ _id: data.dioId, role: 'dio', isActive: { $ne: false } }).select('_id');
       if (!dio) return res.status(400).json({ message: 'Assigned DIO not found or inactive' });
     }
     if (data.subDioId) {
@@ -372,7 +372,7 @@ router.post('/dios', auth, allowRoles(...REGISTRY_ROLES), auditLog('registry_cre
       return res.status(400).json({ message: 'All assigned centers must belong to the selected country' });
     }
 
-    const user = new User({ ...baseUserPayload(req.body), role: 'dio_view', countryId, assignedCenterIds });
+    const user = new User({ ...baseUserPayload(req.body), role: 'dio', countryId, assignedCenterIds });
     await user.save();
 
     const saved = await User.findById(user._id).select('-password')
@@ -384,12 +384,12 @@ router.post('/dios', auth, allowRoles(...REGISTRY_ROLES), auditLog('registry_cre
   }
 });
 
-// Shared creator for a DIO's ODIO / Sub-DIO (role 'dio' | 'sub_dio'). Both resolve
+// Shared creator for a DIO's ODIO / Sub-DIO (role 'odio' | 'sub_dio'). Both resolve
 // their center set THROUGH the parent dio_view via dioId; country/city inherited.
 async function createDioChild(req, res, role) {
   try {
     const parent = await User.findById(req.params.id).select('role isActive countryId city');
-    if (!parent || parent.isActive === false || parent.role !== 'dio_view') {
+    if (!parent || parent.isActive === false || parent.role !== 'dio') {
       return res.status(404).json({ message: 'DIO account not found' });
     }
     const invalid = validateNewUser(req.body);
@@ -411,7 +411,7 @@ async function createDioChild(req, res, role) {
 
 // POST /api/registry/dios/:id/odio — create the ODIO (role: dio).
 router.post('/dios/:id/odio', auth, allowRoles(...REGISTRY_ROLES), auditLog('registry_create_odio', 'User'), (req, res) => {
-  createDioChild(req, res, 'dio');
+  createDioChild(req, res, 'odio');
 });
 
 // POST /api/registry/dios/:id/sub-dio — create the Sub-DIO (role: sub_dio).

@@ -57,7 +57,7 @@ function SupervisorModal({ editSupervisor, onSave, onClose, saving, specialties 
 
   function handleSave() {
     if (!validate()) return;
-    onSave({ ...form, role: 'supervisor' });
+    onSave({ ...form, role: 'trainer' });
   }
 
   useEffect(() => {

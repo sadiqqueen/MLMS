@@ -129,7 +129,7 @@ function TraineeDetail({ trainee, distributions, onClose, t }) {
               <div className="pd-detail-v" style={{ fontWeight: 600 }}>{sp}</div>
               <span className={`mt-pill ${statusTone(status)}`}>{status}</span>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-2)', marginBlockEnd: 4 }}>{t('supervisor')}: <strong>{sup}</strong></div>
+            <div style={{ fontSize: 12, color: 'var(--text-2)', marginBlockEnd: 4 }}>{t('trainer')}: <strong>{sup}</strong></div>
             <div style={{ fontSize: 12, color: 'var(--text-2)' }}>{fmtDate(d.startDate)} → {fmtDate(d.endDate)}{dur ? ` · ${dur} ${t('weeks')}` : ''}</div>
           </div>
         );

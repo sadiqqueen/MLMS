@@ -29,11 +29,11 @@ const ROUTE_TARGETS = {
     fields: ['name', 'email', 'phone', 'city', 'gender', 'pdId'],
   },
   dios: {
-    model: 'User', role: 'dio_view', label: 'DIO',
+    model: 'User', role: 'dio', label: 'DIO',
     fields: ['name', 'email', 'phone', 'city', 'countryId'],
   },
   odios: {
-    model: 'User', role: 'dio', label: 'ODIO',
+    model: 'User', role: 'odio', label: 'ODIO',
     fields: ['name', 'email', 'phone'],
   },
   sub_dios: {
@@ -143,12 +143,12 @@ async function syncCenterDioAssignment(centerId, newDioId, prevDioId) {
   const nId = newDioId && newDioId._id ? newDioId._id : newDioId;
   const pId = prevDioId && prevDioId._id ? prevDioId._id : prevDioId;
   if (String(pId || '') !== String(nId || '')) {
-    if (pId) await User.updateOne({ _id: pId, role: 'dio_view' }, { $pull: { assignedCenterIds: centerId } }).catch(() => {});
+    if (pId) await User.updateOne({ _id: pId, role: 'dio' }, { $pull: { assignedCenterIds: centerId } }).catch(() => {});
     // Keep trainees' denormalized dioId snapshot in step with their centre's DIO
     // (re-point on reassignment; null it when the centre loses/deletes its DIO).
     await User.updateMany({ hospitalId: centerId, role: 'trainee' }, { $set: { dioId: nId || null } }).catch(() => {});
   }
-  if (nId) await User.updateOne({ _id: nId, role: 'dio_view' }, { $addToSet: { assignedCenterIds: centerId } }).catch(() => {});
+  if (nId) await User.updateOne({ _id: nId, role: 'dio' }, { $addToSet: { assignedCenterIds: centerId } }).catch(() => {});
 }
 
 // Notify every active Data Analyzer that a request is awaiting review. The word
@@ -185,7 +185,7 @@ async function validateRefs(routeKey, fields, targetId) {
   }
   if (routeKey === 'centers') {
     if (fields.dioId) {
-      const d = await User.findOne({ _id: fields.dioId, role: 'dio_view', isActive: { $ne: false } }).select('_id');
+      const d = await User.findOne({ _id: fields.dioId, role: 'dio', isActive: { $ne: false } }).select('_id');
       if (!d) throw httpError('Assigned DIO not found or inactive', 400);
     }
     if (fields.subDioId) {

@@ -89,10 +89,10 @@ const bocHeader = (req, res, next) => {
   next();
 };
 // Consultant memos — ASG.1 / ASG.2 only (mirrors routes/consultantMemo.js).
-app.use('/uploads/consultant-memos', auth, allowRoles('asg1', 'asg2', 'super_admin'), bocHeader);
+app.use('/uploads/consultant-memos', auth, allowRoles('asg1', 'asg2', 'developer'), bocHeader);
 // Book-of-changes PDFs — the registry change-request submitters + reviewers only.
 app.use('/uploads/book-of-changes', auth,
-  allowRoles('data_entry', 'central_secretary', 'head_ad', 'data_analyzer', 'head_cs', 'dio', 'super_admin'),
+  allowRoles('data_entry', 'central_secretary', 'head_ad', 'data_analyzer', 'head_cs', 'odio', 'developer'),
   bocHeader);
 
 // Uploaded training/report files require an authenticated session.
@@ -134,7 +134,6 @@ app.use('/api/supervisor',        require('./routes/supervisor'));
 app.use('/api/program-director',  require('./routes/programDirector'));
 app.use('/api/secretary',         require('./routes/secretary'));
 app.use('/api/dio',               require('./routes/dio'));
-app.use('/api/president',         require('./routes/president'));
 app.use('/api/trainee',           require('./routes/trainee'));
 app.use('/api/trainee-courses',   require('./routes/traineeCourses'));
 app.use('/api/research',          require('./routes/research'));

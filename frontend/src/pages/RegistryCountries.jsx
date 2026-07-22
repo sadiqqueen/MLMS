@@ -85,7 +85,7 @@ export default function RegistryCountries() {
       api.get('/api/registry/specialties'),
       api.get('/api/registry/users', { params: { role: 'program_director' } }),
       api.get('/api/registry/users', { params: { role: 'sub_pd' } }),
-      api.get('/api/registry/users', { params: { role: 'dio_view' } }),
+      api.get('/api/registry/users', { params: { role: 'dio' } }),
       api.get('/api/registry/users', { params: { role: 'sub_dio' } }),
     ]);
     const val = (r) => (r.status === 'fulfilled' ? (r.value.data?.data || r.value.data || []) : []);

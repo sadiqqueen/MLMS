@@ -158,7 +158,7 @@ export default function DioHospitalDetail() {
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, borderBlockStart: '1px solid var(--border)', paddingBlockStart: 14, marginBlockStart: 16 }}>
             <AddBtn onClick={() => setModal({ type: 'specialty' })}>Specialty</AddBtn>
-            <AddBtn onClick={() => setModal({ type: 'staff', role: 'supervisor' })}>Supervisor</AddBtn>
+            <AddBtn onClick={() => setModal({ type: 'staff', role: 'trainer' })}>Supervisor</AddBtn>
             <AddBtn onClick={() => setModal({ type: 'staff', role: 'program_director' })}>Program Director</AddBtn>
           </div>
         </RevealOnScroll>
@@ -246,7 +246,7 @@ export default function DioHospitalDetail() {
         </Card>
 
         {/* Supervisors */}
-        <Card title="Supervisors" count={data.supervisors.length} action={<AddBtn onClick={() => setModal({ type: 'staff', role: 'supervisor' })}>Supervisor</AddBtn>}>
+        <Card title="Supervisors" count={data.supervisors.length} action={<AddBtn onClick={() => setModal({ type: 'staff', role: 'trainer' })}>Supervisor</AddBtn>}>
           {data.supervisors.length === 0 ? <Muted>None assigned</Muted> : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {data.supervisors.map(s => (
