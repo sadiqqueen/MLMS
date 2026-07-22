@@ -27,6 +27,7 @@ const STR = {
     centers: 'المراكز التدريبية', back: 'رجوع', notFound: 'المركز غير موجود',
     country: 'الدولة', city: 'المدينة', address: 'العنوان', email: 'البريد الإلكتروني', phone: 'الهاتف',
     idNumber: 'المعرّف', accId: 'رقم الاعتماد', accDate: 'تاريخ منح الاعتماد', accExpiry: 'انتهاء الاعتماد',
+    dio: 'DIO', subDio: 'Sub-DIO',
     programs: 'البرامج', addProgram: 'إضافة برنامج', atCapacity: 'المركز مكتمل — 100 / 100',
     cName: 'البرنامج', cId: 'المعرّف', cSpecialty: 'الاختصاص', cPd: 'المدير', cCapacity: 'الطاقة', cDuration: 'المدة',
     noPrograms: 'لا توجد برامج بعد.', edit: 'تعديل', editRecord: 'تعديل البرنامج', perYr: '/ سنة', yrs: 'سنوات',
@@ -40,6 +41,7 @@ const STR = {
     centers: 'Training Centers', back: 'Back', notFound: 'Training center not found',
     country: 'Country', city: 'City', address: 'Address', email: 'Email', phone: 'Phone',
     idNumber: 'ID', accId: 'Accreditation ID', accDate: 'Accreditation grant date', accExpiry: 'Accreditation expiry',
+    dio: 'DIO', subDio: 'Sub-DIO',
     programs: 'Programs', addProgram: 'Add program', atCapacity: 'Center at capacity — 100 / 100',
     cName: 'Program', cId: 'ID', cSpecialty: 'Specialty', cPd: 'PD', cCapacity: 'Capacity', cDuration: 'Duration',
     noPrograms: 'No programs yet.', edit: 'Edit', editRecord: 'Edit program', perYr: '/ yr', yrs: 'yrs',
@@ -157,6 +159,7 @@ export default function RegistryCenterDetail() {
 
   const detailRows = [
     [t('country'), refName(center.countryId)], [t('city'), center.city || '—'],
+    [t('dio'), refName(center.dioId)], [t('subDio'), refName(center.subDioId)],
     [t('address'), center.address || '—'], [t('email'), center.email || '—'],
     [t('phone'), center.phone || '—'], [t('idNumber'), center.idNumber || '—'],
     [t('accId'), center.accreditationNumber || '—'], [t('accDate'), fmtDate(center.accreditationGrantDate)],
