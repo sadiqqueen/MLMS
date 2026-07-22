@@ -496,11 +496,12 @@ router.delete('/pds/:id', auth, allowRoles(...REGISTRY_ROLES), submitRegistryCha
 router.patch('/sub-pds/:id', auth, allowRoles(...REGISTRY_ROLES), submitRegistryChange('sub_pds', 'edit'));
 router.delete('/sub-pds/:id', auth, allowRoles(...REGISTRY_ROLES), submitRegistryChange('sub_pds', 'delete'));
 
-// ── PROGRAMS / COUNTRIES (edit/delete gating; create lives in their own routers) ──
+// ── PROGRAMS (edit/delete gating; create lives in its own router) ──
 router.patch('/programs/:id', auth, allowRoles(...REGISTRY_ROLES), submitRegistryChange('programs', 'edit'));
 router.delete('/programs/:id', auth, allowRoles(...REGISTRY_ROLES), submitRegistryChange('programs', 'delete'));
-router.patch('/countries/:id', auth, allowRoles(...REGISTRY_ROLES), submitRegistryChange('countries', 'edit'));
-router.delete('/countries/:id', auth, allowRoles(...REGISTRY_ROLES), submitRegistryChange('countries', 'delete'));
+// Countries: edit/delete are super_admin (Developer) only and go through the direct
+// /api/countries PATCH/DELETE route — the clerk may only ADD a country, never edit
+// or delete one, so no approval-gated country edit/delete is exposed here.
 
 // ── USERS (clerk's managed accounts) ────────────────────────────────────────
 
