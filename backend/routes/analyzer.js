@@ -6,6 +6,7 @@ const router         = require('express').Router();
 const multer         = require('multer');
 const path           = require('path');
 const fs             = require('fs');
+const mongoose       = require('mongoose');
 const auth           = require('../middleware/auth');
 const { allowRoles } = require('../middleware/roles');
 const { coerceRoleToTrack, trackFilter } = require('../utils/track');
@@ -29,6 +30,8 @@ const Certificate    = require('../models/Certificate');
 const Evaluation     = require('../models/Evaluation');
 const Research       = require('../models/Research');
 const ScientificCouncil = require('../models/ScientificCouncil');
+const Rotation       = require('../models/Rotation');
+const Report         = require('../models/Report');
 
 // head_cs mirrors the data analyzer for every read/approve/staff endpoint, but is
 // EXCLUDED from Exports & Reports (snapshots + analysis reports) — see EXPORT_ROLES.
@@ -486,6 +489,83 @@ router.get('/trainees', auth, allowRoles(...ANALYZER_ROLES), async (req, res) =>
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
+// GET /api/analyzer/trainees/:id/details — READ-ONLY trainee card for the
+// analyzer / Head-CS suite: profile + rotations + trainee evaluations + reports
+// (+ certificates). Mirrors the DIO drilldown but with ZERO write affordances.
+// Guarded by ANALYZER_ROLES (includes head_cs); never EXPORT_ROLES.
+router.get('/trainees/:id/details', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid trainee id' });
+    }
+
+    const trainee = await User.findOne({
+      _id: req.params.id,
+      role: coerceRoleToTrack('trainee', req.track),
+      isActive: { $ne: false },
+    })
+      .select('-password')
+      .populate('hospitalId', 'name city governorate')
+      .populate('hospital', 'name city governorate')
+      .populate('specialtyId', 'name')
+      .populate('programId', 'name')
+      .populate('countryId', 'name code')
+      .populate('pdId', 'name email')
+      .populate('supervisorId', 'name email phone specialty')
+      .populate('supervisor', 'name email phone specialty');
+    if (!trainee) return res.status(404).json({ success: false, message: 'Trainee not found' });
+
+    const [rotations, reports, evaluations, certificates] = await Promise.all([
+      Rotation.find({ $or: [{ traineeId: trainee._id }, { student: trainee._id }] })
+        .sort({ startDate: 1 })
+        .populate('hospitalId', 'name city').populate('hospital', 'name city')
+        .populate('specialtyId', 'name')
+        .populate('supervisorId', 'name').populate('doctor', 'name'),
+      Report.find({ student: trainee._id })                    // Report links via `student` only
+        .populate('hospital', 'name city')
+        .populate('rotation', 'startDate endDate status')
+        .populate('gradedBy', 'name role')
+        .sort({ date: -1, createdAt: -1 }),
+      Evaluation.find({
+        $or: [{ student: trainee._id }, { traineeId: trainee._id }],
+        evaluateeRole: { $ne: 'supervisor' },                  // exclude DIO→supervisor evals
+      })
+        .populate('doctor', 'name role').populate('supervisorId', 'name role')
+        .populate('evaluatorId', 'name role').populate('createdBy', 'name role')
+        .sort({ createdAt: -1 }),
+      Certificate.find({ $or: [{ student: trainee._id }, { traineeId: trainee._id }] })
+        .populate('issuedBy', 'name role').sort({ issueDate: -1, createdAt: -1 }),
+    ]);
+
+    const plainReports = reports.map(r => r.toObject());
+    const plainEvaluations = evaluations.map(e => e.toObject());
+    const finalized = plainEvaluations.filter(e => e.isFinalized || e.status === 'completed');
+
+    res.json({
+      success: true,
+      data: {
+        trainee: { ...trainee.toObject(), trainingYear: trainingYear(trainee) },
+        hospital: trainee.hospitalId || trainee.hospital || null,
+        specialty: trainee.specialtyId || null,
+        currentRotation: rotations.find(r => r.status === 'current') || null,
+        rotations,
+        reports: plainReports,
+        reportsByType: {
+          weekly:  plainReports.filter(r => r.type === 'weekly'),
+          monthly: plainReports.filter(r => r.type === 'monthly'),
+          final:   plainReports.filter(r => r.type === 'final'),
+        },
+        evaluations: plainEvaluations,
+        evaluationsSummary: {
+          total: plainEvaluations.length, finalized: finalized.length,
+          pending: Math.max(0, plainEvaluations.length - finalized.length),
+        },
+        certificates: certificates.map(c => c.toObject()),
+      },
+    });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
 // ── PENDING CHANGES INBOX (analyzer-reviewed clerk/CS requests) ──────────────
 
 function viewChangeRequest(doc) {
@@ -514,21 +594,27 @@ router.get('/change-requests', auth, allowRoles(...ANALYZER_ROLES), async (req, 
 // PATCH /api/analyzer/change-requests/:id/approve — apply + notify requester.
 router.patch('/change-requests/:id/approve', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
   try {
-    const cr = await ChangeRequest.findOne({ _id: req.params.id, status: 'pending', reviewerRole: 'data_analyzer' });
+    // Atomically CLAIM the pending request so concurrent approvals (or an approve
+    // racing a cancel) can't both apply it — the loser gets 404.
+    const cr = await ChangeRequest.findOneAndUpdate(
+      { _id: req.params.id, status: 'pending', reviewerRole: 'data_analyzer', ...trackFilter(req.track) },
+      { $set: { status: 'approved', reviewedBy: req.user._id, reviewedAt: new Date(),
+                ...(req.body && req.body.note ? { reviewNote: String(req.body.note) } : {}) } },
+      { new: true }
+    );
     if (!cr) return res.status(404).json({ success: false, message: 'Pending request not found' });
 
     let updated;
     try {
       updated = await applyChangeRequest(cr);
     } catch (applyErr) {
+      await ChangeRequest.updateOne(
+        { _id: cr._id, status: 'approved', reviewedBy: req.user._id },
+        { $set: { status: 'pending', reviewedBy: null, reviewedAt: null, reviewNote: '' } }
+      ).catch(e => console.error('[analyzer] CRITICAL: revert to pending failed for', String(cr._id), e.message));
       return res.status(applyErr.status || 400).json({ success: false, message: applyErr.message });
     }
 
-    cr.status = 'approved';
-    cr.reviewedBy = req.user._id;
-    cr.reviewedAt = new Date();
-    if (req.body && req.body.note) cr.reviewNote = String(req.body.note);
-    await cr.save();
     await writeAudit(req, 'analyzer_approve_change_request', 'ChangeRequest', cr._id, { routeKey: cr.routeKey, requestType: cr.requestType, targetId: cr.targetId });
     await Notification.create({
       user: cr.requestedBy,
@@ -544,14 +630,12 @@ router.patch('/change-requests/:id/reject', auth, allowRoles(...ANALYZER_ROLES),
   try {
     const note = req.body && req.body.note;
     if (!note || !String(note).trim()) return res.status(400).json({ success: false, message: 'A rejection note is required' });
-    const cr = await ChangeRequest.findOne({ _id: req.params.id, status: 'pending', reviewerRole: 'data_analyzer' });
+    const cr = await ChangeRequest.findOneAndUpdate(
+      { _id: req.params.id, status: 'pending', reviewerRole: 'data_analyzer', ...trackFilter(req.track) },
+      { $set: { status: 'rejected', reviewedBy: req.user._id, reviewedAt: new Date(), reviewNote: String(note).trim() } },
+      { new: true }
+    );
     if (!cr) return res.status(404).json({ success: false, message: 'Pending request not found' });
-
-    cr.status = 'rejected';
-    cr.reviewedBy = req.user._id;
-    cr.reviewedAt = new Date();
-    cr.reviewNote = String(note).trim();
-    await cr.save();
     await writeAudit(req, 'analyzer_reject_change_request', 'ChangeRequest', cr._id, { routeKey: cr.routeKey, requestType: cr.requestType });
     await Notification.create({
       user: cr.requestedBy,

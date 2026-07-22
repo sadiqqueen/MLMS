@@ -11,6 +11,7 @@ const { allowRoles } = require('../middleware/roles');
 const { specialtyIdsForCouncil } = require('../utils/councilScope');
 const { accreditationExpiry, accreditationStatus } = require('../utils/accreditation');
 const { currentYearRange, inYear } = require('../utils/capacity');
+const { trainingYear } = require('../utils/trainingYear');
 const User            = require('../models/User');
 const Hospital        = require('../models/Hospital');
 const Program         = require('../models/Program');
@@ -57,7 +58,7 @@ async function resolveScope(req) {
 router.get('/stats', auth, allowRoles(...HOC), async (req, res) => {
   try {
     const scope = await resolveScope(req);
-    const { council, specialties, specialtyIds, programs, centerIds } = scope;
+    const { councilId, council, specialties, specialtyIds, programs, centerIds } = scope;
 
     const programIds = programs.map(p => p._id);
     const pdCount = new Set(programs.map(p => p.programDirectorId).filter(Boolean).map(String)).size;
@@ -196,6 +197,35 @@ router.get('/specialties', auth, allowRoles(...HOC), async (req, res) => {
     res.json({ success: true, data: specialties });
   } catch (err) {
     console.error('[hoc] specialties:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/hoc/trainees — active trainees in the council's specialties (main +
+// precise) OR enrolled on the council's programs. Read-only; no filter params —
+// the client filters the single council-scoped payload.
+router.get('/trainees', auth, allowRoles(...HOC), async (req, res) => {
+  try {
+    const { specialtyIds, programs } = await resolveScope(req);
+    if (!specialtyIds.length) return res.json({ success: true, data: [] });
+    const programIds = programs.map(p => p._id);
+
+    const trainees = await User.find({
+      role: 'trainee', isActive: { $ne: false },
+      $or: [{ specialtyId: { $in: specialtyIds } }, { programId: { $in: programIds } }],
+    })
+      .select('-password')
+      .populate('specialtyId', 'name nameEn type')
+      .populate('programId', 'name')
+      .populate('hospitalId', 'name')
+      .populate('hospital', 'name')
+      .populate('countryId', 'name code')
+      .sort({ name: 1 })
+      .limit(1000);
+
+    res.json({ success: true, data: trainees.map(t => ({ ...t.toObject(), trainingYear: trainingYear(t) })) });
+  } catch (err) {
+    console.error('[hoc] trainees:', err.message);
     res.status(500).json({ message: err.message });
   }
 });

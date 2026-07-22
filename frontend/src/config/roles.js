@@ -253,6 +253,7 @@ const ADVANCED_LINKS = {
     { to: '/hoc/dashboard', key: 'dashboard', label: 'Dashboard',        ic: 'grid'     },
     { to: '/hoc/centers',   key: 'centers',   label: 'Training Centers', ic: 'building' },
     { to: '/hoc/programs',  key: 'programs',  label: 'Programs',         ic: 'layers'   },
+    { to: '/hoc/trainees',  key: 'trainees',  label: 'Trainees',         ic: 'grad'     },
   ],
   // DIO (dio_view) + Sub-DIO — design nav (dashboards.md §4.8): adds ODIOs, drops
   // Trainers (RULINGS §D21) and Certificates from the nav. Both routes stay in

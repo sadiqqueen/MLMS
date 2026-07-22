@@ -110,6 +110,7 @@ import AdminSpecialties from './pages/AdminSpecialties';
 const HocDashboard              = lazy(() => import('./pages/HocDashboard'));
 const HocCenters                = lazy(() => import('./pages/HocCenters'));
 const HocPrograms               = lazy(() => import('./pages/HocPrograms'));
+const HocTrainees               = lazy(() => import('./pages/HocTrainees'));
 const CentralDashboard          = lazy(() => import('./pages/CentralDashboard'));
 const CentralCountries          = lazy(() => import('./pages/CentralCountries'));
 const CentralCenters            = lazy(() => import('./pages/CentralCenters'));
@@ -128,6 +129,7 @@ const AnalyzerHocs              = lazy(() => import('./pages/AnalyzerHocs'));
 const AnalyzerSpecialties       = lazy(() => import('./pages/AnalyzerSpecialties'));
 const AnalyzerCentralSecretaries= lazy(() => import('./pages/AnalyzerCentralSecretaries'));
 const AnalyzerTrainees          = lazy(() => import('./pages/AnalyzerTrainees'));
+const AnalyzerTraineeDetail     = lazy(() => import('./pages/AnalyzerTraineeDetail'));
 const DioViewOdios              = lazy(() => import('./pages/DioViewOdios'));
 const DioPdAssignment           = lazy(() => import('./pages/DioPdAssignment'));
 const ProgramDirectorLogBook    = lazy(() => import('./pages/ProgramDirectorLogBook'));
@@ -769,6 +771,9 @@ export default function App() {
           <Route path="/hoc/programs" element={
             <ProtectedRoute allowedRoles={['hoc', 'super_admin']}><HocPrograms /></ProtectedRoute>
           } />
+          <Route path="/hoc/trainees" element={
+            <ProtectedRoute allowedRoles={['hoc', 'super_admin']}><HocTrainees /></ProtectedRoute>
+          } />
 
           {/* Central Secretary — new dashboard + registry drill screens */}
           <Route path="/central/dashboard" element={
@@ -829,6 +834,9 @@ export default function App() {
           } />
           <Route path="/analyzer/trainees" element={
             <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerTrainees /></ProtectedRoute>
+          } />
+          <Route path="/analyzer/trainees/:id" element={
+            <ProtectedRoute allowedRoles={['data_analyzer', 'super_admin', 'head_cs']}><AnalyzerTraineeDetail /></ProtectedRoute>
           } />
 
           {/* DIO (dio_view) — ODIOs list + Add-ODIO (its only write) */}

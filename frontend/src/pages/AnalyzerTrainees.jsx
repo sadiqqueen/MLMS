@@ -5,6 +5,7 @@
 // countryId is stored but not populated → the Country column is substituted with
 // the trainee's center; year is appended to the Program value.
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { IconGrad } from '../components/icons';
 import AccountCard from '../components/AccountCard';
 import RevealOnScroll from '../components/RevealOnScroll';
@@ -15,6 +16,7 @@ import {
 import './Analyzer.css';
 
 export default function AnalyzerTrainees() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [countryId, setCountryId] = useState('');
   const [centerId, setCenterId] = useState('');
@@ -67,6 +69,7 @@ export default function AnalyzerTrainees() {
             <RevealOnScroll key={u._id} delay={i * 0.06}>
               <AccountCard
                 name={u.name} id={u.idNumber || u.studentId} role="Trainee"
+                onView={() => navigate(`/analyzer/trainees/${u._id}`)}
                 fields={[
                   { label: 'Center', value: u.hospitalId?.name || '—' },
                   { label: 'City', value: u.city || '—' },
