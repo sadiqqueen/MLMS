@@ -7,7 +7,7 @@ import api from '../api/axios';
 import NotificationPanel from './NotificationPanel';
 import ProfileDropdown from './ProfileDropdown';
 import { APP_NAV_LABEL } from './memo/MemoPrefs';
-import { ROLE_HOME, ROLE_LINKS, roleLabel, baseRole, basePathForRole } from '../config/roles';
+import { ROLE_HOME, ROLE_LINKS, baseRole, basePathForRole } from '../config/roles';
 
 // The 10 redesigned "design roles" render the new mt- top-nav shell (single bar:
 // centered links + right-side controls, no logo, no separate title row). Every
@@ -176,13 +176,10 @@ export default function Navbar({ title, subtitle }) {
 
   // ── mt- redesigned shell (10 design roles) ────────────────────────────────
   if (isMt) {
-    // No separate page-title row: the active nav link already shows the page, and
-    // the role label rides beside the avatar. `title`/`subtitle` props are kept in
-    // the signature for the legacy shell + callers, but only `subtitle` (role
-    // override) is consumed here.
-    // Avatar role label always reflects the actual signed-in role (pages may pass
-    // a fixed subtitle like "Data Analyzer" that must not override e.g. Head CS).
-    const roleSub = roleLabel(user.role, lang);
+    // No separate page-title row and no inline name/role: the account section is
+    // just the avatar, which opens the profile dropdown (name, role + menu) on
+    // click. `title`/`subtitle` props are kept in the signature for the legacy
+    // shell + callers but are not rendered here.
 
     const controls = (
       <>
@@ -222,10 +219,6 @@ export default function Navbar({ title, subtitle }) {
           <button type="button" className="mt-topbar-avatar" onClick={toggleProfile} aria-label="Account menu">
             {user?.initials}
           </button>
-          <div className="mt-topbar-uname" onClick={toggleProfile}>
-            <div className="mt-topbar-uname-name">{user?.name}</div>
-            <div className="mt-topbar-uname-role">{roleSub}</div>
-          </div>
           {showProfile && <ProfileDropdown onClose={() => setShowProfile(false)} />}
         </div>
       </>
