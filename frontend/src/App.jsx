@@ -70,7 +70,6 @@ import RegistryPds from './pages/RegistryPds';
 
 // Data Analyzer + Central Secretary — Phase 3b
 import AnalyzerDashboard from './pages/AnalyzerDashboard';
-import AnalyzerStaff from './pages/AnalyzerStaff';
 import AnalyzerExports from './pages/AnalyzerExports';
 import CentralTrainees from './pages/CentralTrainees';
 import CentralTrainers from './pages/CentralTrainers';
@@ -440,11 +439,7 @@ export default function App() {
               <AnalyzerDashboard />
             </ProtectedRoute>
           } />
-          <Route path="/analyzer/staff" element={
-            <ProtectedRoute allowedRoles={['data_analyzer', 'developer']}>
-              <AnalyzerStaff />
-            </ProtectedRoute>
-          } />
+          {/* /analyzer/staff retired — replaced by /analyzer/clerks + /analyzer/central-secretaries. */}
           <Route path="/analyzer/exports" element={
             <ProtectedRoute allowedRoles={['data_analyzer', 'developer']}>
               <AnalyzerExports />

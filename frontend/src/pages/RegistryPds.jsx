@@ -26,6 +26,7 @@ const STR = {
   ar: {
     addPd: 'إضافة مدير برنامج', addSubPd: 'إضافة نائب', count: (n) => `${n} حساب`, search: 'ابحث بالاسم أو الرقم…', allCountries: 'الدولة: الكل',
     badgePd: 'PD', badgeSub: 'Sub-PD', country: 'الدولة', city: 'المدينة', program: 'البرنامج', assignedPd: 'المدير المسؤول', email: 'البريد الإلكتروني', phone: 'الهاتف',
+    specialty: 'الاختصاص', specialtyOrSub: 'الاختصاص / الاختصاص الدقيق', subTag: 'دقيق', selectSpecialty: 'اختر الاختصاص أو الاختصاص الدقيق…',
     empty: 'لا يوجد مدراء برامج بعد.', noMatch: 'لا توجد نتائج مطابقة.',
     name: 'الاسم', idNumber: 'الرقم التعريفي', password: 'كلمة المرور', pwHint: '(6 أحرف على الأقل)', parentPd: 'المدير الأصل',
     cancel: 'إلغاء', create: 'إنشاء', saving: 'جارٍ الحفظ…', newPd: 'مدير برنامج جديد', newPdSub: 'حساب مدير برنامج',
@@ -36,6 +37,7 @@ const STR = {
   en: {
     addPd: 'Add PD', addSubPd: 'Add Sub-PD', count: (n) => `${n} accounts`, search: 'Search by name or ID…', allCountries: 'Country: All',
     badgePd: 'PD', badgeSub: 'Sub-PD', country: 'Country', city: 'City', program: 'Program', assignedPd: 'Assigned PD', email: 'Email', phone: 'Phone',
+    specialty: 'Specialty', specialtyOrSub: 'Specialty / sub-specialty', subTag: 'sub', selectSpecialty: 'Select a specialty or sub-specialty…',
     empty: 'No program directors yet.', noMatch: 'No matching results.',
     name: 'Name', idNumber: 'ID number', password: 'Password', pwHint: '(min 6 chars)', parentPd: 'Parent PD',
     cancel: 'Cancel', create: 'Create', saving: 'Saving…', newPd: 'New Program Director', newPdSub: 'New Program Director account',
@@ -45,9 +47,9 @@ const STR = {
   },
 };
 
-function AddPdModal({ lang, countries, onClose, onSaved }) {
+function AddPdModal({ lang, countries, specialties = [], onClose, onSaved }) {
   const t = (k) => STR[lang]?.[k] ?? STR.en[k] ?? k;
-  const [f, setF] = useState({ name: '', idNumber: '', password: '', countryId: '', city: '', phone: '', email: '' });
+  const [f, setF] = useState({ name: '', idNumber: '', password: '', countryId: '', specialtyId: '', city: '', phone: '', email: '' });
   const [err, setErr] = useState({}); const [saving, setSaving] = useState(false); const [apiErr, setApiErr] = useState('');
   const set = (k, v) => { setF((s) => ({ ...s, [k]: v })); setErr((e) => ({ ...e, [k]: false })); setApiErr(''); };
   async function save() {
@@ -55,10 +57,11 @@ function AddPdModal({ lang, countries, onClose, onSaved }) {
     if (!f.name.trim()) e.name = true;
     if (!f.idNumber.trim()) e.idNumber = true;
     if (!f.password || f.password.length < 6) e.password = true;
+    if (!f.specialtyId) e.specialtyId = true;
     if (Object.keys(e).length) { setErr(e); setApiErr(t('required')); return; }
     setSaving(true); setApiErr('');
     try {
-      const payload = { name: f.name.trim(), idNumber: f.idNumber.trim(), password: f.password };
+      const payload = { name: f.name.trim(), idNumber: f.idNumber.trim(), password: f.password, specialtyId: f.specialtyId };
       if (f.countryId) payload.countryId = f.countryId;
       if (f.city.trim()) payload.city = f.city.trim();
       if (f.phone.trim()) payload.phone = f.phone.trim();
@@ -68,8 +71,9 @@ function AddPdModal({ lang, countries, onClose, onSaved }) {
     } catch (ex) { setApiErr(ex.response?.data?.message || t('saveFailed')); } finally { setSaving(false); }
   }
   const countryOpts = countries.map((c) => ({ value: c._id, label: c.code ? `${c.name} (${c.code})` : c.name }));
+  const specialtyOpts = specialties.map((s) => ({ value: s._id, label: s.type === 'precise' ? `${s.name} (${t('subTag')})` : s.name }));
   return (
-    <MtModal open title={t('newPd')} sub={t('newPdSub')} onClose={onClose}
+    <MtModal open tone="user" title={t('newPd')} sub={t('newPdSub')} onClose={onClose}
       footer={<><button type="button" className="mt-btn--cancel" onClick={onClose}>{t('cancel')}</button>
         <button type="button" className="mt-btn" onClick={save} disabled={saving}>{saving ? t('saving') : t('create')}</button></>}>
       <div className="mt-banner">{t('createBanner')}</div>
@@ -84,6 +88,8 @@ function AddPdModal({ lang, countries, onClose, onSaved }) {
           <input className="mt-input" value={f.city} onChange={(e) => set('city', e.target.value)} /></div>
         <div className="mt-field mt-field-full"><label className="mt-label">{t('country')}</label>
           <SearchableSelect value={f.countryId} onChange={(v) => set('countryId', v)} options={countryOpts} placeholder={t('country')} /></div>
+        <div className="mt-field mt-field-full"><label className="mt-label">{t('specialtyOrSub')}<span className="mt-label-req">*</span></label>
+          <SearchableSelect value={f.specialtyId} onChange={(v) => set('specialtyId', v)} options={specialtyOpts} placeholder={t('selectSpecialty')} error={err.specialtyId} /></div>
         <div className="mt-field"><label className="mt-label">{t('phone')}</label>
           <input className="mt-input" value={f.phone} onChange={(e) => set('phone', e.target.value)} /></div>
         <div className="mt-field"><label className="mt-label">{t('email')}</label>
@@ -94,21 +100,29 @@ function AddPdModal({ lang, countries, onClose, onSaved }) {
   );
 }
 
-function AddSubPdModal({ lang, pds, onClose, onSaved }) {
+function AddSubPdModal({ lang, pds, specialties = [], onClose, onSaved }) {
   const t = (k) => STR[lang]?.[k] ?? STR.en[k] ?? k;
-  const [f, setF] = useState({ pdId: '', name: '', idNumber: '', password: '', city: '', phone: '', email: '' });
+  const [f, setF] = useState({ pdId: '', name: '', idNumber: '', password: '', specialtyId: '', city: '', phone: '', email: '' });
   const [err, setErr] = useState({}); const [saving, setSaving] = useState(false); const [apiErr, setApiErr] = useState('');
   const set = (k, v) => { setF((s) => ({ ...s, [k]: v })); setErr((e) => ({ ...e, [k]: false })); setApiErr(''); };
+  // Choosing the parent PD defaults the specialty to that PD's (still editable).
+  function setParent(v) {
+    const pd = pds.find((p) => p._id === v);
+    const parentSpec = pd?.specialtyId?._id || pd?.specialtyId || '';
+    setF((s) => ({ ...s, pdId: v, specialtyId: s.specialtyId || parentSpec }));
+    setErr((e) => ({ ...e, pdId: false })); setApiErr('');
+  }
   async function save() {
     const e = {};
     if (!f.pdId) e.pdId = true;
     if (!f.name.trim()) e.name = true;
     if (!f.idNumber.trim()) e.idNumber = true;
     if (!f.password || f.password.length < 6) e.password = true;
+    if (!f.specialtyId) e.specialtyId = true;
     if (Object.keys(e).length) { setErr(e); setApiErr(t('required')); return; }
     setSaving(true); setApiErr('');
     try {
-      const payload = { name: f.name.trim(), idNumber: f.idNumber.trim(), password: f.password };
+      const payload = { name: f.name.trim(), idNumber: f.idNumber.trim(), password: f.password, specialtyId: f.specialtyId };
       if (f.city.trim()) payload.city = f.city.trim();
       if (f.phone.trim()) payload.phone = f.phone.trim();
       if (f.email.trim()) payload.email = f.email.trim();
@@ -117,14 +131,17 @@ function AddSubPdModal({ lang, pds, onClose, onSaved }) {
     } catch (ex) { setApiErr(ex.response?.data?.message || t('saveFailed')); } finally { setSaving(false); }
   }
   const pdOpts = pds.map((p) => ({ value: p._id, label: `${p.name}${p.idNumber ? ` · ${p.idNumber}` : ''}` }));
+  const specialtyOpts = specialties.map((s) => ({ value: s._id, label: s.type === 'precise' ? `${s.name} (${t('subTag')})` : s.name }));
   return (
-    <MtModal open title={t('newSubPd')} sub={t('newSubPdSub')} onClose={onClose}
+    <MtModal open tone="user" title={t('newSubPd')} sub={t('newSubPdSub')} onClose={onClose}
       footer={<><button type="button" className="mt-btn--cancel" onClick={onClose}>{t('cancel')}</button>
         <button type="button" className="mt-btn" onClick={save} disabled={saving}>{saving ? t('saving') : t('create')}</button></>}>
       <div className="mt-banner">{t('createBanner')}</div>
       <div className="mt-field-grid">
         <div className="mt-field mt-field-full"><label className="mt-label">{t('parentPd')}<span className="mt-label-req">*</span></label>
-          <SearchableSelect value={f.pdId} onChange={(v) => set('pdId', v)} options={pdOpts} placeholder={t('parentPd')} error={err.pdId} /></div>
+          <SearchableSelect value={f.pdId} onChange={setParent} options={pdOpts} placeholder={t('parentPd')} error={err.pdId} /></div>
+        <div className="mt-field mt-field-full"><label className="mt-label">{t('specialtyOrSub')}<span className="mt-label-req">*</span></label>
+          <SearchableSelect value={f.specialtyId} onChange={(v) => set('specialtyId', v)} options={specialtyOpts} placeholder={t('selectSpecialty')} error={err.specialtyId} /></div>
         <div className="mt-field"><label className="mt-label">{t('name')}<span className="mt-label-req">*</span></label>
           <input className="mt-input" value={f.name} onChange={(e) => set('name', e.target.value)} style={err.name ? { borderColor: 'var(--danger)' } : undefined} /></div>
         <div className="mt-field"><label className="mt-label">{t('idNumber')}<span className="mt-label-req">*</span></label>
@@ -153,6 +170,7 @@ export default function RegistryPds() {
   const [subPds, setSubPds] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [countries, setCountries] = useState([]);
+  const [specialties, setSpecialties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [countryF, setCountryF] = useState('');
@@ -164,17 +182,19 @@ export default function RegistryPds() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [p, s, pr, co] = await Promise.allSettled([
+    const [p, s, pr, co, sp] = await Promise.allSettled([
       api.get('/api/registry/users', { params: { role: 'program_director' } }),
       api.get('/api/registry/users', { params: { role: 'sub_pd' } }),
       api.get('/api/programs'),
       api.get('/api/countries'),
+      api.get('/api/registry/specialties'),
     ]);
     if (p.status === 'fulfilled') setPds(p.value.data?.data || p.value.data || []);
     else showToast(t('loadFailed'), 'dng');
     if (s.status === 'fulfilled') setSubPds(s.value.data?.data || s.value.data || []);
     if (pr.status === 'fulfilled') setPrograms(pr.value.data?.data || pr.value.data || []);
     if (co.status === 'fulfilled') setCountries(co.value.data?.data || co.value.data || []);
+    if (sp.status === 'fulfilled') setSpecialties(sp.value.data?.data || sp.value.data || []);
     setLoading(false);
   }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -204,10 +224,10 @@ export default function RegistryPds() {
 
   function fieldsFor({ u, kind }) {
     return kind === 'sub'
-      ? [{ label: t('country'), value: refName(u.countryId) }, { label: t('city'), value: u.city || '—' },
-         { label: t('assignedPd'), value: refName(u.pdId) }, { label: t('email'), value: u.email || '—' }]
-      : [{ label: t('country'), value: refName(u.countryId) }, { label: t('city'), value: u.city || '—' },
-         { label: t('program'), value: pdProgram.get(u._id) || '—' }, { label: t('email'), value: u.email || '—' }];
+      ? [{ label: t('specialty'), value: refName(u.specialtyId) }, { label: t('assignedPd'), value: refName(u.pdId) },
+         { label: t('city'), value: u.city || '—' }, { label: t('email'), value: u.email || '—' }]
+      : [{ label: t('specialty'), value: refName(u.specialtyId) }, { label: t('program'), value: pdProgram.get(u._id) || '—' },
+         { label: t('country'), value: refName(u.countryId) }, { label: t('email'), value: u.email || '—' }];
   }
 
   function editConfig({ u, kind }) {
@@ -275,12 +295,12 @@ export default function RegistryPds() {
         )}
 
         {addPd && (
-          <AddPdModal lang={lang} countries={countries}
+          <AddPdModal lang={lang} countries={countries} specialties={specialties}
             onClose={() => setAddPd(false)}
             onSaved={() => { setAddPd(false); showToast(t('pdCreated'), 'ok'); load(); }} />
         )}
         {addSub && (
-          <AddSubPdModal lang={lang} pds={pds}
+          <AddSubPdModal lang={lang} pds={pds} specialties={specialties}
             onClose={() => setAddSub(false)}
             onSaved={() => { setAddSub(false); showToast(t('subPdCreated'), 'ok'); load(); }} />
         )}

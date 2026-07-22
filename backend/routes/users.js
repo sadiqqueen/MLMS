@@ -42,12 +42,20 @@ const ALLOWED_CREATE_FIELDS = ['name', 'email', 'password', 'role', 'phone',
   'gender', 'city', 'department', 'specialty', 'year', 'studentId',
   'enrolledSince', 'hospitalId', 'specialtyId', 'supervisorId',
   'hospital', 'trainer'];
+// Which account roles each caller may create via POST /api/users. Keys are the
+// POST-rename role strings (was dio/president/super_admin before commit cb8559b —
+// those stale keys 403'd developer + odio callers). The Developer list is also
+// the enforcement point for "Developer adds only the oversight/leadership roles"
+// (NOT data_entry or central_secretary — those belong to the Data Analyzer);
+// 'developer' is kept so the last admin can mint another, and 'hoc' is accepted
+// here though its own councilId-carrying endpoint (POST /api/admin/hocs) is used
+// by the UI.
 const ROLE_ALLOWED = {
   secretary:        ['trainee'],
-  dio:              ['trainee', 'trainer', 'program_director', 'secretary'],
+  odio:             ['trainee', 'trainer', 'program_director', 'secretary'],
   program_director: [],
-  president:        [],
-  super_admin:      null
+  developer:        ['secretary_general', 'assistant_secretary', 'data_analyzer',
+                     'head_cs', 'head_ad', 'hoc', 'developer'],
 };
 const READ_STAFF = ['secretary', 'odio', 'program_director', 'developer'];
 const WRITE_STAFF = ['secretary', 'odio', 'program_director', 'developer'];

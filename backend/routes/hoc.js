@@ -73,7 +73,13 @@ router.get('/stats', auth, allowRoles(...HOC), async (req, res) => {
       councilId
         ? User.countDocuments({
             role: 'central_secretary', isActive: { $ne: false },
-            $or: [{ secretaryType: 'main', councilId }, { secretaryType: 'precise' }],
+            $or: [
+              { secretaryType: 'main', councilId },
+              { secretaryType: 'precise' },
+              // New-model CS: scoped to an explicit specialty set — counts for this
+              // council when any of its specialties belongs to the council.
+              ...(specialtyIds.length ? [{ specialtyIds: { $in: specialtyIds } }] : []),
+            ],
           })
         : 0,
       specialtyIds.length

@@ -64,9 +64,9 @@
 
 New route mounts added in `server.js` (all `auth` → `allowRoles` → in-handler scoping; writes audited). One line each:
 
-- `GET/POST/PATCH/DELETE /api/countries` — country dropdown source (GET any-auth) + CRUD (`data_entry`, `super_admin`).
-- `/api/registry` (`data_entry`, `super_admin`, global) — training-center + specialty CRUD; DIO/ODIO/Sub-DIO and PD/Sub-PD account creation; the clerk's managed-accounts list.
-- `/api/programs` — program CRUD (max 70 active per center, one active program per PD) + scoped listing + `GET /pd-candidates`.
+- `GET/POST/PATCH/DELETE /api/countries` — country dropdown source (GET any-auth); **create `data_analyzer`, `developer`** (moved off the clerk); edit/delete `developer` only.
+- `/api/registry` (`data_entry`, `developer`, global) — training-center + program-supporting reads; DIO/Sub-DIO and PD/Sub-PD account creation (**PD & Sub-PD require `specialtyId`**). **Specialty create/update is `data_analyzer`+`developer`** (clerk read-only). **The clerk ODIO route `POST /dios/:id/odio` was REMOVED** — an ODIO is created only by its DIO (`POST /api/dio-view/odios`).
+- `/api/programs` — program create/CRUD (`data_entry`, `developer`; cap per center, one active program per PD) + scoped listing + `GET /pd-candidates`. **`name` is optional and auto-derived server-side (`"Specialty — Center"`) when omitted.**
 - `/api/analyzer` (`data_analyzer`, `super_admin`) — filterable `GET /stats`; clerk/central-secretary staff CRUD; `GET /snapshots`, `GET /snapshots/:id/download`, `POST /snapshots/run {range}` (202); `POST /analysis-reports` (multer pdf/ppt/pptx → SG/AS notify) + `GET /analysis-reports` (own uploads).
 - `/api/central` (`central_secretary`, `super_admin`, global) — trainee/trainer creation (trainer OPTIONAL; capacity hard-block 409); edits queued as ChangeRequests to the person's ODIO.
 - `/api/sg` (`secretary_general`, `assistant_secretary`, `super_admin`, read-only) — stats/centers/dios/specialties/programs/pds/trainees + `GET /analysis-reports` (inbox) and `GET /analysis-reports/:id/download`.

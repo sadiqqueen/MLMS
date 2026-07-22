@@ -67,7 +67,7 @@ function AddDioModal({ lang, countries, onClose, onSaved }) {
   }
   const countryOpts = countries.map((c) => ({ value: c._id, label: c.code ? `${c.name} (${c.code})` : c.name }));
   return (
-    <MtModal open title={t('newDio')} sub={t('newDioSub')} onClose={onClose}
+    <MtModal open tone="user" title={t('newDio')} sub={t('newDioSub')} onClose={onClose}
       footer={<><button type="button" className="mt-btn--cancel" onClick={onClose}>{t('cancel')}</button>
         <button type="button" className="mt-btn" onClick={save} disabled={saving}>{saving ? t('saving') : t('create')}</button></>}>
       <div className="mt-banner">{t('createBanner')}</div>
@@ -116,7 +116,7 @@ function AddSubDioModal({ lang, dios, onClose, onSaved }) {
   }
   const dioOpts = dios.map((d) => ({ value: d._id, label: `${d.name}${d.idNumber ? ` · ${d.idNumber}` : ''}` }));
   return (
-    <MtModal open title={t('newSubDio')} sub={t('newSubDioSub')} onClose={onClose}
+    <MtModal open tone="user" title={t('newSubDio')} sub={t('newSubDioSub')} onClose={onClose}
       footer={<><button type="button" className="mt-btn--cancel" onClick={onClose}>{t('cancel')}</button>
         <button type="button" className="mt-btn" onClick={save} disabled={saving}>{saving ? t('saving') : t('create')}</button></>}>
       <div className="mt-banner">{t('createBanner')}</div>

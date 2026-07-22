@@ -198,7 +198,7 @@ const ADVANCED_LINKS = {
     { to: '/registry/permissions', key: 'permissions', label: 'Permissions',      ic: 'inbox'    },
   ],
   // Analyzer — 13-item read-only registry + Pending-Changes inbox + Exports.
-  // (Old /analyzer/staff route stays in App.jsx, unlinked.)
+  // (Old /analyzer/staff route retired — see /analyzer/clerks + /analyzer/central-secretaries.)
   data_analyzer: [
     { to: '/analyzer/dashboard',           key: 'dashboard',           label: 'Dashboard',           ic: 'grid'     },
     { to: '/analyzer/countries',           key: 'countries',           label: 'Countries',           ic: 'globe'    },

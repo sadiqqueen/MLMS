@@ -126,9 +126,9 @@ function AddTrainerModal({ programs, t, dir, onClose, onSaved }) {
   return (
     <div className="admin-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="admin-modal admin-modal-lg" dir={dir} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-        <div className="admin-modal-header">
-          <div className="admin-modal-title">{t('newTrainer')}</div>
-          <button className="admin-modal-close" onClick={onClose}>✕</button>
+        <div className="admin-modal-header" style={{ background: '#156B67', borderBottomColor: 'transparent' }}>
+          <div className="admin-modal-title" style={{ color: '#fff' }}>{t('newTrainer')}</div>
+          <button className="admin-modal-close" style={{ color: 'rgba(255,255,255,0.85)' }} onClick={onClose}>✕</button>
         </div>
         <div className="admin-modal-body">
           <div className="admin-form-grid">

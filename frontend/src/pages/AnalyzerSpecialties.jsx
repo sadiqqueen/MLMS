@@ -1,9 +1,7 @@
-// W1-Analyzer — Specialties. The data analyzer manages the council taxonomy:
-// it can ADD specialties + sub-specialties (POST /api/specialties with
-// type/code/councilId/nameEn) but not edit/delete. List is read-only otherwise.
-// GET /api/analyzer/specialties?type=&councilId=
-//   → data:[{ ...specialty, councilId:{name,nameEn}, type, code, nameEn }]
-// GET /api/analyzer/councils → the 20 councils for the Add-specialty selector.
+// W1-Analyzer — Specialties. The Data Analyzer adds specialties AND
+// sub-specialties (two buttons → a name-only modal that sets the type). POST
+// /api/specialties { name, type: 'main' | 'precise' }. List is read-only otherwise.
+// GET /api/analyzer/specialties?type= → data:[{ ...specialty, councilId, type, code }]
 import { useState } from 'react';
 import { IconBook } from '../components/icons';
 import MtModal from '../components/MtModal';
@@ -11,46 +9,35 @@ import { MtToastHost, useMtToast } from '../components/MtToast';
 import api from '../api/axios';
 import {
   ListShell, TableCard, SearchBox, FilterSelect, Pill, EmptyState,
-  useAnalyzerList, useClientList, useOptions, PAGE_SIZE,
+  useAnalyzerList, useClientList, PAGE_SIZE,
 } from './AnalyzerListKit';
 import './Analyzer.css';
 
-// ── Add specialty / sub-specialty modal ──────────────────────────────────────
-function AddSpecialtyModal({ councils, onCreate, onClose, saving }) {
-  const [f, setF] = useState({ name: '', nameEn: '', type: 'main', councilId: '', code: '' });
-  const [errors, setErrors] = useState({});
-  const set = (k, v) => { setF((s) => ({ ...s, [k]: v })); setErrors((e) => ({ ...e, [k]: false })); };
+// Name-only add modal. `kind` ('main' | 'precise') sets the title and the type
+// that is persisted — the analyzer picks it via which button opened the modal.
+function AddSpecialtyModal({ kind, onCreate, onClose, saving }) {
+  const isSub = kind === 'precise';
+  const [name, setName] = useState('');
+  const [err, setErr] = useState(false);
   function submit() {
-    const e = {};
-    if (!f.name.trim()) e.name = true;
-    setErrors(e);
-    if (Object.keys(e).length) return;
-    onCreate(f);
+    if (!name.trim()) { setErr(true); return; }
+    onCreate(name.trim());
   }
   return (
-    <MtModal open title="Add specialty" sub="Specialty or sub-specialty" meta="Data Analyzer" onClose={onClose}
+    <MtModal open tone="data"
+      title={isSub ? 'New sub-specialty' : 'New specialty'}
+      sub={isSub ? 'Sub-specialty' : 'Specialty'} meta="Data Analyzer" onClose={onClose}
       footer={<>
         <button type="button" className="mt-btn--cancel" onClick={onClose}>Cancel</button>
-        <button type="button" className="mt-btn" onClick={submit} disabled={saving}>{saving ? 'Creating…' : 'Create specialty'}</button>
+        <button type="button" className="mt-btn" onClick={submit} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
       </>}>
       <div className="mt-banner">This record will be added to the registry.</div>
       <div className="mt-field-grid">
-        <div className="mt-field"><label className="mt-label">Name <span className="mt-label-req">*</span></label><input className="mt-input" style={errors.name ? { borderColor: 'var(--danger)' } : undefined} value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="Specialty name" /></div>
-        <div className="mt-field"><label className="mt-label">English name</label><input className="mt-input" value={f.nameEn} onChange={(e) => set('nameEn', e.target.value)} placeholder="English name" /></div>
-        <div className="mt-field">
-          <label className="mt-label">Type</label>
-          <div className="mt-radio-group">
-            <label className="mt-check-label"><input type="radio" className="mt-check" name="spType" checked={f.type === 'main'} onChange={() => set('type', 'main')} /> Specialty</label>
-            <label className="mt-check-label"><input type="radio" className="mt-check" name="spType" checked={f.type === 'precise'} onChange={() => set('type', 'precise')} /> Sub-specialty</label>
-          </div>
-        </div>
-        <div className="mt-field"><label className="mt-label">Code</label><input className="mt-input mt-input--mono" value={f.code} onChange={(e) => set('code', e.target.value)} placeholder='e.g. "05" or "05d1"' /></div>
         <div className="mt-field mt-field-full">
-          <label className="mt-label">Council</label>
-          <select className="mt-select" value={f.councilId} onChange={(e) => set('councilId', e.target.value)}>
-            <option value="">— Select council —</option>
-            {councils.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
+          <label className="mt-label">{isSub ? 'Sub-specialty name' : 'Specialty name'} <span className="mt-label-req">*</span></label>
+          <input className="mt-input" style={err ? { borderColor: 'var(--danger)' } : undefined}
+            value={name} onChange={(e) => { setName(e.target.value); setErr(false); }}
+            placeholder="e.g. Internal Medicine" />
         </div>
       </div>
     </MtModal>
@@ -64,7 +51,6 @@ export default function AnalyzerSpecialties() {
   const reset = (fn) => (v) => { fn(v); setPage(1); };
 
   const { data, loading, error, reload } = useAnalyzerList('/api/analyzer/specialties', { type });
-  const councils = useOptions('/api/analyzer/councils', (c) => ({ value: c._id, label: c.nameEn ? `${c.name} — ${c.nameEn}` : c.name }));
   const rows = Array.isArray(data) ? data : [];
   const { pageRows, total } = useClientList(rows, { search, fields: ['name', 'nameEn', 'code'], page });
   const isEmpty = !loading && total === 0;
@@ -72,25 +58,19 @@ export default function AnalyzerSpecialties() {
   const mainCount = rows.filter((s) => s.type === 'main').length;
   const preciseCount = rows.filter((s) => s.type === 'precise').length;
 
-  const [showAdd, setShowAdd] = useState(false);
+  const [addKind, setAddKind] = useState(null);   // 'main' | 'precise' | null
   const [saving, setSaving] = useState(false);
   const { toasts, showToast } = useMtToast();
 
-  async function handleCreate(f) {
+  async function handleCreate(name) {
     setSaving(true);
     try {
-      await api.post('/api/specialties', {
-        name: f.name.trim(),
-        nameEn: f.nameEn.trim() || undefined,
-        type: f.type,
-        councilId: f.councilId || undefined,
-        code: f.code.trim() || undefined,
-      });
-      showToast('Specialty added.', 'ok');
-      setShowAdd(false);
+      await api.post('/api/specialties', { name, type: addKind });
+      showToast(addKind === 'precise' ? 'Sub-specialty added.' : 'Specialty added.', 'ok');
+      setAddKind(null);
       reload();
     } catch (e) {
-      showToast(e.response?.data?.message || 'Failed to add specialty.', 'dng');
+      showToast(e.response?.data?.message || 'Failed to add.', 'dng');
     } finally {
       setSaving(false);
     }
@@ -106,7 +86,10 @@ export default function AnalyzerSpecialties() {
             options={[{ value: 'main', label: 'Specialty' }, { value: 'precise', label: 'Sub-specialty' }]} />
         </>}
         count={`${total.toLocaleString('en-US')} total · ${mainCount} specialties, ${preciseCount} sub-specialties`}
-        actions={<button type="button" className="mt-btn" onClick={() => setShowAdd(true)}>+ Add specialty</button>}
+        actions={<>
+          <button type="button" className="mt-btn" onClick={() => setAddKind('main')}>+ Add specialty</button>
+          <button type="button" className="mt-btn--outline" onClick={() => setAddKind('precise')}>+ Add sub-specialty</button>
+        </>}
         loading={loading} error={error} empty={isEmpty}
         page={page} total={total}
         onPrev={() => setPage((p) => Math.max(1, p - 1))}
@@ -138,8 +121,8 @@ export default function AnalyzerSpecialties() {
         )}
       </ListShell>
 
-      {showAdd && (
-        <AddSpecialtyModal councils={councils} onCreate={handleCreate} onClose={() => setShowAdd(false)} saving={saving} />
+      {addKind && (
+        <AddSpecialtyModal kind={addKind} onCreate={handleCreate} onClose={() => setAddKind(null)} saving={saving} />
       )}
       <MtToastHost toasts={toasts} />
     </>

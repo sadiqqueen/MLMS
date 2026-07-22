@@ -44,8 +44,8 @@ Advanced-track hierarchy (v2). The Basic portal (`b_*` roles under `/basic/*`) a
 | Developer | `super_admin` | /admin/dashboard | Full access: dashboard, users, hospitals, System page, event feedback, audit logs |
 | Secretary General | `secretary_general` | /sg/dashboard | Read-only oversight (centers, DIOs, specialties, programs, PDs, trainees) + analysis-report inbox |
 | Assistant Secretary | `assistant_secretary` | /sg/dashboard | Same read-only view set as the Secretary General |
-| Data Analyzer | `data_analyzer` | /analyzer/dashboard | Filterable stats; creates Data-entry + Central-secretary accounts; data snapshots + PDF/PPTX report upload |
-| Data Entry | `data_entry` | /registry/centers | Global registry: countries, training centers, specialties, DIO/ODIO/Sub-DIO + PD/Sub-PD accounts, programs |
+| Data Analyzer | `data_analyzer` | /analyzer/dashboard | Filterable stats; **creates countries, specialties + sub-specialties**, Data-entry + Central-secretary accounts; data snapshots + PDF/PPTX report upload |
+| Data Entry | `data_entry` | /registry/centers | Registry: training centers + programs; DIO/Sub-DIO + PD/Sub-PD accounts (PD/Sub-PD carry a specialty). Countries & specialties belong to the Analyzer; ODIO is created by the DIO |
 | Central Secretary | `central_secretary` | /central/trainees | Global: add trainees (trainer optional) + trainers; edits queued for ODIO approval |
 | DIO | `dio_view` | /dio-view/dashboard | View-only over an assigned center subset + issues/views certificates |
 | ODIO | `dio` | /dio/dashboard | View + edit trainees/trainers in the DIO's center set; approves change requests; issues certificates |

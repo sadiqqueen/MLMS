@@ -8,9 +8,11 @@ const Country        = require('../models/Country');
 const Hospital       = require('../models/Hospital');
 const User           = require('../models/User');
 
-// Create is direct for the clerk and Developer; edit/delete are Developer
-// (super_admin) only — there is no approval-gated country edit/delete flow.
-const WRITE_ROLES = ['data_entry', 'developer'];
+// Create is a Data-Analyzer (+ Developer) capability; edit/delete are Developer
+// only — there is no approval-gated country edit/delete flow. (Countries moved
+// off the Data-Entry clerk: registry data creation is the analyzer's, per the
+// role redesign.)
+const WRITE_ROLES = ['data_analyzer', 'developer'];
 const EDIT_ROLES  = ['developer'];
 
 // GET /api/countries — any authenticated user (dropdown source): active only.

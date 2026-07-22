@@ -42,6 +42,7 @@ const STRINGS = {
     name: 'الاسم', idNumber: 'الرقم التعريفي', password: 'كلمة المرور', phone: 'الهاتف',
     gender: 'الجنس', selectGender: '— اختر —', male: 'ذكر', female: 'أنثى',
     selectProgram: 'اختر برنامجاً…', pd: 'مدير البرنامج', pdHint: 'مُرشّح حسب البرنامج المختار',
+    pdDefault: '— حسب البرنامج —', dio: 'DIO', dioHint: 'الخاص بالمركز التدريبي', dioAuto: 'يُملأ تلقائياً من المركز التدريبي',
     startDate: 'تاريخ البدء', passwordHint: '(6 أحرف على الأقل)',
     pdName: 'مدير البرنامج', center: 'المركز', capacity: 'السعة',
     trainingCenter: 'المركز التدريبي', dioName: 'DIO',
@@ -75,6 +76,7 @@ const STRINGS = {
     name: 'Name', idNumber: 'ID Number', password: 'Password', phone: 'Phone',
     gender: 'Gender', selectGender: '— Select —', male: 'Male', female: 'Female',
     selectProgram: 'Select a program…', pd: 'PD', pdHint: 'Filtered by the chosen program',
+    pdDefault: '— From the program —', dio: 'DIO', dioHint: 'of the training center', dioAuto: 'Auto-filled from the training center',
     startDate: 'Start date', passwordHint: '(min 6 chars)',
     pdName: 'Program Director', center: 'Center', capacity: 'Capacity',
     trainingCenter: 'Training Center', dioName: 'DIO',
@@ -261,7 +263,7 @@ function AddTraineeModal({ programs, t, onClose, onSaved }) {
   }
 
   return (
-    <MtModal open title={t('newTrainee')} sub={t('sub')} meta={t('role')} onClose={onClose}
+    <MtModal open tone="user" title={t('newTrainee')} sub={t('sub')} meta={t('role')} onClose={onClose}
       footer={(
         <>
           <button type="button" className="mt-btn--cancel" onClick={onClose}>{t('cancel')}</button>
@@ -327,9 +329,14 @@ function AddTraineeModal({ programs, t, onClose, onSaved }) {
         <div className="mt-field mt-field-full">
           <label className="mt-label">{t('pd')} <span style={{ fontWeight: 400, color: 'var(--text-2)' }}>{t('pdHint')}</span></label>
           <select className="mt-select" value={form.pdId} onChange={e => set('pdId', e.target.value)} disabled={!form.programId || pdOptions.length === 0}>
-            <option value="">{t('selectGender')}</option>
+            <option value="">{t('pdDefault')}</option>
             {pdOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
+        </div>
+        <div className="mt-field mt-field-full">
+          <label className="mt-label">{t('dio')} <span style={{ fontWeight: 400, color: 'var(--text-2)' }}>{t('dioHint')}</span></label>
+          <input className="mt-input" readOnly tabIndex={-1} style={{ background: 'var(--surface-2)', color: 'var(--text-2)' }}
+            value={program?.trainingCenterId?.dioId?.name || t('dioAuto')} />
         </div>
       </div>
       <ErrBox msg={apiErr} />

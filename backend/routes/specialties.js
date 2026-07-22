@@ -19,9 +19,11 @@ const Distribution   = require('../models/Distribution');
 const READ_ROLES  = ['developer', 'secretary', 'odio', 'trainer', 'trainee', 'program_director', 'data_analyzer', 'head_cs'];
 // Edit/delete + legacy PDF-template management stay with super_admin + dio.
 const WRITE_ROLES = ['developer', 'odio'];
-// Who may CREATE a specialty. The data analyzer manages the council taxonomy
-// (add specialties + sub-specialties) but is NOT granted edit/delete.
-const CREATE_ROLES = ['developer', 'odio', 'data_analyzer', 'head_cs'];
+// Who may CREATE a specialty. The Data Analyzer (and its Head-CS mirror) manages
+// the council taxonomy (add specialties + sub-specialties) but is NOT granted
+// edit/delete. ODIO was removed here in the role redesign — specialty creation
+// belongs to the analyzer, matching registry.js SPECIALTY_WRITE_ROLES.
+const CREATE_ROLES = ['developer', 'data_analyzer', 'head_cs'];
 const SPECIALTY_FIELDS = ['name', 'hospitalId', 'secretaryId', 'weeklyReportPdf',
   'monthlyReportPdf', 'finalReportPdf', 'evaluationPdf1', 'evaluationPdf2',
   'evaluationPdf3', 'evaluationPdf4', 'evaluationPdf5', 'isActive',

@@ -11,7 +11,7 @@ import Toast from '../components/Toast';
 import Sk from '../components/Skeleton';
 import { IconPencil, IconBan, IconUserCheck } from '../components/icons';
 import api from '../api/axios';
-import { useCanWriteRegistry } from './registryShared';
+import { useAuth } from '../context/AuthContext';
 
 const STRINGS = {
   ar: {
@@ -98,7 +98,10 @@ export default function RegistrySpecialties() {
   const [showInactive, setShowInactive] = useState(false);
   const [modal, setModal] = useState(null);
   const [toasts, setToasts] = useState([]);
-  const canWrite = useCanWriteRegistry();
+  // Specialty management moved to the Data Analyzer (Change 1) — the clerk sees a
+  // read-only list. Writes stay open to data_analyzer + developer (backend-gated).
+  const { user } = useAuth();
+  const canWrite = ['data_analyzer', 'developer'].includes(user?.role);
 
   function showToast(message, type = 'success') {
     const id = Date.now();

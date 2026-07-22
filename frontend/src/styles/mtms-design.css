@@ -500,6 +500,22 @@ html[dir="rtl"] .mt-divider { background: linear-gradient(270deg, var(--accent),
   display: flex; align-items: center; justify-content: center;
 }
 .mt-modal-close:hover { background: var(--surface-2); }
+
+/* Header colour-coding (header bar only; body stays --surface).
+   'user' = adding an account → green; 'data' = registering registry data → red. */
+.mt-modal-head--user,
+.mt-modal-head--data { border-block-end: none; }
+.mt-modal-head--user { background: #156B67; }
+.mt-modal-head--data { background: #DE001C; }
+.mt-modal-head--user .mt-modal-title,
+.mt-modal-head--data .mt-modal-title { color: #fff; }
+.mt-modal-head--user .mt-modal-sub,
+.mt-modal-head--data .mt-modal-sub { color: rgba(255, 255, 255, 0.82); }
+.mt-modal-head--user .mt-modal-close,
+.mt-modal-head--data .mt-modal-close { color: rgba(255, 255, 255, 0.85); }
+.mt-modal-head--user .mt-modal-close:hover,
+.mt-modal-head--data .mt-modal-close:hover { background: rgba(255, 255, 255, 0.15); }
+
 .mt-modal-body { padding: 18px 22px; }
 .mt-field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 13px; }
 .mt-field-full { grid-column: 1 / -1; }

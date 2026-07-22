@@ -13,6 +13,7 @@ const { coerceRoleToTrack, trackFilter } = require('../utils/track');
 const { decodeOriginalName } = require('../utils/filename');
 const { accreditationExpiry, accreditationStatus } = require('../utils/accreditation');
 const { changeHistoryFor } = require('../utils/changeHistory');
+const { validateSpecialtyIds } = require('../utils/councilScope');
 const { applyChangeRequest } = require('../utils/applyChangeRequest');
 const { runSnapshot, buildCombinedCsv, RANGES, SNAPSHOTS_DIR } = require('../jobs/snapshots');
 const { trainingYear } = require('../utils/trainingYear');
@@ -175,7 +176,7 @@ router.get('/stats', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
 // POST /api/analyzer/staff — create a Data-entry clerk or Central secretary.
 router.post('/staff', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
   try {
-    const { name, idNumber, password, email, phone, role, secretaryType, councilId } = req.body;
+    const { name, idNumber, password, email, phone, role, specialtyIds } = req.body;
     if (!name || !String(name).trim()) return res.status(400).json({ message: 'Name is required' });
     if (!idNumber || !String(idNumber).trim()) return res.status(400).json({ message: 'ID number is required' });
     if (!password || String(password).length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' });
@@ -192,18 +193,13 @@ router.post('/staff', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
     if (email && String(email).trim()) payload.email = String(email).trim();
     if (phone !== undefined) payload.phone = String(phone).trim();
 
-    // Central secretary council assignment (RULINGS §40): 'main' → councilId
-    // required; 'precise' → covers every precise specialty, no council.
+    // Central secretary scope (redesign v2): an EXPLICIT set of specialties (any
+    // mix of main + sub-specialty, up to every specialty in the system). Replaces
+    // the legacy single-council + main/precise type model.
     if (role === 'central_secretary') {
-      const st = secretaryType === 'precise' ? 'precise' : 'main';
-      payload.secretaryType = st;
-      if (st === 'main') {
-        if (!councilId) return res.status(400).json({ message: 'A main central secretary requires a council' });
-        if (!(await ScientificCouncil.findById(councilId).select('_id'))) {
-          return res.status(400).json({ message: 'Council not found' });
-        }
-        payload.councilId = councilId;
-      }
+      const ids = await validateSpecialtyIds(specialtyIds);
+      if (ids.error) return res.status(400).json({ message: ids.error });
+      payload.specialtyIds = ids.value;
     }
 
     const user = new User(payload);
@@ -235,7 +231,7 @@ router.get('/staff', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
 // PATCH /api/analyzer/staff/:id — edit a staff account (only the two staff roles).
 router.patch('/staff/:id', auth, allowRoles(...ANALYZER_ROLES), async (req, res) => {
   try {
-    const existing = await User.findById(req.params.id).select('role');
+    const existing = await User.findById(req.params.id).select('role specialtyIds');
     if (!existing || !STAFF_ROLES.includes(existing.role)) {
       return res.status(404).json({ message: 'Staff account not found' });
     }
@@ -253,6 +249,18 @@ router.patch('/staff/:id', auth, allowRoles(...ANALYZER_ROLES), async (req, res)
     }
     if (req.body.locked !== undefined) update.locked = !!req.body.locked;
     if (req.body.isActive !== undefined) update.isActive = !!req.body.isActive;
+    // Re-scope a central secretary's specialties. Only meaningful for that role.
+    // Already-assigned specialties are kept even if since-deactivated, so a stale
+    // scope entry can't block an unrelated edit (e.g. lock/deactivate).
+    if (req.body.specialtyIds !== undefined && existing.role === 'central_secretary') {
+      const ids = await validateSpecialtyIds(req.body.specialtyIds, { allowInactiveIds: existing.specialtyIds || [] });
+      if (ids.error) return res.status(400).json({ message: ids.error });
+      update.specialtyIds = ids.value;
+      // Fully migrate a legacy account: the explicit list now governs scope, so
+      // drop the stale council/type so it isn't double-tallied in council stats.
+      update.councilId = null;
+      update.secretaryType = null;
+    }
 
     const finalUpdate = { ...update };
     if (Object.keys(unset).length) finalUpdate.$unset = unset;
@@ -417,7 +425,10 @@ router.get('/central-secretaries', auth, allowRoles(...ANALYZER_ROLES), async (r
   try {
     const query = { role: 'central_secretary' };
     if (req.query.includeInactive !== 'true') query.isActive = { $ne: false };
-    const list = await User.find(query).select('-password').populate('councilId', 'name nameEn').sort({ name: 1 });
+    const list = await User.find(query).select('-password')
+      .populate('councilId', 'name nameEn')
+      .populate('specialtyIds', 'name nameEn type')
+      .sort({ name: 1 });
     const hist = await changeHistoryFor(list.map(c => c._id));
     res.json({ success: true, data: list.map(c => ({ ...c.toObject(), changeHistory: hist[String(c._id)] || [] })) });
   } catch (err) { res.status(500).json({ message: err.message }); }

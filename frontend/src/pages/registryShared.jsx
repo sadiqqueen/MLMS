@@ -54,7 +54,8 @@ const STR = {
     createBanner: 'ستتم إضافة هذا السجل إلى السجل مباشرة.',
     name: 'الاسم', country: 'الدولة', city: 'المدينة', idNumber: 'الرقم التعريفي',
     accId: 'رقم الاعتماد', accDate: 'تاريخ الاعتماد', dio: 'DIO', subDio: 'Sub-DIO',
-    center: 'المركز التدريبي', specialty: 'الاختصاص', pd: 'مدير البرنامج', subPd: 'نائب المدير',
+    center: 'المركز التدريبي', specialty: 'الاختصاص', specialtyOrSub: 'الاختصاص / الاختصاص الدقيق',
+    subTag: 'دقيق', pd: 'مدير البرنامج', subPd: 'نائب المدير',
     capacity: 'الطاقة السنوية', duration: 'المدة (سنوات)', none: '—',
     selectSpecialtyFirst: 'اختر الاختصاص أولاً', noPd: 'بدون مدير برنامج',
     saveFailed: 'فشل الحفظ', required: 'الحقول المطلوبة ناقصة',
@@ -78,7 +79,8 @@ const STR = {
     createBanner: 'This record will be added to the registry.',
     name: 'Name', country: 'Country', city: 'City', idNumber: 'ID',
     accId: 'Accreditation ID', accDate: 'Date of accreditation', dio: 'DIO', subDio: 'Sub-DIO',
-    center: 'Training center', specialty: 'Specialty', pd: 'Program Director', subPd: 'Sub-PD',
+    center: 'Training center', specialty: 'Specialty', specialtyOrSub: 'Specialty / sub-specialty',
+    subTag: 'sub', pd: 'Program Director', subPd: 'Sub-PD',
     capacity: 'Yearly capacity', duration: 'Duration (years)', none: '—',
     selectSpecialtyFirst: 'Select a specialty first', noPd: 'No program director',
     saveFailed: 'Save failed', required: 'Required fields are missing',
@@ -145,7 +147,7 @@ export function AddCenterModal({ open, lang, countries = [], dios = [], subDios 
   const subDioOpts = subDios.map((d) => ({ value: d._id, label: d.name }));
 
   return (
-    <MtModal open={open} title={tr('newCenter')} sub={tr('newCenterSub')} onClose={onClose}
+    <MtModal open={open} title={tr('newCenter')} sub={tr('newCenterSub')} tone="data" onClose={onClose}
       footer={<>
         <button type="button" className="mt-btn--cancel" onClick={onClose}>{tr('cancel')}</button>
         <button type="button" className="mt-btn" onClick={save} disabled={saving}>{saving ? tr('saving') : tr('create')}</button>
@@ -171,8 +173,8 @@ export function AddCenterModal({ open, lang, countries = [], dios = [], subDios 
         <div className="mt-field"><label className="mt-label">{tr('accDate')}</label>
           <input className="mt-input" type="date" value={form.accreditationGrantDate} onChange={(e) => set('accreditationGrantDate', e.target.value)} /></div>
         <div className="mt-field">
-          <label className="mt-label">{tr('odio')}</label>
-          <SearchableSelect value={form.dioId} onChange={(v) => set('dioId', v)} options={dioOpts} placeholder={tr('odio')} />
+          <label className="mt-label">{tr('dio')}</label>
+          <SearchableSelect value={form.dioId} onChange={(v) => set('dioId', v)} options={dioOpts} placeholder={tr('dio')} />
         </div>
         <div className="mt-field">
           <label className="mt-label">{tr('subDio')}</label>
@@ -185,10 +187,11 @@ export function AddCenterModal({ open, lang, countries = [], dios = [], subDios 
 }
 
 // ── AddCountryModal (direct create) ─────────────────────────────────────────
-// The clerk creates a country directly, filling the source-sheet columns
-// (التسلسل + official/short Arabic + official/short English). Backend:
-// POST /api/countries (WRITE_ROLES = data_entry, super_admin) requires all five;
-// it derives `name` from the short Arabic name. Arabic inputs RTL, English LTR.
+// The Data Analyzer creates a country directly (moved off the clerk, Change 1),
+// filling the source-sheet columns (التسلسل + official/short Arabic + official/
+// short English). Backend: POST /api/countries (WRITE_ROLES = data_analyzer,
+// developer) requires all five; it derives `name` from the short Arabic name.
+// Arabic inputs RTL, English LTR. Rendered from AnalyzerCountries.
 export function AddCountryModal({ open, lang, onClose, onSaved }) {
   const tr = (k) => S(lang, k);
   const [form, setForm] = useState({ order: '', officialNameAr: '', shortNameAr: '', officialNameEn: '', shortNameEn: '' });
@@ -218,7 +221,7 @@ export function AddCountryModal({ open, lang, onClose, onSaved }) {
   }
 
   return (
-    <MtModal open={open} title={tr('newCountry')} sub={tr('newCountrySub')} onClose={onClose}
+    <MtModal open={open} title={tr('newCountry')} sub={tr('newCountrySub')} tone="data" onClose={onClose}
       footer={<>
         <button type="button" className="mt-btn--cancel" onClick={onClose}>{tr('cancel')}</button>
         <button type="button" className="mt-btn" onClick={save} disabled={saving}>{saving ? tr('saving') : tr('create')}</button>
@@ -261,7 +264,7 @@ export function AddCountryModal({ open, lang, onClose, onSaved }) {
 export function AddProgramModal({ open, lang, centers = [], specialties = [], subPds = [], fixedCenter, onClose, onSaved }) {
   const tr = (k) => S(lang, k);
   const [form, setForm] = useState({
-    name: '', trainingCenterId: fixedCenter?._id || '', specialtyId: '', programDirectorId: '',
+    trainingCenterId: fixedCenter?._id || '', specialtyId: '', programDirectorId: '',
     subProgramDirectorId: '', yearlyCapacity: '', durationYears: '', accreditationNumber: '', accreditationGrantDate: '',
   });
   const [pdCands, setPdCands] = useState([]);
@@ -283,7 +286,6 @@ export function AddProgramModal({ open, lang, centers = [], specialties = [], su
 
   async function save() {
     const e = {};
-    if (!form.name.trim()) e.name = true;
     if (!form.trainingCenterId) e.trainingCenterId = true;
     if (!form.specialtyId) e.specialtyId = true;
     if (form.yearlyCapacity === '' || Number(form.yearlyCapacity) < 0) e.yearlyCapacity = true;
@@ -291,8 +293,9 @@ export function AddProgramModal({ open, lang, centers = [], specialties = [], su
     if (Object.keys(e).length) { setErr(e); setApiErr(tr('required')); return; }
     setSaving(true); setApiErr('');
     try {
+      // No `name` — the server derives "Specialty — Center" (Change 6).
       const payload = {
-        name: form.name.trim(), trainingCenterId: form.trainingCenterId, specialtyId: form.specialtyId,
+        trainingCenterId: form.trainingCenterId, specialtyId: form.specialtyId,
         yearlyCapacity: Number(form.yearlyCapacity), durationYears: Number(form.durationYears),
         programDirectorId: form.programDirectorId || undefined, subProgramDirectorId: form.subProgramDirectorId || undefined,
         accreditationNumber: form.accreditationNumber.trim() || undefined,
@@ -304,12 +307,12 @@ export function AddProgramModal({ open, lang, centers = [], specialties = [], su
   }
 
   const centerOpts = centers.map((c) => ({ value: c._id, label: c.name }));
-  const specialtyOpts = specialties.map((s) => ({ value: s._id, label: s.name }));
+  const specialtyOpts = specialties.map((s) => ({ value: s._id, label: s.type === 'precise' ? `${s.name} (${tr('subTag')})` : s.name }));
   const pdOpts = pdCands.map((p) => ({ value: p._id, label: `${p.name}${p.idNumber ? ` · ${p.idNumber}` : ''}` }));
   const subPdOpts = subPds.map((p) => ({ value: p._id, label: p.name }));
 
   return (
-    <MtModal open={open} title={tr('newProgram')} sub={tr('newProgramSub')}
+    <MtModal open={open} title={tr('newProgram')} sub={tr('newProgramSub')} tone="data"
       meta={fixedCenter ? fixedCenter.name : undefined} onClose={onClose}
       footer={<>
         <button type="button" className="mt-btn--cancel" onClick={onClose}>{tr('cancel')}</button>
@@ -318,9 +321,9 @@ export function AddProgramModal({ open, lang, centers = [], specialties = [], su
       <div className="mt-banner">{tr('createBanner')}</div>
       <div className="mt-field-grid">
         <div className="mt-field mt-field-full">
-          <label className="mt-label">{tr('name')}<span className="mt-label-req">*</span></label>
-          <input className="mt-input" value={form.name} onChange={(e) => set('name', e.target.value)}
-            style={err.name ? { borderColor: 'var(--danger)' } : undefined} />
+          <label className="mt-label">{tr('specialtyOrSub')}<span className="mt-label-req">*</span></label>
+          <SearchableSelect value={form.specialtyId} onChange={setSpecialty} options={specialtyOpts}
+            placeholder={tr('specialty')} error={err.specialtyId} />
         </div>
         {!fixedCenter && (
           <div className="mt-field mt-field-full">
@@ -329,11 +332,6 @@ export function AddProgramModal({ open, lang, centers = [], specialties = [], su
               options={centerOpts} placeholder={tr('center')} error={err.trainingCenterId} />
           </div>
         )}
-        <div className="mt-field mt-field-full">
-          <label className="mt-label">{tr('specialty')}<span className="mt-label-req">*</span></label>
-          <SearchableSelect value={form.specialtyId} onChange={setSpecialty} options={specialtyOpts}
-            placeholder={tr('specialty')} error={err.specialtyId} />
-        </div>
         <div className="mt-field mt-field-full">
           <label className="mt-label">{tr('pd')}</label>
           <SearchableSelect value={form.programDirectorId} onChange={(v) => set('programDirectorId', v)} options={pdOpts}

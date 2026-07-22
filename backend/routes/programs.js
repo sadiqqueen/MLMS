@@ -151,7 +151,8 @@ router.post('/',
         durationYears, renewalApplicationDate
       } = req.body;
 
-      if (!name || !String(name).trim()) return res.status(400).json({ message: 'Program name is required' });
+      // Name is no longer a form field (Change 6): it is auto-derived below from
+      // the specialty + center when the client omits it.
       if (!trainingCenterId) return res.status(400).json({ message: 'Training center is required' });
       if (!specialtyId) return res.status(400).json({ message: 'Specialty is required' });
       if (accreditationType && !['partly', 'fully'].includes(accreditationType)) {
@@ -165,11 +166,15 @@ router.post('/',
         return res.status(400).json({ message: 'Duration (years) must be a positive number' });
       }
 
-      const center = await Hospital.findById(trainingCenterId).select('isActive');
+      const center = await Hospital.findById(trainingCenterId).select('isActive name');
       if (!center || center.isActive === false) return res.status(400).json({ message: 'Training center not found' });
 
-      const specialty = await Specialty.findById(specialtyId).select('_id');
+      const specialty = await Specialty.findById(specialtyId).select('_id name');
       if (!specialty) return res.status(400).json({ message: 'Specialty not found' });
+
+      // Auto-derive the name "Specialty — Center" when the form omits it (the
+      // Program schema still requires a name, so we always supply one).
+      const finalName = (name && String(name).trim()) || `${specialty.name} — ${center.name}`;
 
       // Max 100 active programs per center.
       const count = await Program.countDocuments({ trainingCenterId, isActive: { $ne: false } });
@@ -187,7 +192,7 @@ router.post('/',
       }
 
       const program = await Program.create({
-        name: String(name).trim(),
+        name: finalName,
         trainingCenterId,
         specialtyId,
         programDirectorId: programDirectorId || null,
@@ -205,6 +210,8 @@ router.post('/',
 
       res.status(201).json({ success: true, data: withAccreditation(program) });
     } catch (err) {
+      // A malformed trainingCenterId / specialtyId → 400, not a 500.
+      if (err.name === 'CastError') return res.status(400).json({ message: 'Invalid id provided' });
       res.status(500).json({ message: err.message });
     }
   }

@@ -79,6 +79,13 @@ const userSchema = new mongoose.Schema(
     councilId:     { type: mongoose.Schema.Types.ObjectId, ref: 'ScientificCouncil', default: null, index: true },
     secretaryType: { type: String, enum: ['main', 'precise'], default: null },
 
+    // Redesign v2 (multi-specialty CS): a central secretary may instead be scoped
+    // to an EXPLICIT set of specialties (any mix of main + precise, up to every
+    // specialty in the system), chosen at creation. When non-empty this SUPERSEDES
+    // councilId/secretaryType for scope resolution (utils/councilScope.js); legacy
+    // CS accounts and the `hoc` role continue to use councilId/secretaryType above.
+    specialtyIds:  [{ type: mongoose.Schema.Types.ObjectId, ref: 'Specialty' }],
+
     isActive:      { type: Boolean, default: true },
     deletedAt:     { type: Date, default: null },
     lastLogin:     { type: Date },

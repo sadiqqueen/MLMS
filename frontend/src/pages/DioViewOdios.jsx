@@ -7,9 +7,9 @@
 // parent) — shown read-only & locked in the modal. Creates apply directly
 // (201) → green "saved" toast, no approval note (RULINGS §E22).
 //
-// Only `dio_view` may list/create here (contract: GET/POST /api/dio-view/odios
-// are dio_view-only). `sub_dio`/`super_admin` reach the route (App.jsx) but the
-// API returns 403 → a friendly read-only notice (see report QUESTIONS).
+// Only `dio` (formerly dio_view) may list/create here (contract: GET/POST
+// /api/dio-view/odios are dio-only). `sub_dio`/`developer` reach the route
+// (App.jsx) but the API returns 403 → a friendly read-only notice.
 // Contract:
 //   GET  /api/dio-view/odios  → [{ ...odio(role:dio), countryId:{name}, city, email }]
 //   POST /api/dio-view/odios  { name*, email*, password*(≥6) } → 201 { data }
@@ -88,7 +88,7 @@ function AddOdioModal({ lang, inherited, onClose, onSaved }) {
   );
 
   return (
-    <MtModal open title={t('newOdio')} sub={t('newOdioSub')} onClose={onClose}
+    <MtModal open tone="user" title={t('newOdio')} sub={t('newOdioSub')} onClose={onClose}
       footer={<>
         <button type="button" className="mt-btn--cancel" onClick={onClose}>{t('cancel')}</button>
         <button type="button" className="mt-btn" onClick={save} disabled={saving}>{saving ? t('saving') : t('create')}</button>
@@ -196,7 +196,7 @@ export default function DioViewOdios() {
     ];
   }
 
-  // sub_dio / super_admin land here but the API is dio_view-only → read-only notice.
+  // sub_dio / developer land here but the API is dio-only → read-only notice.
   if (forbidden) {
     return (
       <>

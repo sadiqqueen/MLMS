@@ -19,6 +19,7 @@ export default function SearchableSelect({
   placeholder  = 'Search or select...',
   disabled     = false,
   error        = false,
+  hideClear    = false,
 }) {
   const [open,  setOpen ] = useState(false);
   const [query, setQuery] = useState('');
@@ -97,7 +98,7 @@ export default function SearchableSelect({
       }}>v</span>
 
       {/* clear button - only when something is selected and not disabled */}
-      {value && !disabled && !open && (
+      {value && !disabled && !open && !hideClear && (
         <button
           type="button"
           onMouseDown={e => { e.preventDefault(); onChange(''); }}

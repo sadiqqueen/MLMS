@@ -9,7 +9,7 @@ import RevealOnScroll from '../components/RevealOnScroll';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import {
   ListShell, CardGrid, SearchBox, EmptyState,
-  useAnalyzerList, useClientList, histLines, fmtDate, PAGE_SIZE,
+  useAnalyzerList, useClientList, useOptions, histLines, fmtDate, PAGE_SIZE,
 } from './AnalyzerListKit';
 import { StaffFormModal } from './AnalyzerStaffForms';
 import './Analyzer.css';
@@ -20,6 +20,10 @@ export default function AnalyzerClerks() {
   const onSearch = (v) => { setSearch(v); setPage(1); };
 
   const { data, loading, error, reload } = useAnalyzerList('/api/analyzer/clerks');
+  // Loaded so the add-form's clerk↔central-secretary toggle can scope a CS.
+  const specialties = useOptions('/api/analyzer/specialties', (s) => ({
+    value: s._id, label: s.type === 'precise' ? `${s.name} (sub)` : s.name,
+  }));
   const rows = Array.isArray(data) ? data : [];
   const { pageRows, total } = useClientList(rows, { search, fields: ['name', 'idNumber', 'email'], page });
   const isEmpty = !loading && total === 0;
@@ -65,8 +69,12 @@ export default function AnalyzerClerks() {
       </ListShell>
 
       {addOpen && (
-        <StaffFormModal role="data_entry" mode="add" onClose={() => setAddOpen(false)}
-          onSaved={() => { setAddOpen(false); reload(); showToast('Clerk added.', 'ok'); }} />
+        <StaffFormModal role="data_entry" mode="add" specialties={specialties} onClose={() => setAddOpen(false)}
+          onSaved={(saved) => {
+            setAddOpen(false); reload();
+            showToast(saved?.role === 'central_secretary'
+              ? 'Central secretary added — see the Central Secretaries page.' : 'Clerk added.', 'ok');
+          }} />
       )}
       {editUser && (
         <StaffFormModal role="data_entry" mode="edit" staff={editUser} onClose={() => setEditUser(null)}

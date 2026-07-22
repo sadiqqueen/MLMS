@@ -54,6 +54,8 @@ function withAccreditation(doc) {
 }
 
 function handleDuplicate(err, res) {
+  // A malformed ObjectId (e.g. bad specialtyId / :id) → 400, not a 500.
+  if (err && err.name === 'CastError') { res.status(400).json({ message: 'Invalid id provided' }); return true; }
   if (err && err.code === 11000) {
     if (err.keyPattern && err.keyPattern.idNumber) { res.status(409).json({ message: 'ID number already exists' }); return true; }
     if (err.keyPattern && err.keyPattern.email)    { res.status(409).json({ message: 'Email already exists' }); return true; }
@@ -302,9 +304,12 @@ router.patch('/centers/:id', auth, allowRoles(...REGISTRY_ROLES), submitRegistry
 // DELETE /api/registry/centers/:id — queued delete (analyzer approval + PDF).
 router.delete('/centers/:id', auth, allowRoles(...REGISTRY_ROLES), submitRegistryChange('centers', 'delete'));
 
-// ── SPECIALTIES (dropdown source; developer owns specialty management) ────────
+// ── SPECIALTIES (dropdown source; the Data Analyzer owns specialty management) ─
 
 const SPECIALTY_FIELDS = ['name', 'isActive'];
+// Specialty creation/updates are a Data-Analyzer (+ Developer) capability — NOT
+// the Data-Entry clerk. Reads stay open to the clerk (program-form dropdowns).
+const SPECIALTY_WRITE_ROLES = ['data_analyzer', 'developer'];
 
 // GET /api/registry/specialties?type=&councilId=
 router.get('/specialties', auth, allowRoles(...REGISTRY_READ_ROLES), async (req, res) => {
@@ -321,9 +326,9 @@ router.get('/specialties', auth, allowRoles(...REGISTRY_READ_ROLES), async (req,
   }
 });
 
-// POST/PATCH specialty — legacy direct writes retained (not in the new clerk UI;
-// specialty management is a developer capability, RULINGS §14).
-router.post('/specialties', auth, allowRoles(...REGISTRY_ROLES), auditLog('registry_create_specialty', 'Specialty'), async (req, res) => {
+// POST/PATCH specialty — direct writes gated to the Data Analyzer (+ Developer).
+// The clerk can no longer create/edit specialties (role redesign, Change 1).
+router.post('/specialties', auth, allowRoles(...SPECIALTY_WRITE_ROLES), auditLog('registry_create_specialty', 'Specialty'), async (req, res) => {
   try {
     const data = pick(req.body, SPECIALTY_FIELDS);
     if (!data.name || !String(data.name).trim()) return res.status(400).json({ message: 'Specialty name is required' });
@@ -336,7 +341,7 @@ router.post('/specialties', auth, allowRoles(...REGISTRY_ROLES), auditLog('regis
   }
 });
 
-router.patch('/specialties/:id', auth, allowRoles(...REGISTRY_ROLES), auditLog('registry_update_specialty', 'Specialty'), async (req, res) => {
+router.patch('/specialties/:id', auth, allowRoles(...SPECIALTY_WRITE_ROLES), auditLog('registry_update_specialty', 'Specialty'), async (req, res) => {
   try {
     const data = pick(req.body, SPECIALTY_FIELDS);
     if (data.name !== undefined && !String(data.name).trim()) return res.status(400).json({ message: 'Specialty name cannot be empty' });
@@ -409,10 +414,10 @@ async function createDioChild(req, res, role) {
   }
 }
 
-// POST /api/registry/dios/:id/odio — create the ODIO (role: dio).
-router.post('/dios/:id/odio', auth, allowRoles(...REGISTRY_ROLES), auditLog('registry_create_odio', 'User'), (req, res) => {
-  createDioChild(req, res, 'odio');
-});
+// ODIO creation is NOT a clerk capability — an ODIO is created ONLY by its DIO
+// (dioView.js POST /odios, allowRoles('dio')), inheriting the DIO's centers.
+// The former clerk route POST /dios/:id/odio was removed in the role redesign
+// (Change 2). The clerk still adds DIO and Sub-DIO below.
 
 // POST /api/registry/dios/:id/sub-dio — create the Sub-DIO (role: sub_dio).
 router.post('/dios/:id/sub-dio', auth, allowRoles(...REGISTRY_ROLES), auditLog('registry_create_sub_dio', 'User'), (req, res) => {
@@ -430,19 +435,19 @@ router.delete('/sub-dios/:id', auth, allowRoles(...REGISTRY_ROLES), submitRegist
 // ── PD / SUB-PD ─────────────────────────────────────────────────────────────
 
 // POST /api/registry/pds — create a program_director (direct). specialtyId is
-// OPTIONAL (§F30 — a PD's specialty derives from program attachment); password
-// is REQUIRED. Country/city captured from the modal.
+// REQUIRED and chosen on the form (Change 4 — the PD's specialty/sub-specialty
+// is explicit, no longer only derived from program attachment); password is
+// REQUIRED. Country/city captured from the modal.
 router.post('/pds', auth, allowRoles(...REGISTRY_ROLES), auditLog('registry_create_pd', 'User'), async (req, res) => {
   try {
     const invalid = validateNewUser(req.body);
     if (invalid) return res.status(400).json({ message: invalid });
 
-    const payload = { ...baseUserPayload(req.body), role: 'program_director' };
-    if (req.body.specialtyId) {
-      const specialty = await Specialty.findById(req.body.specialtyId).select('_id');
-      if (!specialty) return res.status(400).json({ message: 'Specialty not found' });
-      payload.specialtyId = req.body.specialtyId;
-    }
+    if (!req.body.specialtyId) return res.status(400).json({ message: 'Specialty is required' });
+    const specialty = await Specialty.findById(req.body.specialtyId).select('_id');
+    if (!specialty) return res.status(400).json({ message: 'Specialty not found' });
+
+    const payload = { ...baseUserPayload(req.body), role: 'program_director', specialtyId: req.body.specialtyId };
     if (req.body.countryId) {
       if (!(await countryExists(req.body.countryId))) return res.status(400).json({ message: 'Country not found' });
       payload.countryId = req.body.countryId;
@@ -469,11 +474,17 @@ router.post('/pds/:id/sub-pd', auth, allowRoles(...REGISTRY_ROLES), auditLog('re
     const invalid = validateNewUser(req.body);
     if (invalid) return res.status(400).json({ message: invalid });
 
+    // Sub-PD's specialty is now EXPLICIT and chosen on the form (Change 4) — it
+    // defaults to the parent PD's specialty in the UI but is sent + validated here.
+    if (!req.body.specialtyId) return res.status(400).json({ message: 'Specialty is required' });
+    const specialty = await Specialty.findById(req.body.specialtyId).select('_id');
+    if (!specialty) return res.status(400).json({ message: 'Specialty not found' });
+
     const payload = {
       ...baseUserPayload(req.body),
       role: 'sub_pd',
       pdId: parent._id,
-      specialtyId: parent.specialtyId || null,
+      specialtyId: req.body.specialtyId,
       programId: parent.programId || null,
       countryId: parent.countryId || null,
     };

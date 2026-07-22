@@ -69,6 +69,8 @@ async function writeAudit(req, action, targetModel, targetId, metadata = {}) {
 
 // Map an E11000 duplicate-key error onto a clear 409. Returns true if handled.
 function handleDuplicate(err, res) {
+  // A malformed ObjectId (e.g. bad programId / pdId) → 400, not a 500.
+  if (err && err.name === 'CastError') { res.status(400).json({ message: 'Invalid id provided' }); return true; }
   if (err && err.code === 11000) {
     if (err.keyPattern && err.keyPattern.idNumber) { res.status(409).json({ message: 'ID number already exists' }); return true; }
     if (err.keyPattern && err.keyPattern.email)    { res.status(409).json({ message: 'Email already exists' }); return true; }
@@ -484,6 +486,7 @@ router.post('/trainees', auth, allowRoles(...CENTRAL_ROLES), async (req, res) =>
       .populate('hospitalId', 'name')
       .populate('specialtyId', 'name')
       .populate('pdId', 'name')
+      .populate('dioId', 'name')
       .populate('supervisorId', 'name')
       .populate('researchSupervisorId', 'name');
     res.status(201).json({ success: true, data: saved });

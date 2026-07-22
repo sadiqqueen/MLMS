@@ -25,6 +25,7 @@ const LogBookEntry   = require('../models/LogBookEntry');
 const ChangeRequest  = require('../models/ChangeRequest');
 const ScientificCouncil = require('../models/ScientificCouncil');
 const { syncCenterDioAssignment } = require('../utils/registryChanges');
+const { validateSpecialtyIds } = require('../utils/councilScope');
 
 const ADMIN = ['developer'];
 const USER_CREATE_FIELDS = ['name', 'email', 'password', 'role', 'phone', 'gender',
@@ -532,37 +533,27 @@ router.post('/hocs', auth, allowRoles(...ADMIN), auditLog('create_hoc', 'User'),
   }
 });
 
-// POST /api/admin/central-secretaries — create a Central Secretary.
-//   secretaryType 'main'    → councilId REQUIRED (scoped to that council)
-//   secretaryType 'precise' → no council (covers every precise specialty; the
-//                             single precise CS — warn if one already exists)
+// POST /api/admin/central-secretaries — create a Central Secretary scoped to an
+// explicit set of specialties (any mix of main + sub-specialty, up to all of
+// them). Mirrors the analyzer CS-create contract (utils/councilScope.js).
 router.post('/central-secretaries', auth, allowRoles(...ADMIN), auditLog('create_central_secretary', 'User'), async (req, res) => {
   try {
-    const { name, idNumber, phone, email, password, secretaryType, councilId } = req.body;
+    const { name, idNumber, phone, email, password, specialtyIds } = req.body;
     if (!name || !String(name).trim()) return res.status(400).json({ message: 'Name is required' });
     if (!idNumber || !String(idNumber).trim()) return res.status(400).json({ message: 'ID number is required' });
     if (!password || String(password).length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' });
 
-    const st = secretaryType === 'precise' ? 'precise' : 'main';
-    const payload = { name: String(name).trim(), idNumber: String(idNumber).trim(), password: String(password), role: 'central_secretary', secretaryType: st };
+    const specs = await validateSpecialtyIds(specialtyIds);
+    if (specs.error) return res.status(400).json({ message: specs.error });
+
+    const payload = { name: String(name).trim(), idNumber: String(idNumber).trim(), password: String(password), role: 'central_secretary', specialtyIds: specs.value };
     if (email && String(email).trim()) payload.email = String(email).trim();
     if (phone !== undefined) payload.phone = String(phone).trim();
 
-    let warning;
-    if (st === 'main') {
-      if (!councilId) return res.status(400).json({ message: 'A main central secretary requires a council' });
-      const council = await ScientificCouncil.findById(councilId).select('_id');
-      if (!council) return res.status(400).json({ message: 'Council not found' });
-      payload.councilId = councilId;
-    } else {
-      const clash = await User.findOne({ role: 'central_secretary', secretaryType: 'precise', isActive: { $ne: false } }).select('name');
-      if (clash) warning = `A precise central secretary already exists (${clash.name}).`;
-    }
-
     const user = new User(payload);
     await user.save();
-    const saved = await User.findById(user._id).select('-password').populate('councilId', 'name nameEn');
-    res.status(201).json({ success: true, data: saved, warning });
+    const saved = await User.findById(user._id).select('-password').populate('specialtyIds', 'name nameEn type');
+    res.status(201).json({ success: true, data: saved });
   } catch (err) {
     if (handleDuplicate(err, res)) return;
     res.status(500).json({ message: err.message });

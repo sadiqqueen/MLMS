@@ -1,12 +1,11 @@
 // W2-Developer — Users (lists_views §DEVELOPER users). mt- restyle of the full
-// user CRUD (create/edit any role, photo, password, lock/unlock, deactivate/
-// reactivate, permanent-delete with structural blockers) PLUS the two NEW
-// council-role create flows (RULINGS §12/§17/§39/§40, API_CONTRACTS §DEVELOPER):
-//   • Add HOC              → POST /api/admin/hocs
-//   • Add Central Secretary → POST /api/admin/central-secretaries  (Main/Precise)
-// Both use the 20 Scientific Councils from GET /api/admin/councils as the "Main
-// specialty" list. Creates apply directly (green toast); a soft-uniqueness
-// `warning` from the server surfaces as a warn toast.
+// user CRUD (create/edit the developer's creatable roles, photo, password,
+// lock/unlock, deactivate/reactivate, permanent-delete with structural blockers)
+// PLUS the developer's HOC create flow:
+//   • Add HOC → POST /api/admin/hocs  (one Scientific Council)
+// The generic Add-user form is restricted to CREATABLE_ROLES (the oversight /
+// leadership accounts). Data Entry + Central Secretary are added by the Data
+// Analyzer, not the Developer (role redesign). Creates apply directly (toast).
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
@@ -26,6 +25,13 @@ const ROLES = [
   'trainee', 'trainer', 'program_director', 'sub_pd', 'secretary', 'data_entry',
   'central_secretary', 'hoc', 'odio', 'dio', 'sub_dio', 'asg1', 'asg2',
   'data_analyzer', 'head_cs', 'head_ad', 'assistant_secretary', 'secretary_general', 'developer',
+];
+// Roles the Developer may CREATE via the generic Add-user form (matches the
+// backend allowlist in routes/users.js). HOC is created via its own "+ Add HOC"
+// modal (it needs a councilId); Data Entry + Central Secretary belong to the Data
+// Analyzer, not the Developer. Full ROLES is still used to render an edited user.
+const CREATABLE_ROLES = [
+  'secretary_general', 'assistant_secretary', 'data_analyzer', 'head_cs', 'head_ad', 'developer',
 ];
 const BASIC_CAPABLE = ['trainee', 'trainer', 'program_director', 'secretary', 'odio'];
 const effectiveRole = (baseR, track) => (track === 'basic' && BASIC_CAPABLE.includes(baseR) ? 'b_' + baseR : baseR);
@@ -57,7 +63,7 @@ function UserModal({ editUser, hospitals, supervisors, specialties, councils = [
     specialtyId: editUser.specialtyId?._id || editUser.specialtyId || '', department: editUser.department || '',
     councilId: editUser.councilId?._id || editUser.councilId || '',
   } : {
-    name: '', email: '', password: '', role: 'trainee', track: 'advanced', phone: '', gender: '', city: '',
+    name: '', email: '', password: '', role: CREATABLE_ROLES[0], track: 'advanced', phone: '', gender: '', city: '',
     studentId: '', year: '', hospitalId: '', supervisorId: '', specialtyId: '', department: '', councilId: '',
   });
   const [photo, setPhoto] = useState(null);
@@ -93,7 +99,7 @@ function UserModal({ editUser, hospitals, supervisors, specialties, councils = [
   const supervisorOptions = filteredSupervisors.map((s) => ({ value: s._id, label: s.name }));
 
   return (
-    <MtModal open title={editUser ? 'Edit user' : 'Add user'} sub="System account" meta="Developer" onClose={onClose}
+    <MtModal open tone="user" title={editUser ? 'Edit user' : 'Add user'} sub="System account" meta="Developer" onClose={onClose}
       footer={<>
         <button type="button" className="mt-btn--cancel" onClick={onClose}>Cancel</button>
         <button type="button" className="mt-btn" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : editUser ? 'Save' : 'Create user'}</button>
@@ -111,7 +117,7 @@ function UserModal({ editUser, hospitals, supervisors, specialties, councils = [
         <div className="mt-field">
           <label className="mt-label">User type <span className="mt-label-req">*</span></label>
           <select className="mt-select" value={role} onChange={(e) => set('role', e.target.value)}>
-            {ROLES.map((r) => <option key={r} value={r}>{roleLabel(r)}</option>)}
+            {(editUser ? ROLES : CREATABLE_ROLES).map((r) => <option key={r} value={r}>{roleLabel(r)}</option>)}
           </select>
         </div>
         <div className="mt-field">
@@ -201,7 +207,7 @@ function HocModal({ councils, onCreate, onClose, saving }) {
     onCreate(f);
   }
   return (
-    <MtModal open title="Add HOC" sub="Head of Council — one per council" meta="Developer" onClose={onClose}
+    <MtModal open tone="user" title="Add HOC" sub="Head of Council — one per council" meta="Developer" onClose={onClose}
       footer={<>
         <button type="button" className="mt-btn--cancel" onClick={onClose}>Cancel</button>
         <button type="button" className="mt-btn" onClick={submit} disabled={saving}>{saving ? 'Creating…' : 'Create HOC'}</button>
@@ -226,57 +232,8 @@ function HocModal({ councils, onCreate, onClose, saving }) {
   );
 }
 
-// ── Add Central Secretary (Main / Precise) ───────────────────────────────────
-function CentralSecretaryModal({ councils, onCreate, onClose, saving }) {
-  const [f, setF] = useState({ name: '', idNumber: '', phone: '', email: '', password: '', secretaryType: 'main', councilId: '' });
-  const [errors, setErrors] = useState({});
-  const set = (k, v) => { setF((s) => ({ ...s, [k]: v })); setErrors((e) => ({ ...e, [k]: false })); };
-  const isMain = f.secretaryType === 'main';
-  function submit() {
-    const e = {};
-    if (!f.name.trim()) e.name = true;
-    if (!f.idNumber.trim()) e.idNumber = true;
-    if (f.password.length < 6) e.password = true;
-    if (isMain && !f.councilId) e.councilId = true;
-    setErrors(e);
-    if (Object.keys(e).length) return;
-    onCreate({ ...f, councilId: isMain ? f.councilId : '' });
-  }
-  return (
-    <MtModal open title="Add Central Secretary" sub="Specialty or sub-specialty secretary" meta="Developer" onClose={onClose}
-      footer={<>
-        <button type="button" className="mt-btn--cancel" onClick={onClose}>Cancel</button>
-        <button type="button" className="mt-btn" onClick={submit} disabled={saving}>{saving ? 'Creating…' : 'Create secretary'}</button>
-      </>}>
-      <div className="mt-banner">This record will be added to the registry.</div>
-      <div className="mt-field-grid">
-        <div className="mt-field"><label className="mt-label">Name <span className="mt-label-req">*</span></label><input className={`mt-input${errors.name ? ' dev-invalid' : ''}`} value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="Full Name" /></div>
-        <div className="mt-field"><label className="mt-label">ID <span className="mt-label-req">*</span></label><input className={`mt-input mt-input--mono${errors.idNumber ? ' dev-invalid' : ''}`} value={f.idNumber} onChange={(e) => set('idNumber', e.target.value)} placeholder="CS-…" /></div>
-        <div className="mt-field"><label className="mt-label">Phone</label><input className="mt-input" value={f.phone} onChange={(e) => set('phone', e.target.value)} placeholder="+249 …" /></div>
-        <div className="mt-field"><label className="mt-label">Email</label><input className="mt-input" type="email" value={f.email} onChange={(e) => set('email', e.target.value)} placeholder="name@mtms.med" /></div>
-        <div className="mt-field"><label className="mt-label">Password <span className="mt-label-req">*</span></label><input className={`mt-input${errors.password ? ' dev-invalid' : ''}`} type="password" value={f.password} onChange={(e) => set('password', e.target.value)} placeholder="Min. 6 characters" />{errors.password && <span className="dev-field-err">At least 6 characters required</span>}</div>
-        <div className="mt-field mt-field-full">
-          <label className="mt-label">Specialty type</label>
-          <div className="mt-radio-group">
-            <label className="mt-check-label"><input type="radio" className="mt-check" name="secretaryType" checked={isMain} onChange={() => set('secretaryType', 'main')} /> Specialty</label>
-            <label className="mt-check-label"><input type="radio" className="mt-check" name="secretaryType" checked={!isMain} onChange={() => set('secretaryType', 'precise')} /> Sub-specialty</label>
-          </div>
-        </div>
-        {isMain && (
-          <div className="mt-field mt-field-full">
-            <label className="mt-label">Specialty <span className="mt-label-req">*</span></label>
-            <select className={`mt-select${errors.councilId ? ' dev-invalid' : ''}`} value={f.councilId} onChange={(e) => set('councilId', e.target.value)}>
-              <option value="">— Select council —</option>
-              {councils.map((c) => <option key={c._id} value={c._id}>{councilLabel(c)}</option>)}
-            </select>
-            <span className="dev-field-err" style={{ color: 'var(--text-2)' }}>Required when the type is Specialty.</span>
-          </div>
-        )}
-        {!isMain && <div className="mt-field mt-field-full"><span className="dev-field-err" style={{ color: 'var(--text-2)' }}>A sub-specialty secretary covers every sub-specialty — no council needed.</span></div>}
-      </div>
-    </MtModal>
-  );
-}
+// Central Secretary creation moved to the Data Analyzer (role redesign) — the
+// developer's "Add Central Secretary" form was removed. See AnalyzerStaffForms.
 
 function PasswordModal({ userId, onClose, showToast }) {
   const [pw, setPw] = useState('');
@@ -415,20 +372,6 @@ export default function Users() {
     } catch (err) { showToast(err.response?.data?.message || 'Could not create HOC', 'dng'); } finally { setSaving(false); }
   }
 
-  async function handleCreateCs(f) {
-    setSaving(true);
-    try {
-      const body = { name: f.name, idNumber: f.idNumber, phone: f.phone, email: f.email, password: f.password, secretaryType: f.secretaryType };
-      if (f.secretaryType === 'main') body.councilId = f.councilId;
-      const res = await api.post('/api/admin/central-secretaries', body);
-      const created = res.data?.data || res.data;
-      setUsers((prev) => [created, ...prev]);
-      showToast('Central secretary created', 'ok');
-      if (res.data?.warning) showToast(res.data.warning, 'warn');
-      setModal(null);
-    } catch (err) { showToast(err.response?.data?.message || 'Could not create secretary', 'dng'); } finally { setSaving(false); }
-  }
-
   async function handleLock(u) {
     try {
       const res = await api.put(`/api/users/${u._id}/lock`);
@@ -505,7 +448,6 @@ export default function Users() {
           <span className="mt-filterbar-spacer" />
           <button className="mt-btn" onClick={() => { setEditUser(null); setModal('user'); }}>+ Add user</button>
           <button className="mt-btn--small-outline" onClick={() => setModal('hoc')}>+ Add HOC</button>
-          <button className="mt-btn--small-outline" onClick={() => setModal('cs')}>+ Add Central Secretary</button>
           <ViewToggle value={view} onChange={setView} listValue="table" />
           <select className="mt-filter" value={rows} onChange={(e) => { setRows(+e.target.value); setPage(1); }} aria-label="Rows per page">
             {ROWS_OPT.map((r) => <option key={r} value={r}>{r} / page</option>)}
@@ -582,7 +524,6 @@ export default function Users() {
             onSave={handleSaveUser} onClose={() => { setModal(null); setEditUser(null); }} saving={saving} />
         )}
         {modal === 'hoc' && <HocModal councils={councils} onCreate={handleCreateHoc} onClose={() => setModal(null)} saving={saving} />}
-        {modal === 'cs' && <CentralSecretaryModal councils={councils} onCreate={handleCreateCs} onClose={() => setModal(null)} saving={saving} />}
         {passUserId && <PasswordModal userId={passUserId} onClose={() => setPassUserId(null)} showToast={showToast} />}
         {deleteUser && <ConfirmSimple title="Deactivate user" danger confirmLabel="Deactivate" onConfirm={confirmDelete} onCancel={() => setDeleteUser(null)}
           body={<>Deactivate <strong>{deleteUser.name}</strong>? The account will no longer be active.</>} />}

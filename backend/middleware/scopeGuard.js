@@ -31,11 +31,12 @@ module.exports = function scopeGuard() {
       case 'hoc':
         req.scope = { councilId };
         break;
-      // Central Secretary: a main-type CS is scoped to its council; the single
-      // precise-type CS covers every precise specialty. The concrete specialty
-      // set is resolved async in the route handlers (utils/councilScope.js).
+      // Central Secretary: scoped either to an explicit specialty set (new model)
+      // or, for legacy accounts, a main-type council / the single precise-type CS.
+      // The concrete specialty set is resolved async in the route handlers
+      // (utils/councilScope.js → specialtyIdsForCs).
       case 'central_secretary':
-        req.scope = { councilId, secretaryType };
+        req.scope = { councilId, secretaryType, specialtyIds: req.user.specialtyIds };
         break;
       case 'odio':
         req.scope = { hospitalId: effectiveHospital };

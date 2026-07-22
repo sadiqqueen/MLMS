@@ -15,7 +15,7 @@ import RevealOnScroll from '../components/RevealOnScroll';
 import { MtToastHost, useMtToast } from '../components/MtToast';
 import { IconEdit } from '../components/icons';
 import {
-  AddCenterModal, AddCountryModal, AddProgramModal, ApprovalModal, normId, refName, toDateInput, useCanWriteRegistry,
+  AddCenterModal, AddProgramModal, ApprovalModal, normId, refName, toDateInput, useCanWriteRegistry,
 } from './registryShared';
 import api from '../api/axios';
 import './registry.css';
@@ -72,7 +72,6 @@ export default function RegistryCountries() {
 
   const [countryId, setCountryId] = useState(null);   // L1 when set
   const [centerId, setCenterId] = useState(null);      // L2 when set
-  const [addCountryOpen, setAddCountryOpen] = useState(false);
   const [addCenterOpen, setAddCenterOpen] = useState(false);
   const [addProgramOpen, setAddProgramOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
@@ -155,7 +154,8 @@ export default function RegistryCountries() {
       : canWrite && <button type="button" className="mt-btn mt-btn--small" onClick={() => setAddProgramOpen(true)}>+ {t('addProgram')}</button>)
     : (country
       ? (canWrite && <button type="button" className="mt-btn mt-btn--small" onClick={() => setAddCenterOpen(true)}>+ {t('addCenter')}</button>)
-      : (canWrite && <button type="button" className="mt-btn mt-btn--small" onClick={() => setAddCountryOpen(true)}>+ {t('addCountry')}</button>));
+      // Countries are added by the Data Analyzer now (Change 1) — no L0 add here.
+      : null);
 
   return (
     <>
@@ -277,10 +277,6 @@ export default function RegistryCountries() {
             )}
           </>
         )}
-
-        <AddCountryModal open={addCountryOpen} lang={lang}
-          onClose={() => setAddCountryOpen(false)}
-          onSaved={() => { setAddCountryOpen(false); showToast(t('countryCreated'), 'ok'); load(); }} />
 
         <AddCenterModal open={addCenterOpen} lang={lang} countries={countries} dios={dios} subDios={subDios}
           fixedCountryId={country?._id}
