@@ -180,10 +180,10 @@ const ADVANCED_LINKS = {
   data_entry: [
     { to: '/registry/dashboard', key: 'dashboard', label: 'Dashboard',        ic: 'grid'     },
     { to: '/registry/countries', key: 'countries', label: 'Countries',        ic: 'globe'    },
-    { to: '/registry/centers',   key: 'centers',   label: 'Training Centers', ic: 'building' },
-    { to: '/registry/programs',  key: 'programs',  label: 'Programs',         ic: 'layers'   },
     { to: '/registry/dios',      key: 'dios',      label: 'DIOs',             ic: 'brief'    },
+    { to: '/registry/centers',   key: 'centers',   label: 'Training Centers', ic: 'building' },
     { to: '/registry/pds',       key: 'pds',       label: 'PDs',              ic: 'users'    },
+    { to: '/registry/programs',  key: 'programs',  label: 'Programs',         ic: 'layers'   },
   ],
   // Head AD (head_ad) — the clerk's six registry pages, READ-ONLY (mutations
   // hidden client-side + 403'd server-side), plus a Permissions inbox: its only
